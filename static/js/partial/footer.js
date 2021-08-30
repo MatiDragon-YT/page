@@ -23,7 +23,7 @@ document.write(`
 			<div class="footer-copyright">
 				<div class="container-fluid center">
 					<p><span class="float-md-left">© 2018-${(new Date).getFullYear()} MatiDragon, All rights reserved with love.</span>
-					<a href="${origen}/LICENSE" class="grey-text float-md-right">License CC BY-NC-ND Digital Code</a></p>
+					<a href="${origen}LICENSE" class="grey-text float-md-right">CC0-1.0 License</a></p>
 				</div>
 			</div>
 		<div class="p-1"></div>
