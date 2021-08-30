@@ -1,0 +1,77 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>ToolsPack - MatiDragon</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script src="../js/main.js"></script>
+</head>
+<body>
+<script src="../js/partial/header.js"></script>
+<main>
+<div class="section no-pad-bot" id="index-banner">
+<div class="container"><div class="row">
+<div class="col-12 col-lg-9"><markdown>
+
+### Paq. de Herramientas
+<p class="flow-text">Como ya sabemos, <a target="_black" href="https://sannybuilder.com">Sanny Builder</a> es un potente IDE pero esta demaciado basado en opcodes, por lo que me propuse a cambiar la gran mayoria de ellos a clases, junto con más cosas.</p>
+<div class="video-responsive black"><!--<iframe src="https://www.youtube.com/embed/XXXXXXXXXXX?rel=0" frameborder="0" allowfullscreen></iframe>--></div>
+
+<div class=inf>
+<ul>
+<li>Este paquete de herramientas incluye:
+<dd>
+<li>Más de 20 clases y 2000 miembros,
+<li>Más de 2400 enumeraciones,
+<li>Traducción precisa para el IDE,
+<li>Soporte para SF, CLEO+, CLEOImGui y NewOpcodes
+</dd></ul>
+</div>
+<div class=dan><p>En cada actualización use la directiva <code class=sb3>{$NOSOURCE}</code> para detectar los cambios.</p>
+<pre class=sb3>
+{$CLEO}
+{$NOSOURCE}
+thread 'EXAMPLE'
+while true
+    0@ = Actor.Create(PedType.Gang2, #FAM1, 1524.823, -2433.53, 13.5547)
+    repeat
+        wait 0
+    until Key.isPressed(VK.R)
+    Actor.Release(0@)
+end
+</pre>
+</div>
+
+
+<div class="center p-5"><a 
+  onclick="M.toast({html: 'Solo disponible en GDrive'})"
+  rel="_black" 
+  href="https://drive.google.com/file/d/1ApsYzB-F_lP-do73XS2SiPK_BU5ZZYlo/view"
+  class=bd><b>DESCARGAR</b>
+</a></div>
+
+---
+### Historial
+|Versión |Nota |
+|------- |---- |
+|1.5 |Reordenamiento, + clases y enumeraciones |
+|1.4 |Reordenamiento, + clases y enumeraciones |
+|1.3 |Reordenamiento y + clases |
+|1.2 |Destrucción del archivo *speed* |
+|1.1 |Implementación de constantes (accesos rapido a ids) {file: speed} |
+|1.0 |Implementación de clases (accesos rapidos a opcodes){file: classes.db} |
+</markdown></div>
+<script src="../js/partial/widgets.js"></script>
+</div></div>
+</div>
+</main>
+<script src="../js/partial/footer.js"></script>
+<!--  Scripts-->
+<script src="../js/library/jquery.js"></script>
+<script src="../js/library/marked.min.js"></script>
+<script src="../js/HL.js"></script>
+<script src="../js/library/materialize.js"></script>
+<script src="../js/init.js"></script>
+</body>
+</html>

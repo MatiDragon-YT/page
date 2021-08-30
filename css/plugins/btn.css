@@ -1,0 +1,11 @@
+.r-0 { right: 0 }
+.t-0 { top: 0 }
+.b-0 { bottom: 0 }
+.l-0 { left: 0 }
+.promo { width: 100% }
+.promo i { margin: 40px 0; color: #ee6e73; font-size: 7rem; display: block }
+.promo-caption { font-size: 1.7rem; font-weight: 500; margin-top: 5px; margin-bottom: 0 }
+.btn-large { height: 54px; line-height: 54px; font-size: 15px; padding: 0 28px }
+.btn-large i { font-size: 1.6rem }
+.btn-small { height: 32.4px; line-height: 32.4px; font-size: 13px }
+.btn-small i { font-size: 1.2rem }

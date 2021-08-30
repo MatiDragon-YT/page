@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<title>Editando el main.scm EP1 2/3</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<script src="../js/main.js"></script>
+</head>
+<body>
+<script src="../js/partial/header.js"></script>
+<main>
+<div class="section no-pad-bot" id="index-banner">
+<div class="container"><div class="row">
+<div class="col-12 col-lg-9"><markdown>
+
+#### Editando el main.scm - Episodio 1
+##### flujos y opcodes 2/3
+<p class=light>Esta lección estára dedicada al lanzamiento de varios hilos y describe las reglas para los flujos entre ellos.</p>
+
+---
+
+Antes aprendimos cómo iniciar un proceso.<br />
+¡Ahora aprendamos a ejecutar varios subprocesos al mismo tiempo! Aunque estoy seguro de que ya se dieron cuenta de que todos los subprocesos inician con <code class=sb3>create_thread</code>.
+<div class=dan><b>IMPORTANTE</b>:<br />
+Pero este comando se usa únicamente dentro de un <code>.scm</code>.<br />
+Para un script personalizados, usa el opcode <code>0A92</code>, o su comando:
+<pre class=sb3>
+create_custom_thread
+</pre>
+Puedes ver un vídeo tutorial de cómo usarlo, haciendo <a href="https://youtu.be/WPpqQDUW6f0">click aquí</a>.
+</div>
+Por lo que ahora, agregamos estos comandos al proceso del hilo principal:
+
+<pre class=sb3>
+	//...
+	create_thread @PARTE
+	create_thread @PARTE_1
+	create_thread @PARTE_2
+end_thread 
+
+:PARTE
+thread 'PARTE'
+	wait 0 
+	jump @PARTE_5
+
+	:PARTE_5
+	wait 0
+end_thread 
+
+:PARTE_1
+thread 'PARTE_1'
+	wait 0 
+	jump @PARTE_1_4
+
+	:PARTE_1_4
+	wait 0
+end_thread 
+
+:PARTE_2
+thread 'PARTE_2'
+	wait 0 
+	jump @PARTE_2_3
+
+	:PARTE_2_3
+	wait 0
+end_thread
+</pre>
+
+Con lo que habríamos lanzamos tres procesos seguidos que ¡correrán al mismo tiempo! El caso es que "alquilamos" tres de nuestras bolas familiares y nos inyectan. Gráficamente, se puede describir de la siguiente manera:
+
+<img src="./img/IMG_20210121_190413.webp" alt="imagen ilustrativa de los bloques de flujo" type="image/webp" class="w-100" style="max-width: 455px" />
+
+La imagen representa que hay 3 bolas funcionando en bloques separado. En este caso, los subprocesos pueden estar en diferentes lugares, es decir, si al principio escribimos así:
+
+<pre class=sb3>
+create_thread @PARTE
+create_thread @PARTE_1
+create_thread @PARTE_2
+</pre>
+entonces, funcionarán de la misma manera. No hay diferencia.
+<div class=dan><b>IMPORTANTE</b>:<br />
+¡Todos los saltos deben realizarse únicamente en su área(bloque) de flujo! Esto significa que no puede saltar a etiquetas ubicadas en otra ruta(bloque).</div>
+
+Aquí una foto de que no se puede hacer:
+
+<img src="./img/IMG_20210212_152329.webp" alt="imagen del problema" type="image/webp" class="w-100" style="max-width: 455px" />
+
+Así que recordemos: Cada parte solo se reconoce a sí mismo, solo hacen su trabajo. No les importan el resto de bloques, ni tampoco su trabajo. Solo actúan sobre el hilo en el que fue llamado. Técnicamente, estas bolas no debería abordar otros hilos.
+
+<div class=inf><b>NOTA</b>:<br />
+Si la etiqueta para el salto está en otro hilo, pero el comando de salto vuelve al primero, ¡entonces no habrá error!
+
+<img src="./img/IMG_20210219_160142.webp" alt="imagen del problema" type="image/webp" class="w-100" style="max-width: 455px" />
+
+</div>
+
+El caso es que Sanny Builder distribuye automáticamente las esferas de influencia, y con ellas las etiquetas que le pertenecen. Por lo tanto, la etiqueta <code class=sb3>:PARTE_1_4</code> se asignará automáticamente a la secuencia <code class=sb3>'PARTE'</code> incluso si está en el medio de la secuencia <code class=sb3>'PARTE_1'</code>.
+<div class=dan><b>IMPORTANTE</b>: Puede llamar la misma bola muchas veces, incluso desde un subproceso, pero no al mismo tiempo. Es decir, mientras se ejecuta.</div>
+
+Aunque las bolas(bloques) se pueden pedir seguidas, hay un pequeño retraso entre las llamadas. Por lo tanto, debe tener cuidado al iniciar los hilos.
+
+En general, si ejecutarán subprocesos simultáneamente, le aconsejo que no usen <code class=sb3>create_thread</code> desde diferentes subprocesos, para evitar todos los posibles errores y fallas.
+</markdown></div>
+<script src="../js/partial/widgets.js"></script>
+</div></div>
+</div>
+</main>
+<script src="../js/partial/footer.js"></script>
+<!--  Scripts-->
+<script src="../js/library/jquery.js"></script>
+<script src="../js/library/marked.min.js"></script>
+<script src="../js/HL.js"></script>
+<script src="../js/library/materialize.js"></script>
+<script src="../js/init.js"></script>
+</body>
+</html>

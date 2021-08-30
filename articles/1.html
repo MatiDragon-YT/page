@@ -1,0 +1,492 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+	<title>Editando el main.scm EP1 1/3</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<script src="../js/main.js"></script>
+</head>
+<body>
+<script src="../js/partial/header.js"></script>
+<main>
+<div class="section no-pad-bot" id="index-banner">
+<div class="container"><div class="row">
+<div class="col-12 col-lg-9"><markdown>
+
+#### Editando el main.scm - Episodio 1
+##### flujos y opcodes - Parte 1/3
+<p class=light>En este tutorial, repasaremos los conceptos básicos de la creación de scripts: procedimientos, comandos, etiquetas, saltos y latencia.<br>Tambien se introducirá el concepto de los opcodes.</p>
+
+---
+
+#### ¿Comó iniciamos?
+
+Con el SB abierto, hasemos click en <code>Archivo -> Abrir...</code> y buscamos el <code>main.scm</code> en la carpeta del juego en: <code>/data/script/</code>, sin olvidar indicar el formato **SCM** en el filtrador de archivos. De lo contrario, no te aparecerá.
+
+<div class=dan>Hagan copia de seguridad del <code>main.scm</code> y <code>script.img</code></div>
+
+Ya lo abriste? Viste la cantidad de líneas que hay? Te dejan sin aliento, verdad? Imagina el tiempo que tomo!
+
+Bueno, seleccionemos todo con <code>CTRL</code>+<code>A</code> y presionaremos CUALQUIER TECLA para borrar todo.
+
+Ahora que el script(<b>guión</b> en español) está vacío, ya puedes hacer algo por tu cuenta! Pero para trabajar en el guión, mínimo debes proporcionar algo información obligatoria.<br />
+Copia estas líneas:
+
+<div class="row">
+<div class="col-12">
+  <ul class="tabs">
+	<li class="tab"><a href="#test1" class="active">SCMTOOL</a></li>
+	<li class="tab"><a href="#test2">OPCODES</a></li>
+	<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a></li>
+  </ul>
+</div>
+<div id="test1" class="col-12">
+
+<pre class="sb3">
+//-------------HEADER-------------
+
+DEFINE MISSIONS 0
+DEFINE EXTERNAL_SCRIPTS 0
+DEFINE UNKNOWN_EMPTY_SEGMENT 0
+DEFINE UNKNOWN_THREADS_MEMORY 0
+   
+//-------------MAIN---------------
+
+thread 'MAIN'
+	Camera.DoFade(Fade.In, 0)
+	Game.SetMaxWantedLevel(6)    
+	Game.setWastedAndBustedCheck(false)
+	Game.MissionFlag($ONMISSION)
+	Interior.SetVisible(0)       
+	
+	Streaming.RequestCollision(2491.1572 -1670.3434)
+	Streaming.LoadScene(2491.1572, -1670.3434, 12.3359)
+	Camera.setBehindPlayer()
+	
+	$PLAYER_CHAR  = Player.Create(0 {0 = CJ}, 2491.1572, -1670.3434, 12.3359)
+	$PLAYER_GROUP = Player.GetGroup($PLAYER_CHAR)
+	$PLAYER_ACTOR = Player.GetActor($PLAYER_CHAR)
+	Player.Build($PLAYER_CHAR)
+	Player.setCanMove($PLAYER_CHAR, true) 
+									  
+	Clock.setTimeOfDay(10, 0)
+	Weather.setForceNow(WeatherType.SunnyLa)
+	
+	Restart.AddHospital(2491.1572, -1670.3434, 12.3359, 0.0, Town.LS)
+	Restart.AddPolice(2491.1572, -1670.3434, 12.3359, 0.0, Town.LS)
+end_thread 
+</pre>
+
+</div>
+<div id="test2" class="col-12">
+
+<pre class=sb3>
+//-------------HEADER-------------
+
+DEFINE MISSIONS 0
+DEFINE EXTERNAL_SCRIPTS 0
+DEFINE UNKNOWN_EMPTY_SEGMENT 0
+DEFINE UNKNOWN_THREADS_MEMORY 0
+   
+//-------------MAIN---------------
+ 
+03A4: script_name 'MAIN' 
+	016A: fade 1 time 0 
+	01F0: set_max_wanted_level_to 6 
+	0111: set_wasted_busted_check 0 
+	0180: set_on_mission_flag_to $ONMISSION 
+	04BB: select_interior 0 
+
+	04E4: refresh_game_renderer_at 2491.157 -1670.343 
+	03CB: set_rendering_origin_at 2491.157 -1670.343 12.3359
+	0373: set_camera_directly_behind_player 
+	
+	0053: $PLAYER_CHAR = create_player 0 at 2491.157 -1670.343 12.3359 
+	07AF: $PLAYER_GROUP = player $PLAYER_CHAR group 
+	01F5: $PLAYER_ACTOR = player $PLAYER_CHAR actor
+	070D: rebuild_player $PLAYER_CHAR 
+	01B4: set_player $PLAYER_CHAR can_move 1  
+	 
+	00C0: set_current_time_hours_to 10 minutes_to 0 
+	01B6: set_weather 1 
+
+	016C: create_hospital 2491.1572 -1670.3434 12.3359 angle 0.0 town 0
+	016D: create_police 2491.1572 -1670.3434 12.3359 angle 0.0 town 0
+004E: terminate_this_script 
+</pre>
+
+</div>
+</div>
+
+Luego compile el script e inicie el juego.
+<div class=dan>al editar el script principal, deben iniciar una nueva partida.</div>
+De seguro la mayoría de ustedes se han dado cuenta de que no hay intro ni objetivos.
+<div class=inf>Esto por que la ejecución de todos estos comienza en el <code class=sb3>'MAIN'</code>.</div>
+
+#### ¿Qué es un procedimiento?
+Digamos que es un bloque separado en el que se realizan algunas acciones a través de un flujo de lectura.
+
+Estos al igual que las personas, tienen su propio nombre.
+
+<div class=dan>No puede crear 2 procedimientos con un mismo nombre, tampoco con más de 15 caracteres, ni con letras fuera del Ingles.</div>
+
+Estos los recomiendo que lo hagan con 7 carácteres.
+
+#### ¿Qué es un flujo?
+Por empezar, cada procedimiento ya se crea con un flujo.
+
+Estos se inician con un mismo comando:
+
+<div class="row">
+<div class="col-12"><ul class="tabs">
+<li class="tab"><a href="#thread1" class="active">SCMTOOL</a>
+<li class="tab"><a href="#thread2">OPCODES</a>
+<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
+</ul></div>
+<div id="thread1" class="col-12"><pre class="sb3">
+thread 'EJEMPLO'
+</pre></div>
+<div id="thread2" class="col-12"><pre class=sb3>
+03A4: script_name 'EJEMPLO'
+</pre></div>
+</div>
+
+Aquí <code class=sb3>'EJEMPLO'</code> es el nombre de nuestro flujo, y lo finalizamos con este comando:
+
+<div class="row">
+<div class="col-12"><ul class="tabs">
+<li class="tab"><a href="#end_thread1" class="active">SCMTOOL</a>
+<li class="tab"><a href="#end_thread2">OPCODES</a>
+<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
+</ul></div>
+<div id="end_thread1" class="col-12"><pre class="sb3">
+end_thread
+</pre></div>
+<div id="end_thread2" class="col-12"><pre class=sb3>
+004E: terminate_this_script
+</pre></div>
+</div>
+
+Creo que estos comandos son muy fáciles de recordarár
+
+#### ¿Qué es una etiqueta?
+En resumen las etiquetas forman la base de la codificación.
+
+Estas solo crean con el símbolo de los 2 puntos(<code class=sb3>:</code>) al principio e ingresando el nombre que le desees dar para identificarla:
+
+<pre class=sb3>:EJEMPLO</pre>
+<div class=inf>Por lo general se sigue esta sintaxis: <pre>:{nombre del flujo}[_id]</pre><br>El id puede ser cualquier numero, letra o simbolo.</div>
+<div class=dan>Si borras el codigo fuente, estas se formatean sigiendo sintaxis estandar</div>
+</li>
+<li>Desde un punto de vista técnico, la etiqueta es un desplazamiento en el archivo <code class=sb3>main.scm</code> y representa un número normal. En otros asuntos, esto no es importante para nosotros, ya que SB calcula todos los resultados por su cuenta, según nuestras etiquetas.
+</li>
+<li>Un buen ejemplo de como escribir un flujo con etiquetas, sería el siguiente:
+
+<div class="row">
+<div class="col-12"><ul class="tabs">
+<li class="tab"><a href="#label1" class="active">SCMTOOL</a>
+<li class="tab"><a href="#label2">OPCODES</a>
+<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
+</ul></div>
+<div id="label1" class="col-12">
+
+<pre class="sb3">
+:PARTE
+thread 'PARTE'
+
+	:PARTE_1
+
+	:PARTE_2
+
+	:PARTE_3
+
+end_thread
+</pre>
+
+</div>
+<div id="label2" class="col-12">
+
+<pre class="sb3">
+:PARTE
+03A4: script_name 'PARTE'
+
+	:PARTE_1
+
+	:PARTE_2
+
+	:PARTE_3
+
+004E: terminate_this_script
+</pre>
+
+</div>
+</div>
+
+</li>
+</dir>
+
+Todos los scripts se basan en una línea de información para la lectura. Es decir, que un comando va en una sola línea.<br />
+En el ejemplo, se muestra que primero se ejecutará los comandos de la etiqueta <code class=sb3>:PARTE_1</code>, luego <code class=sb3>:PARTE_2</code> y después <code class=sb3>:PARTE_3</code>.
+<div class=inf>Naturalmente, puede cambiar el orden de las etiquetas, sin cambiar su posición.</div>
+Para esto, sirve el comando <code class=sb3>jump</code>. Si lo traducimos literalmente, esto significa Saltar. A continuación, usaremos esta expresión. Bueno, primero escribire un ejemplo donde se usan saltos:
+
+<div class="row">
+<div class="col-12"><ul class="tabs">
+<li class="tab"><a href="#label3" class="active">SCMTOOL</a>
+<li class="tab"><a href="#label4">OPCODES</a>
+<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
+</ul></div>
+<div id="label3" class="col-12">
+
+<pre class="sb3">
+:PARTE
+thread 'PARTE'
+	jump @PARTE_4
+
+	:PARTE_1
+	jump @PARTE_3
+
+	:PARTE_2
+	jump @PARTE_5
+
+	:PARTE_3
+	jump @PARTE_2
+
+	:PARTE_4
+	jump @PARTE_1
+
+	:PARTE_5
+end_thread
+</pre>
+
+</div>
+<div id="label4" class="col-12">
+
+<pre class="sb3">
+:PARTE
+03A4: script_name 'PARTE'
+	0002: jump @PARTE_4
+
+	:PARTE_1
+	0002: jump @PARTE_3
+
+	:PARTE_2
+	0002: jump @PARTE_5
+
+	:PARTE_3
+	0002: jump @PARTE_2
+
+	:PARTE_4
+	0002: jump @PARTE_1
+
+	:PARTE_5
+004E: terminate_this_script
+</pre>
+
+</div>
+</div>
+
+Difícil, ¿verdad?<br />
+Imaginemos una pequeña bola y llamémosle "Puntero". Que no solo sea "Bola" :)<br />
+Bueno esta bola tiene un cierto camino por recorrer. Nuestra bola comienza su camino desde el nombre del procedimiento, es decir, desde el comando <code class=sb3>thread</code>, y comienza a bajar.
+
+Usando saltos, puedes dibujar el camino de la pelota para que se deje ver así:
+
+<img src="./img/IMG_20210116_190451.webp" alt="imagen" type="image/webp" class="w-100" style="max-width: 370px" />
+
+Entonces, viste la pelota. Lo azul y naranja indica exactamente como se esta dirigiendo la pelota. Subí especialmente esta imagen para que te sea más fácil imaginar cómo funcionan los scripts. Si la pelota llega al punto final, se envía automáticamente a una pensión bien merecida y no se utilizará más en la corriente hasta que se vuelva a poner en servicio. :)
+
+¿Cómo iniciar un procedimiento y qué se necesita para que funcione correctamente? Buena pregunta. ¿La palabra <code class=sb3>wait</code> te dice algo? Bueno, creo que es hora de familiarizarse con los opcodes. ¡Estos son nuestros fieles ayudantes! Los llamaremos así, porque ayudan a realizar algunas acciones. Para que funcione correctamente, debemos recordar el ayudante llamado <code class=sb3>0001:</code> , es decir, el opcode:
+
+<div class="row">
+<div class="col-12"><ul class="tabs">
+<li class="tab"><a href="#wait1" class="active">SCMTOOL</a>
+<li class="tab"><a href="#wait2">OPCODES</a>
+<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
+</ul></div>
+<div id="wait1" class="col-12">
+<pre class="sb3">wait 0</pre></div>
+<div id="wait2" class="col-12">
+<pre class="sb3">0001: wait 0 ms</pre>
+</div>
+</div>
+
+Suele aparecer después del nombre de la etiqueta. No siempre deben estar ahí, sino solo en casos de necesidad, por ejemplo, en ciclos (se considerarán en las próximas lecciones). Pero para fines de capacitación, colocaremos el opcode después de cada etiqueta.
+
+Técnicamente, no hay diferencia entre los opcodes y los comandos: el comando tiene una sintaxis simplificada, pero se reemplaza con un opcode durante la conversión. Un opcode(código de operación) es un comando(código operativo)
+
+Para iniciar nuestra lectura, es decir, para llamar a nuestra bola para que comience, se usa el siguiente comando:
+
+<div class="row">
+<div class="col-12"><ul class="tabs">
+<li class="tab"><a href="#create_thread1" class="active">SCMTOOL</a>
+<li class="tab"><a href="#create_thread2">OPCODES</a>
+<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
+</ul></div>
+<div id="create_thread1" class="col-12">
+<pre class="sb3">create_thread @PARTE</pre></div>
+<div id="create_thread2" class="col-12">
+<pre class="sb3">004F: start_new_script @PARTE</pre>
+</div>
+</div>
+PARTE es el nombre del procedimiento para comenzar
+
+De hecho, activa el flujo. Por lo tanto, escribimos el inicio correcto del procedimiento
+
+<div class="row">
+<div class="col-12">
+  <ul class="tabs">
+	<li class="tab"><a href="#test3" class="active">SCMTOOL</a></li>
+	<li class="tab"><a href="#test4">OPCODES</a></li>
+	<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a></li>
+  </ul>
+</div>
+<div id="test3" class="col-12">
+
+<pre class=sb3>
+//-------------HEADER-------------
+
+DEFINE MISSIONS 0
+DEFINE EXTERNAL_SCRIPTS 0
+DEFINE UNKNOWN_EMPTY_SEGMENT 0
+DEFINE UNKNOWN_THREADS_MEMORY 0
+   
+//-------------MAIN---------------
+
+thread 'MAIN'
+	Camera.DoFade(Fade.In, 0)
+	Game.SetMaxWantedLevel(6)    
+	Game.setWastedAndBustedCheck(false)
+	Game.MissionFlag($ONMISSION)
+	Interior.SetVisible(0)       
+	
+	Streaming.RequestCollision(2491.1572 -1670.3434)
+	Streaming.LoadScene(2491.1572, -1670.3434, 12.3359)
+	Camera.setBehindPlayer()
+	
+	$PLAYER_CHAR  = Player.Create(0 {0 = CJ}, 2491.1572, -1670.3434, 12.3359)
+	$PLAYER_GROUP = Player.GetGroup($PLAYER_CHAR)
+	$PLAYER_ACTOR = Player.GetActor($PLAYER_CHAR)
+	Player.Build($PLAYER_CHAR)
+	Player.setCanMove($PLAYER_CHAR, true) 
+									  
+	Clock.setTimeOfDay(10, 0)
+	Weather.setForceNow(WeatherType.SunnyLa)
+	
+	Restart.AddHospital(2491.1572, -1670.3434, 12.3359, 0.0, Town.LS)
+	Restart.AddPolice(2491.1572, -1670.3434, 12.3359, 0.0, Town.LS)
+
+	create_thread @PARTE
+end_thread 
+
+:PARTE
+thread 'PARTE'
+	jump @PARTE_4
+
+	:PARTE_1
+	wait 0
+	jump @PARTE_3
+
+	:PARTE_2
+	wait 0
+	jump @PARTE_5
+
+	:PARTE_3
+	wait 0
+	jump @PARTE_2
+
+	:PARTE_4
+	wait 0
+	jump @PARTE_1
+
+	:PARTE_5
+	wait 0
+end_thread
+</pre>
+
+</div>
+<div id="test4" class="col-12">
+
+<pre class=sb3>
+//-------------HEADER-------------
+
+DEFINE MISSIONS 0
+DEFINE EXTERNAL_SCRIPTS 0
+DEFINE UNKNOWN_EMPTY_SEGMENT 0
+DEFINE UNKNOWN_THREADS_MEMORY 0
+   
+//-------------MAIN---------------
+ 
+03A4: script_name 'MAIN' 
+	016A: fade 1 time 0 
+	01F0: set_max_wanted_level_to 6 
+	0111: set_wasted_busted_check 0 
+	0180: set_on_mission_flag_to $ONMISSION 
+	04BB: select_interior 0 
+
+	04E4: refresh_game_renderer_at 2491.157 -1670.343 
+	03CB: set_rendering_origin_at 2491.157 -1670.343 12.3359
+	0373: set_camera_directly_behind_player 
+	
+	0053: $PLAYER_CHAR = create_player 0 at 2491.157 -1670.343 12.3359 
+	07AF: $PLAYER_GROUP = player $PLAYER_CHAR group 
+	01F5: $PLAYER_ACTOR = player $PLAYER_CHAR actor
+	070D: rebuild_player $PLAYER_CHAR 
+	01B4: set_player $PLAYER_CHAR can_move 1  
+	 
+	00C0: set_current_time_hours_to 10 minutes_to 0 
+	01B6: set_weather 1 
+
+	016C: create_hospital 2491.1572 -1670.3434 12.3359 angle 0.0 town 0
+	016D: create_police 2491.1572 -1670.3434 12.3359 angle 0.0 town 0
+
+	004F: start_new_script @PARTE 
+004E: terminate_this_script
+
+:PARTE
+03A4: script_name 'PARTE' 
+	0002: jump @PARTE_4 
+
+	:PARTE_1
+	0001: wait 0 ms 
+	0002: jump @PARTE_3 
+
+	:PARTE_2
+	0001: wait 0 ms 
+	0002: jump @PARTE_5 
+
+	:PARTE_3
+	0001: wait 0 ms 
+	0002: jump @PARTE_2
+
+	:PARTE_4
+	0001: wait 0 ms 
+	0002: jump @PARTE_1
+
+	:PARTE_5
+	0001: wait 0 ms 
+004E: terminate_this_script  
+</pre>
+
+</div>
+</div>
+
+Por supuesto, nuestro ejemplo no tiene sentido, pero creo que ha adquirido la experiencia necesaria en la escritura de flujos.
+<div class=dan>El comando para iniciar el procedimiento se debe dar en el procedimiento activo , de lo contrario, ¡el procedimiento no se iniciará!</div>
+En nuestro caso, el procedimiento se llama desde el procedimiento activo <code class=sb3>'MAIN'</code>, y cuando el procedimiento se inicia con el comando <code class=sb3>thread</code>, entonces el procedimiento llamado se activa, por así decirlo, se llama cuando la bola está en progreso :)
+<div class=inf>Sanny Builder ignora las líneas en blanco y solo son cosméticas.</div>
+</markdown></div>
+<script src="../js/partial/widgets.js"></script>
+</div></div>
+</div>
+</main>
+<script src="../js/partial/footer.js"></script>
+<!--  Scripts-->
+<script src="../js/library/jquery.js"></script>
+<script src="../js/library/marked.min.js"></script>
+<script src="../js/HL.js"></script>
+<script src="../js/library/materialize.js"></script>
+<script src="../js/init.js"></script>
+</body>
+</html>

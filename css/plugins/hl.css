@@ -1,0 +1,105 @@
+:root {
+	--code: #f9f9f9;
+	--back: #343a40;
+	--comment: #9e9e9e;
+	--variable: #2196f3;
+	--string: #ff9100;
+	--number: #f44336;
+	--model: #f44336;
+	--classe: #eeff41;
+	--command: #26a69a;
+	--label: #4caf50;
+	--operator: #ff80ab;
+}
+
+hlV,hlS,hlN,hlX,hlM,hlL,hlC,hlO{font-weight: bolder;}
+
+hlC {color: var(--comment)}
+hlV {color: var(--variable)}
+hlS {color: var(--string)}
+hlN {color: var(--number)}
+hlX {color: var(--classe)}
+hlM {color: var(--command)}
+hlL {color: var(--label)}
+hlO {color: var(--operator)}
+
+.dan, .inf {
+    padding: 24px;
+    margin: .5rem 0 1rem 0;
+    box-shadow:
+    	0 2px 2px 0 rgb(0 0 0 / 14%), 
+    	0 3px 1px -2px rgb(0 0 0 / 12%),
+    	0 1px 5px 0 rgb(0 0 0 / 20%);
+}
+
+.dan {
+    color: #f1394b;
+    border: solid #f1394b 1px;
+}
+.dan::before {
+    content: "IMPORTANTE: ";
+    font-weight: bold;
+}
+.inf {
+    color: #17a2b8;
+    border: solid #17a2b8 1px;
+}
+.inf::before {
+    content: "NOTA: ";
+    font-weight: bold;
+}
+
+pre {
+    color: var(--code);
+	background: var(--back);
+    padding: .5rem;
+    margin: 0;
+}
+
+pre::-webkit-scrollbar-track {background: var(--back)}
+pre::-webkit-scrollbar-corner{background: var(--back)}
+
+pre.sb3,
+pre.ini,
+pre.scm,
+pre.fxt {
+	white-space: wrap;
+    max-height: 29.3rem;
+
+}
+
+pre.sb3:before {content: "SB3"}
+pre.ini:before {content: "INI"}
+pre.scm:before {content: "SCM"}
+pre.fxt:before {content: "FXT"}
+
+pre.sb3::before,
+pre.ini::before,
+pre.scm::before,
+pre.fxt::before {
+	counter-reset: listing;
+    color: #ffffff78;
+    position: absolute;
+    right: 27px;
+}
+
+.dan pre::before, .inf pre::before {
+    right: 52px;
+}
+
+pre.sb3 c,
+pre.ini c,
+pre.scm c,
+pre.fxt c {
+	counter-increment: listing;
+	color: grey;
+	margin-right: 20px
+}
+
+pre.sb3 c::before,
+pre.ini c::before,
+pre.scm c::before,
+pre.fxt c::before {
+	content: counter(listing, decimal-leading-zero);
+	display: inline-block
+}
