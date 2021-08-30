@@ -1412,7 +1412,7 @@ nav .input-field label.active i {
 }
 
 .btn-floating:focus, .btn-large:focus, .btn-small:focus, .btn:focus {
-	background-color: #1d7d74
+	background-color: #43a047
 }
 
 .btn, .btn-large, .btn-small {
@@ -1427,7 +1427,7 @@ nav .input-field label.active i {
 }
 
 .btn-large:hover, .btn-small:hover, .btn:hover {
-	background-color: #2bbbad
+	background-color: #00c853
 }
 
 .btn-floating {
@@ -2222,7 +2222,7 @@ body.keyboard-focused .dropdown-content li:focus {
 }
 
 .sidenav li>a.btn-large:hover, .sidenav li>a.btn-small:hover, .sidenav li>a.btn:hover {
-	background-color: #2bbbad
+	background-color: #00e676
 }
 
 .sidenav li>a.btn-floating:hover {

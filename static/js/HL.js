@@ -171,5 +171,4 @@ function highlight() {
 		}
 	}
 	$('code').addClass('bg-dark text-white rounded darken-4 p-1');
-	$('.bd').addClass('green btn-large waves-effect waves-light black-text');
 }
