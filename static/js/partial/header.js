@@ -1,7 +1,7 @@
 document.write(`
 	<nav>
 		<div class="nav-wrapper">
-			<a id="logo-container" href="../index.html" class="brand-logo pl-md-3">MatiDragon</a>
+			<a id="logo-container" href="${origen}/index.html" class="brand-logo pl-md-3">MatiDragon</a>
 			<ul class="right hide-on-med-and-down"><b>
 				<li><a href="${origen}/index.html">Inicio</a></li>
 				<li><a href="${origen}/articles.html">Articulos</a></li>
