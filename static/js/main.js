@@ -1,4 +1,4 @@
-const origen = window.location.origin;
+const origen = window.location.href;
 
 document.write(`
 	<meta name="Author" content="MatiDragon">
