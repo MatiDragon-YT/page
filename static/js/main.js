@@ -1,4 +1,4 @@
-const origen = window.location.origin == "https://matidragon-yt.github.io" ? `${window.location.origin}/page` : window.location.origin;
+const origen = window.location.origin == "https://matidragon-yt.github.io" ? `${window.location.origin}/page/` : window.location.origin + "/";
 
 document.write(`
 	<meta name="Author" content="MatiDragon">
