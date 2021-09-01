@@ -1,4 +1,5 @@
 const origen = window.location.origin == "https://matidragon-yt.github.io" ? `${window.location.origin}/page/` : window.location.origin + "/";
+const class$ = a => document.getElementsByClassName(a);
 
 document.write(`
 	<meta name="Author" content="MatiDragon">
@@ -22,5 +23,5 @@ document.write(`
 	<link rel="shortcut icon" href="${origen}static/images/favicon.ico" type="image/x-icon" >
 	<!-- CSS-->
 	<link href="${origen}static/css/materialize.css" type="text/css" rel="stylesheet" media="screen,projection,print">
-	<link rel="manifest" href="${origen}/manifest.json">
+	<link rel="manifest" href="${origen}manifest.json">
 `)
