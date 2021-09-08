@@ -1,0 +1,118 @@
+.w-25 { width: 25% !important }
+.w-50 { width: 50% !important }
+.w-75 { width: 75% !important }
+.w-100 { width: 100% !important }
+.w-auto { width: auto !important }
+.h-25 { height: 25% !important }
+.h-50 { height: 50% !important }
+.h-75 { height: 75% !important }
+.h-100 { height: 100% !important }
+.h-auto { height: auto !important }
+.vh-25 { height: calc(25vh - 21px) !important }
+.vh-50 { height: calc(50vh - 21px) !important }
+.vh-75 { height: calc(75vh - 21px) !important }
+.vh-100 { height: calc(100vh - 21px) !important }
+.vw-25 { width: calc(25vw - 21px) !important }
+.vw-50 { width: calc(50vw - 21px) !important }
+.vw-75 { width: calc(75vw - 21px) !important }
+.vw-100 { width: calc(100vw - 21px) !important }
+@media (min-width:576px) {
+	.w-sm-25 { width: 25% !important }
+	.w-sm-50 { width: 50% !important }
+	.w-sm-75 { width: 75% !important }
+	.w-sm-100 { width: 100% !important }
+	.w-sm-auto { width: auto !important }
+	.h-sm-25 { height: 25% !important }
+	.h-sm-50 { height: 50% !important }
+	.h-sm-75 { height: 75% !important }
+	.h-sm-100 { height: 100% !important }
+	.h-sm-auto { height: auto !important }
+	.vh-sm-25 { height: calc(25vh - 21px) !important }
+	.vh-sm-50 { height: calc(50vh - 21px) !important }
+	.vh-sm-75 { height: calc(75vh - 21px) !important }
+	.vh-sm-100 { height: calc(100vh - 21px) !important }
+	.vw-sm-25 { width: calc(25vw - 21px) !important }
+	.vw-sm-50 { width: calc(50vw - 21px) !important }
+	.vw-sm-75 { width: calc(75vw - 21px) !important }
+	.vw-sm-100 { width: calc(100vw - 21px) !important }
+}
+@media (min-width:768px) {
+	.w-md-25 { width: 25% !important }
+	.w-md-50 { width: 50% !important }
+	.w-md-75 { width: 75% !important }
+	.w-md-100 { width: 100% !important }
+	.w-md-auto { width: auto !important }
+	.h-md-25 { height: 25% !important }
+	.h-md-50 { height: 50% !important }
+	.h-md-75 { height: 75% !important }
+	.h-md-100 { height: 100% !important }
+	.h-md-auto { height: auto !important }
+	.vh-md-25 { height: calc(25vh - 21px) !important }
+	.vh-md-50 { height: calc(50vh - 21px) !important }
+	.vh-md-75 { height: calc(75vh - 21px) !important }
+	.vh-md-100 { height: calc(100vh - 21px) !important }
+	.vw-md-25 { width: calc(25vw - 21px) !important }
+	.vw-md-50 { width: calc(50vw - 21px) !important }
+	.vw-md-75 { width: calc(75vw - 21px) !important }
+	.vw-md-100 { width: calc(100vw - 21px) !important }
+}
+@media (min-width:992px) {
+	.w-lg-25 { width: 25% !important }
+	.w-lg-50 { width: 50% !important }
+	.w-lg-75 { width: 75% !important }
+	.w-lg-100 { width: 100% !important }
+	.w-lg-auto { width: auto !important }
+	.h-lg-25 { height: 25% !important }
+	.h-lg-50 { height: 50% !important }
+	.h-lg-75 { height: 75% !important }
+	.h-lg-100 { height: 100% !important }
+	.h-lg-auto { height: auto !important }
+	.vh-lg-25 { height: calc(25vh - 21px) !important }
+	.vh-lg-50 { height: calc(50vh - 21px) !important }
+	.vh-lg-75 { height: calc(75vh - 21px) !important }
+	.vh-lg-100 { height: calc(100vh - 21px) !important }
+	.vw-lg-25 { width: calc(25vw - 21px) !important }
+	.vw-lg-50 { width: calc(50vw - 21px) !important }
+	.vw-lg-75 { width: calc(75vw - 21px) !important }
+	.vw-lg-100 { width: calc(100vw - 21px) !important }
+}
+@media (min-width:1200px) {
+	.w-xl-25 { width: 25% !important }
+	.w-xl-50 { width: 50% !important }
+	.w-xl-75 { width: 75% !important }
+	.w-xl-100 { width: 100% !important }
+	.w-xl-auto { width: auto !important }
+	.h-xl-25 { height: 25% !important }
+	.h-xl-50 { height: 50% !important }
+	.h-xl-75 { height: 75% !important }
+	.h-xl-100 { height: 100% !important }
+	.h-xl-auto { height: auto !important }
+	.vh-xl-25 { height: calc(25vh - 21px) !important }
+	.vh-xl-50 { height: calc(50vh - 21px) !important }
+	.vh-xl-75 { height: calc(75vh - 21px) !important }
+	.vh-xl-100 { height: calc(100vh - 21px) !important }
+	.vw-xl-25 { width: calc(25vw - 21px) !important }
+	.vw-xl-50 { width: calc(50vw - 21px) !important }
+	.vw-xl-75 { width: calc(75vw - 21px) !important }
+	.vw-xl-100 { width: calc(100vw - 21px) !important }
+}
+@media (min-width:1400px) {
+	.w-xxl-25 { width: 25% !important }
+	.w-xxl-50 { width: 50% !important }
+	.w-xxl-75 { width: 75% !important }
+	.w-xxl-100 { width: 100% !important }
+	.w-xxl-auto { width: auto !important }
+	.h-xxl-25 { height: 25% !important }
+	.h-xxl-50 { height: 50% !important }
+	.h-xxl-75 { height: 75% !important }
+	.h-xxl-100 { height: 100% !important }
+	.h-xxl-auto { height: auto !important }
+	.vh-xxl-25 { height: calc(25vh - 21px) !important }
+	.vh-xxl-50 { height: calc(50vh - 21px) !important }
+	.vh-xxl-75 { height: calc(75vh - 21px) !important }
+	.vh-xxl-100 { height: calc(100vh - 21px) !important }
+	.vw-xxl-25 { width: calc(25vw - 21px) !important }
+	.vw-xxl-50 { width: calc(50vw - 21px) !important }
+	.vw-xxl-75 { width: calc(75vw - 21px) !important }
+	.vw-xxl-100 { width: calc(100vw - 21px) !important }
+}
