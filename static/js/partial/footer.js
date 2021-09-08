@@ -14,7 +14,7 @@ document.write(`
 				</div>
 				<div class="col-6 col-sm-6 col-md-3 col-lg-3 col-xl-2">
 					<h5>Frameworks</h5>
-					<a href="https://getbootstrap.com" target="_black" title="CSS">Bootstrap 4</a><br>
+					<a href="https://getbootstrap.com" target="_black" title="CSS">Bootstrap 5</a><br>
 					<a href="https://materializecss.com/" target="_black" title="CSS">Materialize CSS</a><br>
 					<a href="https://jquery.com" target="_black" title="JS">JQuery</a><br>
 				</div>
