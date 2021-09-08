@@ -23,6 +23,6 @@ document.write(`
 	<link rel="icon" href="${imagen}icon/144x144.png" sizes="144x144" >
 	<link rel="shortcut icon" href="${imagen}icon/favicon.ico" type="image/x-icon" >
 	<!-- CSS-->
-	<link href="${origen}static/css/materialize.css" type="text/css" rel="stylesheet" media="screen,projection,print">
+	<link href="${origen}static/css/main.min.css" type="text/css" rel="stylesheet" media="screen,projection,print">
 	<link rel="manifest" href="${origen}manifest.json">
 `)
