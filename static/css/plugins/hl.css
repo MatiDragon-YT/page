@@ -68,25 +68,6 @@ pre.fxt {
 
 }
 
-pre.sb3:before {content: "SB3"}
-pre.ini:before {content: "INI"}
-pre.scm:before {content: "SCM"}
-pre.fxt:before {content: "FXT"}
-
-pre.sb3::before,
-pre.ini::before,
-pre.scm::before,
-pre.fxt::before {
-	counter-reset: listing;
-    color: #ffffff78;
-    position: absolute;
-    right: 27px;
-}
-
-.dan pre::before, .inf pre::before {
-    right: 52px;
-}
-
 pre.sb3 c,
 pre.ini c,
 pre.scm c,
