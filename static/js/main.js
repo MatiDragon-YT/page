@@ -1,6 +1,12 @@
 const origen = window.location.origin == "https://matidragon-yt.github.io" ? `${window.location.origin}/page/` : window.location.origin + "/";
 const imagen = origen + "static/images/";
 const class$ = a => document.getElementsByClassName(a);
+const titulo = document.title;
+
+function descripcion(){
+	return document.querySelector("meta[name='description']").getAttribute("content") || "MatiDragon"
+}
+
 
 document.write(`
 	<meta name="Author" content="MatiDragon">
