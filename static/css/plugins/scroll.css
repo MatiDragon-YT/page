@@ -1,4 +1,4 @@
 ::-webkit-scrollbar { width: .5rem; height: .5rem; }
 ::-webkit-scrollbar-track { background: var(--background) }
 ::-webkit-scrollbar-corner{ background: var(--background) }
-::-webkit-scrollbar-thumb { background: #607d8b; box-shadow: 0px 0px 3px black; border-radius: 15px; }
+::-webkit-scrollbar-thumb { background: #607d8b; border-radius: 15px; }
