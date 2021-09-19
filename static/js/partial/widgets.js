@@ -1,5 +1,5 @@
 document.write(`
-	<div class="col-12 col-lg-3">
+	<div class="col-12 col-lg-3 col-xxl-2">
 		<div class="row">
 			<div class="col-12">
 				<h5 class="blue-grey darken-3 p-2 text-white">Buscardor</h5>
