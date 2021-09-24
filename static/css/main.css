@@ -17,11 +17,20 @@
 /*@import url('plugins/waves.css');*/
 
 :root {
-	--green: #4caf50 !important;
 	--dark: #343a40 !important;
+	--shadow: #03010c !important;
+	--white: #c6c8ca !important;
+	--green: #4caf50 !important;
 	--background: #263238 !important;
-	--shadow: #03010c !;
-	--white: #c6c8ca !important
+	--color: #fff !important;
+}
+
+@media (prefers-color-scheme: light) {
+	:root {
+		--green: #40c4ff !important;
+		--background: #fff !important;
+		--color: #000 !important;
+	}
 }
 
 html {
@@ -63,7 +72,7 @@ body {
 	font-size: 1rem;
 	font-weight: 400;
 	line-height: 1.5;
-	color: #fff;
+	color: var(--color);
 	text-align: left;
 	background-color: var(--background);
 }
@@ -665,7 +674,7 @@ nav {
 	background-color: var(--green);
 	width: 100%;
 	height: 56px;
-	line-height: 56px
+	line-height: 56px;
 }
 
 nav.nav-extended {
