@@ -1,7 +1,8 @@
 ﻿<!DOCTYPE html>
 <html lang="es">
 <head>
-	<title>Editando el main.scm EP1 1/3</title>
+	<title>Editando el main.scm - P1: flujos por opcodes 1/3</title>
+	<meta name="description" content="En este tutorial, repasaremos los conceptos básicos de la creación de scripts: procedimientos, comandos, etiquetas, saltos y latencia.<br>Tambien se introducirá el concepto de los opcodes.">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -13,14 +14,9 @@
 <div class="section no-pad-bot" id="index-banner">
 <div class="container"><div class="row">
 <div class="col-12 col-lg-9"><markdown>
+<script src="../static/js/partial/title.js"></script>
 
-#### Editando el main.scm - Episodio 1
-##### flujos y opcodes - Parte 1/3
-<p class=light>En este tutorial, repasaremos los conceptos básicos de la creación de scripts: procedimientos, comandos, etiquetas, saltos y latencia.<br>Tambien se introducirá el concepto de los opcodes.</p>
-
----
-
-#### ¿Comó iniciamos?
+##### ¿Comó iniciamos?
 
 Con el SB abierto, hasemos click en <code>Archivo -> Abrir...</code> y buscamos el <code>main.scm</code> en la carpeta del juego en: <code>/data/script/</code>, sin olvidar indicar el formato **SCM** en el filtrador de archivos. De lo contrario, no te aparecerá.
 
@@ -33,17 +29,18 @@ Bueno, seleccionemos todo con <code>CTRL</code>+<code>A</code> y presionaremos C
 Ahora que el script(<b>guión</b> en español) está vacío, ya puedes hacer algo por tu cuenta! Pero para trabajar en el guión, mínimo debes proporcionar algo información obligatoria.<br />
 Copia estas líneas:
 
-<div class="row">
-<div class="col-12">
-  <ul class="tabs">
-	<li class="tab"><a href="#test1" class="active">SCMTOOL</a></li>
-	<li class="tab"><a href="#test2">OPCODES</a></li>
-	<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a></li>
-  </ul>
-</div>
-<div id="test1" class="col-12">
 
-<pre class="sb3">
+
+
+<div class="row">
+	<div class="col-12">
+	  <ul class="tabs">
+			<li class="tab"><a href="#scm1!" onclick="showCode('scm1')">SCMTOOL</a></li>
+			<li class="tab"><a href="#opc1!" onclick="showCode('opc1')">OPCODES</a></li>
+			<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a></li>
+	  </ul>
+	</div>
+<div id="scm1" class="col-12 tabArea"><pre class="sb3">
 //-------------HEADER-------------
 
 DEFINE MISSIONS 0
@@ -76,12 +73,8 @@ thread 'MAIN'
 	Restart.AddHospital(2491.1572, -1670.3434, 12.3359, 0.0, Town.LS)
 	Restart.AddPolice(2491.1572, -1670.3434, 12.3359, 0.0, Town.LS)
 end_thread 
-</pre>
-
-</div>
-<div id="test2" class="col-12">
-
-<pre class=sb3>
+</pre></div>
+<div id="opc1" class="col-12 tabArea" style="display: none"><pre class=sb3>
 //-------------HEADER-------------
 
 DEFINE MISSIONS 0
@@ -114,10 +107,26 @@ DEFINE UNKNOWN_THREADS_MEMORY 0
 	016C: create_hospital 2491.1572 -1670.3434 12.3359 angle 0.0 town 0
 	016D: create_police 2491.1572 -1670.3434 12.3359 angle 0.0 town 0
 004E: terminate_this_script 
-</pre>
+</pre></div>
 
 </div>
-</div>
+<script>
+function showCode(code) {
+  let x = document.getElementsByClassName("tabArea");
+  for (let i = 0; i < x.length; i++) {
+    x[i].style.display = "none";  
+  }
+  document.getElementById(code).style.display = "block";  
+}
+
+
+</script>
+
+
+
+
+
+
 
 Luego compile el script e inicie el juego.
 <div class=dan>al editar el script principal, deben iniciar una nueva partida.</div>
