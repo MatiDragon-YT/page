@@ -31,8 +31,8 @@ Copia estas líneas:
 <div class="row">
 	<div class="col-12">
 	  <ul class="tabs">
-			<li class="tab"><a href="#scm1!" onclick="showCode('scm1')">SCMTOOL</a></li>
-			<li class="tab"><a href="#opc1!" onclick="showCode('opc1')">OPCODES</a></li>
+			<li class="tab"><a href="#scm1!" class="tablink green" onclick="showCode(event,'scm1')">SCMTOOL</a></li>
+			<li class="tab"><a href="#opc1!" class="tablink" onclick="showCode(event,'opc1')">OPCODES</a></li>
 			<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a></li>
 	  </ul>
 	</div>
@@ -107,15 +107,19 @@ DEFINE UNKNOWN_THREADS_MEMORY 0
 
 </div>
 <script>
-function showCode(code) {
-  let x = document.getElementsByClassName("tabArea");
-  for (let i = 0; i < x.length; i++) {
-    x[i].style.display = "none";  
+function showCode(evt, code) {
+  let i, x, tablinks;
+  x = document.getElementsByClassName("tabArea");
+  for (i = 0; i < x.length; i++) {
+    x[i].style.display = "none";
   }
-  document.getElementById(code).style.display = "block";  
+  tablinks = document.getElementsByClassName("tablink");
+  for (i = 0; i < x.length; i++) {
+    tablinks[i].className = tablinks[i].className.replace(" green", "");
+  }
+  document.getElementById(code).style.display = "block";
+  evt.currentTarget.className += " green";
 }
-
-
 </script>
 
 
