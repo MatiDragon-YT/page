@@ -12,8 +12,6 @@ let doc = {
 	description : () => document.querySelector("meta[name='description']").getAttribute("content") || "MatiDragon"
 }
 
-console.log(doc.title())
-
 document.write(`
 	<meta name="Author" content="MatiDragon">
 	<meta name="Publisher" content="MatiDragon">
