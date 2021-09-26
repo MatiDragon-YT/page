@@ -1,18 +1,20 @@
 document.write(`
 	<nav>
 		<div class="nav-wrapper">
-			<a id="logo-container" href="${dir.local()}index.html" class="brand-logo pl-md-3">MatiDragon</a>
-			<ul class="right hide-on-med-and-down"><b>
+			<a id="logo-container" href="${dir.local()}index.html" class="h2 black-text p-3">MatiDragon</a>
+			<ul class="right"><b>
 				<li><a href="${dir.local()}index.html">Inicio</a></li>
 				<li><a href="${dir.local()}articles.html">Articulos</a></li>
 				<li><a href="${dir.local()}builds.html">Construcciones</a></li>
 			</b></ul>
+			<!--
 			<ul id="nav-mobile" class="sidenav">
-				<li><a href="${dir.local()}index.html"><i class="material-icons">home</i>Inicio</a></li>
-				<li><a href="${dir.local()}articles.html"><i class="material-icons">articles</i>Articulos</a></li>
-				<li><a href="${dir.local()}builds.html"><i class="material-icons">build</i>Construcciones</a></li>
+				<li><a href="${dir.local()}index.html"><icon>home</icon>Inicio</a></li>
+				<li><a href="${dir.local()}articles.html"><icon>articles</icon>Articulos</a></li>
+				<li><a href="${dir.local()}builds.html"><icon>build</icon>Construcciones</a></li>
 			</ul>
-			<a href="#" data-target="nav-mobile" class="top-nav sidenav-trigger waves-effect waves-light circle hide-on-large-only"><i class="material-icons black-text">menu</i></a>
+			<a href="#" data-target="nav-mobile" class="top-nav sidenav-trigger circle d-lg-none"><icon class=black-text>menu</icon></a>
+			-->
 		</div>
 	</nav>
 `)

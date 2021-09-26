@@ -3,13 +3,20 @@
 .b-0 { bottom: 0 }
 .l-0 { left: 0 }
 .promo { width: 100% }
-.promo i { margin: 40px 0; color: #ee6e73; font-size: 7rem; display: block }
+.promo icon { margin: 40px 0; color: #ee6e73; font-size: 7rem; display: block }
 .promo-caption { font-size: 1.7rem; font-weight: 500; margin-top: 5px; margin-bottom: 0 }
 .btn-large { height: 54px; line-height: 54px; font-size: 15px; padding: 0 28px }
-.btn-large i { font-size: 1.6rem }
+.btn-large icon { font-size: 1.6rem }
 .btn-small { height: 32.4px; line-height: 32.4px; font-size: 13px }
-.btn-small i { font-size: 1.2rem }
-
+.btn-small icon { font-size: 1.2rem }
+.btn-flat { box-shadow: none; background-color: transparent; color: #343434; cursor: pointer; transition: background-color .2s }
+.btn-flat:focus, .btn-flat:hover { box-shadow: none }
+.btn-flat:focus { background-color: rgba(0, 0, 0, .1) }
+.btn-flat.btn-flat[disabled], .btn-flat.disabled { background-color: transparent !important; color: #b3b2b2 !important; cursor: default }
+.btn-large { height: 54px; line-height: 54px; font-size: 15px; padding: 0 28px }
+.btn-large icon { font-size: 1.6rem }
+.btn-small { height: 32.4px; line-height: 32.4px; font-size: 13px }
+.btn-small icon { font-size: 1.2rem }
 a[download], .bd{
     display: inline-block;
 	cursor: pointer;

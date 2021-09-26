@@ -11,32 +11,29 @@
 <body>
 <script src="../static/js/partial/header.js"></script>
 <script src="../static/js/partial/title.js"></script>
-
 ##### ¿Comó iniciamos?
-
+.
 Con el SB abierto, hasemos click en <code>Archivo -> Abrir...</code> y buscamos el <code>main.scm</code> en la carpeta del juego en: <code>/data/script/</code>, sin olvidar indicar el formato **SCM** en el filtrador de archivos. De lo contrario, no te aparecerá.
-
+.
 <div class=dan>Hagan copia de seguridad del <code>main.scm</code> y <code>script.img</code></div>
-
+.
 Ya lo abriste? Viste la cantidad de líneas que hay? Te dejan sin aliento, verdad? Imagina el tiempo que tomo!
-
+.
 Bueno, seleccionemos todo con <code>CTRL</code>+<code>A</code> y presionaremos CUALQUIER TECLA para borrar todo.
-
+.
 Ahora que el script(<b>guión</b> en español) está vacío, ya puedes hacer algo por tu cuenta! Pero para trabajar en el guión, mínimo debes proporcionar algo información obligatoria.<br />
 Copia estas líneas:
 
-
-
-
 <div class="row">
-	<div class="col-12">
-	  <ul class="tabs">
-			<li class="tab"><a href="#scm1!" class="tablink green" onclick="showCode(event,'scm1')">SCMTOOL</a></li>
-			<li class="tab"><a href="#opc1!" class="tablink" onclick="showCode(event,'opc1')">OPCODES</a></li>
-			<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a></li>
-	  </ul>
-	</div>
-<div id="scm1" class="col-12 tabArea"><pre class="sb3">
+<div class="col-12"><ul class="tabs">
+	<li class="tab" onclick="doc.show('scm1')"><a href="#!scm1">SCMTOOL</a></li>
+	<li class="tab" onclick="doc.show('opc1')"><a href="#!opc1">OPCODES</a></li>
+	<li class="tab"><a></a></li>
+	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
+</ul></div>
+	<div id="scm1" class="col-12 tabArea w3-animate-left">
+			<header preHide="scm1"><button><icon>close</icon></button></header>
+			<pre class="sb3">
 //-------------HEADER-------------
 
 DEFINE MISSIONS 0
@@ -69,8 +66,12 @@ thread 'MAIN'
 	Restart.AddHospital(2491.1572, -1670.3434, 12.3359, 0.0, Town.LS)
 	Restart.AddPolice(2491.1572, -1670.3434, 12.3359, 0.0, Town.LS)
 end_thread 
-</pre></div>
-<div id="opc1" class="col-12 tabArea" style="display: none"><pre class=sb3>
+</pre>
+	</div>
+	<div id="opc1" class="col-12 tabArea w3-animate-right">
+		<div class="col-12">
+			<header preHide="opc1"><button><icon>close</icon></button></header>
+			<pre class="sb3">
 //-------------HEADER-------------
 
 DEFINE MISSIONS 0
@@ -103,31 +104,11 @@ DEFINE UNKNOWN_THREADS_MEMORY 0
 	016C: create_hospital 2491.1572 -1670.3434 12.3359 angle 0.0 town 0
 	016D: create_police 2491.1572 -1670.3434 12.3359 angle 0.0 town 0
 004E: terminate_this_script 
-</pre></div>
-
+</pre>
+		</div>
+	</div>
 </div>
-<script>
-function showCode(evt, code) {
-  let i, x, tablinks;
-  x = document.getElementsByClassName("tabArea");
-  for (i = 0; i < x.length; i++) {
-    x[i].style.display = "none";
-  }
-  tablinks = document.getElementsByClassName("tablink");
-  for (i = 0; i < x.length; i++) {
-    tablinks[i].className = tablinks[i].className.replace(" green", "");
-  }
-  document.getElementById(code).style.display = "block";
-  evt.currentTarget.className += " green";
-}
-</script>
-
-
-
-
-
-
-
+.
 Luego compile el script e inicie el juego.
 <div class=dan>al editar el script principal, deben iniciar una nueva partida.</div>
 De seguro la mayoría de ustedes se han dado cuenta de que no hay intro ni objetivos.
@@ -135,53 +116,58 @@ De seguro la mayoría de ustedes se han dado cuenta de que no hay intro ni objet
 
 #### ¿Qué es un procedimiento?
 Digamos que es un bloque separado en el que se realizan algunas acciones a través de un flujo de lectura.
-
+.
 Estos al igual que las personas, tienen su propio nombre.
 
 <div class=dan>No puede crear 2 procedimientos con un mismo nombre, tampoco con más de 15 caracteres, ni con letras fuera del Ingles.</div>
-
+.
 Estos los recomiendo que lo hagan con 7 carácteres.
 
 #### ¿Qué es un flujo?
 Por empezar, cada procedimiento ya se crea con un flujo.
-
+.
 Estos se inician con un mismo comando:
 
 <div class="row">
 <div class="col-12"><ul class="tabs">
-<li class="tab"><a href="#thread1" class="active">SCMTOOL</a>
-<li class="tab"><a href="#thread2">OPCODES</a>
-<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
+	<li class="tab" onclick="doc.show('scm2')"><a href="#!scm2">SCMTOOL</a></li>
+	<li class="tab" onclick="doc.show('opc2')"><a href="#!opc2">OPCODES</a></li>
+	<li class="tab"><a></a></li>
+	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
 </ul></div>
-<div id="thread1" class="col-12"><pre class="sb3">
+	<div id="scm2" class="col-12 tabArea w3-animate-left">
+			<header preHide="scm2"><button><icon>close</icon></button></header>
+			<pre class="sb3">
 thread 'EJEMPLO'
-</pre></div>
-<div id="thread2" class="col-12"><pre class=sb3>
+</pre>
+	</div>
+	<div id="opc2" class="col-12 tabArea w3-animate-right">
+		<div class="col-12">
+			<header preHide="opc2"><button><icon>close</icon></button></header>
+			<pre class="sb3">
 03A4: script_name 'EJEMPLO'
-</pre></div>
+</pre>
+		</div>
+	</div>
 </div>
-
+.
 Aquí <code class=sb3>'EJEMPLO'</code> es el nombre de nuestro flujo, y lo finalizamos con este comando:
 
-<div class="row">
-<div class="col-12"><ul class="tabs">
-<li class="tab"><a href="#end_thread1" class="active">SCMTOOL</a>
-<li class="tab"><a href="#end_thread2">OPCODES</a>
-<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
-</ul></div>
-<div id="end_thread1" class="col-12"><pre class="sb3">
+<div class="row"><div class="col-12"><ul class="tabs">
+	<li class="tab green" onclick="doc.show(event,'scm3')"><a href="#!scm3">SCMTOOL</a></li>
+	<li class="tab" onclick="doc.show(event,'opc3')"><a href="#!opc3">OPCODES</a></li>
+	<li class="tab disabled right mt-2"><a><i class="material-icons">content_copy</i></a></li>
+</ul></div><div id="scm3" class="col-12 tabArea"><pre class="sb3">
 end_thread
-</pre></div>
-<div id="end_thread2" class="col-12"><pre class=sb3>
+</pre></div><div id="opc3" class="col-12 tabArea" style="display: none"><pre class=sb3>
 004E: terminate_this_script
-</pre></div>
-</div>
-
+</pre></div></div>
+.
 Creo que estos comandos son muy fáciles de recordarár
 
 #### ¿Qué es una etiqueta?
 En resumen las etiquetas forman la base de la codificación.
-
+.
 Estas solo crean con el símbolo de los 2 puntos(<code class=sb3>:</code>) al principio e ingresando el nombre que le desees dar para identificarla:
 
 <pre class=sb3>:EJEMPLO</pre>
@@ -192,15 +178,11 @@ Estas solo crean con el símbolo de los 2 puntos(<code class=sb3>:</code>) al pr
 </li>
 <li>Un buen ejemplo de como escribir un flujo con etiquetas, sería el siguiente:
 
-<div class="row">
-<div class="col-12"><ul class="tabs">
-<li class="tab"><a href="#label1" class="active">SCMTOOL</a>
-<li class="tab"><a href="#label2">OPCODES</a>
-<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
-</ul></div>
-<div id="label1" class="col-12">
-
-<pre class="sb3">
+<div class="row"><div class="col-12"><ul class="tabs">
+	<li class="tab green" onclick="doc.show(event,'scm4')"><a href="#!scm4">SCMTOOL</a></li>
+	<li class="tab" onclick="doc.show(event,'opc4')"><a href="#!opc4">OPCODES</a></li>
+	<li class="tab disabled right mt-2"><a><i class="material-icons">content_copy</i></a></li>
+</ul></div><div id="scm4" class="col-12 tabArea"><pre class="sb3">
 :PARTE
 thread 'PARTE'
 
@@ -211,12 +193,7 @@ thread 'PARTE'
 	:PARTE_3
 
 end_thread
-</pre>
-
-</div>
-<div id="label2" class="col-12">
-
-<pre class="sb3">
+</pre></div><div id="opc4" class="col-12 tabArea" style="display: none"><pre class=sb3>
 :PARTE
 03A4: script_name 'PARTE'
 
@@ -227,14 +204,8 @@ end_thread
 	:PARTE_3
 
 004E: terminate_this_script
-</pre>
-
-</div>
-</div>
-
-</li>
-</dir>
-
+</pre></div></div>
+.
 Todos los scripts se basan en una línea de información para la lectura. Es decir, que un comando va en una sola línea.<br />
 En el ejemplo, se muestra que primero se ejecutará los comandos de la etiqueta <code class=sb3>:PARTE_1</code>, luego <code class=sb3>:PARTE_2</code> y después <code class=sb3>:PARTE_3</code>.
 <div class=inf>Naturalmente, puede cambiar el orden de las etiquetas, sin cambiar su posición.</div>
@@ -295,17 +266,17 @@ end_thread
 
 </div>
 </div>
-
+.
 Difícil, ¿verdad?<br />
 Imaginemos una pequeña bola y llamémosle "Puntero". Que no solo sea "Bola" :)<br />
 Bueno esta bola tiene un cierto camino por recorrer. Nuestra bola comienza su camino desde el nombre del procedimiento, es decir, desde el comando <code class=sb3>thread</code>, y comienza a bajar.
-
+.
 Usando saltos, puedes dibujar el camino de la pelota para que se deje ver así:
 
 <img src="./img/IMG_20210116_190451.webp" alt="imagen" type="image/webp" class="w-100" style="max-width: 370px" />
-
+.
 Entonces, viste la pelota. Lo azul y naranja indica exactamente como se esta dirigiendo la pelota. Subí especialmente esta imagen para que te sea más fácil imaginar cómo funcionan los scripts. Si la pelota llega al punto final, se envía automáticamente a una pensión bien merecida y no se utilizará más en la corriente hasta que se vuelva a poner en servicio. :)
-
+.
 ¿Cómo iniciar un procedimiento y qué se necesita para que funcione correctamente? Buena pregunta. ¿La palabra <code class=sb3>wait</code> te dice algo? Bueno, creo que es hora de familiarizarse con los opcodes. ¡Estos son nuestros fieles ayudantes! Los llamaremos así, porque ayudan a realizar algunas acciones. Para que funcione correctamente, debemos recordar el ayudante llamado <code class=sb3>0001:</code> , es decir, el opcode:
 
 <div class="row">
@@ -320,11 +291,11 @@ Entonces, viste la pelota. Lo azul y naranja indica exactamente como se esta dir
 <pre class="sb3">0001: wait 0 ms</pre>
 </div>
 </div>
-
+.
 Suele aparecer después del nombre de la etiqueta. No siempre deben estar ahí, sino solo en casos de necesidad, por ejemplo, en ciclos (se considerarán en las próximas lecciones). Pero para fines de capacitación, colocaremos el opcode después de cada etiqueta.
-
+.
 Técnicamente, no hay diferencia entre los opcodes y los comandos: el comando tiene una sintaxis simplificada, pero se reemplaza con un opcode durante la conversión. Un opcode(código de operación) es un comando(código operativo)
-
+.
 Para iniciar nuestra lectura, es decir, para llamar a nuestra bola para que comience, se usa el siguiente comando:
 
 <div class="row">
@@ -339,8 +310,9 @@ Para iniciar nuestra lectura, es decir, para llamar a nuestra bola para que comi
 <pre class="sb3">004F: start_new_script @PARTE</pre>
 </div>
 </div>
+.
 PARTE es el nombre del procedimiento para comenzar
-
+.
 De hecho, activa el flujo. Por lo tanto, escribimos el inicio correcto del procedimiento
 
 <div class="row">
@@ -412,12 +384,7 @@ thread 'PARTE'
 	:PARTE_5
 	wait 0
 end_thread
-</pre>
-
-</div>
-<div id="test4" class="col-12">
-
-<pre class=sb3>
+</pre></div><div id="test4" class="col-12"><pre class=sb3>
 //-------------HEADER-------------
 
 DEFINE MISSIONS 0
@@ -476,13 +443,11 @@ DEFINE UNKNOWN_THREADS_MEMORY 0
 	:PARTE_5
 	0001: wait 0 ms 
 004E: terminate_this_script  
-</pre>
-
-</div>
-</div>
-
+</pre></div></div>
+.
 Por supuesto, nuestro ejemplo no tiene sentido, pero creo que ha adquirido la experiencia necesaria en la escritura de flujos.
 <div class=dan>El comando para iniciar el procedimiento se debe dar en el procedimiento activo , de lo contrario, ¡el procedimiento no se iniciará!</div>
+.
 En nuestro caso, el procedimiento se llama desde el procedimiento activo <code class=sb3>'MAIN'</code>, y cuando el procedimiento se inicia con el comando <code class=sb3>thread</code>, entonces el procedimiento llamado se activa, por así decirlo, se llama cuando la bola está en progreso :)
 <div class=inf>Sanny Builder ignora las líneas en blanco y solo son cosméticas.</div>
 </markdown></div>
@@ -492,10 +457,7 @@ En nuestro caso, el procedimiento se llama desde el procedimiento activo <code c
 </main>
 <script src="../static/js/partial/footer.js"></script>
 <!--  Scripts-->
-<script src="../static/js/library/jquery.js"></script>
-<script src="../static/js/library/marked.min.js"></script>
-<script type="module" src="../static/js/highlighter/main.js"></script>
-<script src="../static/js/library/materialize.js"></script>
 <script src="../static/js/init.js"></script>
+<script type="module" src="../static/js/highlighter/main.js"></script>
 </body>
 </html>

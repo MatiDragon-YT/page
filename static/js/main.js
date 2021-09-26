@@ -1,15 +1,29 @@
 let dir = {
 	origen : () => window.location.origin,
 	local : () => dir.origen() == 'https://matidragon-yt.github.io' ? dir.origen()+'/page/' : dir.origen()+'/',
-	imagen : () => dir.local() + 'static/images/'
+	imagen : () => dir.local() + 'static/images/',
+	hash : () => window.location.hash
 }
 
 let doc = {
-	hash : () => new URL(document.URL).hash,
 	header : () => document.title.split(" - "),
 	title : () => doc.header()[0],
 	subtitle : () => doc.header()[1],
-	description : () => document.querySelector("meta[name='description']").getAttribute("content") || "MatiDragon"
+	description : () => document.querySelector("meta[name='description']").getAttribute("content") || "MatiDragon",
+	show : (area) => {
+		let i, x, tablinks;
+		let bgColor = " green"
+		x = document.getElementsByClassName("tabArea");
+		for (i = 0; i < x.length; i++) {
+			x[i].style.display = "none";
+		}
+		tablinks = document.getElementsByClassName("tab");
+		for (i = 0; i < x.length; i++) {
+			tablinks[i].className = tablinks[i].className.replace(bgColor, "");
+		}
+		document.getElementById(area).style.display = "block";
+		event.currentTarget.className += bgColor;
+	}
 }
 
 document.write(`
@@ -36,4 +50,3 @@ document.write(`
 	<link href="${dir.local()}static/css/main.css" type="text/css" rel="stylesheet" media="screen,projection,print">
 	<link rel="manifest" href="${dir.local()}manifest.json">
 `)
-

@@ -167,20 +167,21 @@ build.innerHTML = '';
 
 for (let item of DATA){
  build.innerHTML += `
- <article class="col-12 col-sm-6 col-md-4 col-lg-3">
-  <div class="card ${item.type.join(' ')}">
-    <div class="card-image waves-effect waves-block waves-light">
-      <img loading="lazy" class="activator" src="${imagen}builds/${item.id}.webp" alt="${item.title}">
+<article class="col-12">
+  <div class="card horizontal bg-dark">
+    <div class="card-image">
+      <img loading="lazy" src="${dir.imagen()}builds/${item.id}.webp" style="height:100%;max-width: 230px;" alt="${item.title}">
     </div>
-    <div class="card-content">
-      <b class="activator grey-text text-darken-4">${item.title}<i class="material-icons right">more_vert</i></b>
-    </div>
-    <div class="card-reveal ${item.type.join(' ')}">
-      <span class="card-title grey-text text-darken-4">${item.title}<i class="material-icons right">close</i></span>
-      <p class="black-text">${item.description}</p>
-      <p><a class="btn bg-dark float-right b-0" href="${origen}builds/${item.id}.html">Ver más</a></p>
+    <div class="card-stacked">
+      <div class="card-content">
+        <h5>${item.title}</h5>
+        <p>${item.description}...</p>
+      </div>
+      <div class="card-action">
+        <small class="light left">Etiqueta: ${item.type.join(' ')}</small><a class="btn green right b-0" href="${dir.local()}builds/${item.id}.html">Ver más</a>
+      </div>
     </div>
   </div>
- </article>
-	`
+</article>
+`
 }
