@@ -28,11 +28,10 @@ Copia estas líneas:
 <div class="col-12"><ul class="tabs">
 	<li class="tab" onclick="doc.show('scm1')"><a href="#!scm1">SCMTOOL</a></li>
 	<li class="tab" onclick="doc.show('opc1')"><a href="#!opc1">OPCODES</a></li>
-	<li class="tab"><a></a></li>
 	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
 </ul></div>
 	<div id="scm1" class="col-12 tabArea w3-animate-left">
-			<header preHide="scm1"><button><icon>close</icon></button></header>
+			<header preHide="scm1"><icon>close</icon></header>
 			<pre class="sb3">
 //-------------HEADER-------------
 
@@ -69,8 +68,7 @@ end_thread
 </pre>
 	</div>
 	<div id="opc1" class="col-12 tabArea w3-animate-right">
-		<div class="col-12">
-			<header preHide="opc1"><button><icon>close</icon></button></header>
+			<header preHide="opc1"><icon>close</icon></header>
 			<pre class="sb3">
 //-------------HEADER-------------
 
@@ -105,7 +103,6 @@ DEFINE UNKNOWN_THREADS_MEMORY 0
 	016D: create_police 2491.1572 -1670.3434 12.3359 angle 0.0 town 0
 004E: terminate_this_script 
 </pre>
-		</div>
 	</div>
 </div>
 .
@@ -132,36 +129,43 @@ Estos se inician con un mismo comando:
 <div class="col-12"><ul class="tabs">
 	<li class="tab" onclick="doc.show('scm2')"><a href="#!scm2">SCMTOOL</a></li>
 	<li class="tab" onclick="doc.show('opc2')"><a href="#!opc2">OPCODES</a></li>
-	<li class="tab"><a></a></li>
 	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
 </ul></div>
 	<div id="scm2" class="col-12 tabArea w3-animate-left">
-			<header preHide="scm2"><button><icon>close</icon></button></header>
+			<header preHide="scm2"><icon>close</icon></header>
 			<pre class="sb3">
 thread 'EJEMPLO'
 </pre>
 	</div>
 	<div id="opc2" class="col-12 tabArea w3-animate-right">
-		<div class="col-12">
-			<header preHide="opc2"><button><icon>close</icon></button></header>
+			<header preHide="opc2"><icon>close</icon></header>
 			<pre class="sb3">
 03A4: script_name 'EJEMPLO'
 </pre>
-		</div>
 	</div>
 </div>
 .
 Aquí <code class=sb3>'EJEMPLO'</code> es el nombre de nuestro flujo, y lo finalizamos con este comando:
 
-<div class="row"><div class="col-12"><ul class="tabs">
-	<li class="tab green" onclick="doc.show(event,'scm3')"><a href="#!scm3">SCMTOOL</a></li>
-	<li class="tab" onclick="doc.show(event,'opc3')"><a href="#!opc3">OPCODES</a></li>
-	<li class="tab disabled right mt-2"><a><i class="material-icons">content_copy</i></a></li>
-</ul></div><div id="scm3" class="col-12 tabArea"><pre class="sb3">
+<div class="row">
+<div class="col-12"><ul class="tabs">
+	<li class="tab" onclick="doc.show('scm3')"><a href="#!scm3">SCMTOOL</a></li>
+	<li class="tab" onclick="doc.show('opc3')"><a href="#!opc3">OPCODES</a></li>
+	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
+</ul></div>
+	<div id="scm3" class="col-12 tabArea w3-animate-left">
+			<header preHide="scm3"><icon>close</icon></header>
+			<pre class="sb3">
 end_thread
-</pre></div><div id="opc3" class="col-12 tabArea" style="display: none"><pre class=sb3>
+</pre>
+	</div>
+	<div id="opc3" class="col-12 tabArea w3-animate-right">
+			<header preHide="opc3"><icon>close</icon></header>
+			<pre class="sb3">
 004E: terminate_this_script
-</pre></div></div>
+</pre>
+	</div>
+</div>
 .
 Creo que estos comandos son muy fáciles de recordarár
 
@@ -178,11 +182,15 @@ Estas solo crean con el símbolo de los 2 puntos(<code class=sb3>:</code>) al pr
 </li>
 <li>Un buen ejemplo de como escribir un flujo con etiquetas, sería el siguiente:
 
-<div class="row"><div class="col-12"><ul class="tabs">
-	<li class="tab green" onclick="doc.show(event,'scm4')"><a href="#!scm4">SCMTOOL</a></li>
-	<li class="tab" onclick="doc.show(event,'opc4')"><a href="#!opc4">OPCODES</a></li>
-	<li class="tab disabled right mt-2"><a><i class="material-icons">content_copy</i></a></li>
-</ul></div><div id="scm4" class="col-12 tabArea"><pre class="sb3">
+<div class="row">
+<div class="col-12"><ul class="tabs">
+	<li class="tab" onclick="doc.show('scm4')"><a href="#!scm4">SCMTOOL</a></li>
+	<li class="tab" onclick="doc.show('opc4')"><a href="#!opc4">OPCODES</a></li>
+	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
+</ul></div>
+	<div id="scm4" class="col-12 tabArea w3-animate-left">
+			<header preHide="scm4"><icon>close</icon></header>
+			<pre class="sb3">
 :PARTE
 thread 'PARTE'
 
@@ -193,7 +201,11 @@ thread 'PARTE'
 	:PARTE_3
 
 end_thread
-</pre></div><div id="opc4" class="col-12 tabArea" style="display: none"><pre class=sb3>
+</pre>
+	</div>
+	<div id="opc4" class="col-12 tabArea w3-animate-right">
+			<header preHide="opc4"><icon>close</icon></header>
+			<pre class="sb3">
 :PARTE
 03A4: script_name 'PARTE'
 
@@ -204,7 +216,9 @@ end_thread
 	:PARTE_3
 
 004E: terminate_this_script
-</pre></div></div>
+</pre>
+	</div>
+</div>
 .
 Todos los scripts se basan en una línea de información para la lectura. Es decir, que un comando va en una sola línea.<br />
 En el ejemplo, se muestra que primero se ejecutará los comandos de la etiqueta <code class=sb3>:PARTE_1</code>, luego <code class=sb3>:PARTE_2</code> y después <code class=sb3>:PARTE_3</code>.

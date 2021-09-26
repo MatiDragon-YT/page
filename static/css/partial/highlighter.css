@@ -22,17 +22,16 @@ hlV,hlS,hlN,hlX,hlM,hlL,hlC,hlO{font-weight: bolder;}
     position: relative;
     z-index: 1;
 }
-[preHide] button {
+[preHide] icon {
     background: none;
     border: none;
     color: white;
-    font-size: x-large;
-    font-family: cursive;
     width: 36px;
     height: 36px;
     position: relative;
     right: 9px;
     cursor: pointer;
+    font-size: xx-large;
 }
 .tabArea {
 	display: none;
