@@ -45,4 +45,4 @@ setTimeout(function(){
 			history.pushState('', document.title, window.location.pathname);
 		});
 	}
-}, 1500);
+}, 3000);

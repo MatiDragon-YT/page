@@ -23,6 +23,23 @@ let doc = {
 		}
 		document.getElementById(area).style.display = "block";
 		event.currentTarget.className += bgColor;
+	},
+	insertCode : (ident, areaA, areaB) => {
+		document.write(`
+		<div class="row">
+			<div class="col-12"><ul class="tabs">
+			<li class="tab" onclick="doc.show('scmtool${ident}')"><a href="#!scmtool${ident}">SCMTOOL</a></li>
+			<li class="tab" onclick="doc.show('opcodes${ident}')"><a href="#!opcodes${ident}">OPCODES</a></li>
+			<li class="tab disabled right pt-2"><a><icon>code</icon></a></li></ul>
+		</div>
+			<div id="scmtool${ident}" class="col-12 tabArea w3-animate-left">
+				<header preHide="scmtool${ident}"><icon>close</icon></header>\`\`\`sb3\n${areaA}\`\`\`
+			</div>
+			<div id="opcodes${ident}" class="col-12 tabArea w3-animate-right">
+				<header preHide="opcodes${ident}"><icon>close</icon></header>\`\`\`sb3\n${areaB}\`\`\`
+			</div>
+		</div>
+		`)
 	}
 }
 

@@ -24,16 +24,7 @@ Bueno, seleccionemos todo con <code>CTRL</code>+<code>A</code> y presionaremos C
 Ahora que el script(<b>guión</b> en español) está vacío, ya puedes hacer algo por tu cuenta! Pero para trabajar en el guión, mínimo debes proporcionar algo información obligatoria.<br />
 Copia estas líneas:
 
-<div class="row">
-<div class="col-12"><ul class="tabs">
-	<li class="tab" onclick="doc.show('scm1')"><a href="#!scm1">SCMTOOL</a></li>
-	<li class="tab" onclick="doc.show('opc1')"><a href="#!opc1">OPCODES</a></li>
-	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
-</ul></div>
-	<div id="scm1" class="col-12 tabArea w3-animate-left">
-			<header preHide="scm1"><icon>close</icon></header>
-			<pre class="sb3">
-//-------------HEADER-------------
+<script>doc.insertCode(1,`//-------------HEADER-------------
 
 DEFINE MISSIONS 0
 DEFINE EXTERNAL_SCRIPTS 0
@@ -64,13 +55,8 @@ thread 'MAIN'
 	
 	Restart.AddHospital(2491.1572, -1670.3434, 12.3359, 0.0, Town.LS)
 	Restart.AddPolice(2491.1572, -1670.3434, 12.3359, 0.0, Town.LS)
-end_thread 
-</pre>
-	</div>
-	<div id="opc1" class="col-12 tabArea w3-animate-right">
-			<header preHide="opc1"><icon>close</icon></header>
-			<pre class="sb3">
-//-------------HEADER-------------
+end_thread`,
+`//-------------HEADER-------------
 
 DEFINE MISSIONS 0
 DEFINE EXTERNAL_SCRIPTS 0
@@ -101,10 +87,7 @@ DEFINE UNKNOWN_THREADS_MEMORY 0
 
 	016C: create_hospital 2491.1572 -1670.3434 12.3359 angle 0.0 town 0
 	016D: create_police 2491.1572 -1670.3434 12.3359 angle 0.0 town 0
-004E: terminate_this_script 
-</pre>
-	</div>
-</div>
+004E: terminate_this_script`)</script>
 .
 Luego compile el script e inicie el juego.
 <div class=dan>al editar el script principal, deben iniciar una nueva partida.</div>
@@ -125,47 +108,13 @@ Por empezar, cada procedimiento ya se crea con un flujo.
 .
 Estos se inician con un mismo comando:
 
-<div class="row">
-<div class="col-12"><ul class="tabs">
-	<li class="tab" onclick="doc.show('scm2')"><a href="#!scm2">SCMTOOL</a></li>
-	<li class="tab" onclick="doc.show('opc2')"><a href="#!opc2">OPCODES</a></li>
-	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
-</ul></div>
-	<div id="scm2" class="col-12 tabArea w3-animate-left">
-			<header preHide="scm2"><icon>close</icon></header>
-			<pre class="sb3">
-thread 'EJEMPLO'
-</pre>
-	</div>
-	<div id="opc2" class="col-12 tabArea w3-animate-right">
-			<header preHide="opc2"><icon>close</icon></header>
-			<pre class="sb3">
-03A4: script_name 'EJEMPLO'
-</pre>
-	</div>
-</div>
+<script>doc.insertCode(3,`thread 'EJEMPLO'`,
+`03A4: script_name 'EJEMPLO'`)</script>
 .
 Aquí <code class=sb3>'EJEMPLO'</code> es el nombre de nuestro flujo, y lo finalizamos con este comando:
 
-<div class="row">
-<div class="col-12"><ul class="tabs">
-	<li class="tab" onclick="doc.show('scm3')"><a href="#!scm3">SCMTOOL</a></li>
-	<li class="tab" onclick="doc.show('opc3')"><a href="#!opc3">OPCODES</a></li>
-	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
-</ul></div>
-	<div id="scm3" class="col-12 tabArea w3-animate-left">
-			<header preHide="scm3"><icon>close</icon></header>
-			<pre class="sb3">
-end_thread
-</pre>
-	</div>
-	<div id="opc3" class="col-12 tabArea w3-animate-right">
-			<header preHide="opc3"><icon>close</icon></header>
-			<pre class="sb3">
-004E: terminate_this_script
-</pre>
-	</div>
-</div>
+<script>doc.insertCode(5,`end_thread`,
+`004E: terminate_this_script`)</script>
 .
 Creo que estos comandos son muy fáciles de recordarár
 
@@ -174,24 +123,19 @@ En resumen las etiquetas forman la base de la codificación.
 .
 Estas solo crean con el símbolo de los 2 puntos(<code class=sb3>:</code>) al principio e ingresando el nombre que le desees dar para identificarla:
 
-<pre class=sb3>:EJEMPLO</pre>
-<div class=inf>Por lo general se sigue esta sintaxis: <pre>:{nombre del flujo}[_id]</pre><br>El id puede ser cualquier numero, letra o simbolo.</div>
+```sb3
+:EJEMPLO```
+<div class=inf>Por lo general se sigue esta sintaxis:
+``` 
+:{nombre del flujo}[_id]```
+El id puede ser cualquier numero, letra o simbolo.</div>
 <div class=dan>Si borras el codigo fuente, estas se formatean sigiendo sintaxis estandar</div>
 </li>
 <li>Desde un punto de vista técnico, la etiqueta es un desplazamiento en el archivo <code class=sb3>main.scm</code> y representa un número normal. En otros asuntos, esto no es importante para nosotros, ya que SB calcula todos los resultados por su cuenta, según nuestras etiquetas.
 </li>
 <li>Un buen ejemplo de como escribir un flujo con etiquetas, sería el siguiente:
 
-<div class="row">
-<div class="col-12"><ul class="tabs">
-	<li class="tab" onclick="doc.show('scm4')"><a href="#!scm4">SCMTOOL</a></li>
-	<li class="tab" onclick="doc.show('opc4')"><a href="#!opc4">OPCODES</a></li>
-	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
-</ul></div>
-	<div id="scm4" class="col-12 tabArea w3-animate-left">
-			<header preHide="scm4"><icon>close</icon></header>
-			<pre class="sb3">
-:PARTE
+<script>doc.insertCode('6',`:PARTE
 thread 'PARTE'
 
 	:PARTE_1
@@ -200,13 +144,8 @@ thread 'PARTE'
 
 	:PARTE_3
 
-end_thread
-</pre>
-	</div>
-	<div id="opc4" class="col-12 tabArea w3-animate-right">
-			<header preHide="opc4"><icon>close</icon></header>
-			<pre class="sb3">
-:PARTE
+end_thread`,
+`:PARTE
 03A4: script_name 'PARTE'
 
 	:PARTE_1
@@ -215,25 +154,23 @@ end_thread
 
 	:PARTE_3
 
-004E: terminate_this_script
-</pre>
-	</div>
-</div>
+004E: terminate_this_script`)</script>
 .
 Todos los scripts se basan en una línea de información para la lectura. Es decir, que un comando va en una sola línea.<br />
 En el ejemplo, se muestra que primero se ejecutará los comandos de la etiqueta <code class=sb3>:PARTE_1</code>, luego <code class=sb3>:PARTE_2</code> y después <code class=sb3>:PARTE_3</code>.
 <div class=inf>Naturalmente, puede cambiar el orden de las etiquetas, sin cambiar su posición.</div>
 Para esto, sirve el comando <code class=sb3>jump</code>. Si lo traducimos literalmente, esto significa Saltar. A continuación, usaremos esta expresión. Bueno, primero escribire un ejemplo donde se usan saltos:
 
+
 <div class="row">
 <div class="col-12"><ul class="tabs">
-<li class="tab"><a href="#label3" class="active">SCMTOOL</a>
-<li class="tab"><a href="#label4">OPCODES</a>
-<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
+	<li class="tab" onclick="doc.show('9')"><a href="#!9">SCMTOOL</a></li>
+	<li class="tab" onclick="doc.show('10')"><a href="#!10">OPCODES</a></li>
+	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
 </ul></div>
-<div id="label3" class="col-12">
-
-<pre class="sb3">
+	<div id="9" class="col-12 tabArea w3-animate-left">
+			<header preHide="9"><icon>close</icon></header>
+```sb3
 :PARTE
 thread 'PARTE'
 	jump @PARTE_4
@@ -252,12 +189,11 @@ thread 'PARTE'
 
 	:PARTE_5
 end_thread
-</pre>
-
-</div>
-<div id="label4" class="col-12">
-
-<pre class="sb3">
+```
+	</div>
+	<div id="10" class="col-12 tabArea w3-animate-right">
+			<header preHide="10"><icon>close</icon></header>
+```sb3
 :PARTE
 03A4: script_name 'PARTE'
 	0002: jump @PARTE_4
@@ -276,9 +212,8 @@ end_thread
 
 	:PARTE_5
 004E: terminate_this_script
-</pre>
-
-</div>
+```
+	</div>
 </div>
 .
 Difícil, ¿verdad?<br />
@@ -300,9 +235,11 @@ Entonces, viste la pelota. Lo azul y naranja indica exactamente como se esta dir
 <li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
 </ul></div>
 <div id="wait1" class="col-12">
-<pre class="sb3">wait 0</pre></div>
+```sb3
+wait 0```</div>
 <div id="wait2" class="col-12">
-<pre class="sb3">0001: wait 0 ms</pre>
+```sb3
+0001: wait 0 ms```
 </div>
 </div>
 .
@@ -319,9 +256,11 @@ Para iniciar nuestra lectura, es decir, para llamar a nuestra bola para que comi
 <li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
 </ul></div>
 <div id="create_thread1" class="col-12">
-<pre class="sb3">create_thread @PARTE</pre></div>
+```sb3
+create_thread @PARTE```</div>
 <div id="create_thread2" class="col-12">
-<pre class="sb3">004F: start_new_script @PARTE</pre>
+```sb3
+004F: start_new_script @PARTE```
 </div>
 </div>
 .
@@ -339,7 +278,7 @@ De hecho, activa el flujo. Por lo tanto, escribimos el inicio correcto del proce
 </div>
 <div id="test3" class="col-12">
 
-<pre class=sb3>
+```sb3
 //-------------HEADER-------------
 
 DEFINE MISSIONS 0
@@ -398,7 +337,7 @@ thread 'PARTE'
 	:PARTE_5
 	wait 0
 end_thread
-</pre></div><div id="test4" class="col-12"><pre class=sb3>
+```</div><div id="test4" class="col-12">```sb3
 //-------------HEADER-------------
 
 DEFINE MISSIONS 0
@@ -457,7 +396,7 @@ DEFINE UNKNOWN_THREADS_MEMORY 0
 	:PARTE_5
 	0001: wait 0 ms 
 004E: terminate_this_script  
-</pre></div></div>
+```</div></div>
 .
 Por supuesto, nuestro ejemplo no tiene sentido, pero creo que ha adquirido la experiencia necesaria en la escritura de flujos.
 <div class=dan>El comando para iniciar el procedimiento se debe dar en el procedimiento activo , de lo contrario, ¡el procedimiento no se iniciará!</div>
