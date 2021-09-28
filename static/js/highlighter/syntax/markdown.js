@@ -20,6 +20,8 @@ function markdown () {
 			/*** CODES ***/
 			.replace(/```(sb3|ini|fxt|csm|\s)!?\s([\x09-\x5F\x61-\xFF]*)```/g, '<pre class="$1">$2</pre>')
 //			.replace(/`(sb3|ini|fxt|csm)?\s([\x09-\x5F\x61-\xFF]*)`/, '<code class="$1">$2</code>')
+			.replace(/\[([\x21-\xFF]+)\]\((http|https):\/\/([A-Za-z0-9\+\/\=\.]+)\)/g, '<a href="$2://$3">$1</a>')
+// asd  [Discord](https://discord.gg/GBkEqSE2jY) sad [Discord](https://discord.gg/GBkEqSE2jY)
 		;
 	}
 }

@@ -13,8 +13,8 @@
 <script src="../static/js/partial/title.js"></script>
 
 Echemos un vistazo a las sintaxis de <code class=sb3>gosub</code>:
-
-<pre class="sb3">
+.
+```sb3
 {
    > gosub «etiqueta»
    ó
@@ -22,14 +22,15 @@ Echemos un vistazo a las sintaxis de <code class=sb3>gosub</code>:
 }
 gosub @PARTE_1
 PARTE_1()
-</pre>
+```
+.
 A simple vista podriamos creer que este comando salta a la etiqueta <code class=sb3>:PARTE_1</code>, pero tiene una pequeña peculiaridad.
-<div class=inf><b>NOTA</b>: A diferencia de <code class=sb3>jump</code>, la pelota volverá al lugar de donde salio cuándo se encuentre con el retorno más cercano.
+<div class=inf>A diferencia de <code class=sb3>jump</code>, la pelota volverá al lugar de donde salio cuándo se encuentre con el retorno más cercano.
 </div>
 Con el comando <code class=sb3>return</code> ara que se regrese a su punto de partida.
-
+.
 Mira este pequeño guión para que entiendas cómo funciona:
-<pre class="sb3">
+```sb3
 :PARTE
 thread 'PARTE'
    wait 0
@@ -39,18 +40,18 @@ end_thread
 :PARTE_1
    wait 0
 return
-</pre>
+```
 Gráficamente se puede representar de la siguiente manera:
-
+.
 <img src="./img/IMG_20210228_121015.webp" alt="imagen ilustrativa" style="width: 100%;max-width: 400px" />
-
+.
 En la imagen podemos ver que la pelota primero pasará por 3 líneas y en la 4°, se encontrará con <code class=sb3>gosub</code>, lo que la ara saltar a la 7° línea, ya que aquí se encuentra la etiqueta <code class=sb3> @PARTE_1</code>. Va más allá de 2 líneas y se encuentra con <code class=sb3>return</code>. Lo que hace que la pelota se regrese a la línea donde estaba el <code class=sb3>gosub</code> y continúa su camino, hacia la 5° línea y se encuentra con <code class=sb3>end_thread</code> finalizando el código.
-
-<div class=dan><b>IMPORTANTE</b>: Cualquier <code class=sb3>gosub</code> requiere un retorno obligatorio con el comando <code class=sb3>ruturn</code>.
+.
+<div class=dan>Cualquier <code class=sb3>gosub</code> requiere un retorno obligatorio con el comando <code class=sb3>ruturn</code>.
 </div>
-
+.
 Escribamos un guión más complejo, donde ayan más <code class=sb3>gosub</code>s, y observemos el recorrido de la pelota:
-<pre class=sb3>
+```sb3
 :PARTE
 thread 'PARTE'
    wait 0
@@ -70,19 +71,19 @@ return
 :PARTE_3
    wait 0
 return
-</pre>
+```
 Graficamente se podria representar de la siguiente manera:
-
+.
 <img src="./img/IMG_20210228_134104.webp" alt="imagen ilustrativa" style="width: 100%;max-width: 400px" />
-
+.
 Como ve, estos saltos tambien pueden ser anidados. Osea, colocados dentro de otros <code class=sb3>gosub</code>s.<br />
 Arriba había 1 <code class=sb3>gosub</code> anidado (<code class=sb3> @PARTE_2</code>). El resto se encontraban en el mismo nivel de anidación.
-
-<div class="dan"><b>IMPORTANTE</b>: Los anidamientos estan limitados al 8 nivel de <code class=sb3>gosub</code>s en las secuencias de comandos del SCM<br />
+.
+<div class="dan">Los anidamientos estan limitados al 8 nivel de <code class=sb3>gosub</code>s en las secuencias de comandos del SCM<br />
 </div>
-
+.
 Con esto acabaríamos con los conceptos básicos de los flujos de comandos.
-
+.
 Si tiene alguna pregunta, hágala por [Discord](https://discord.gg/GBkEqSE2jY)
 </markdown></div>
 <script src="../static/js/partial/widgets.js"></script>
