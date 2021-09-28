@@ -24,7 +24,7 @@ Bueno, seleccionemos todo con <code>CTRL</code>+<code>A</code> y presionaremos C
 Ahora que el script(<b>guión</b> en español) está vacío, ya puedes hacer algo por tu cuenta! Pero para trabajar en el guión, mínimo debes proporcionar algo información obligatoria.<br />
 Copia estas líneas:
 
-<script>doc.insertCode(1,`//-------------HEADER-------------
+<script>doc.pre.insert(1,`//-------------HEADER-------------
 
 DEFINE MISSIONS 0
 DEFINE EXTERNAL_SCRIPTS 0
@@ -108,12 +108,12 @@ Por empezar, cada procedimiento ya se crea con un flujo.
 .
 Estos se inician con un mismo comando:
 
-<script>doc.insertCode(3,`thread 'EJEMPLO'`,
+<script>doc.pre.insert(2,`thread 'EJEMPLO'`,
 `03A4: script_name 'EJEMPLO'`)</script>
 .
 Aquí <code class=sb3>'EJEMPLO'</code> es el nombre de nuestro flujo, y lo finalizamos con este comando:
 
-<script>doc.insertCode(5,`end_thread`,
+<script>doc.pre.insert(3,`end_thread`,
 `004E: terminate_this_script`)</script>
 .
 Creo que estos comandos son muy fáciles de recordarár
@@ -135,7 +135,7 @@ El id puede ser cualquier numero, letra o simbolo.</div>
 </li>
 <li>Un buen ejemplo de como escribir un flujo con etiquetas, sería el siguiente:
 
-<script>doc.insertCode('6',`:PARTE
+<script>doc.pre.insert('4',`:PARTE
 thread 'PARTE'
 
 	:PARTE_1
@@ -162,16 +162,7 @@ En el ejemplo, se muestra que primero se ejecutará los comandos de la etiqueta 
 Para esto, sirve el comando <code class=sb3>jump</code>. Si lo traducimos literalmente, esto significa Saltar. A continuación, usaremos esta expresión. Bueno, primero escribire un ejemplo donde se usan saltos:
 
 
-<div class="row">
-<div class="col-12"><ul class="tabs">
-	<li class="tab" onclick="doc.show('9')"><a href="#!9">SCMTOOL</a></li>
-	<li class="tab" onclick="doc.show('10')"><a href="#!10">OPCODES</a></li>
-	<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
-</ul></div>
-	<div id="9" class="col-12 tabArea w3-animate-left">
-			<header preHide="9"><icon>close</icon></header>
-```sb3
-:PARTE
+<script>doc.pre.insert('5',`:PARTE
 thread 'PARTE'
 	jump @PARTE_4
 
@@ -188,60 +179,40 @@ thread 'PARTE'
 	jump @PARTE_1
 
 	:PARTE_5
-end_thread
-```
-	</div>
-	<div id="10" class="col-12 tabArea w3-animate-right">
-			<header preHide="10"><icon>close</icon></header>
-```sb3
-:PARTE
-03A4: script_name 'PARTE'
-	0002: jump @PARTE_4
+end_thread`,
+`03A4: script_name 'PARTE'
+	0002: goto @PARTE_4
 
 	:PARTE_1
-	0002: jump @PARTE_3
+	0002: goto @PARTE_3
 
 	:PARTE_2
-	0002: jump @PARTE_5
+	0002: goto @PARTE_5
 
 	:PARTE_3
-	0002: jump @PARTE_2
+	0002: goto @PARTE_2
 
 	:PARTE_4
-	0002: jump @PARTE_1
+	0002: goto @PARTE_1
 
 	:PARTE_5
-004E: terminate_this_script
-```
-	</div>
-</div>
+004E: terminate_this_script`)</script>
 .
-Difícil, ¿verdad?<br />
-Imaginemos una pequeña bola y llamémosle "Puntero". Que no solo sea "Bola" :)<br />
+Dificil, no?<br />
+Imaginemos una bolita y llamémosle "Puntero".
+.
 Bueno esta bola tiene un cierto camino por recorrer. Nuestra bola comienza su camino desde el nombre del procedimiento, es decir, desde el comando <code class=sb3>thread</code>, y comienza a bajar.
 .
-Usando saltos, puedes dibujar el camino de la pelota para que se deje ver así:
-
+Usando indicaciones, puedes hacer saltos de esta forma:
+.
 <img src="./img/IMG_20210116_190451.webp" alt="imagen" type="image/webp" class="w-100" style="max-width: 370px" />
 .
 Entonces, viste la pelota. Lo azul y naranja indica exactamente como se esta dirigiendo la pelota. Subí especialmente esta imagen para que te sea más fácil imaginar cómo funcionan los scripts. Si la pelota llega al punto final, se envía automáticamente a una pensión bien merecida y no se utilizará más en la corriente hasta que se vuelva a poner en servicio. :)
 .
 ¿Cómo iniciar un procedimiento y qué se necesita para que funcione correctamente? Buena pregunta. ¿La palabra <code class=sb3>wait</code> te dice algo? Bueno, creo que es hora de familiarizarse con los opcodes. ¡Estos son nuestros fieles ayudantes! Los llamaremos así, porque ayudan a realizar algunas acciones. Para que funcione correctamente, debemos recordar el ayudante llamado <code class=sb3>0001:</code> , es decir, el opcode:
 
-<div class="row">
-<div class="col-12"><ul class="tabs">
-<li class="tab"><a href="#wait1" class="active">SCMTOOL</a>
-<li class="tab"><a href="#wait2">OPCODES</a>
-<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
-</ul></div>
-<div id="wait1" class="col-12">
-```sb3
-wait 0```</div>
-<div id="wait2" class="col-12">
-```sb3
-0001: wait 0 ms```
-</div>
-</div>
+<script>doc.pre.insert('6',`wait 0`,
+`0001: time_out 0 ms`)</script>
 .
 Suele aparecer después del nombre de la etiqueta. No siempre deben estar ahí, sino solo en casos de necesidad, por ejemplo, en ciclos (se considerarán en las próximas lecciones). Pero para fines de capacitación, colocaremos el opcode después de cada etiqueta.
 .
@@ -249,37 +220,14 @@ Técnicamente, no hay diferencia entre los opcodes y los comandos: el comando ti
 .
 Para iniciar nuestra lectura, es decir, para llamar a nuestra bola para que comience, se usa el siguiente comando:
 
-<div class="row">
-<div class="col-12"><ul class="tabs">
-<li class="tab"><a href="#create_thread1" class="active">SCMTOOL</a>
-<li class="tab"><a href="#create_thread2">OPCODES</a>
-<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a>
-</ul></div>
-<div id="create_thread1" class="col-12">
-```sb3
-create_thread @PARTE```</div>
-<div id="create_thread2" class="col-12">
-```sb3
-004F: start_new_script @PARTE```
-</div>
-</div>
+<script>doc.pre.insert('7',`create_thread @PARTE`,
+`004F: start_new_script @PARTE`)</script>
 .
 PARTE es el nombre del procedimiento para comenzar
 .
 De hecho, activa el flujo. Por lo tanto, escribimos el inicio correcto del procedimiento
 
-<div class="row">
-<div class="col-12">
-  <ul class="tabs">
-	<li class="tab"><a href="#test3" class="active">SCMTOOL</a></li>
-	<li class="tab"><a href="#test4">OPCODES</a></li>
-	<li class="tab disabled right mt-2"><a><i class="material-icons">code</i></a></li>
-  </ul>
-</div>
-<div id="test3" class="col-12">
-
-```sb3
-//-------------HEADER-------------
+<script>doc.pre.insert('8',`//-------------HEADER-------------
 
 DEFINE MISSIONS 0
 DEFINE EXTERNAL_SCRIPTS 0
@@ -337,8 +285,8 @@ thread 'PARTE'
 	:PARTE_5
 	wait 0
 end_thread
-```</div><div id="test4" class="col-12">```sb3
-//-------------HEADER-------------
+`,
+`//-------------HEADER-------------
 
 DEFINE MISSIONS 0
 DEFINE EXTERNAL_SCRIPTS 0
@@ -375,28 +323,27 @@ DEFINE UNKNOWN_THREADS_MEMORY 0
 
 :PARTE
 03A4: script_name 'PARTE' 
-	0002: jump @PARTE_4 
+	0002: goto @PARTE_4 
 
 	:PARTE_1
-	0001: wait 0 ms 
-	0002: jump @PARTE_3 
+	0001: time_out 0 ms 
+	0002: goto @PARTE_3 
 
 	:PARTE_2
-	0001: wait 0 ms 
-	0002: jump @PARTE_5 
+	0001: time_out 0 ms 
+	0002: goto @PARTE_5 
 
 	:PARTE_3
-	0001: wait 0 ms 
-	0002: jump @PARTE_2
+	0001: time_out 0 ms 
+	0002: goto @PARTE_2
 
 	:PARTE_4
-	0001: wait 0 ms 
-	0002: jump @PARTE_1
+	0001: time_out 0 ms 
+	0002: goto @PARTE_1
 
 	:PARTE_5
-	0001: wait 0 ms 
-004E: terminate_this_script  
-```</div></div>
+	0001: time_out 0 ms 
+004E: terminate_this_script`)</script>
 .
 Por supuesto, nuestro ejemplo no tiene sentido, pero creo que ha adquirido la experiencia necesaria en la escritura de flujos.
 <div class=dan>El comando para iniciar el procedimiento se debe dar en el procedimiento activo , de lo contrario, ¡el procedimiento no se iniciará!</div>
@@ -410,7 +357,6 @@ En nuestro caso, el procedimiento se llama desde el procedimiento activo <code c
 </main>
 <script src="../static/js/partial/footer.js"></script>
 <!--  Scripts-->
-<script src="../static/js/init.js"></script>
 <script type="module" src="../static/js/highlighter/main.js"></script>
 </body>
 </html>

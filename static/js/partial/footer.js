@@ -33,16 +33,4 @@ document.write(`
 
 
 const class$ = a => document.getElementsByClassName(a);
-if (dir.hash()) {document.querySelector(`[href="${dir.hash()}"`).click()}
-
-setTimeout(function(){
-	let bHide = document.querySelectorAll('[preHide]')
-	for (let i = 0; i < bHide.length; i++) {
-		bHide[i].addEventListener("click", function(){
-			let area = bHide[i].getAttribute('preHide');
-			let sector = document.getElementById(area);
-			sector.style.display='none';
-			history.pushState('', document.title, window.location.pathname);
-		});
-	}
-}, 3000);
+if (dir.hash.get()) {document.querySelector(`[href="${dir.hash.get()}"`).click()}

@@ -1,8 +1,10 @@
 let dir = {
-	origen : () => window.location.origin,
-	local : () => dir.origen() == 'https://matidragon-yt.github.io' ? dir.origen()+'/page/' : dir.origen()+'/',
+	local : () => origin == 'https://matidragon-yt.github.io' ? origin+'/page/' : origin+'/',
 	imagen : () => dir.local() + 'static/images/',
-	hash : () => window.location.hash
+	hash : {
+		get : () => window.location.hash,
+		clear : () => {history.pushState('', document.title, window.location.pathname)}
+	}
 }
 
 let doc = {
@@ -10,36 +12,48 @@ let doc = {
 	title : () => doc.header()[0],
 	subtitle : () => doc.header()[1],
 	description : () => document.querySelector("meta[name='description']").getAttribute("content") || "MatiDragon",
-	show : (area) => {
-		let i, x, tablinks;
-		let bgColor = " green"
-		x = document.getElementsByClassName("tabArea");
-		for (i = 0; i < x.length; i++) {
-			x[i].style.display = "none";
-		}
-		tablinks = document.getElementsByClassName("tab");
-		for (i = 0; i < x.length; i++) {
-			tablinks[i].className = tablinks[i].className.replace(bgColor, "");
-		}
-		document.getElementById(area).style.display = "block";
-		event.currentTarget.className += bgColor;
-	},
-	insertCode : (ident, areaA, areaB) => {
-		document.write(`
-		<div class="row">
-			<div class="col-12"><ul class="tabs">
-			<li class="tab" onclick="doc.show('scmtool${ident}')"><a href="#!scmtool${ident}">SCMTOOL</a></li>
-			<li class="tab" onclick="doc.show('opcodes${ident}')"><a href="#!opcodes${ident}">OPCODES</a></li>
-			<li class="tab disabled right pt-2"><a><icon>code</icon></a></li></ul>
-		</div>
-			<div id="scmtool${ident}" class="col-12 tabArea w3-animate-left">
-				<header preHide="scmtool${ident}"><icon>close</icon></header>\`\`\`sb3\n${areaA}\`\`\`
+	pre : {
+		hide : function (area){
+			document.getElementById(area).style.display='none';
+			dir.hash.clear();
+		},
+		show : (area) => {
+			let bgColor = 'green'
+			if (event.currentTarget.classList.contains(bgColor)) {
+				event.currentTarget.classList.remove(bgColor);
+				doc.pre.hide(area)
+			}
+			else{
+				let i, x, tablinks;
+				x = document.getElementsByClassName("tabArea");
+				for (i = 0; i < x.length; i++) {
+					x[i].style.display = "none";
+				}
+				tablinks = document.getElementsByClassName("tab");
+				for (i = 0; i < x.length; i++) {
+					tablinks[i].classList.remove(bgColor);
+				}
+				document.getElementById(area).style.display = "block";
+				event.currentTarget.classList.add(bgColor);
+			}
+		},
+		insert : (ident, areaA, areaB) => {
+			document.write(`
+			<div class="row">
+				<div class="col-12"><ul class="tabs">
+				<li class="tab codigo" onclick="doc.pre.show('scm${ident}')"><a href="#!scm${ident}">SCMTOOL</a></li>
+				<li class="tab codigo" onclick="doc.pre.show('opc${ident}')"><a href="#!opc${ident}">OPCODES</a></li>
+				<li class="tab disabled right pt-2"><a><icon>code</icon></a></li></ul>
 			</div>
-			<div id="opcodes${ident}" class="col-12 tabArea w3-animate-right">
-				<header preHide="opcodes${ident}"><icon>close</icon></header>\`\`\`sb3\n${areaB}\`\`\`
+				<div id="scm${ident}" class="col-12 tabArea w3-animate-left">
+					<preHide><icon onclick="doc.pre.hide('scm${ident}')">close</icon></preHide>\`\`\`sb3\n${areaA}\`\`\`
+				</div>
+				<div id="opc${ident}" class="col-12 tabArea w3-animate-right">
+					<preHide><icon onclick="doc.pre.hide('opc${ident}')">close</icon></preHide>\`\`\`sb3\n${areaB}\`\`\`
+				</div>
 			</div>
-		</div>
-		`)
+			`)
+		}
 	}
 }
 

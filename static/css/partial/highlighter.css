@@ -14,7 +14,7 @@
 
 hlV,hlS,hlN,hlX,hlM,hlL,hlC,hlO{font-weight: bolder;}
 
-[preHide] {
+preHide {
 	display: flex;
     justify-content: flex-end;
     height: 0;
@@ -22,7 +22,7 @@ hlV,hlS,hlN,hlX,hlM,hlL,hlC,hlO{font-weight: bolder;}
     position: relative;
     z-index: 1;
 }
-[preHide] icon {
+preHide icon {
     background: none;
     border: none;
     color: white;
