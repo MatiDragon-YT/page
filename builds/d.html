@@ -1,7 +1,8 @@
 ﻿<!DOCTYPE html>
 <html lang="es">
 <head>
-    <title>SCMTool - MatiDragon</title>
+    <title>SCMTool</title>
+    <meta name="description" content="Sabemos que <a target='_black' href='https://sannybuilder.com'>Sanny Builder</a> es un gran IDE, pero trabajar memorizando opcodes puede ser algo desagradable para muchos, por lo que este parche para que tengas otra alternativa para codificar.">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -9,103 +10,61 @@
 </head>
 <body>
 <script src="../static/js/partial/header.js"></script>
-<main>
-<div class="section no-pad-bot" id="index-banner">
-<div class="container"><div class="row">
-<div class="col-12 col-lg-9"><markdown>
-
-### SCMTool
-<p class="flow-text">Sabemos que <a target="_black" href="https://sannybuilder.com">Sanny Builder</a> es un gran IDE, pero trabajar memorizando opcodes puede ser algo desagradable para muchos, por lo que este parche para que tengas otra alternativa para codificar.</p>
+<script src="../static/js/partial/title.js"></script>
 <div class="video-responsive"><video style="width: 100%;height: auto;" src="docs/d/video.mov" type="video/mov" controls></video></div>
 
-<div class=inf>
-<ul>
-<li>Una de las cosas que trae este paquete, son los siguientes:
-<dd>
-
+#### Se incluye
+<ul><dd>
 * Una documentación detallada sobre SB y GTA SA.
 * Traducción precisa de todo el IDE al Español Latino.
 * Más de 80 clases, 2000 miembros y 100 enumeraciones.
 * Ayuda para SAMP Funcs, CLEO Plus, CLEO ImGui, New Opcodes y Shader API.
 * Unos cuantos temas de colores simples y modernos.
 </dd></ul>
-<div class="row" id="galeria">
-<div class="col-5">
 
-[![img](docs/d/material-bold-dark.webp)](docs/d/material-bold-dark.png)
+##### Materials
+<div class="row galeria">
+    <div class="col-5">[![img](docs/d/material-bold-dark.webp)](docs/d/material-bold-dark.png)</div>
+    <div class="col-5">[![img](docs/d/material-dark.webp)](docs/d/material-dark.png)</div>
+    <div class="col-5">[![img](docs/d/material-dracula.webp)](docs/d/material-dracula.png)</div>
+    <div class="col-5">[![img](docs/d/material-facebook.webp)](docs/d/material-facebook.png)</div>
+    <div class="col-5">[![img](docs/d/material-glacier.webp)](docs/d/material-glacier.png)</div>
+    <div class="col-5">[![img](docs/d/material-monokai.webp)](docs/d/material-monokai.png)</div>
+    <div class="col-5">[![img](docs/d/material-monokai-soda.webp)](docs/d/material-monokai-soda.png)</div>
+    <div class="col-5">[![img](docs/d/material-nodejs.webp)](docs/d/material-nodejs.png)</div>
+    <div class="col-5">[![img](docs/d/material-one-dark.webp)](docs/d/material-one-dark.png)</div>
+    <div class="col-5">[![img](docs/d/material-light.webp)](docs/d/material-light.png)</div>
 </div>
-<div class="col-5">
-
-[![img](docs/d/material-dark.webp)](docs/d/material-dark.png)
+##### Monochromes
+<div class="row galeria">
+    <div class="col-5">[![img](docs/d/monochrome-magenta.webp)](docs/d/monochrome-magenta.png)</div>
+    <div class="col-5">[![img](docs/d/monochrome-blue.webp)](docs/d/monochrome-blue.png)</div>
+    <div class="col-5">[![img](docs/d/monochrome-cyan.webp)](docs/d/monochrome-cyan.png)</div>
+    <div class="col-5">[![img](docs/d/monochrome-green.webp)](docs/d/monochrome-green.png)</div>
+    <div class="col-5">[![img](docs/d/monochrome-yellow.webp)](docs/d/monochrome-yellow.png)</div>
+    <div class="col-5">[![img](docs/d/monochrome-red.webp)](docs/d/monochrome-red.png)</div>
 </div>
-<div class="col-5">
-
-[![img](docs/d/material-dracula.webp)](docs/d/material-dracula.png)
-</div>
-<div class="col-5">
-
-[![img](docs/d/material-facebook.webp)](docs/d/material-facebook.png)
-</div>
-<div class="col-5">
-
-[![img](docs/d/material-glacier.webp)](docs/d/material-glacier.png)
-</div>
-<div class="col-5">
-
-[![img](docs/d/material-light.webp)](docs/d/material-light.png)
-</div>
-<div class="col-5">
-
-[![img](docs/d/material-monokai.webp)](docs/d/material-monokai.png)
-</div>
-<div class="col-5">
-
-[![img](docs/d/material-monokai-soda.webp)](docs/d/material-monokai-soda.png)
-</div>
-<div class="col-5">
-
-[![img](docs/d/material-nodejs.webp)](docs/d/material-nodejs.png)
-</div>
-<div class="col-5">
-
-[![img](docs/d/material-one-dark.webp)](docs/d/material-one-dark.png)
-</div>
-
-<style>
-#galeria {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    overflow-x: scroll;
-    margin: 6px 0 -10px;
-    padding: 0px 7px;
-}
-#galeria img {
-    width: 100%;
-    height: auto;
-}
-</style>
-</div>
-</div>
+.
 <div class=dan>
-
+.
 Para ver que Class o Keyword corresponde a cada Opcode, descompile sin codigo fuente.<br>
 Si actualizo SCMTool, use antes la directiva <code class=sb3>{$NOSOURCE}</code> para actualizar automaticamente los comandos.
-
-<pre class=sb3>
+.
+```sb3
 {$CLEO}
 {$NOSOURCE}
 thread 'EXAMPLE'
 while true
     0@ = Actor.Create(PedType.Gang2, #FAM1, 1524.823, -2433.53, 13.5547)
+    
     repeat
         wait 0
     until Key.isPressed(VK.R)
+    
     Actor.Release(0@)
 end
-</pre>
+```
 </div>
-
 
 <div class="center p-5"><a 
   class="tooltipped bd"
@@ -133,8 +92,20 @@ end
 </main>
 <script src="../static/js/partial/footer.js"></script>
 <!--  Scripts-->
-<script src="../static/js/library/jquery.js"></script>
-<script src="../static/js/library/marked.min.js"></script>
 <script type="module" src="../static/js/highlighter/main.js"></script>
+<style>
+.galeria {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: scroll;
+    margin: 6px 0 -10px;
+    padding: 0px 7px;
+}
+.galeria img {
+    width: 100%;
+    height: auto;
+}
+</style>
 </body>
 </html>
