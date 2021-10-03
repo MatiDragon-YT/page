@@ -1,9 +1,13 @@
+const $ = a => document.querySelectorAll(a);
+
 let dir = {
 	local : () => origin == 'https://matidragon-yt.github.io' ? origin+'/page/' : origin+'/',
 	imagen : () => dir.local() + 'static/images/',
 	hash : {
-		get : () => window.location.hash,
-		clear : () => {history.pushState('', document.title, window.location.pathname)}
+		current : () => window.location.hash,
+		clear : () => {
+			history.pushState('', document.title, window.location.pathname)
+		}
 	}
 }
 
@@ -11,26 +15,31 @@ let doc = {
 	header : () => document.title.split(" - "),
 	title : () => doc.header()[0],
 	subtitle : () => doc.header()[1],
-	description : () => document.querySelector("meta[name='description']").getAttribute("content") || "MatiDragon",
+	description : () => {
+		let d = $("meta[name='description']")[0]
+		return (d != null)
+			? d.getAttribute("content")
+			: "MatiDragon"
+	},
 	pre : {
-		hide : function (area){
+		hide : area => {
 			document.getElementById(area).style.display='none';
 			dir.hash.clear();
 		},
-		show : (area) => {
+		show : area => {
 			let bgColor = 'green'
 			if (event.currentTarget.classList.contains(bgColor)) {
 				event.currentTarget.classList.remove(bgColor);
 				doc.pre.hide(area)
 			}
 			else{
-				let i, x, tablinks;
-				x = document.getElementsByClassName("tabArea");
-				for (i = 0; i < x.length; i++) {
-					x[i].style.display = "none";
-				}
-				tablinks = document.getElementsByClassName("tab");
-				for (i = 0; i < x.length; i++) {
+				let i,
+					d = document.getElementsByClassName("tabArea"),
+					l = d.length,
+					tablinks = document.getElementsByClassName("tab")
+				;
+				for (i = 0; i < l; i++) {
+					d[i].style.display = "none";
 					tablinks[i].classList.remove(bgColor);
 				}
 				document.getElementById(area).style.display = "block";
