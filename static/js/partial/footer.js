@@ -30,4 +30,4 @@ document.write(`
 	</footer>
 `)
 
-if (dir.hash.current()) {document.querySelector(`[href="${dir.hash.current()}"`).click()}
+if (dir.hash.current()) {$(`[href="${dir.hash.current()}"`)[0].click()}
