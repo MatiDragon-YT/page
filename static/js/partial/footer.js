@@ -9,14 +9,13 @@ document.write(`
 				<div class="col-6 col-sm-6 col-md-3 col-lg-3 col-xl-2">
 					<h5>Direcciones</h5>
 					<a href="https://gtainside.com/user/MatiDragon" target="_black">GTAinside</a><br>
-					<a href="https://instagram.com/matidragon_x2/" target="_black">Instagram</a><br>
+					<a href="https://github.com/MatiDragon-YT" target="_black">GitHub</a><br>
 					<a href="https://youtube.com/c/MatiDragon" target="_black">YouTube</a><br>
 				</div>
 				<div class="col-6 col-sm-6 col-md-3 col-lg-3 col-xl-2">
 					<h5>Frameworks</h5>
 					<a href="https://getbootstrap.com" target="_black" title="CSS">Bootstrap 5</a><br>
-					<a href="https://materializecss.com/" target="_black" title="CSS">Materialize CSS</a><br>
-					<a href="https://jquery.com" target="_black" title="JS">JQuery</a><br>
+					<a href="https://materializecss.com/" target="_black" title="CSS">Materialize CSS</a>
 				</div>
 			</div>
 			<div class="divider"></div>
@@ -31,6 +30,4 @@ document.write(`
 	</footer>
 `)
 
-
-const class$ = a => document.getElementsByClassName(a);
-if (dir.hash.get()) {document.querySelector(`[href="${dir.hash.get()}"`).click()}
+if (dir.hash.current()) {document.querySelector(`[href="${dir.hash.current()}"`).click()}
