@@ -15,15 +15,15 @@
 .
 Con el SB abierto, hasemos click en <code>Archivo -> Abrir...</code> y buscamos el <code>main.scm</code> en la carpeta del juego en: <code>/data/script/</code>, sin olvidar indicar el formato **SCM** en el filtrador de archivos. De lo contrario, no te aparecerá.
 .
-<div class=dan>Hagan copia de seguridad del <code>main.scm</code> y <code>script.img</code></div>
+|dan Hagan copia de seguridad del <code>main.scm</code> y <code>script.img</code>
 .
 Ya lo abriste? Viste la cantidad de líneas que hay? Te dejan sin aliento, verdad? Imagina el tiempo que tomo!
 .
 Bueno, seleccionemos todo con <code>CTRL</code>+<code>A</code> y presionaremos CUALQUIER TECLA para borrar todo.
 .
-Ahora que el script(<b>guión</b> en español) está vacío, ya puedes hacer algo por tu cuenta! Pero para trabajar en el guión, mínimo debes proporcionar algo información obligatoria.<br />
+Ahora que el script(<b>guión</b> en español) está vacío, ya puedes hacer algo por tu cuenta! Pero para trabajar en el guión, mínimo debes proporcionar algo información obligatoria.
+.
 Copia estas líneas:
-
 <script>doc.pre.insert(1,`//-------------HEADER-------------
 
 DEFINE MISSIONS 0
@@ -90,51 +90,50 @@ DEFINE UNKNOWN_THREADS_MEMORY 0
 004E: terminate_this_script`)</script>
 .
 Luego compile el script e inicie el juego.
-<div class=dan>al editar el script principal, deben iniciar una nueva partida.</div>
+|dan Al editar el script principal, deben iniciar una nueva partida.
 De seguro la mayoría de ustedes se han dado cuenta de que no hay intro ni objetivos.
-<div class=inf>Esto por que la ejecución de todos estos comienza en el <code class=sb3>'MAIN'</code>.</div>
+|inf Esto por que la ejecución de todos estos comienza en el <code class="sb3">'MAIN'</code>.
 
 #### ¿Qué es un procedimiento?
 Digamos que es un bloque separado en el que se realizan algunas acciones a través de un flujo de lectura.
 .
 Estos al igual que las personas, tienen su propio nombre.
 
-<div class=dan>No puede crear 2 procedimientos con un mismo nombre, tampoco con más de 15 caracteres, ni con letras fuera del Ingles.</div>
+|dan No puede crear 2 procedimientos con un mismo nombre, tampoco con más de 15 caracteres, ni con letras fuera del Ingles.
 .
 Estos los recomiendo que lo hagan con 7 carácteres.
-
 #### ¿Qué es un flujo?
 Por empezar, cada procedimiento ya se crea con un flujo.
 .
 Estos se inician con un mismo comando:
-
 <script>doc.pre.insert(2,`thread 'EJEMPLO'`,
 `03A4: script_name 'EJEMPLO'`)</script>
 .
 Aquí <code class=sb3>'EJEMPLO'</code> es el nombre de nuestro flujo, y lo finalizamos con este comando:
-
 <script>doc.pre.insert(3,`end_thread`,
 `004E: terminate_this_script`)</script>
 .
 Creo que estos comandos son muy fáciles de recordarár
-
 #### ¿Qué es una etiqueta?
 En resumen las etiquetas forman la base de la codificación.
 .
-Estas solo crean con el símbolo de los 2 puntos(<code class=sb3>:</code>) al principio e ingresando el nombre que le desees dar para identificarla:
+Nos permite no solo crear pequeñas regiones de codigo para algo, sino tambien como punto de redirección para la manipulación de condiciones y bucles. 
+##### Sintaxis
+
+```txt
+:&lt;name&gt;&lt;id&gt;```
+
+- `name` : Cualquier nombre para región.
+- `id` : Cualquier identificador para región.
 
 ```sb3
 :EJEMPLO```
-<div class=inf>Por lo general se sigue esta sintaxis:
-``` 
-:{nombre del flujo}[_id]```
-El id puede ser cualquier numero, letra o simbolo.</div>
-<div class=dan>Si borras el codigo fuente, estas se formatean sigiendo sintaxis estandar</div>
-</li>
-<li>Desde un punto de vista técnico, la etiqueta es un desplazamiento en el archivo <code class=sb3>main.scm</code> y representa un número normal. En otros asuntos, esto no es importante para nosotros, ya que SB calcula todos los resultados por su cuenta, según nuestras etiquetas.
-</li>
-<li>Un buen ejemplo de como escribir un flujo con etiquetas, sería el siguiente:
 
+|dan Si borras el codigo fuente, estas se formatean sigiendo sintaxis estandar.
+
+Desde un punto de vista técnico, la etiqueta es un desplazamiento en el archivo <code class=sb3>main.scm</code> y representa un número normal. En otros asuntos, esto no es importante para nosotros, ya que SB calcula todos los resultados por su cuenta, según nuestras etiquetas.
+.
+Un buen ejemplo de como escribir un flujo con etiquetas, sería el siguiente:
 <script>doc.pre.insert('4',`:PARTE
 thread 'PARTE'
 
@@ -156,12 +155,11 @@ end_thread`,
 
 004E: terminate_this_script`)</script>
 .
-Todos los scripts se basan en una línea de información para la lectura. Es decir, que un comando va en una sola línea.<br />
+Todos los scripts se basan en una línea de información para la lectura. Es decir, que un comando va en una sola línea.
+.
 En el ejemplo, se muestra que primero se ejecutará los comandos de la etiqueta <code class=sb3>:PARTE_1</code>, luego <code class=sb3>:PARTE_2</code> y después <code class=sb3>:PARTE_3</code>.
-<div class=inf>Naturalmente, puede cambiar el orden de las etiquetas, sin cambiar su posición.</div>
+|inf Naturalmente, puede cambiar el orden de las etiquetas, sin cambiar su posición.
 Para esto, sirve el comando <code class=sb3>jump</code>. Si lo traducimos literalmente, esto significa Saltar. A continuación, usaremos esta expresión. Bueno, primero escribire un ejemplo donde se usan saltos:
-
-
 <script>doc.pre.insert('5',`:PARTE
 thread 'PARTE'
 	jump @PARTE_4
@@ -198,7 +196,8 @@ end_thread`,
 	:PARTE_5
 004E: terminate_this_script`)</script>
 .
-Dificil, no?<br />
+Dificil, no?
+.
 Imaginemos una bolita y llamémosle "Puntero".
 .
 Bueno esta bola tiene un cierto camino por recorrer. Nuestra bola comienza su camino desde el nombre del procedimiento, es decir, desde el comando <code class=sb3>thread</code>, y comienza a bajar.
@@ -221,14 +220,12 @@ Suele aparecer después del nombre de la etiqueta. No siempre deben estar ahí, 
 Técnicamente, no hay diferencia entre los opcodes y los comandos: el comando tiene una sintaxis simplificada, pero se reemplaza con un opcode durante la conversión. Un opcode(código de operación) es un comando(código operativo)
 .
 Para iniciar nuestra lectura, es decir, para llamar a nuestra bola para que comience, se usa el siguiente comando:
-
 <script>doc.pre.insert('7',`create_thread @PARTE`,
 `004F: start_new_script @PARTE`)</script>
 .
 PARTE es el nombre del procedimiento para comenzar
 .
 De hecho, activa el flujo. Por lo tanto, escribimos el inicio correcto del procedimiento
-
 <script>doc.pre.insert('8',`//-------------HEADER-------------
 
 DEFINE MISSIONS 0
@@ -348,10 +345,10 @@ DEFINE UNKNOWN_THREADS_MEMORY 0
 004E: terminate_this_script`)</script>
 .
 Por supuesto, nuestro ejemplo no tiene sentido, pero creo que ha adquirido la experiencia necesaria en la escritura de flujos.
-<div class=dan>El comando para iniciar el procedimiento se debe dar en el procedimiento activo , de lo contrario, ¡el procedimiento no se iniciará!</div>
+|dan El comando para iniciar el procedimiento se debe dar en el procedimiento activo , de lo contrario, ¡el procedimiento no se iniciará!
 .
 En nuestro caso, el procedimiento se llama desde el procedimiento activo <code class=sb3>'MAIN'</code>, y cuando el procedimiento se inicia con el comando <code class=sb3>thread</code>, entonces el procedimiento llamado se activa, por así decirlo, se llama cuando la bola está en progreso :)
-<div class=inf>Sanny Builder ignora las líneas en blanco y solo son cosméticas.</div>
+|inf Sanny Builder ignora las líneas en blanco y solo son cosméticas.
 </markdown></div>
 <script src="../static/js/partial/widgets.js"></script>
 </div></div>
