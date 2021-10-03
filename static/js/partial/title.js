@@ -3,7 +3,7 @@ document.write(`
 <main>
 <div class="section no-pad-bot" id="index-banner">
 <div class="container"><div class="row">
-<div class="col-12 col-lg-9 col-xxl-10"><markdown class="markdown">
+<div class="col-12 col-lg-9 col-xxl-10"><markdown>
 <h3>${doc.title()}</h3>
 ${sub}
 <p class="flow-text light">${doc.description()}</p>
