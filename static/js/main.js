@@ -17,33 +17,34 @@ let doc = {
 	subtitle : () => doc.header()[1],
 	description : () => {
 		let d = $("meta[name='description']")[0]
-		return (d != null)
+		return d != null
 			? d.getAttribute("content")
 			: "MatiDragon"
 	},
+	displayId: (id, mode) => document.getElementById(id).style.display=mode,
 	pre : {
 		hide : area => {
-			document.getElementById(area).style.display='none';
+			doc.displayId(area,'none');
 			dir.hash.clear();
 		},
 		show : area => {
-			let bgColor = 'green'
-			if (event.currentTarget.classList.contains(bgColor)) {
-				event.currentTarget.classList.remove(bgColor);
-				doc.pre.hide(area)
-			}
-			else{
-				let i,
-					d = document.getElementsByClassName("tabArea"),
+			const
+				bgColor = 'green',
+				clase = event.currentTarget.classList;
+			if (clase.contains(bgColor)) {
+				clase.remove(bgColor);
+				doc.pre.hide(area);
+			}else{
+				let i = 0,
+					d = $(".tabArea"),
 					l = d.length,
-					tablinks = document.getElementsByClassName("tab")
-				;
-				for (i = 0; i < l; i++) {
+					tablinks = $(".tab");
+				for (i; i < l; i++) {
 					d[i].style.display = "none";
 					tablinks[i].classList.remove(bgColor);
 				}
-				document.getElementById(area).style.display = "block";
-				event.currentTarget.classList.add(bgColor);
+				doc.displayId(area,'block');
+				clase.add(bgColor);
 			}
 		},
 		insert : (ident, areaA, areaB) => {
