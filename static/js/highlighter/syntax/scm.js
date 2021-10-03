@@ -1,6 +1,6 @@
 function scm () {
-	for (let i = 0;i < class$("scm").length; i++) { 
-		let element = class$("scm")[i];
+	for (let i = 0;i < $(".scm").length; i++) { 
+		let element = $(".scm")[i];
 		element.innerHTML = element.innerHTML
 			/*** HEADER ***/
 			.replace(/(\B\;|\s\/\/)(.*)(\n)/gm, "<i class=grey-text>$1$2$3<\/i>")

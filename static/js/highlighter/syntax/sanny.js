@@ -1,6 +1,6 @@
 function sanny () {
-	for (let i = 0;i < class$("sb3").length;i++){ 
-		let element = class$("sb3")[i];
+	for (let i = 0;i < $(".sb3").length;i++){ 
+		let element = $(".sb3")[i];
 		element.innerHTML = element.innerHTML
 			/*** COMMENTS ***/
 			.replace(/(\/\/.+)/gm, `<hlC>$1</hlC>`)
