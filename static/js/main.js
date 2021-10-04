@@ -1,7 +1,11 @@
-const $ = a => document.querySelectorAll(a);
+const $ = element => document.querySelectorAll(element);
 
 let dir = {
-	local : () => origin == 'https://matidragon-yt.github.io' ? origin+'/page/' : origin+'/',
+	local : () =>
+		origin == 'https://matidragon-yt.github.io'
+			? origin + '/page/'
+			: origin + '/'
+	,
 	imagen : () => dir.local() + 'static/images/',
 	hash : {
 		current : () => window.location.hash,
@@ -16,23 +20,23 @@ let doc = {
 	title : () => doc.header()[0],
 	subtitle : () => doc.header()[1],
 	description : () => {
-		let d = $("meta[name='description']")[0]
-		return d != null
-			? d.getAttribute("content")
+		let element = $("meta[name='description']")[0]
+		return element != null
+			? element.getAttribute("content")
 			: "MatiDragon"
 	},
-	displayId: (id, mode) => document.getElementById(id).style.display=mode,
+	displayId: (id, mode) => document.getElementById(id).style.display = mode,
 	pre : {
 		hide : area => {
 			doc.displayId(area,'none');
 			dir.hash.clear();
 		},
 		show : area => {
-			const
-				bgColor = 'green',
-				clase = event.currentTarget.classList;
-			if (clase.contains(bgColor)) {
-				clase.remove(bgColor);
+			let
+				background = 'green',
+				element = event.currentTarget.classList;
+			if (element.contains(background)) {
+				element.remove(background);
 				doc.pre.hide(area);
 			}else{
 				let i = 0,
@@ -41,20 +45,20 @@ let doc = {
 					tablinks = $(".tab");
 				for (i; i < l; i++) {
 					d[i].style.display = "none";
-					tablinks[i].classList.remove(bgColor);
+					tablinks[i].classList.remove(background);
 				}
 				doc.displayId(area,'block');
-				clase.add(bgColor);
+				element.add(background);
 			}
 		},
 		insert : (ident, areaA, areaB) => {
 			document.write(`
 			<div class="row">
 				<div class="col-12"><ul class="tabs">
-				<li class="tab codigo" onclick="doc.pre.show('scm${ident}')"><a href="#!scm${ident}">SCMTOOL</a></li>
-				<li class="tab codigo" onclick="doc.pre.show('opc${ident}')"><a href="#!opc${ident}">OPCODES</a></li>
-				<li class="tab disabled right pt-2"><a><icon>code</icon></a></li></ul>
-			</div>
+					<li class="tab codigo" onclick="doc.pre.show('scm${ident}')"><a href="#!scm${ident}">SCMTOOL</a></li>
+					<li class="tab codigo" onclick="doc.pre.show('opc${ident}')"><a href="#!opc${ident}">OPCODES</a></li>
+					<li class="tab disabled right pt-2"><a><icon>code</icon></a></li>
+				</ul></div>
 				<div id="scm${ident}" class="col-12 tabArea w3-animate-left">
 					<preHide><icon onclick="doc.pre.hide('scm${ident}')">close</icon></preHide>\`\`\`sb3\n${areaA}\`\`\`
 				</div>
@@ -83,10 +87,10 @@ document.write(`
 	<meta name="msapplication-TileImage" content="${dir.imagen()}icon/144x144.png">
 	<link rel="apple-touch-icon-precomposed" href="${dir.imagen()}icon/152x152.png">
 	<link rel="icon" href="${dir.imagen()}icon/32x32.png" sizes="32x32">
-	<link rel="icon" href="${dir.imagen()}icon/48x48.png" sizes="48x48" >
-	<link rel="icon" href="${dir.imagen()}icon/96x96.png" sizes="96x96" >
-	<link rel="icon" href="${dir.imagen()}icon/144x144.png" sizes="144x144" >
-	<link rel="shortcut icon" href="${dir.imagen()}icon/favicon.ico" type="image/x-icon" >
+	<link rel="icon" href="${dir.imagen()}icon/48x48.png" sizes="48x48">
+	<link rel="icon" href="${dir.imagen()}icon/96x96.png" sizes="96x96">
+	<link rel="icon" href="${dir.imagen()}icon/144x144.png" sizes="144x144">
+	<link rel="shortcut icon" href="${dir.imagen()}icon/favicon.ico" type="image/x-icon">
 	<!-- CSS-->
 	<link href="${dir.local()}static/css/main.css" type="text/css" rel="stylesheet" media="screen,projection,print">
 	<link rel="manifest" href="${dir.local()}manifest.json">
