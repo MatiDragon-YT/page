@@ -1,4 +1,17 @@
-const $ = element => document.querySelectorAll(element);
+/** 
+# RULES
+=
+| They should all start with a capital letter, except for the objects.
+| The constants of a value or enumeration must be in uppercase.
+| Only objects must end with a semicolon at the end of the braces.
+| Exceeding 90 characters per line is not allowed, except for templates.
+| Always leave spaces between the operators and their values.
+*/
+
+let $ = Element => Element[0] == '#'
+		? document.querySelector(Element)
+		: document.querySelectorAll(Element),
+	_ = Message => console.log(Message);
 
 let dir = {
 	local : () =>
@@ -20,35 +33,34 @@ let doc = {
 	title : () => doc.header()[0],
 	subtitle : () => doc.header()[1],
 	description : () => {
-		let element = $("meta[name='description']")[0]
-		return element != null
-			? element.getAttribute("content")
+		let Element = $("meta[name='description']")[0]
+		return Element != null
+			? Element.getAttribute("content")
 			: "MatiDragon"
 	},
-	displayId: (id, mode) => document.getElementById(id).style.display = mode,
+	displayId: (id, mode) => $('#'+id).style.display = mode,
 	pre : {
 		hide : area => {
 			doc.displayId(area,'none');
 			dir.hash.clear();
 		},
 		show : area => {
-			let
-				background = 'green',
-				element = event.currentTarget.classList;
-			if (element.contains(background)) {
-				element.remove(background);
+			let Background = 'green',
+				Element = event.currentTarget.classList;
+			if (Element.contains(Background)) {
+				Element.remove(Background);
 				doc.pre.hide(area);
 			}else{
-				let i = 0,
-					d = $(".tabArea"),
-					l = d.length,
-					tablinks = $(".tab");
-				for (i; i < l; i++) {
-					d[i].style.display = "none";
-					tablinks[i].classList.remove(background);
+				let Count = 0,
+					Show = $(".tabArea"),
+					Length = Show.length,
+					TabLinks = $(".tab");
+				for (Count; Count < Length; Count++) {
+					Show[Count].style.display = "none";
+					TabLinks[Count].classList.remove(Background);
 				}
 				doc.displayId(area,'block');
-				element.add(background);
+				Element.add(Background);
 			}
 		},
 		insert : (ident, areaA, areaB) => {
@@ -76,14 +88,16 @@ document.write(`
 	<meta name="Publisher" content="MatiDragon">
 	<meta name="Copyright" content="MatiDragon">
 	<!--  Android 5 Chrome Color-->
-	<meta name="theme-color" content="#FFFFFF">
-	<meta name="msapplication-TileColor" content="#FFFFFF">
+	<meta name="color-scheme" content="dark light">
+	<meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
+	<meta name="theme-color" media="(prefers-color-scheme: dark)" content="black">
+	<meta name="msapplication-TileColor" content="green">
 	<meta name="MobileOptimized" content="width">
 	<meta name="HandheldFriendly" content="true">
 	<meta name="apple-mobile-web-app-capable" content="true">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 	<!-- Favicons-->
-	<meta name="msapplication-TileColor" content="#FFFFFF">
+	<meta name="msapplication-TileColor" content="green">
 	<meta name="msapplication-TileImage" content="${dir.imagen()}icon/144x144.png">
 	<link rel="apple-touch-icon-precomposed" href="${dir.imagen()}icon/152x152.png">
 	<link rel="icon" href="${dir.imagen()}icon/32x32.png" sizes="32x32">
