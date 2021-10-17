@@ -8,9 +8,9 @@
 | Always leave spaces between the operators and their values.
 */
 
-let $ = Element => Element[0] == '#'
-		? document.querySelector(Element)
-		: document.querySelectorAll(Element),
+let $ = Element => Element[0] != '#' || /\s/g.test(Element)
+		? document.querySelectorAll(Element)
+		: document.querySelector(Element)
 	_ = Message => console.log(Message);
 
 let dir = {
