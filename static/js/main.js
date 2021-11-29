@@ -8,10 +8,14 @@
 | Always leave spaces between the operators and their values.
 */
 
-let $ = Element => Element[0] != '#' || /\s/g.test(Element)
-		? document.querySelectorAll(Element)
-		: document.querySelector(Element)
-	_ = Message => console.log(Message);
+const $ = (ELEMENT, _PARENT = document) =>
+	ELEMENT[0] === '#' && !/\s/.test(ELEMENT)
+	|| _PARENT.querySelectorAll(ELEMENT).length === 1
+		? _PARENT.querySelector(ELEMENT)
+		: _PARENT.querySelectorAll(ELEMENT)
+
+const _ = (MESSAGE, _CSS = '') =>
+	console.log((_CSS != '' ? '%c' : '') + MESSAGE, _CSS)
 
 let dir = {
 	local : () =>
@@ -33,7 +37,7 @@ let doc = {
 	title : () => doc.header()[0],
 	subtitle : () => doc.header()[1],
 	description : () => {
-		let Element = $("meta[name='description']")[0]
+		let Element = $("meta[name='description']")
 		return Element != null
 			? Element.getAttribute("content")
 			: "MatiDragon"

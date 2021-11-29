@@ -1,6 +1,42 @@
-if (dir.hash.current()) {$(`[href="${dir.hash.current()}"`)[0].click()}
-let mk = $("markdown")[0] || null;
-if (mk != null) {
+document.write(`
+	<footer class="page-footer docs-footer">
+		<div class="container-fluid">
+			<div class="row">
+				<div class="col-12 col-md-6 col-lg-6 col-xl-8">
+					<h4>Que es este lugar?</h4>
+					<p>Actualmente es un sitio para compartir mis herramientas y modificaciones para la saga de Grand Theft Auto 3D.<br>Deseando mayor entretenimiento y diverción a todos los fans.</p>
+				</div>
+				<div class="col-6 col-sm-6 col-md-3 col-lg-3 col-xl-2">
+					<h5>Direcciones</h5>
+					<a href="https://gtainside.com/user/MatiDragon" target="_black">GTAinside</a><br>
+					<a href="https://github.com/MatiDragon-YT" target="_black">GitHub</a><br>
+					<a href="https://youtube.com/c/MatiDragon" target="_black">YouTube</a><br>
+				</div>
+				<div class="col-6 col-sm-6 col-md-3 col-lg-3 col-xl-2">
+					<h5>Frameworks</h5>
+					<a href="https://getbootstrap.com" target="_black" title="CSS">Bootstrap 5</a><br>
+					<a href="https://materializecss.com/" target="_black" title="CSS">Materialize CSS</a>
+				</div>
+			</div>
+			<div class="divider"></div>
+			<div class="footer-copyright">
+				<div class="container-fluid center">
+					<p><span class="float-md-left">© 2017-${(new Date).getFullYear()} MatiDragon, All rights reserved with love.</span>
+					<a href="${dir.local()}LICENSE" class="grey-text float-md-right">CC0-1.0 License</a></p>
+				</div>
+			</div>
+		<div class="p-1"></div>
+		<div class="divider"></div>
+	</footer>
+`)
+
+if (dir.hash.current()) {
+	$(`[href="${dir.hash.current()}"`).click()
+}
+
+const mk = $("markdown")
+
+if (mk) {
 	mk.innerHTML = mk.innerHTML
 	/*** SPECIAL ***/
 	.replace('{{title}}', doc.title())
@@ -38,35 +74,3 @@ if (mk != null) {
 	.replace(/```(sb3|ini|fxt|csm|txt|\s)!?\s([\x09-\x5F\x61-\xFF]*)```/g, '<pre class="$1">$2</pre>')
 	.replace(/`([\x09-\x5F\x61-\xFF]+)`/g, '<code>$1</code>')
 }
-
-document.write(`
-	<footer class="page-footer docs-footer">
-		<div class="container-fluid">
-			<div class="row">
-				<div class="col-12 col-md-6 col-lg-6 col-xl-8">
-					<h4>Que es este lugar?</h4>
-					<p>Actualmente es un sitio para compartir mis herramientas y modificaciones para la saga de Grand Theft Auto 3D.<br>Deseando mayor entretenimiento y diverción a todos los fans.</p>
-				</div>
-				<div class="col-6 col-sm-6 col-md-3 col-lg-3 col-xl-2">
-					<h5>Direcciones</h5>
-					<a href="https://gtainside.com/user/MatiDragon" target="_black">GTAinside</a><br>
-					<a href="https://github.com/MatiDragon-YT" target="_black">GitHub</a><br>
-					<a href="https://youtube.com/c/MatiDragon" target="_black">YouTube</a><br>
-				</div>
-				<div class="col-6 col-sm-6 col-md-3 col-lg-3 col-xl-2">
-					<h5>Frameworks</h5>
-					<a href="https://getbootstrap.com" target="_black" title="CSS">Bootstrap 5</a><br>
-					<a href="https://materializecss.com/" target="_black" title="CSS">Materialize CSS</a>
-				</div>
-			</div>
-			<div class="divider"></div>
-			<div class="footer-copyright">
-				<div class="container-fluid center">
-					<p><span class="float-md-left">© 2017-${(new Date).getFullYear()} MatiDragon, All rights reserved with love.</span>
-					<a href="${dir.local()}LICENSE" class="grey-text float-md-right">CC0-1.0 License</a></p>
-				</div>
-			</div>
-		<div class="p-1"></div>
-		<div class="divider"></div>
-	</footer>
-`)
