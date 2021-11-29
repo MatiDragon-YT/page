@@ -4,77 +4,14 @@
 | They should all start with a capital letter, except for the objects.
 | The constants of a value or enumeration must be in uppercase.
 | Only objects must end with a semicolon at the end of the braces.
-| Exceeding 90 characters per line is not allowed, except for templates & regex.
+| Exceeding 90 characters per line is not allowed, except for templates.
 | Always leave spaces between the operators and their values.
-
-## SETTINGS
-| Tab Size: 4
-| camelCase: 
-| PascalCase:
-| SNAKE_CASE: 
 */
 
-const _ = MESSAGE => console.log(MESSAGE)
-
-const $ = (ELEMENT, PARENT = document) =>
-		ELEMENT[0] === '#' && !/\s/.test(ELEMENT)
-		|| PARENT.querySelectorAll(ELEMENT).length === 1
-			? PARENT.querySelector(ELEMENT)
-			: PARENT.querySelectorAll(ELEMENT)
-
-/** GET/SET values CSS
- * WORKER: Array of two params. The Element and the object of properties.
- * SET: css( [$('body'), {background: 'green', color: 'white'}], atr[n]... )
- * GET: css( [$('body'), 'background'], atr[n]... )
-*/
-const css = (...WORKER) => {
-	const LENGTH = WORKER.length
-
-	let values = []
-
-	for (let COUNTER = 0; COUNTER < LENGTH; COUNTER++){
-		const [ELEMENT, PROPERTIES] = WORKER[COUNTER]
-		const TYPE = typeof PROPERTIES
-
-		if (TYPE === 'object') {
-			for (let SELECTOR in PROPERTIES) {
-		    	ELEMENT.style[SELECTOR] = PROPERTIES[SELECTOR];
-		    }
-		}
-		else if (TYPE === 'string') {
-			values.push(
-				getComputedStyle(ELEMENT)
-				.getPropertyValue(PROPERTIES)
-			)
-			if(COUNTER == LENGTH - 1){
-				return values.length == 1
-					? values[0]
-					: values
-			}
-		}
-		else {
-			_('Enter OBJECT for set properties or STRING for get.')
-		}
-	}
-}
-
-function keyPressed(VIRTUAL_KEY, CALLBACK) {
-	window.onkeydown = (EVENT) => {
-		if (EVENT.keyCode === VIRTUAL_KEY){
-			CALLBACK()
-		}
-	}
-}
-
-const file = {
-	get : async function (INFO, CALLBACK) {
-		const TYPE = INFO.type || 'text'
-		return await fetch(INFO.url)
-					 .then(RES => TYPE == 'json' ? RES.json() : RES.text())
-					 .then(DATA => CALLBACK(DATA))
-					 .catch(ERROR => _(ERROR))
-	}
-}
+let $ = Element => Element[0] != '#' || /\s/g.test(Element)
+		? document.querySelectorAll(Element)
+		: document.querySelector(Element)
+	_ = Message => console.log(Message);
 
 let dir = {
 	local : () =>
