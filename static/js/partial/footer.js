@@ -1,5 +1,7 @@
-if (dir.hash.current()) {$(`[href="${dir.hash.current()}"`)[0].click()}
-let mk = $("markdown")[0] || null;
+if (dir.hash.current()) {
+	$(`[href="${dir.hash.current()}"`).click()
+}
+let mk = $("markdown") || null;
 if (mk != null) {
 	mk.innerHTML = mk.innerHTML
 	/*** SPECIAL ***/
