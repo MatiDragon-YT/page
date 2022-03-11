@@ -47,6 +47,32 @@ const exROOT = function(){
 	return 'file:///' + location.href.substring(X, Y) + "/files/"
 }()
 
+$('head').innerHTML = $('head').innerHTML + `
+	<meta name="Author" content="MatiDragon">
+	<meta name="Publisher" content="MatiDragon">
+	<meta name="Copyright" content="MatiDragon">
+	<!--  Android 5 Chrome Color-->
+	<meta name="color-scheme" content="dark light">
+	<meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
+	<meta name="theme-color" media="(prefers-color-scheme: dark)" content="black">
+	<meta name="msapplication-TileColor" content="green">
+	<meta name="MobileOptimized" content="width">
+	<meta name="HandheldFriendly" content="true">
+	<meta name="apple-mobile-web-app-capable" content="true">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<!-- Favicons-->
+	<meta name="msapplication-TileColor" content="green">
+	<meta name="msapplication-TileImage" content="${ROOT}static/images/icon/144x144.png">
+	<link rel="apple-touch-icon-precomposed" href="${ROOT}static/images/icon/152x152.png">
+	<link rel="icon" href="${ROOT}static/images/icon/32x32.png" sizes="32x32">
+	<link rel="icon" href="${ROOT}static/images/icon/48x48.png" sizes="48x48">
+	<link rel="icon" href="${ROOT}static/images/icon/96x96.png" sizes="96x96">
+	<link rel="icon" href="${ROOT}static/images/icon/144x144.png" sizes="144x144">
+	<link rel="shortcut icon" href="${ROOT}static/images/icon/favicon.ico" type="image/x-icon">
+	<!-- CSS-->
+	<link rel="manifest" href="${ROOT}manifest.json">
+`
+
 var CSS = {
 	Add: function(styles){STYLES.innerHTML += styles},
 	Remove: function(styles){STYLES.innerHTML = STYLES.innerHTML.r(styles, "")}
