@@ -1,9 +1,5 @@
-// GLOBAL VERSION OF THE CHM
-const VERSION = "1.15";
-
-function log(value){
-	console.log(value)
-}
+const log = (MESSAGE) =>
+	console.log(MESSAGE)
 
 // GLOBAL VARS
 const EMOJIS = {
@@ -381,18 +377,13 @@ SP.toMarkdown = function(){
 
 	// PRE
 	.r(/```([^`]*)```/g, function(input){
+		input = input.match(/(```([\w\d\x20\-_]+)((#[\w\d\-_]+)\n)?)([^`]*)```/)
 
-		var display = input
-			.r(/```(\w+)?\n([^`]*)```/, '$2').parseHTML()
+		let eClass = input[2],
+			eId = input[4] || '',
+			eText = input[5]
 
-		function getLang(){
-			if(/```(\w+)\n/.test(input)){
-				return input.match(/```(\w+)\n/)[1]
-			}
-			return ''
-		}
-
-		return '<pre class="' + getLang() + '">' + display + '</pre>'
+		return `<pre id='${eId.r('#', '')}' class='${eClass}'>${eText}</pre>`
 	})
 
 	// CODE
