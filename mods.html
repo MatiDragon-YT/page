@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<title>Mods</title>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" type="text/css" href="./css/main.css">
+</head>
+<body>
+
+[h1][Mods]
+
+:::d-flex wrap#db
+:::
+
+<script src="./js/main.min.js"></script>
+<script>
+/*Girar en el aire
+Salto en Moto
+Doc. Oficial      | Ademas de mejoras de optimizacion para los colaboradores y los usuarios, esta trae herramien...
+Resalta codigo    | Extención unica para Sublime Text 4 que nos permitira resaltar codigo de Sanny Builder 3.8, ...
+*/
+const DB = 
+`Teleports        | Viaje a cualquier parte del mundo y dele retorno al viaje cuando lo desees con un unico boto...
+Car Controller    | Como Zeti's Car Control pero con algo más de control, y creado con sintaxis de alto nivel, p...
+SCMTool           | Este es un pequeño paquete que recopila mis modificasiones para SB3, agregando 1 documentaci...
+Doc. Moderna      | Mayor contenido que la antecesora, junto a una optimizacion de la p#ta madre para todas tus ...
+FPS para Parodias | A diferencia de su hermana "FPS de Reserva", este activa el modo cinematico junto con la eli...
+Sultan con Rampa  | Inspirado en Rapido y Furioso 6. Este mod nos permitira aparecer un Sultan con una Rampa del...
+Ponerse Casco     | Inspirado en GTA5. Al subirse a una moto/bici, un casco aparece en la mano del jugador, y pr...
+ENB Parallax      | Este aunque trabaja en ENB-Series, añade unos efectos graficos, que no muchos trae, esto deb...
+Opty RenderHook   | Se trata del mismo mod, pero optimizado en un solo paquete para una instalacion rapida y fue...
+Armas Mejoradas   | Inspirado en Far Cry 3. Este mod se encarga de generar unas llaradas en la parte trasera de ...
+Cambiar Armas     | Un simple hack para tener todas las armas del juego, facilmente. Avanzando y retrocediendo e...
+Carrera Desertica | Se trata de un mod que agrega una mision de carrera, asi es, escuchaste muy bien, y no te pr...
+FPS de Reservas   | Con este mod, podremos casi duplicar la taza de FPS en un segundo. Al inicial el mismo juego...
+Doc. Clasica      | La documentación original de Sanny Builder, traducida al español con nuevo contenido para tu...
+Entrar al Garaje  | Con este grandioso mod, podremos acceder al interior del Garaje de Doherty sin la necesidad ...`
+.split('\n')
+
+
+
+let cont = 0
+DB.forEach((e, i) => {
+e = e.split('|')
+let mod = (DB.length - i).toString(36)
+let template = `
+:::col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2 p-2
+<a href='mods/${mod}.html' class='d-flex w-100 no-decoration white' style='height:100%'>
+:::p-2 bg-black-2
+![](static/images/builds/${mod}.webp)
+#### ${e[0].trim()}
+**${e[1].trim()}**
+:::
+</a>
+:::
+`.toMarkdown()
+
+	setTimeout(()=>{db.innerHTML += template}, cont += 83)
+	
+})
+</script>
+<style>
+.bg-black-2 img {
+    box-shadow: 1px 1px 2px #000d;
+    border-top: solid 1px #0d1117;
+    border-left: solid 1px #0d1117;}
+</style>

@@ -1,0 +1,159 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>SCMTool</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" href="../css/main.css">
+</head>
+<body>
+[h1][SCMTool]
+
+:::d-flex wrap
+:::col-12 col-md-8
+[flow-text light][Este es un pequeño paquete que recopila mis modificasiones para SB3]
+
+#### Se incluye
+* Una documentación detallada sobre SB y GTA SA.
+* Traducción precisa de todo el IDE al Español Latino.
+* Más de 80 clases, 2000 miembros y 100 enumeraciones.
+* Unos cuantos temas de colores frescos y simples de gran calidad.
+* Ayuda para SAMP Funcs, CLEO Plus, CLEO ImGui, New Opcodes y Shader API.
+
+:::warning
+Estas modificaciones se realiza sobre Sanny Builder y pueden probocar que algunos Scripts ya no sean re-compilable con el codigo fuente originario.
+Recomiendo que hagan siempre las descompilaciones, sin el uso esta. Para de esta forma obtener las Clases y Palabras Claves corresponde a cada Opcode.
+Si actualizo SCMTool, use antes la directiva [code variables][{$NOSOURCE}] para actualizar automaticamente los comandos.
+
+```sb3
+{$CLEO}
+{$NOSOURCE}
+thread 'EXAMPLE'
+while true
+    0@ = Actor.Create(PedType.Gang2, #FAM1, 1524.823, -2433.53, 13.5547)
+    
+    repeat
+        wait 0
+    until Key.isPressed(VK.R)
+    
+    Actor.Release(0@)
+end
+```
+:::
+
+:::center p-5
+[descargar](https://drive.google.com/file/d/1ApsYzB-F_lP-do73XS2SiPK_BU5ZZYlo/view "button")
+:::
+
+Google, marca por error al archivo como un Virus y podria dificultarle su descarga, pero no tiene nada que temer.
+Puede contar con los enlaces de descarga encontrados en los repositorios de los mismos proyectos:
+
+Documentacion Traducida;
+- [Oficial](https://github.com/MatiDragon-YT/help-system)
+- [Moderna](https://github.com/MatiDragon-YT/doc-chm)
+- [Clasica](%g/mods/2.md)
+[Correccion de Idioma](https://github.com/MatiDragon-YT/translations).\
+[Nuevos OPs, classes, etc](https://github.com/MatiDragon-YT/data).\
+[Nuevos temas de colores](https://github.com/MatiDragon-YT/themes).
+
+:::
+:::col-12 col-md-4
+
+## Temas de Colores
+[h3][Materials]
+
+:::d-flex galeria
+[col-5][ [![img](docs/d/material-bold-dark.webp)](docs/d/material-bold-dark.png) ]
+[col-5][ [![img](docs/d/material-dark.webp)](docs/d/material-dark.png) ]
+[col-5][ [![img](docs/d/material-dracula.webp)](docs/d/material-dracula.png) ]
+[col-5][ [![img](docs/d/material-glacier.webp)](docs/d/material-glacier.png) ]
+[col-5][ [![img](docs/d/material-monokai.webp)](docs/d/material-monokai.png) ]
+[col-5][ [![img](docs/d/material-monokai-soda.webp)](docs/d/material-monokai-soda.png) ]
+[col-5][ [![img](docs/d/material-nodejs.webp)](docs/d/material-nodejs.png) ]
+[col-5][ [![img](docs/d/material-one-dark.webp)](docs/d/material-one-dark.png) ]
+[col-5][ [![img](docs/d/material-light.webp)](docs/d/material-light.png) ]
+:::
+
+[h3][Monochromes]
+
+:::d-flex galeria
+[col-5][ [![img](docs/d/monochrome-magenta.webp)](docs/d/monochrome-magenta.png) ]
+[col-5][ [![img](docs/d/monochrome-blue.webp)](docs/d/monochrome-blue.png) ]
+[col-5][ [![img](docs/d/monochrome-cyan.webp)](docs/d/monochrome-cyan.png) ]
+[col-5][ [![img](docs/d/monochrome-green.webp)](docs/d/monochrome-green.png) ]
+[col-5][ [![img](docs/d/monochrome-yellow.webp)](docs/d/monochrome-yellow.png) ]
+[col-5][ [![img](docs/d/monochrome-red.webp)](docs/d/monochrome-red.png) ]
+:::
+:::
+:::
+
+---
+### Historial
+##### 1.9
+- **`Clases y Opcodes`**.
+- Se les corrigieron todos los errores
+- Se re-organizaron los opcodes que retornaban algo, para estar en el primer lugar
+- **Temas de colores**
+- + Dracula Fest
+- + Drive
+- + Free Day
+- + Today
+##### 1.8
+- * Ayuda fuera de linea.
+- + Traducción del IDE.
+- + Enumeraciones.
+##### 1.7
+- * `classes.db` reorganizado con 100 miembros nuevos.
+- **Temas de colores**
+- * `Material Facebook` -> `Monochrome Blue`
+- + `Monochrome Green`
+- + `Monochrome Cyan`
+- + `Monochrome Yellow`
+- + `Monochrome Red`
+- + `Monochrome Magenta`
+##### 1.6
+- * `classes.db` reorganizado con 200 miembros nuevos.
+- **Temas de colores**
+- + `Material Bold Dark`
+- + `Material Dark`
+- + `Material Dracula`
+- + `Material Glacier`
+- + `Material Facebook`
+- + `Material Light`
+- + `Material Monokai`
+- + `Material Monokai Soda`
+- + `Material NodeJS`
+- + `Material One Dark`
+##### 1.5
+- * `classes.db` reorganizado con 200 miembros nuevos.
+- + `enum.txt` listas de enumeraciones.
+##### 1.4
+- * `classes.db` reorganizado con 200 miembros nuevos.
+##### 1.3
+- * `classes.db` reorganizado con 500 miembros nuevos.
+##### 1.2
+- - `speed` por desuso.
+##### 1.1
+- * `classes.db` reorganizado con 100 miembros nuevos.
+- + `speed` agregado para contener las enumeraciones.
+##### 1.0
+- + `help.chm` para habla Espanas.
+- * `classes.db` con más de 1.000 miembros.
+
+<script src="../js/main.min.js"></script>
+<style>
+.galeria {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: scroll;
+    gap: 1em;
+    margin: 6px 0 -10px;
+    padding: 0px 7px;
+}
+.galeria img {
+    width: 100%;
+    height: auto;
+}
+</style>
