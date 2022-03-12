@@ -23,6 +23,10 @@
 	--hl-strings: #ffd54f;
 	--hl-comments: #919191;
 	--hl-directives: #ffd54f;
+
+	--c-red: #ff5252;
+	--c-blue: #2196f3;
+	--c-green: #00e676;
 }
 
 html {
@@ -250,7 +254,7 @@ a:hover {
 	text-decoration: underline
 }
 a.button {
-    background: #388e3c;
+    background: var(--c-blue);
     color: black;
     padding: .8em 0;
     width: 10rem;
@@ -273,8 +277,8 @@ blockquote {
 }
 
 .warning {
-	border-left: #ff5252 4px solid;
-	color: #ff5252;
+	border-left: var(--c-red); 4px solid;
+	color: var(--c-red);
 }
 
 .info {
@@ -515,16 +519,16 @@ input[type='checkbox']{
 .bg-black-1, .bg-black-1 * {background: var(--bg)}
 .bg-black-2, .bg-black-2 * {background: #121821}
 
-.red, .red  * { color:#ff5252 }
-.bg-red, .bg-red  * { background:#ff5252 }
+.red, .red  * { color:var(--c-red); }
+.bg-red, .bg-red  * { background:var(--c-red); }
 .orange, .orange  * { color:#ffab40 }
 .bg-orange, .bg-orange  * { background:#ffab40 }
-.green, .green  * { color:#00e676 }
-.bg-green, .bg-green  * { background:#00e676 }
+.green, .green  * { color:var(--c-green) }
+.bg-green, .bg-green  * { background:var(--c-green) }
 .yellow, .yellow  * { color:#ffeb3b }
 .bg-yellow, .bg-yellow  * { background:#ffeb3b }
-.blue, .blue  * { color:#2196f3 }
-.bg-blue, .bg-blue  * { background:#2196f3 }
+.blue, .blue  * { color:var(--c-blue); }
+.bg-blue, .bg-blue  * { background:var(--c-blue); }
 .purple, .purple  * { color:#e040fb }
 .bg-purple, .bg-purple  * { background:#e040fb }
 .gray, .gray  * { color:#9e9e9e }

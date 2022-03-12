@@ -1,22 +1,88 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-	<title>Documentacion Oficial</title>
+	<title>Documentación Oficial</title>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" type="text/css" href="../css/main.css">
 </head>
 <body>
-### Documentacion Oficial
-<p class="flow-text">Diseña tu propio guion de forma similar a como diseñas una mision en DYOM, con este mismo y unico CLEO Script OPEN SOURCE</p>
-<div class="video-responsive black"><!--<iframe src="https://www.youtube.com/embed/XXXXXXXXXXX?rel=0" frameborder="0" allowfullscreen></iframe>--></div>
+[h1][Documentación Oficial]
+
+:::d-flex
+:::col-6
+[flow-text light][Ademas de mejoras de optimización para los colaboradores y los usuarios, esta trae herramientas para acelerar el desarrollo de Scripts para principiantes y experimentados.]
+
+:::py-4
+[![Release](https://img.shields.io/github/v/release/MatiDragon-YT/help-system?style=for-the-badge)](https://github.com/MatiDragon-YT/help-system/releases)
+[![Discord](https://img.shields.io/discord/911487285990674473?style=for-the-badge)](https://discord.gg/d5dZSfgBZr)
+:::
+
+[descargar](https://github.com/MatiDragon-YT/help-system/releases/download/1.14/sb-help.zip "button")\
+\
+[h5][Tabla de Contenido]
+* [Instalar](#instalar)
+* [Colaborar](#colaborar)
+  * [Creando paginas](#creando-paginas)
+  * [Reportando problemas](#reportando-problemas)
+* [Gracias](#gracias)
+* [Compilar](#compilar)
+
+:::
+:::col-6 px-4
+![](https://user-images.githubusercontent.com/43966706/153781888-6c426463-fede-4ba7-8439-8927f778554e.png)
+:::
+:::
 
 
-<div class="center p-5"><a 
-	onclick="M.toast({html: 'Su descarga terminara en breve'})" 
-	download  
-	href=""
-	>DESCARGAR
-</a></div>
+### Instalar
+Solo extrae el chm correspondiente a tu lenguaje:
+
+| lenguaje | archivo | estado |
+| --- | --- | --- |
+| English | help | `[##########]` ⭐ completo |
+| Español | help3082 | `[#########.]` ⌛ en proceso |
+| Pусский | help1049 | `[#######...]` ⌛ en proceso |
+
+Y opcionalmente, mueve el archivo con la carpeta `files` al directorio de Sanny Builder:\
+`<carpeta de sanny builder>/help/<aqui>`\
+\
+para poder abrirlo desde sanny builder.
+Puedes abrilo sino directamente al Escritorio y abriénd como si fuera un ejecutable común de windows.
+
+> ##### Solucion a algunos bugs:
+> **Las paginas se ven en blanco.**
+> Si al abrir el archivo no se carga el contenido. Sólo desmarcando la casilla de seguridad de Windows al abrir el archivo, podrías haber solucionado el problema.
+> **No aparecen las imagenes.**
+> Asegúrese de tener la carpeta `files` en `< sanny>/help/`. Aquí es donde se almacenan muchas de las imágenes de la documentación, para acelerar la carga de las páginas y la apertura principal del CHM.
+> **Syntax Error en la Linea 1.**
+> Si aparece al ejecutar el CHM, puede que se trate por la versión de IE (Internet Explorer) instalada en su PC. Asegurese de tener exactamente la v. 11.
+
+### Colaborar
+El mundo es muy bienvenido a colaborar en lo que quiera con la documentación.
+Aportando información, reportes de errores u optimizando el script principal, que da vida a Markdown.
+
+#### Creando paginas
+Después de crear un fork (clonación o descarga) del [repositorio](https://github.com/MatiDragon-YT/help-system). Sólo tienes que ir a la carpeta que contiene la sección en la que quieres colaborar. Por ejemplo a `help-system/< lenguaje>/scm-documentation/sa/` y crear cualquier archivo con la extensión `.HTML` con el Head y el Script del pie de las otras paginas.
+
+Y a partir de aquí, comienza a escribir el contenido que quieras. Con la sintaxis del HTML o Markdown impulsado con el motor que usamos aquí, que ya tiene la capacidad de trabajar con tablas, listas, texto estilizado (negrita, cursiva, tachado, resaltado, subrayado, inserciones), enlaces, imágenes, citas, casillas, emojis, spans y divs.
+
+> Puedes ver un ejemplo de cómo generar ciertas cosas rápidamente, entrando en un archivo de prueba `test/markdown/html.html`.
+
+Después, crea tu pull request y listo.
+
+#### Reportando problemas
+Sólo tienes que crear un [ticket](https://github.com/MatiDragon-YT/help-system/issues/new) y describirlo con detalle.
+
+### Gracias
+| Contribuidor | por |
+| --- | --- |
+| [Seemann](https://github.com/x87)\n(x87) | v0.1 - v1.3 : las criticas y reportes de errores en las fases tempranas\nv1.8 : arreglar el Historial de Versiones en `0.7`\nv1.12 - 1.13 : la idea de un modo oscuro y de como mejorarla |
+| [Yushae Raza](https://github.com/yushaer)\n(darksavage) | v1.4 : Agregar a SA la lista de IDs de Vehiculos\nv1.6 : arreglar los GXT de las Armas |
+
+### Compilar
+Use [HTML Help Workshop v4](https://cdn.discordapp.com/attachments/805823828571586624/937861627309592686/htmlhelp.zip).
+
+
 <script src="../js/main.min.js"></script>

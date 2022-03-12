@@ -222,6 +222,8 @@ SP.toMarkdown = function(){
 	// SCAPE CHAR
 	.rA("\\(", "&lpar;")
 	.rA("\\)", "&rpar;")
+	.rA("\\<", "&#x3C;")
+	.rA("\\>", "&#x3E;")
 	.rA("\\-", "&#45;")
 	.rA("\\\\", "&#x5C;")
 	.rA("\\|", "&vert;")
