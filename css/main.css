@@ -44,10 +44,6 @@ body {
 	line-height: 1.5;
 	text-align: left;
 	display: none;
-	scrollbar-face-color: #262b32;
-	scrollbar-track-color: #0a0d14;
-	scrollbar-arrow-color: #363b42;
-	scrollbar-shadow-color: #0a0d14;
 }
 
 ::-webkit-scrollbar { width: 1rem;}
@@ -82,6 +78,12 @@ body {
   justify-content: space-between;
   align-items: center;
 }
+
+.row {
+	display: flex;
+	flex-wrap: wrap;
+}
+
 #nav, #nav * {
 	display: flex;
 	align-items: stretch;

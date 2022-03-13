@@ -342,7 +342,7 @@ SP.toMarkdown = function(){
 			alt   = input[1] ?  ' alt="' + input[1] + comilla : "",
 			src   = input[2] ?  ' src="' + input[2]
 				 	.rLinks() + comilla : "",
-			title = input[3] ? ' title="' + input[3] + comilla : ""
+			title = input[3] ? ' class="' + input[3] + comilla : ""
 
 		return '<img'+ src + alt + title +'>'
 	})
@@ -379,11 +379,13 @@ SP.toMarkdown = function(){
 
 	// PRE
 	.r(/```([^`]*)```/g, function(input){
-		input = input.match(/(```([\w\d\x20\-_]+)((#[\w\d\-_]+)\n)?)([^`]*)```/)
+		input = input.match(/(```(([\w\d\x20\-_]+)?)((#[\w\d\-_]+)\n)?)([^`]*)```/)
 
-		let eClass = input[2],
-			eId = input[4] || '',
-			eText = input[5]
+		log(input)
+
+		let eClass = input[3] || '',
+			eId = input[5] || '',
+			eText = input[6].parseHTML()
 
 		return `<pre id='${eId.r('#', '')}' class='${eClass}'>${eText}</pre>`
 	})
