@@ -385,7 +385,7 @@ SP.toMarkdown = function(){
 
 		let eClass = input[3] || '',
 			eId = input[5] || '',
-			eText = input[6].parseHTML()
+			eText = input[6]
 
 		return `<pre id='${eId.r('#', '')}' class='${eClass}'>${eText}</pre>`
 	})
