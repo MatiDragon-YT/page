@@ -22,7 +22,6 @@ const $ = (element, _parent = D) => {
 			: xElements
 }
 
-
 const LANG = ($('html').getAttribute('lang') || 'en').toUpperCase()
 const ROOT = $('head').innerHTML.match(/"([\/\.]+)\/css\/main\.css"/)[1] + "/"
 const exROOT = function(){
@@ -125,6 +124,38 @@ function ModeLight(){
 		CSS.Remove(TEMPLADE)
 		return false
 	}
+}
+
+EP.next = function(){
+	return this.nextElementSibling
+}
+
+EP.show = function(){
+    this.style.display = "block"
+}
+
+EP.hide = function(){
+    this.style.display = "none"
+}
+
+EP.toggle = function(){
+	setTimeout(function(){
+		// Clear the hash
+		history.pushState('', document.title, location.pathname)
+	}, 0)
+
+	this.style.display == "block"
+		? this.hide()
+		: this.show()
+}
+
+const CopyTextContent = function(id) {
+	var $temp = D.createElement("textarea")
+	$temp.value = (typeof id == 'object' ? id.textContent : id)
+	$('body').appendChild($temp)
+	$temp.select();
+	D.execCommand("copy")
+	$('body').removeChild($temp)
 }
 
 /** Shotcun of String.replace()
@@ -270,7 +301,9 @@ SP.toMarkdown = function(){
 			'+1' : '👍',
 			'-1' : '👎',
 			'smile' : '😄',
-			'eyes' : '👀'
+			'eyes' : '👀',
+			'sunglasses' : '😎',
+			'note' : '📝',
 		}
 
 		input = input.split(':')
@@ -340,19 +373,19 @@ SP.toMarkdown = function(){
 		
 		var comilla = '"',
 
-			title   = input[1] ?  ' title="' + input[1] + comilla : "",
-			src   = input[2] ?  ' src="' + input[2]
-				 	.rLinks() + comilla : "",
-			classes = input[5] ? ' class="' + input[5] + comilla : "",
-			id = input[6] ? ' id="' + input[6] + comilla : ""
+			title   = input[1] ? ' title="' + input[1]          + comilla : "",
+			src     = input[2] ? ' src="'   + input[2].rLinks() + comilla : "",
+			classes = input[5] ? ' class="' + input[5]          + comilla : "",
+			id      = input[6] ? ' id="'    + input[6]          + comilla : ""
 
 		return '<img'+ id + src + title + classes +'>'
 
 	})
 
 	// A
-	.r(/\[([^\[\]]+)\]\(([^\(\)\s]+)(\x20"[^"]+")?\)/g, function(input){
-		input = input.match(/\[([^\[\]]+)\]\(([^\(\)\s]+)(\x20"[^"]+")?\)/)
+	.r(/\[([^\[\]]+)\]\(([^\(\)\s]+)(\x20"[^"]+")?(\x20'[^']+')?(\x20`[^`]+`)?\)/g, function(input){
+		input = input.match(/\[([^\[\]]+)\]\(([^\(\)\s]+)(\x20"[^"]+")?(\x20'[^']+')?(\x20`[^`]+`)?\)/)
+
 		var display = input[1],
 			comilla = '"',
 
@@ -360,7 +393,10 @@ SP.toMarkdown = function(){
 				.rLinks()
 				.r('.md', '.html') + comilla,
 
-			atClass = ` class=${input[3] || `""`}`,
+			title   = ' title="'   + (input[3] ? input[3].r(/"/g, '') + comilla : comilla),
+			classes = ' class="'   + (input[4] ? input[4].r(/#.+/, '').r(/'/g, '') + comilla : comilla),
+			id      = ' id="'      + (input[4] ? input[4].r(/.+#/, '').r(/'/g, '') + comilla : comilla),
+			func    = ' onclick="' + (input[5] ? input[5].r(/`/g, '').r(/"/g, '\'') + comilla : comilla),
 
 			target = function(){
 				var set = ' target="'
@@ -369,7 +405,7 @@ SP.toMarkdown = function(){
 					: set + '_self"'
 			}()
 
-		return `<a${href}${!/http/.test(href) && /\.zip/.test(href) ? 'download ' : ''}${atClass}${target}>${display}</a>`
+		return "<a"+ id + title  + href + target + classes + func +">" + display + "</a>"
 	})
 	
 	// HR
@@ -388,7 +424,7 @@ SP.toMarkdown = function(){
 			eId = input[2] || '',
 			eText = input[3] || ''
 
-		return `<pre id='${eId.r('#', '')}' class='${eClass}'>${eText}</pre>`
+		return `<pre id='${eId.r('#', '')}' class='${eClass}'>${eText.rA('<br>', '\n').rA('<,', '&#x3C;')}</pre>`
 	})
 
 	// CODE
