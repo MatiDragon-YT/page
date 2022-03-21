@@ -5,6 +5,7 @@ const log = (MESSAGE) =>
 const D = document
 
 const SP = String.prototype
+const EP = Element.prototype
 
 /** Smart selector for elements of the DOM
  * @param {DOMString}
@@ -312,7 +313,7 @@ SP.toMarkdown = function(){
 	})
 
 	/*** DIVS ***/
-	.r(/:::([\w\d\x20\-_]+)(#[\w\d\-_]+)?\n/g, '<div id="$2" class="$1">\n')
+	.r(/:::([\w\d\x20\-_]+)(#([\w\d\-_]+))?\n/g, '<div id="$3" class="$1">\n')
 	.r(/:::\n/g, '</div>\n')
 
 	/*** BLOCKQUOTE ***/
@@ -420,11 +421,13 @@ SP.toMarkdown = function(){
 	.r(/```([^`]*)```/g, function(input){
 		input = input.match(/```([\w\d\x20\-_]+)?(#[\w\d\-_]+)?\n([^`]*)```/)
 
-		let eClass = input[1] || '',
-			eId = input[2] || '',
-			eText = input[3] || ''
+		const eClass = input[1] || ''
+		const eId = (input[2] || '').r('#', '')
+		const eText = (input[3] || '').rA('<br>', '\n').rA('<,', '&#x3C;')
 
-		return `<pre id='${eId.r('#', '')}' class='${eClass}'>${eText.rA('<br>', '\n').rA('<,', '&#x3C;')}</pre>`
+		log(eId)
+
+		return `<pre id='${eId}' class='${eClass}'>${eText}</pre>`
 	})
 
 	// CODE
@@ -485,6 +488,7 @@ var htmlGenerated = $('#inputText').value.toMarkdown()
 
 $('.markdown .cont').innerHTML = htmlGenerated
 $('body').style.display = 'block'
+setTimeout(function(){$('#c').style.opacity = 1}, 12)
 
 const hightlight = {
 	sb3 : function(element){

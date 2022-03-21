@@ -35,6 +35,7 @@ html {
 	background: var(--bg);
 	color: var(--co);
 	scroll-behavior: smooth;
+	transition: background .24s;
 }
 
 body {
@@ -44,6 +45,11 @@ body {
 	line-height: 1.5;
 	text-align: left;
 	display: none;
+}
+
+#c {
+	opacity: 0;
+	transition: opacity .48s;
 }
 
 ::-webkit-scrollbar { width: 1rem;}
