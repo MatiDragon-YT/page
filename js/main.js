@@ -2,14 +2,6 @@ const log = (MESSAGE) =>
 	console.log(MESSAGE)
 
 // GLOBAL VARS
-const EMOJIS = {
-	'clap': '👏',
-	'wave' : '👋',
-	'+1' : '👍',
-	'-1' : '👎',
-	'smile' : '😄',
-	'eyes' : '👀'
-}
 const D = document
 
 const SP = String.prototype
@@ -272,6 +264,14 @@ SP.toMarkdown = function(){
 
 	// EMOJIS
 	.r(/(\B|\s+):([^:\s]+):(\B)/g, function(input){
+		const EMOJIS = {
+			'clap': '👏',
+			'wave' : '👋',
+			'+1' : '👍',
+			'-1' : '👎',
+			'smile' : '😄',
+			'eyes' : '👀'
+		}
 
 		input = input.split(':')
 
@@ -279,8 +279,7 @@ SP.toMarkdown = function(){
 	})
 
 	/*** DIVS ***/
-	.r(/:::([\w\d\x20-]+)(#([\w\d\x20-]+))\n/g, '<div id="$3" class="$1">\n')
-	.r(/:::([\w\d\x20-]+)\n/g, '<div class="$1">\n')
+	.r(/:::([\w\d\x20\-_]+)(#[\w\d\-_]+)?\n/g, '<div id="$2" class="$1">\n')
 	.r(/:::\n/g, '</div>\n')
 
 	/*** BLOCKQUOTE ***/
@@ -334,17 +333,21 @@ SP.toMarkdown = function(){
 	.r(/\!yt\[\]\(([^\s\[\]]+)\)/g, `<div class="video-responsive"><iframe src="https://www.youtube.com/embed/$1?rel=0" frameborder="0" allowfullscreen></iframe></div>`)
 
 	// IMG
-	.r(/\!\[([^\[\]]+)?\]\(([^\(\)]+)(\x20"[^"]+")?\)/g, function(input){
-		input = input.match(/\!\[([^\[\]]+)?\]\(([^\(\)]+)(\x20"[^"]+")?\)/)
+	.r(/\!\[([^\[\]]+)?\]\([^\(\)]+\)/g, function(input){
+		input = input.match(
+			/\!\[([^\[\]]+)?\]\(([^\(\)\s]+)(\x20"(([\w\d\x20\-_]+)(#[\w\d\-_]+)?)")?\)/
+		)
+		
+		var comilla = '"',
 
-		const comilla = '"',
-
-			alt   = input[1] ?  ' alt="' + input[1] + comilla : "",
+			title   = input[1] ?  ' title="' + input[1] + comilla : "",
 			src   = input[2] ?  ' src="' + input[2]
 				 	.rLinks() + comilla : "",
-			title = input[3] ? ' class="' + input[3] + comilla : ""
+			classes = input[5] ? ' class="' + input[5] + comilla : "",
+			id = input[6] ? ' id="' + input[6] + comilla : ""
 
-		return '<img'+ src + alt + title +'>'
+		return '<img'+ id + src + title + classes +'>'
+
 	})
 
 	// A
@@ -379,13 +382,11 @@ SP.toMarkdown = function(){
 
 	// PRE
 	.r(/```([^`]*)```/g, function(input){
-		input = input.match(/(```(([\w\d\x20\-_]+)?)((#[\w\d\-_]+)\n)?)([^`]*)```/)
+		input = input.match(/```([\w\d\x20\-_]+)?(#[\w\d\-_]+)?\n([^`]*)```/)
 
-		log(input)
-
-		let eClass = input[3] || '',
-			eId = input[5] || '',
-			eText = input[6]
+		let eClass = input[1] || '',
+			eId = input[2] || '',
+			eText = input[3] || ''
 
 		return `<pre id='${eId.r('#', '')}' class='${eClass}'>${eText}</pre>`
 	})

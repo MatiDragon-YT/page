@@ -460,36 +460,36 @@ input[type='checkbox']{
 .p-3 { padding: 1rem }
 .p-4 { padding: 1.5rem }
 .p-5 { padding: 3rem }
-.px-0 { padding: 0 0 }
-.px-1 { padding: 0 .25rem }
-.px-2 { padding: 0 .5rem }
-.px-3 { padding: 0 1rem }
-.px-4 { padding: 0 1.5rem }
-.px-5 { padding: 0 3rem }
-.py-0 { padding: 0 0 }
-.py-1 { padding: .25rem 0 }
-.py-2 { padding: .5rem 0 }
-.py-3 { padding: 1rem 0 }
-.py-4 { padding: 1.5rem 0 }
-.py-5 { padding: 3rem 0 }
+.px-0 { padding-top: 0; padding-bottom: 0 }
+.px-1 { padding-top: .25rem; padding-bottom: .25rem }
+.px-2 { padding-top: .5rem; padding-bottom: .5rem }
+.px-3 { padding-top: 1rem; padding-bottom: 1rem }
+.px-4 { padding-top: 1.5rem; padding-bottom: 1.5rem }
+.px-5 { padding-top: 3rem; padding-bottom: 3rem }
+.py-0 { padding-top: 0; padding-bottom: 0 }
+.py-1 { padding-left: .25rem ; padding-right: .25rem}
+.py-2 { padding-left: .5rem ; padding-right: .5rem}
+.py-3 { padding-left: 1rem ; padding-right: 1rem}
+.py-4 { padding-left: 1.5rem ; padding-right: 1.5rem}
+.py-5 { padding-left: 3rem ; padding-right: 3rem}
 .m-0 { margin: 0 }
 .m-1 { margin: .25rem }
 .m-2 { margin: .5rem }
 .m-3 { margin: 1rem }
 .m-4 { margin: 1.5rem }
 .m-5 { margin: 3rem }
-.mx-0 { margin: 0 0 }
-.mx-1 { margin: 0 .25rem }
-.mx-2 { margin: 0 .5rem }
-.mx-3 { margin: 0 1rem }
-.mx-4 { margin: 0 1.5rem }
-.mx-5 { margin: 0 3rem }
-.my-0 { margin: 0 0 }
-.my-1 { margin: .25rem 0 }
-.my-2 { margin: .5rem 0 }
-.my-3 { margin: 1rem 0 }
-.my-4 { margin: 1.5rem 0 }
-.my-5 { margin: 3rem 0 }
+.mx-0 { margin-top: 0; margin-bottom: 0 }
+.mx-1 { margin-top: .25rem; margin-bottom: .25rem }
+.mx-2 { margin-top: .5rem; margin-bottom: .5rem }
+.mx-3 { margin-top: 1rem; margin-bottom: 1rem }
+.mx-4 { margin-top: 1.5rem; margin-bottom: 1.5rem }
+.mx-5 { margin-top: 3rem; margin-bottom: 3rem }
+.my-0 { margin-top: 0; margin-bottom: 0 }
+.my-1 { margin-left: .25rem ; margin-right: .25rem}
+.my-2 { margin-left: .5rem ; margin-right: .5rem}
+.my-3 { margin-left: 1rem ; margin-right: 1rem}
+.my-4 { margin-left: 1.5rem ; margin-right: 1.5rem}
+.my-5 { margin-left: 3rem ; margin-right: 3rem}
 
 .d-none {display: none}
 .d-block {display: block}
