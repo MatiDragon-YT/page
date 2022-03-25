@@ -23,17 +23,38 @@ const $ = (element, _parent = D) => {
 			: xElements
 }
 
+/** Get the language specified in the html
+ * @return {String}
+*/
 const LANG = ($('html').getAttribute('lang') || 'en').toUpperCase()
-const ROOT = $('head').innerHTML.match(/"([\/\.]+)\/css\/main\.css"/)[1] + "/"
-const exROOT = function(){
-	const HREF = location.href,
-		X = HREF.search(/:/) == 2
-			? 14
-			: 7,
-		Y = HREF.lastIndexOf("\\") + 1
 
-	return 'file:///' + location.href.substring(X, Y) + "/files/"
+/** Get the root folder of the resources internal to the language
+ * @return {String}
+*/
+const ROOT = $('head').innerHTML.match(/"([\/\.]+)\/css\/main\.css"/)[1] + "/"
+
+/** Get the root folder of the resources external to the language
+ * @return {String}
+*/
+const exROOT = function(){
+	// In order to have a visible resource load from the browsers
+	if (navigator.userAgent.match("MSIE") != null){
+		// it is checked only if IE is being used
+		
+		const HREF = location.href
+
+		const X = HREF.search(/:/) == 2 ? 14 : 7
+		const Y = HREF.lastIndexOf("\\") + 1
+
+		return 'file:///' + location.href.substring(X, Y) + "/files/"
+	}
+
+	return ROOT + "/files/"
 }()
+
+EP.previous = function(){
+	return this.previousElementSibling
+}
 
 $('head').innerHTML = $('head').innerHTML + `
 	<meta name="Author" content="MatiDragon">
@@ -131,6 +152,10 @@ EP.next = function(){
 	return this.nextElementSibling
 }
 
+EP.previous = function(){
+	return this.previousElementSibling
+}
+
 EP.show = function(){
     this.style.display = "block"
 }
@@ -189,14 +214,18 @@ SP.toCapitalCase = function(){
 */
 
 /** Apply a function to all elements of the DOM
- * @param {DocumentElement} 
+ * @param {NodeList || [...NodeList]} 
  * @param {function}
 */
 function apply(element, callback){
-	if(element){ 
+	if(element){
 		if('' + element == '[object NodeList]'){ 
 			for (var i = 0; i < element.length; i++) {
 				callback(element[i])
+			}
+		}else if (typeof element == 'object'){
+			for (var i = 0; i < Object.keys(element).length; i++) {
+				apply(element[i], callback)
 			}
 		}else{  
 			callback(element)
@@ -255,9 +284,18 @@ SP.toMarkdown = function(){
 	.rA("\\n", "<br/>")
 	.rA("\\*", "&#x2A;")
 	.rA("\\`", "&#x60;")
+	.rA("\\.", "&#x2E;")
 
 	// ID
 	.r(/\[([^\[\]]+)\]\[\]/g, '<a id="$1"></a>')
+
+	// DIVS
+	.r(/:::([\w\d\x20\-_]+)(#([\w\d\-_]+))?\n/g, '<div id="$3" class="$1">\n')
+	.r(/:::\n/g, '</div>\n')
+
+	// BLOCKQUOTES
+	.r(/^>\x20(.+)/gm, '<blockquote>\n$1</blockquote>')
+	.r(/<\/blockquote>(\s+)<blockquote>/g, '<br>')
 
 	// UL LI
 	.r(/^\*\s(.+)/gim, '<ul><li>$1</li></ul>')
@@ -311,14 +349,6 @@ SP.toMarkdown = function(){
 
 		return input[0] + EMOJIS[input[1]] + input[2]
 	})
-
-	/*** DIVS ***/
-	.r(/:::([\w\d\x20\-_]+)(#([\w\d\-_]+))?\n/g, '<div id="$3" class="$1">\n')
-	.r(/:::\n/g, '</div>\n')
-
-	/*** BLOCKQUOTE ***/
-	.r(/^>\x20(.+)/gm, '<blockquote>\n$1</blockquote>')
-	.r(/<\/blockquote>(\s+)<blockquote>/g, '<br>')
 
 	/*** TITLE ***/
 
@@ -448,7 +478,7 @@ SP.toMarkdown = function(){
 	.r(/\|[^\n]+\|/g, function (input) {
 		input = input.split('|')
 
-		let newTable = ""
+		var newTable = ""
 
 		input.forEach( function (element, count) {
 			if (count == 0) newTable += "<tr>";
@@ -487,6 +517,12 @@ $('body').innerHTML = `
 var htmlGenerated = $('#inputText').value.toMarkdown()
 
 $('.markdown .cont').innerHTML = htmlGenerated
+
+apply($('thead'), function(element){
+	element.innerHTML = element.innerHTML
+	.r(/<td(\/)?>/g, '<th$1>')
+})
+
 $('body').style.display = 'block'
 setTimeout(function(){$('#c').style.opacity = 1}, 12)
 

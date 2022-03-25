@@ -9,8 +9,6 @@
 </head>
 <body>
 
-[h1][Mods]
-
 :::d-flex wrap#db
 :::
 
@@ -47,10 +45,10 @@ DB.forEach((e, i) => {
 e = e.split('|')
 let mod = (DB.length - i).toString(36)
 let template = `
-:::col-12 col-md-6 col-lg-4 col-xl-3 col-xxl-2 p-2
-<a href='mods/${e[0]}.html' class='d-flex w-100 no-decoration white' style='height:100%'>
+:::col-12 col-md-6 col-lg-4 col-xxl-3 p-2
+<a href='mods/${e[0]}.html' class='d-flex w-100 no-decoration white' style="height: 100%;">
 :::p-2 bg-black-2
-![](mods/docs/${e[0]}/${e[0]}.webp)
+![](mods/docs/${e[0]}/x1.webp)
 #### ${e[1].trim()}
 **${e[2].trim()}**
 :::
@@ -58,7 +56,7 @@ let template = `
 :::
 `.toMarkdown()
 
-	setTimeout(()=>{db.innerHTML += template}, cont += 83)
+	setTimeout(()=>{$('#db').innerHTML += template}, cont += 83)
 	
 })
 </script>
