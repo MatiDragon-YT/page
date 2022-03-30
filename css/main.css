@@ -346,6 +346,13 @@ input[type='checkbox']{
 .directives,
 .directives * { color: var(--hl-directives) }
 
+.d-none {display: none}
+.d-block {display: block}
+.d-flex {display: flex}
+.d-flex.wrap {flex-wrap: wrap}
+.d-flex.column {flex-direction: column}
+.d-flex.between {justify-content: space-between}
+
 .col-1, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-9, .col-10, .col-11, .col-12 {
 	flex: 0 0 auto;
 }
@@ -370,6 +377,11 @@ input[type='checkbox']{
 
 @media (min-width:576px) {
 	.markdown { max-width: 87.7% }
+
+	.d-sm-none {display: none}
+	.d-sm-block {display: block}
+	.d-sm-flex {display: flex}
+
 	.cols-sm-2 { columns: 2 auto}
 	.cols-sm-3 { columns: 3 auto}
 	.cols-sm-4 { columns: 4 auto}
@@ -389,6 +401,10 @@ input[type='checkbox']{
 	.col-sm-12 { width: 100% }
 }
 @media (min-width:768px) {
+	.d-md-none {display: none}
+	.d-md-block {display: block}
+	.d-md-flex {display: flex}
+
 	.col-md-1 { width: 8.33333333% }
 	.col-md-2 { width: 16.66666667% }
 	.col-md-3 { width: 25% }
@@ -403,6 +419,10 @@ input[type='checkbox']{
 	.col-md-12 { width: 100% }
 }
 @media (min-width:992px) {
+	.d-lg-none {display: none}
+	.d-lg-block {display: block}
+	.d-lg-flex {display: flex}
+
 	.col-lg-1 { width: 8.33333333% }
 	.col-lg-2 { width: 16.66666667% }
 	.col-lg-3 { width: 25% }
@@ -421,6 +441,10 @@ input[type='checkbox']{
 	h2 { font-size: 2rem }
 	h3 { font-size: 1.75rem }
 	h4 { font-size: 1.5rem }
+	.d-xl-none {display: none}
+	.d-xl-block {display: block}
+	.d-xl-flex {display: flex}
+
 	.col-xl-1 { width: 8.33333333% }
 	.col-xl-2 { width: 16.66666667% }
 	.col-xl-3 { width: 25% }
@@ -435,6 +459,10 @@ input[type='checkbox']{
 	.col-xl-12 { width: 100% }
 }
 @media (min-width:1400px) {
+	.d-xxl-none {display: none}
+	.d-xxl-block {display: block}
+	.d-xxl-flex {display: flex}
+
 	.col-xxl-1 { width: 8.33333333% }
 	.col-xxl-2 { width: 16.66666667% }
 	.col-xxl-3 { width: 25% }
@@ -496,12 +524,6 @@ input[type='checkbox']{
 .my-3 { margin-left: 1rem ; margin-right: 1rem}
 .my-4 { margin-left: 1.5rem ; margin-right: 1.5rem}
 .my-5 { margin-left: 3rem ; margin-right: 3rem}
-
-.d-none {display: none}
-.d-block {display: block}
-.d-flex {display: flex;}
-.d-flex.wrap {flex-wrap: wrap}
-.d-flex.column {flex-direction: column}
 
 .d-inline-block {display: inline-block}
 .f-center {align-self: center;}
