@@ -1,46 +1,72 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-	<title>Velocimeter Basic</title>
+	<title>MD's Velocimeter</title>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" type="text/css" href="../css/main.css">
 </head>
 <body>
-[h1][Velocimeter Basic]
+[h1][MD's Velocimeter]
 
-:::d-flex
-:::col-6 d-flex column between
+:::d-flex wrap
+:::col-12 col-lg-6 d-flex column between
 :::l
-[flow-text light][Que demonios! Un velocimetro 2D en un plano 3D. Apuesto a que nunca habias visto esto en GTA por algun modder jaja]
-
-> El mod necesita [CLEO+](https://www.mixmods.com.br/2022/02/cleoplus/) y [NewOpcodes](https://gtaforums.com/topic/518780-cleo4newopcodes-by-dk22pac/) para funcionar, por lo que se incluyen en la descarga del mod.
-
-:::px-4
-[![Discord](https://img.shields.io/discord/911487285990674473?style=for-the-badge)](https://discord.gg/d5dZSfgBZr)
+[flow-text light][Si, este es un velocimetro 2D como cualquier otro, pero.. ubicado de forma 3D. Espera! QUE? En 3D??? si si si, en 3D. Apuesto a que nunca habias visto algo asi aqui]
+:::d-md-none px-2
+!yt[](XJ1bve5lulI)
 :::
-:::
-:::l
-[descargar](./docs/m/Velocimeter-Basic.zip 'button')\
-\
-Instala moviendo los archivo del comprimido .ZIP a la carpeta
-```txt
-<,gta sa>/cleo/
+:::px-2 success
+El mod necesita [CLEO+](https://www.mixmods.com.br/2022/02/cleoplus/) y [NewOpcodes](https://gtaforums.com/topic/518780-cleo4newopcodes-by-dk22pac/) para funcionar, por lo que se incluyen en la descarga del mismo.
+
+Muchos de los mods que hago, usan un único archivo **.ini** para las configuraciones de estos, llamado **cleo_settings**. Si lo tienes, editelo con un editor de texto con las lineas de abajo. Si no tienes uno, tambien puedes crearlo o utilizar el que viene en el archivo comprimido.
+Para personalizar este mod con estas líneas:
+```ini
+[MDsVelocimeter];      --> https://matidragon-yt.github.io/page/mods/m
+; Km/h - 4.0
+; M/h  - 1.0
+; M/s  - 0.25
+TextAtDisplay=Km/h
+MultipliedNumber=4.0
+samp=1
 ```
+###### Parametros
+1. `DisplayText` - Contiene el texto que se mostrara arriba del numero del medidor.
+2. `MultipliedNumber` - Se usa para hacer mas grande número que se muestra.
+3. `samp` - Si desea activarlo en SAMP con un 1, ó NO con un 0.
+###### Ejemplos
+|formato de medida|texto|número|
+|-|
+|Kilometros por hora|Km/h|4.0|
+|Metros por hora _(por defecto)_|M/h|1.0|
+|Metros por segundo|M/s|0.25|
 :::
 
 
 :::
-:::col-6 py-4
+:::l
+[descargar](./docs/m/MDs-Velocimeter.zip 'button')
+:::
+
+
+:::
+:::d-none d-md-block col-lg-6 py-4
 !yt[](XJ1bve5lulI)
 :::mx-2
-<a href="https://youtube.com/c/MatiDragon" class="no-decoration d-none d-md-block">
+<a href="https://youtube.com/c/MatiDragon" class="no-decoration">
 ![](https://img.shields.io/youtube/likes/XJ1bve5lulI?style=for-the-badge)
 ![](https://img.shields.io/youtube/views/XJ1bve5lulI?style=for-the-badge)
 ![](https://img.shields.io/youtube/channel/subscribers/UCIqJ7P_fLvULqvmsDagJBjA?style=for-the-badge)
 </a>
 :::
+**Historial de cambios**
+v 1.2\n
+\s\s\sSe agrego personalizacion via archivo ini\n
+v 1.1\n
+\s\s\sSe optimiso, y agrego soporte para autos\n
+v 1.0\n
+\s\s\sNada especial, solo disponible para motos
 :::
 :::
 

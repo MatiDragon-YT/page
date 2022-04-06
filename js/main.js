@@ -52,10 +52,6 @@ const exROOT = function(){
 	return ROOT + "/files/"
 }()
 
-EP.previous = function(){
-	return this.previousElementSibling
-}
-
 $('head').innerHTML = $('head').innerHTML + `
 	<meta name="Author" content="MatiDragon">
 	<meta name="Publisher" content="MatiDragon">
@@ -168,9 +164,9 @@ EP.toggle = function(){
 	setTimeout(function(){
 		// Clear the hash
 		history.pushState('', document.title, location.pathname)
-	}, 0)
+	}, 12)
 
-	this.style.display == "block"
+	getComputedStyle(this).display == "block"
 		? this.hide()
 		: this.show()
 }
@@ -186,8 +182,10 @@ const CopyTextContent = function(id) {
 
 /** Shotcun of String.replace()
 */
-SP.r = function(a, b){
-	return this.replace(a, b)
+SP.r = function(a, b, c){
+	b = b || ''
+	c = c || ''
+	return this.replace(a, b, c)
 }
 
 /** Polifill and shotcun of String.replaceAll()
@@ -219,10 +217,10 @@ SP.toCapitalCase = function(){
 */
 function apply(element, callback){
 	if(element){
-		if('' + element == '[object NodeList]'){ 
-			for (var i = 0; i < element.length; i++) {
-				callback(element[i])
-			}
+		if('' + element == '[object NodeList]'){
+			element.forEach(function(e){
+				callback(e)
+			})
 		}else if (typeof element == 'object'){
 			for (var i = 0; i < Object.keys(element).length; i++) {
 				apply(element[i], callback)
@@ -232,6 +230,8 @@ function apply(element, callback){
 		}
 	}
 }
+
+var aTables = [] // contenedor de tablas
 
 SP.toMarkdown = function(){
 	SP.toLinkCase = function(){
@@ -273,24 +273,34 @@ SP.toMarkdown = function(){
 	/******** LIST ********/
 
 	// SCAPE CHAR
+	.rA("\\[", "&#91;")
+	.rA("\\]", "&#93;")
 	.rA("\\(", "&lpar;")
 	.rA("\\)", "&rpar;")
 	.rA("\\<", "&#x3C;")
 	.rA("\\>", "&#x3E;")
 	.rA("\\-", "&#45;")
+	.rA("\\+", "&#x2B;")
+	.rA("\\*", "&#x2A;")
 	.rA("\\\\", "&#x5C;")
 	.rA("\\|", "&vert;")
+	.rA("\\~", "&#126;")
+	.rA("\\^", "&#x5E;")
+	.rA("\\.", "&#x2E;")
 	.rA("\\s", "&nbsp;")
 	.rA("\\n", "<br/>")
-	.rA("\\*", "&#x2A;")
 	.rA("\\`", "&#x60;")
-	.rA("\\.", "&#x2E;")
+	.rA("\\#", "&#x23;")
+	.rA("\\:", "&#x3A;")
+	.rA("\\=", "&#x3D;")
+	.rA("\\_", "&#x5F;")
+	.r(/<\!--(.+)-->/g, '')
 
 	// ID
 	.r(/\[([^\[\]]+)\]\[\]/g, '<a id="$1"></a>')
 
 	// DIVS
-	.r(/:::([\w\d\x20\-_]+)(#([\w\d\-_]+))?\n/g, '<div id="$3" class="$1">\n')
+		.r(/:::([\w\d\x20\-_]+)(#([\w\d\-_]+))?(\x20([^\n]+))?\n/g, '<div id="$3" class="$1" style="$5">\n')
 	.r(/:::\n/g, '</div>\n')
 
 	// BLOCKQUOTES
@@ -308,10 +318,12 @@ SP.toMarkdown = function(){
 	// OL LI
 	.r(/^\d\.\s(.+)/gim, '<ol><li>$1</li></ol>')
 	.r(/^\x20{2}\d\.\s(.+)/gim, '<ol><ol><li>$1</li></ol></ol>')
+	.r(/^\x20{4}\d\.\s(.+)/gim, '<ol><ol><ol><li>$1</li></ol></ol></ol>')
 
 	.r(/<\/li><\/ol>\n<ul><ul><li>(.*)<\/ul><\/ul>/g, '<\/li><ul><li>$1</ul></ol>')
 
 	.r(/<\/ol>(\s+)<ol>/g, '')
+	.rA('<\/ol><\/ol><ol><ol>', '')
 	.rA('<\/ol><ol>', '')
 
 	// DL DD
@@ -327,22 +339,30 @@ SP.toMarkdown = function(){
 	.r(/\*\*([^\*\n]+)\*\*/g, '<b>$1</b>')
 	.r(/\*([^\*\n]+)\*/g, '<i>$1</i>')
 	.r(/~~([^~\n]+)~~/g, '<s>$1</s>')
+	.r(/~([^~\s]+)~/g, '<sub>$1</sub>')
+	.r(/\^([^\^\s]+)\^/g, '<sup>$1</sup>')
 	.r(/__([^_\n]+)__/g, '<u>$1</u>')
-	.r(/\b_([^_\n]+)_\b/g, '<i>$1</i>')
+	.r(/\b_([^_\n]+)_\b/g, '<address>― $1</address>')
 	.r(/==([^=\n\"\'\\\/]+)==/g, '<mark>$1</mark>')
 	.r(/\+\+([^\+\n]+)\+\+/g, '<ins>$1</ins>')
 
 	// EMOJIS
-	.r(/(\B|\s+):([^:\s]+):(\B)/g, function(input){
+	.r(/([^\d\w\|]):([^:\s\|]+):([^\d\w\|])/g, function(input){
 		const EMOJIS = {
 			'clap': '👏',
 			'wave' : '👋',
 			'+1' : '👍',
+			'thumbsup' : '👍',
 			'-1' : '👎',
+			'thumbsdown' : '👎',
 			'smile' : '😄',
+			'emoji' : '😄',
 			'eyes' : '👀',
 			'sunglasses' : '😎',
 			'note' : '📝',
+			'memo' : '📝',
+			'warning' : '⚠',
+			'bulb' : '💡',
 		}
 
 		input = input.split(':')
@@ -360,33 +380,21 @@ SP.toMarkdown = function(){
 		input = input.trim().r(/^(\w.+)\n--+-/gim, '$1')
 		return '<h2 id="'+ input.toLinkCase() +'">' + input + '</h2>'
 	})
-	.r(/^#+\x20(.+)/gm, function(input) {
-		var number = 0
-		var output
+	.r(/^#+\x20(.+)/gm, function(input){
+		[
+			input,
+			header,
+			text,
+			customSection,
+			classes,
+			id
+		] = input.match(/(#+)\x20([^\{\}\n]+)(\{([^#\{\}\n]+)?(#[^#\{\}\n]+)?\})?/)
 
-		function index(text) {
-
-			if(/^#+\x20/.test(text)){
-				number++
-				text = text.r(/^#/, '')
-				index(text, number)
-			}else{
-				if (number == 0){
-					output = text
-					return;
-				}
-				var TITLE = text.r(/^\x20/, '')
-				/* auto capitalize
-				if (number < 4){ // is H1, H2 or H3
-					TITLE = TITLE.toCapitalCase()
-				}
-				*/
-				output = '<h'+number+' id="'+ TITLE.toLinkCase() +'">' + TITLE + '</h'+number+'>'
-			}
-		}
-		index(input)
-
-		return output
+		return '<h' + header.length + 
+			' id="' + (id||text.trim().toLinkCase()).r('#') + 
+			'" class="' + (classes||'') +
+			'">' + text.trim() +
+			'</h' + header.length + '>'
 	})
 
 	// CHECKBOX
@@ -427,7 +435,7 @@ SP.toMarkdown = function(){
 			title   = ' title="'   + (input[3] ? input[3].r(/"/g, '') + comilla : comilla),
 			classes = ' class="'   + (input[4] ? input[4].r(/#.+/, '').r(/'/g, '') + comilla : comilla),
 			id      = ' id="'      + (input[4] ? input[4].r(/.+#/, '').r(/'/g, '') + comilla : comilla),
-			func    = ' onclick="' + (input[5] ? input[5].r(/`/g, '').r(/"/g, '\'') + comilla : comilla),
+			func    = ' onclick="' + (input[5] ? input[5].r(/`/g, '').r(/"/g, '\'').r(/\(([^\(\)]+)?\)(\s+)?=>(\s+)?\{/g, 'function($1){') + comilla : comilla),
 
 			target = function(){
 				var set = ' target="'
@@ -440,7 +448,7 @@ SP.toMarkdown = function(){
 	})
 	
 	// HR
-	.r(/(\n|^)--+-\n/g, '$1<hr>\n')
+	.r(/^--+-$/gm, '<hr>')
 
 	// BR
 	.r(/([^`])`\n\n`([^`])/, "$1`<br><br>`$2")
@@ -463,6 +471,7 @@ SP.toMarkdown = function(){
 	// CODE
 	.r(/`([^\n`]+)`/g, function(input){
 		input = input
+		.rA('<,', '&#x3C;')
 		.r(/`([^\n`]+)`/, '$1')
 		.r(/<(\/?)i>/g, "*")
 		.parseHTML()
@@ -474,7 +483,27 @@ SP.toMarkdown = function(){
 	.r(/\[([\w\d\s\-\+]+)\]\[([^\[\]]+)\]/gm, `<span class='$1'>$2</span>`)
 
 	// TABLE
-	.r(/\|[\|\-\x20:]+\|/g, "</thead><tbody>")
+	.r(/\|[\|\-\x20:]+\|/g, function(input){
+		let aCol = [] // contenedor columnas
+
+		if (input.r(/-+/, '-') != '|-|'){ // es la tabla no minificada
+
+			input = input.split('|')
+			input = input.splice(1, --input.length)
+
+			input.forEach(function(a){
+				if (/^:-+:/.test(a)) aCol.push('center')
+				if (/^-+:/.test(a)) aCol.push('right')
+				if (/^:-+/.test(a)) aCol.push('left')
+				if (/^-+$/.test(a)) aCol.push('center')
+			})
+
+		}
+		aTables.push(aCol)
+
+		return "</thead><tbody>"
+
+	})
 	.r(/\|[^\n]+\|/g, function (input) {
 		input = input.split('|')
 
@@ -526,76 +555,90 @@ apply($('thead'), function(element){
 $('body').style.display = 'block'
 setTimeout(function(){$('#c').style.opacity = 1}, 12)
 
-const hightlight = {
-	sb3 : function(element){
-		const span = {
-			start : "<span class=",
-			end : ">$1<\/span>"
-		}
-
-		const enter = {
-			comments  : span.start + "comments"   + span.end,
-			numbers   : span.start + "numbers"    + span.end,
-			variables : span.start + "variables"  + span.end,
-			opcodes   : span.start + "uppercase"  + span.end,
-			directives: span.start + "directives" + span.end,
-			commands  : span.start + "commands"   + span.end,
-			classes   : span.start + "classes"    + span.end
-		}
-
-		element.innerHTML = element.innerHTML
-		.rA('\t', '    ')
-		.rA('&lt;br/&gt;', "\\n")
-		//Comentarios 
-		.r(/(\/\/.+)/gm, enter.comments)
-		.r(/(\/\*[^\/]*\*\/)/gmi, enter.comments)
-		.r(/(\{[^\$][^\{\}]*\})/gmi, enter.comments)
-		//Directivas
-		.r(/(\{\$[^{}\n]+\})/gmi, enter.directives)
-		//Cadenas de texto
-		.r(/\"([^\n"]+)\"/gmi, '<span class=strings>"$1"<\/span>')
-		.rA('\\"</span>', '\\"')
-		.rA('\\"<span>', '\\"')
-		.r(/\'([^\n']+)\'/gmi, "<span class=strings>'$1'<\/span>")
-		.rA("\\'</span>", "\\'")
-		.rA("\\'<span>", "\\'")
-		//Palabras Reservadas
-		.r(/(^|\s+|>)(longstring|shortstring|integer|jump_if_false|thread|create_thread|create_custom_thread|end_thread|name_thread|end_thread_named|if|then|else|hex|end|else_jump|jump|jf|print|const|while|not|wait|repeat|until|break|continue|for|gosub|goto|var|array|of|and|or|to|downto|step|call|return_true|return_false|return|ret|rf|tr|Inc|Dec|Mul|Div|Alloc|Sqr|Random|int|string|float|bool|fade|DEFINE|select_interior|set_weather|set_wb_check_to|nop)(\b|\s)/gmi, "$1<span class=keywords>$2<\/span>$3")
-		//Etiquetas
-		.r(/(^|\s+)(\@+\w+|\:+\w+)/gm, "$1<span class=labels>$2<\/span>")
-		.r(/(^|\s+)([A-Za-z0-9_]+\(\))/gm, "$1<span class=commands>$2<\/span>")
-		//Arreglos
-		.r(/(\[)([\d+]*)(\])/gmi, "$1<span class=numbers>$2<\/span>$3")
-		//Opcodes
-		.r(/([a-fA-F0-9]{4}\:)/gmi, enter.opcodes)
-		//Numeros
-		.r(/\b(\d+(x|\.)\w+)\b/gmi, enter.numbers)
-		.r(/\b(true|false)\b/gmi, enter.numbers)
-		.r(/((\s|\-|\,)(?!\$)(\d+)(?!\:|\@)(i|f|s|v)?)\b/gmi, enter.numbers)
-		//Modelos
-		.r(/(\#[^\"\'\#\s\,\.\:\;]+)/gm, "<span class='models uppercase'>$1<\/span>")
-		//Clases
-		.r(/\b([a-z0-9]+)\.([a-z0-9]+)/gmi, "<span class=classes>$1</span>.<span class=commands>$2</span>")
-		.r(/(\w+)(\(.+\)\.)(\w+)/gmi, "<span class=classes>$1</span>$2<span class=commands>$3</span>")
-		.r(/(\$\w+|\d+\@)\.([0-9A-Z_a-z]+)/gm, "$1.<span class=commands>$2</span>")
-		.r(/: (\w+)\n/gm,          ": "+ enter.classes  +"\n")
-		.r(/\.([0-9A-Z_a-z]+)\n/gm,"." + enter.commands +"\n")
-		//Variables  
-		.r(/\b(timer(a|b))\b/gmi, enter.variables)
-		.r(/(\d+\@(s|v|\B)[^\w\d])/gm, enter.variables)
-		.r(/(\&amp;\d+)/gim, enter.variables)
-		.r(/((\x{00}|s|v)(\$[0-9A-Z_a-z]+))/gm, enter.variables)
-		// Operadores
-		//.r(/\s(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=)\s/gmi," <font class=operador>$1<\/font> ")
+aTables.forEach(function(tabla, numTabla){
+	if (tabla.length != 0){ 
+		var $tablas = $("table")
+		tabla.forEach(function(alineaminto, columna){
+			if("" + $tablas == '[object NodeList]'){
+				$("tr" ,$tablas[numTabla]).forEach(function(fila){
+					fila.childNodes[columna].className = alineaminto
+				})
+			}
+			else{
+				$("tr").forEach(function(fila){
+					fila.childNodes[columna].className = alineaminto
+				})
+			}
+		})
 	}
-}
+})
 
-apply($('.sb3'), hightlight.sb3)
+apply($('.sb3'), function(element){
+	const span = {
+		start : "<span class=",
+		end : ">$1<\/span>"
+	}
+
+	const enter = {
+		comments  : span.start + "comments"   + span.end,
+		numbers   : span.start + "numbers"    + span.end,
+		variables : span.start + "variables"  + span.end,
+		opcodes   : span.start + "uppercase"  + span.end,
+		directives: span.start + "directives" + span.end,
+		commands  : span.start + "commands"   + span.end,
+		classes   : span.start + "classes"    + span.end
+	}
+
+	element.innerHTML = element.innerHTML
+	.rA('\t', '    ')
+	.rA('&lt;br/&gt;', "\\n")
+	//Comentarios 
+	.r(/(\/\/[^\n]+)/gm, enter.comments)
+	.r(/(\/\*[^\/]*\*\/)/gmi, enter.comments)
+	.r(/(\{[^\$][^\{\}]*\})/gmi, enter.comments)
+	//Directivas
+	.r(/(\{\$[^{}\n]+\})/gmi, enter.directives)
+	//Cadenas de texto
+	.r(/\"([^\n"]+)\"/gmi, '<span class=strings>"$1"<\/span>')
+	.rA('\\"</span>', '\\"')
+	.rA('\\"<span>', '\\"')
+	.r(/\'([^\n']+)\'/gmi, "<span class=strings>'$1'<\/span>")
+	.rA("\\'</span>", "\\'")
+	.rA("\\'<span>", "\\'")
+	//Palabras Reservadas
+	.r(/(^|\s+)(longstring|shortstring|integer|jump_if_false|thread|create_thread|create_custom_thread|end_thread|name_thread|end_thread_named|if|then|else|hex|end|else_jump|jump|jf|print|const|while|not|wait|repeat|until|break|continue|for|gosub|goto|var|array|of|and|or|to|downto|step|call|return_true|return_false|return|ret|rf|tr|Inc|Dec|Mul|Div|Alloc|Sqr|Random|int|string|float|bool|fade|DEFINE|select_interior|set_weather|set_wb_check_to|nop)\b/gmi, "$1<span class=keywords>$2<\/span>")
+	//Etiquetas
+	.r(/(^|\s+)(\@+\w+|\:+\w+)/gm, "$1<span class=labels>$2<\/span>")
+	.r(/(^|\s+)([A-Za-z0-9_]+\(\))/gm, "$1<span class=commands>$2<\/span>")
+	//Arreglos
+	.r(/(\[)([\d+]*)(\])/gmi, "$1<span class=numbers>$2<\/span>$3")
+	//Opcodes
+	.r(/([a-fA-F0-9]{4}\:)/gmi, enter.opcodes)
+	//Numeros
+	.r(/\b(\d+(x|\.)\w+)\b/gmi, enter.numbers)
+	.r(/\b(true|false)\b/gmi, enter.numbers)
+	.r(/((\s|\-|\,)(?!\$)(\d+)(?!\:|\@)(i|f|s|v)?)\b/gmi, enter.numbers)
+	//Modelos
+	.r(/(\#[^\"\'\#\s]+)/gm, "<span class='models uppercase'>$1<\/span>")
+	//Clases
+	.r(/\b([a-z0-9]+)\.([a-z0-9]+)/gmi, "<span class=classes>$1</span>.<span class=commands>$2</span>")
+	.r(/(\w+)(\(.+\)\.)(\w+)/gmi, "<span class=classes>$1</span>$2<span class=commands>$3</span>")
+	.r(/(\$\w+|\d+\@)\.([0-9A-Z_a-z]+)/gm, "$1.<span class=commands>$2</span>")
+	.r(/: (\w+)\n/gm,          ": "+ enter.classes  +"\n")
+	.r(/\.([0-9A-Z_a-z]+)\n/gm,"." + enter.commands +"\n")
+	//Variables  
+	.r(/\b(timer(a|b))\b/gmi, enter.variables)
+	.r(/(\d+\@(s|v|\B)[^\w\d])/gm, enter.variables)
+	.r(/(\&amp;\d+)/gim, enter.variables)
+	.r(/((\x{00}|s|v)(\$[0-9A-Z_a-z]+))/gm, enter.variables)
+	// Operadores
+	//.r(/\s(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=)\s/gmi," <font class=operador>$1<\/font> ")
+})
 
 apply($('.ini'), function(element){
 	element.innerHTML = element.innerHTML
 	// variable
-	.r(/(^[^=]+)=/g, "<span class=strings>$1<\/span>=")
+	.r(/(^[^=]+)=/gm, "<span class=strings>$1<\/span>=")
 	// Number
 	.r(/=(\d+(\.\d+)?)/g, "=<span class=strings>$1<\/span>")
 	// Type parameter
