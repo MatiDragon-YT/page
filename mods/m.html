@@ -13,33 +13,43 @@
 :::d-flex wrap
 :::col-12 col-lg-6 d-flex column between
 :::l
-[flow-text light][Si, este es un velocimetro 2D como cualquier otro, pero.. ubicado de forma 3D. Espera! QUE? En 3D??? si si si, en 3D. Apuesto a que nunca habias visto algo asi aqui]
-:::d-md-none px-2
+[flow-text light][El primer velocimetro digital en [2.5D](https://es.wikipedia.org/wiki/2.5D) que veras en GTA SA y personalizable para el tipo de medicion que desees]
+:::d-block d-lg-none
 !yt[](XJ1bve5lulI)
+<a href="https://youtube.com/c/MatiDragon" class="no-decoration">
+![](https://img.shields.io/youtube/likes/XJ1bve5lulI?style=for-the-badge)
+![](https://img.shields.io/youtube/views/XJ1bve5lulI?style=for-the-badge)
+![](https://img.shields.io/youtube/channel/subscribers/UCIqJ7P_fLvULqvmsDagJBjA?style=for-the-badge)
+</a>
 :::
-:::px-2 success
-El mod necesita [CLEO+](https://www.mixmods.com.br/2022/02/cleoplus/) y [NewOpcodes](https://gtaforums.com/topic/518780-cleo4newopcodes-by-dk22pac/) para funcionar, por lo que se incluyen en la descarga del mismo.
+:::px-lg-3
 
-Muchos de los mods que hago, usan un único archivo **.ini** para las configuraciones de estos, llamado **cleo_settings**. Si lo tienes, editelo con un editor de texto con las lineas de abajo. Si no tienes uno, tambien puedes crearlo o utilizar el que viene en el archivo comprimido.
-Para personalizar este mod con estas líneas:
+A diferencia de muchos otros medidores, este se mantienen a un lado adaptandose constantemente a los movimientos de la posicion del jugador. Dandonos uno angulos de vision exquisitas para el multi-jugador y otros mods complementarios, como:
+* [Jump In Motobike](i.md) (para saltar en motos)
+* [Turn In Air](j.md) (para girar con las motos en el aire)
+* [Stay On The Bike](k.md) (para no caerse de las bicis y motos)
+* [Aquatic Motobike](l.md) (para que las motos floten en el agua)
+* [Put On Helmets](9.md) (para ponerse cascos al estilo de GTA V)
+
+Y todo configurable desde un archivo **.ini** en la carpeta de **cleo_settings**.
+Con las siguientes lineas:
 ```ini
-[MDsVelocimeter];      --> https://matidragon-yt.github.io/page/mods/m
-; Km/h - 4.0
-; M/h  - 1.0
-; M/s  - 0.25
+[MDsVelocimeter]# By MatiDragon
 TextAtDisplay=Km/h
 MultipliedNumber=4.0
-samp=1
+DecimalNumber=1
+RunAtSamp=1
 ```
-###### Parametros
-1. `DisplayText` - Contiene el texto que se mostrara arriba del numero del medidor.
-2. `MultipliedNumber` - Se usa para hacer mas grande número que se muestra.
-3. `samp` - Si desea activarlo en SAMP con un 1, ó NO con un 0.
+* `DisplayText` - Para cambiar el texto que se mostrara junto al número del medidor.
+* `MultipliedNumber` - Para hacer mas grande número que se muestra y viceversa.
+* `DecimalNumber` - Para indicar el numero de decimales que se quieren visualizar.
+* `RunAtSamp` - Para activarlo y desactivarlo para SAMP.
+
 ###### Ejemplos
 |formato de medida|texto|número|
 |-|
 |Kilometros por hora|Km/h|4.0|
-|Metros por hora _(por defecto)_|M/h|1.0|
+|Metros por minuto _(por defecto)_|M/m|1.0|
 |Metros por segundo|M/s|0.25|
 :::
 
@@ -47,11 +57,12 @@ samp=1
 :::
 :::l
 [descargar](./docs/m/MDs-Velocimeter.zip 'button')
+> El mod incluye las ultimas actualizaciones de [CLEO+](https://www.mixmods.com.br/2022/02/cleoplus/) y [NewOpcodes](https://gtaforums.com/topic/518780-cleo4newopcodes-by-dk22pac/) para funcionar.
 :::
 
 
 :::
-:::d-none d-md-block col-lg-6 py-4
+:::d-none d-lg-block col-12 col-lg-6 py-4
 !yt[](XJ1bve5lulI)
 :::mx-2
 <a href="https://youtube.com/c/MatiDragon" class="no-decoration">
