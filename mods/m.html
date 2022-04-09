@@ -35,17 +35,19 @@ Y todo configurable desde un archivo **.ini** en la carpeta de **cleo_settings**
 Con las siguientes lineas:
 ```ini
 [MDsVelocimeter]; By MatiDragon
-TextAtDisplay=Km/h
-MultipliedNumber=4.0<!--DecimalNumber=1-->
-RunAtSamp=1
+Text=Km/h
+Multipliquer=4.0<!--DecimalNumber=1-->
+Font=3
+Samp=1
 ```
-* `DisplayText` - Para cambiar el texto que se mostrara junto al número del medidor.
-* `MultipliedNumber` - Para hacer mas grande número que se muestra y viceversa.
+* `Text` - Para cambiar el texto que se mostrara junto al número del medidor.
+* `Multipliquer` - Para hacer mas grande número que se muestra y viceversa.
 <!--* `DecimalNumber` - Para indicar el numero de decimales que se quieren visualizar.-->
-* `RunAtSamp` - Para activarlo y desactivarlo para SAMP.
+* `Font` - Para cambiar el estilo de fuente, entre tres variantes.
+* `Samp` - Para activarlo y desactivarlo para SAMP.
 
 ###### Ejemplos
-|formato de medida|texto|número|
+|formato de medida|texto|multiplicador|
 |-|
 |Kilometros por hora _(por defecto)_|Km/h|4.0|
 |Metros por minuto|M/m|1.0|
