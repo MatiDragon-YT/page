@@ -60,6 +60,13 @@ const CSSComputarized = function(){
 
 	prefixes.forEach((prefix, resolucion) => {
 		if (resolucion != 0) {tempCSS += `@media (min-width:${size[resolucion]}px) {\n`}
+	
+		var vIndex = 0
+		while(vIndex < 13){
+			tempCSS += '.cols'+prefix+vIndex+'{columns:'+vIndex+' auto}'
+
+			vIndex++
+		}
 		
 		[
 			['m', 'margin'],
@@ -77,6 +84,7 @@ const CSSComputarized = function(){
 			['px', 'padding-block'],
 			['py', 'padding-inline'],
 			['g', 'gap'],
+			['r', 'border-radius']
 		].forEach(attribute => {
 			[
 				'0',
@@ -664,7 +672,7 @@ var hightlight = {
 		.rA("\\'</span>", "\\'")
 		.rA("\\'<span>", "\\'")
 		//Palabras Reservadas
-		.r(/\b(longstring|shortstring|integer|jump_if_false|thread|create_thread|create_custom_thread|end_thread|name_thread|end_thread_named|if|then|else|hex|end|else_jump|jump|jf|print|const|while|not|wait|repeat|until|break|continue|for|gosub|goto|var|array|of|and|or|to|downto|step|call|return_true|return_false|return|ret|rf|tr|Inc|Dec|Mul|Div|Alloc|Sqr|Random|int|string|float|bool|fade|DEFINE|select_interior|set_weather|set_wb_check_to|nop)\b/gi, "<span class=keywords>$1<\/span>")
+		.r(/([^\W\w\d])(longstring|shortstring|integer|thread|create_thread|create_custom_thread|end_thread|name_thread|end_thread_named|if|then|else|hex|end|else_jump|jump|jf|print|const|while|not|wait|repeat|until|break|continue|for|gosub|goto|var|array|of|and|or|to|downto|step|return|ret|rf|tr|Inc|Dec|Mul|Div|Alloc|Sqr|Random|int|string|float|bool|fade|DEFINE|nop)\b/gi, "$1<span class=keywords>$2<\/span>")
 		//Etiquetas
 		.r(/(^|\s+)(\@+\w+|\:+\w+)/gm, "$1<span class=labels>$2<\/span>")
 		.r(/(^|\s+)([A-Za-z0-9_]+\(\))/gm, "$1<span class=commands>$2<\/span>")

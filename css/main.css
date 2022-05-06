@@ -364,22 +364,12 @@ input[type='checkbox']{
 	flex: 0 0 auto;
 }
 
-.cols-2 { columns: 2 auto}
-.cols-3 { columns: 3 auto}
-.cols-4 { columns: 4 auto}
-.cols-6 { columns: 6 auto}
-
 @media (min-width:576px) {
 	.markdown { max-width: 87.7% }
 
 	.d-sm-none {display: none}
 	.d-sm-block {display: block}
 	.d-sm-flex {display: flex}
-
-	.cols-sm-2 { columns: 2 auto}
-	.cols-sm-3 { columns: 3 auto}
-	.cols-sm-4 { columns: 4 auto}
-	.cols-sm-6 { columns: 6 auto}
 }
 @media (min-width:768px) {
 	.d-md-none {display: none}
