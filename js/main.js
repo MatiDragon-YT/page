@@ -373,17 +373,17 @@ SP.toMarkdown = function(){
 	.r(/<\/blockquote>(\s+)<blockquote>/g, '<br>')
 
 	// UL LI
-	.r(/^\*\s(.+)/gim, '<ul><li>$1</li></ul>')
-	.r(/^\x20{2}\*\s(.+)/gim, '<ul><ul><li>$1</li></ul></ul>')
-	.r(/^\x20{4}\*\s(.+)/gim, '<ul><ul><ul><li>$1</li></ul></ul></ul>')
+	.r(/^(\x20)?\*\s(.+)/gim, '<ul><li>$1$2</li></ul>')
+	.r(/^(\x20)?\x20{2}\*\s(.+)/gim, '<ul><ul><li>$1$2</li></ul></ul>')
+	.r(/^(\x20)?\x20{4}\*\s(.+)/gim, '<ul><ul><ul><li>$1$2</li></ul></ul></ul>')
 	.r(/<\/ul>(\s+)<ul>/g, '')
 	.rA('<\/ul><\/ul><ul><ul>', '')
 	.rA('<\/ul><ul>', '')
 
 	// OL LI
-	.r(/^\d\.\s(.+)/gim, '<ol><li>$1</li></ol>')
-	.r(/^\x20{2}\d\.\s(.+)/gim, '<ol><ol><li>$1</li></ol></ol>')
-	.r(/^\x20{4}\d\.\s(.+)/gim, '<ol><ol><ol><li>$1</li></ol></ol></ol>')
+	.r(/^(\x20)?\d\.\s(.+)/gim, '<ol><li>$1$2</li></ol>')
+	.r(/^(\x20)?\x20{2}\d\.\s(.+)/gim, '<ol><ol><li>$1$2</li></ol></ol>')
+	.r(/^(\x20)?\x20{4}\d\.\s(.+)/gim, '<ol><ol><ol><li>$1$2</li></ol></ol></ol>')
 
 	.r(/<\/li><\/ol>\n<ul><ul><li>(.*)<\/ul><\/ul>/g, '<\/li><ul><li>$1</ul></ol>')
 
@@ -392,9 +392,9 @@ SP.toMarkdown = function(){
 	.rA('<\/ol><ol>', '')
 
 	// DL DD
-	.r(/^\-\s(.+)/gim, '<dl><dd>$1</dd></dl>')
-	.r(/^\x20{2}\-\s(.+)/gim, '<dl><dl><dd>$1</dd></dl></dl>')
-	.r(/^\x20{4}\-\s(.+)/gim, '<dl><dl><dl><dd>$1</dd></dl></dl></dl>')
+	.r(/^(\x20)?\-\s(.+)/gim, '<dl><dd>$1$2</dd></dl>')
+	.r(/^(\x20)?\x20{2}\-\s(.+)/gim, '<dl><dl><dd>$1$2</dd></dl></dl>')
+	.r(/^(\x20)?\x20{4}\-\s(.+)/gim, '<dl><dl><dl><dd>$1$2</dd></dl></dl></dl>')
 	.r(/<\/dl>(\s+)<dl>/g, '')
 	.rA('<\/dl><\/dl><dl><dl>', '')
 	.rA('<\/dl><dl>', '')
@@ -672,7 +672,7 @@ var hightlight = {
 		.rA("\\'</span>", "\\'")
 		.rA("\\'<span>", "\\'")
 		//Palabras Reservadas
-		.r(/([^\W\w\d])(longstring|shortstring|integer|thread|create_thread|create_custom_thread|end_thread|name_thread|end_thread_named|if|then|else|hex|end|else_jump|jump|jf|print|const|while|not|wait|repeat|until|break|continue|for|gosub|goto|var|array|of|and|or|to|downto|step|return|ret|rf|tr|Inc|Dec|Mul|Div|Alloc|Sqr|Random|int|string|float|bool|fade|DEFINE|nop)\b/gi, "$1<span class=keywords>$2<\/span>")
+		.r(/(\b)(longstring|shortstring|integer|thread|create_thread|create_custom_thread|end_thread|name_thread|end_thread_named|if|then|else|hex|end|else_jump|jump|jf|print|const|while|not|wait|repeat|until|break|continue|for|gosub|goto|var|array|of|and|or|to|downto|step|return|ret|rf|tr|Inc|Dec|Mul|Div|Alloc|Sqr|Random|int|string|float|bool|fade|DEFINE|nop)\b/gi, "$1<span class=keywords>$2<\/span>")
 		//Etiquetas
 		.r(/(^|\s+)(\@+\w+|\:+\w+)/gm, "$1<span class=labels>$2<\/span>")
 		.r(/(^|\s+)([A-Za-z0-9_]+\(\))/gm, "$1<span class=commands>$2<\/span>")
