@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Compilador de mods</title>
+	<link rel="stylesheet" href="https://matidragon-yt.github.io/page/css/main.css">
+</head>
+<body style="display: block;margin: 1em;">
+
+<script>
+function log(value){
+	console.log(value)
+}
+
+const D = document
+
+const SP = String.prototype
+const EP = Element.prototype
+
+NodeList.prototype.forEach = Array.prototype.forEach
+
+/** Smart selector for elements of the DOM
+ * @param {DOMString}
+ * @param {Element} optional
+ * @return {Element}
+*/
+function $(element, _parent) {
+	_parent = _parent || D
+	const xElements = _parent.querySelectorAll(element)
+	const length = xElements.length
+
+	if (element.charAt(0) === '#' && !/\s/.test(element) || length === 1) { 
+		return _parent.querySelector(element);
+	}
+	else {
+		if(length === 0){return undefined}
+		return xElements;
+	}
+}
+
+/** Shotcun of String.replace()
+*/
+SP.r = function(text, _text, _flags){
+	_text = _text || ''
+	_flags = _flags || ''
+	return this.replace(text, _text, _flags)
+}
+
+/** Polifill and shotcun of String.replaceAll()
+*/
+SP.rA = function(text, _text){
+	var temp = this
+	_text = _text || ''
+
+	if(temp.indexOf(text, 0) !== -1){
+		temp = temp
+		.r(text, _text)
+		.rA(text, _text)
+	}
+	
+	return temp
+}
+
+/** Apply a function to all elements of the DOM
+ * @param {NodeList} 
+ * @param {function}
+*/
+function apply(element, callback){
+	if(element){
+		if('' + element == '[object NodeList]'){ 
+			element.forEach(function(e){
+				callback(e)
+			})
+		}else{  
+			callback(element)
+		}
+	}
+}
+</script>
+
+<form id="FORMULARIO">
+
+	<input type="text" id="FILENAME" placeholder="not title" autocomplete="off" value="newScript.csi"><br>
+	<textarea id="HEX" name="" cols="30" rows="10" autocomplete="off" class="w-100" placeholder="write your hex">
+CREAR_HILO 'caca'
+NADA
+DETENER 0 {ms}
+AGITAR_CAMARA 100 {ms}
+DETENER 1000 {ms}
+AGITAR_CAMARA 1000 {ms}
+DETENER 2500 {ms}
+AGITAR_CAMARA 2500 {ms}
+PARAR_HILO</textarea><br><br>
+
+	<input type="text" id="" placeholder="parseo hexadecimal" name="cleaned_hex" disabled class="w-100"><br><br>
+
+	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
+
+	<a id="" class="button" onclick="Convert()">compilar</a><br><br>
+
+</form>
+
+<blockquote>
+<h5>IMPORTANTE!</h5>
+La base de cmd(comandos) por ahora esta limitada a la que ve y son las primeras palabras con las que empiezan cada linea:<br>
+ - <code>HILO</code>: Le da un nombre a nuestro script, maximo con 7 letras dentro de las comillas simples.<br>
+ - <code>NADA</code>: Literal no hace nada, solo por si no queremos darle nombre al mod, usamos este comando.<br>
+ - <code>DETENER</code>: Frena la ejecucion del script por el numero de milesimas de segundos que asignemos.<br>
+ - <code>AGITAR_CAMARA</code>: Por un numero de milesimas de segundos que asignemos.<br>
+ - <code>PARAR_HILO</code>: Cierra el mod para que no se conjele el juego.<br>
+</blockquote>
+
+<script src="compiler.js"></script>
+<script type="text/javascript">
+    function clean_hex(input, remove_0x) {
+        input = input.toUpperCase();
+        
+        if (remove_0x) {
+          input = input.replace(/0x/gi, "");        
+        }
+        
+        let orig_input = input;
+        input = input.replace(/[^A-Fa-f0-9]/g, "");
+        // if (orig_input != input) alert ("E-01: Los caracteres no hexadecimales seran auto eliminados.");
+        return input;    
+    } 
+    
+    function Convert() {
+    	if ($('#FILENAME').value.length == 0){
+    		alert ("E-00: Añada un nombre al archivo.");
+    		return
+    	}
+
+  		if(!$('#FILENAME').value.match(/\./)){
+  			alert ("E-01: Añada una extencion al archivo.");
+  			return
+  		}
+
+    	if ($('#HEX').value.length == 0){
+    		alert ("E-02: Añada comandos al archivo.");
+    		return
+    	}
+
+      let cleaned_hex = clean_hex(TranslateSCM($('#HEX').value), true);
+	  	let filename = $('#FILENAME').value;	  
+      
+      $('#FORMULARIO').cleaned_hex.value = cleaned_hex;
+      
+      if (cleaned_hex.length % 2) {
+        alert ("E-03: la longitud de la cadena hexadecimal limpiada es impar.");     
+        return;
+      }
+
+      let binary = new Array();
+      for (let i=0; i<cleaned_hex.length/2; i++) {
+        let h = cleaned_hex.substr(i*2, 2);
+        binary[i] = parseInt(h,16);        
+      }
+
+		let byteArray = new Uint8Array(binary);
+		let a = window.document.createElement('a');
+
+		a.href = window.URL.createObjectURL(new Blob([byteArray], { type: 'application/octet-stream' }));
+		a.download = filename;
+
+		// Append anchor to body.
+		document.body.appendChild(a)
+		a.click();
+
+		// Remove anchor from body
+		document.body.removeChild(a)        
+    } 
+
+</script>
+</body>
+</html>
