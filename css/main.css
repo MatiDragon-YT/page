@@ -11,7 +11,9 @@
 
 :root {
 	--bg: #0d1117;
+	--bg-t: #0d111788;
 	--co: #c9d1d9;
+	--co-t: #c9d1d988;
 
 	--hl-labels: #009688;
 	--hl-keywords: #ff5722;
@@ -241,8 +243,8 @@ code, .code {
 }
 
 textarea{
-	font-size: 1rem;
-	padding: 0.5rem;
+	font-size: 1rem !important;
+	padding: 0.5rem !important;
 }
 
 img {
@@ -315,7 +317,11 @@ div.success, div.warning, div.info {
 	display: block;
 }
 
-input[type='text'], input[type='number'] {
+input[disabled]{
+	color: var(--co-t) !important;
+}
+
+input[type='text'], input[type='number'], textarea {
 	border: none;
 	outline: none;
 	font-size: 1em;
