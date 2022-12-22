@@ -6,6 +6,8 @@ function IsInRange(VAR, MIN, MAX){
 function log(x){console.log(x)}
 
 function TranslateSCM(INPUT_CODE){
+	console.time('Compiled in time')
+
 	INPUT_CODE = INPUT_CODE
 		// se borran los comentarios
 		.replace(/(\n+)?(\/\/[^\n]+)/gm, '')
@@ -196,7 +198,8 @@ function TranslateSCM(INPUT_CODE){
 	log('\n'+INPUT_CODE)
 
 	let OUTPUT_CODE = INPUT_CODE.toString().replace(/,/g,'')
-	log('\nCodeParsed:\n'+OUTPUT_CODE)
+	//log('\nCodeParsed:\n'+OUTPUT_CODE)
+	console.timeEnd('Compiled in time')
 	return OUTPUT_CODE
 }
 
