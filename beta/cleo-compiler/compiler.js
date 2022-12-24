@@ -1,9 +1,90 @@
-function IsInRange(VAR, MIN, MAX){
-	if (VAR >= MIN && VAR <= MAX) return 1;
-	return 0
+const PREVENTION = 0
+function log(x){console.log(x)}
+
+const SP = String.prototype
+
+Array.prototype.Clear = function(){
+	this.forEach((e,i) => {
+		if(e=='')this.splice(i,1)
+	})
+	return this
 }
 
-function log(x){console.log(x)}
+/** Shotcun of String.replace()
+*/
+SP.r = function(text, _text, _flags){
+	_text = _text || ''
+	_flags = _flags || ''
+	return this.replace(text, _text, _flags)
+}
+
+/** Polifill and shotcun of String.replaceAll()
+*/
+SP.rA = function(text, _text){
+	var temp = this
+	_text = _text || ''
+
+	if(temp.indexOf(text, 0) !== -1){
+		temp = temp
+		.r(text, _text)
+		.rA(text, _text)
+	}
+	
+	return temp
+}
+
+SP.ToBigEndian = function(){
+	let newResult = ''
+	let result = this
+		.split(/([a-f0-9]{2})/i)
+		.Clear()
+		.forEach(e => newResult = e + newResult)
+	return newResult.toUpperCase()
+}
+
+Number.prototype.ToHex = function(){
+	const getHex = i => ('00' + i.toString(16)).slice(-2);
+
+	let view = new DataView(new ArrayBuffer(4)),
+	    result;
+
+	view.setFloat32(0, this);
+
+	result = Array
+	    .apply(null, { length: 4 })
+	    .map((_, i) => getHex(view.getUint8(i)))
+	    .join('');
+
+	return result.ToBigEndian().toUpperCase()
+}
+
+function IsInRange(VAR, MIN, MAX){
+	return (VAR >= MIN && VAR <= MAX) ? 1 : 0;
+}
+
+const TypeCode = {
+	Null				:'00',
+	EndArgument			:'00',
+	Int32				:'01',
+	Global				:'02',
+	Local				:'03',
+	Int8				:'04',
+	Int16				:'05',
+	Float32				:'06',
+	GlobalArrayOffset	:'07',
+	LocarArrayIndex		:'08',
+	String8				:'09',
+	GlobalVarString8	:'0A',
+	LocarVarString8		:'0B',
+	GlobalArrayString8	:'0C',
+	LocarArrayString8	:'0D',
+	StringVariable		:'0E',
+	String16			:'0F',
+	GlobalVarString16	:'10',
+	LocarVarString16	:'11',
+	GlobalArrayString16	:'12',
+	LocarArrayString16	:'13'
+}
 
 function TranslateSCM(INPUT_CODE){
 	console.time('Compiled in time')
@@ -38,6 +119,9 @@ function TranslateSCM(INPUT_CODE){
 		'AGITAR_CAMARA' : [
 			'0003',['int']
 		],
+		'SET_LVAR_FLOAT':[
+			'0007',['lvfloat','float']
+		],
 		'CREAR_HILO' : [
 			'03A4',['short']
 		],
@@ -51,6 +135,12 @@ function TranslateSCM(INPUT_CODE){
 			'FFF2',['long']
 		],
 		'TEST__INT' : [
+			'FFF3',['int']
+		],
+		'TEST__LVAR' : [
+			'FFF3',['int']
+		],
+		'TEST__GVAR' : [
 			'FFF3',['int']
 		]
 	}
@@ -79,24 +169,30 @@ function TranslateSCM(INPUT_CODE){
 						SCM_DATABASE[INPUT_CODE[i][0]][1].forEach((iParam, iIndex) => {
 							
 							if(iParam == 'short'){
-								parameter = parameter.replace(/('(.+)'|"(.+)")/, '$2$3')
-								parameter = ('09' + strAsUnicode(parameter) ).toUpperCase() + '00'
+								parameter = parameter.replace(/'(.+)'/, '$1')
+								parameter = (TypeCode.String8 + strAsUnicode(parameter) ).toUpperCase() + TypeCode.EndArgument
 								while(parameter.length < 18){
-									parameter += '00'
+									parameter += TypeCode.Null
 								}
 								INPUT_CODE[i][index] = parameter
 							}
 
 							if(iParam == 'long'){
-								parameter = parameter.replace(/('(.+)'|"(.+)")/, '$2$3')
+								parameter = parameter.replace(/"(.+)"/, '$1')
 								if (parameter.length < 15){
-									parameter = ('0F' + strAsUnicode(parameter) ).toUpperCase() + '00'
+									parameter = (TypeCode.String16 + strAsUnicode(parameter) ).toUpperCase() + TypeCode.EndArgument
 									while(parameter.length < 32){
-										parameter += '00'
+										parameter += TypeCode.Null
 									}
 								}else{
-									parameter = ('0E' + parameter.length + strAsUnicode(parameter) ).toUpperCase()
+									parameter = (TypeCode.StringVariable + parameter.length + strAsUnicode(parameter) ).toUpperCase()
 								}
+								INPUT_CODE[i][index] = parameter
+							}
+
+							if(iParam == 'string'){
+								parameter = parameter.replace(/('(.+)'|"(.+)")/, '$2$3')
+								parameter = (TypeCode.StringVariable + parameter.length + strAsUnicode(parameter) ).toUpperCase()
 								INPUT_CODE[i][index] = parameter
 							}
 
@@ -105,45 +201,44 @@ function TranslateSCM(INPUT_CODE){
 									return parseInt(hex, 16)
 								})
 
-								let bit1   = 0x7F       // 127
-								let bit1R  = 0xFF
-								let bit2   = 0x7FFF     // 32767
-								let bit2R  = 0xFFFF
-								let bit4   = 0x7FFFFFFF // 2147483647
-								let bit4R  = 0xFFFFFFFF
+								let byte1   = 0x7F       // 127
+								let byte1R  = 0xFF
+								let byte2   = 0x7FFF     // 32767
+								let byte2R  = 0xFFFF
+								let byte4   = 0x7FFFFFFF // 2147483647
+								let byte4R  = 0xFFFFFFFF
 
 								let dataType;
 
 								if (0 <= parameter) {
-									if (parameter <= bit4) dataType = '01';
-									if (parameter <= bit2) dataType = '05';
-									if (parameter <= bit1) dataType = '04';
-								}
-								else {
+									if (parameter <= byte4) dataType = TypeCode.Int32;
+									if (parameter <= byte2) dataType = TypeCode.Int16;
+									if (parameter <= byte1) dataType = TypeCode.Int8;
+								} else {
 									//parameter *= -1
 
-									if (IsInRange(parameter, -(bit1+=2), 0)) {
-										dataType = '04';	
+									if (IsInRange(parameter, -(byte1+=2), 0)) {
+										dataType = TypeCode.Int8;	
 									}
-									if (IsInRange(parameter, -(bit2+=2), -bit1)) {
-										dataType = '05';
+									if (IsInRange(parameter, -(byte2+=2), -byte1)) {
+										dataType = TypeCode.Int16;
 									}
-									if (IsInRange(parameter, -(bit4+=2), -bit2)) {
-										dataType = '01';
+									if (IsInRange(parameter, -(byte4+=2), -byte2)) {
+										dataType = TypeCode.Int32;
 									}
 
 									parameter *= -1
 									switch (dataType){
-										case '04' :
-											parameter -= bit1R;
+										case TypeCode.Int8 :
+											parameter -= byte1R;
 											break;
 
-										case '05' :
-											parameter -= bit2R;
+										case TypeCode.Int16 :
+											parameter -= byte2R;
 											break;
 
-										case '01' :
-											parameter -= bit4R;
+										case TypeCode.Int32 :
+											parameter -= byte4R;
 											break;
 
 										default: break;
@@ -154,15 +249,15 @@ function TranslateSCM(INPUT_CODE){
 								parameter = Number(parameter).toString(16).padStart((()=>{
 									let temp
 									switch (dataType){
-										case '04' :
+										case TypeCode.Int8 :
 											temp = 2
 											break;
 
-										case '05' :
+										case TypeCode.Int16 :
 											temp = 4
 											break;
 
-										case '01' :
+										case TypeCode.Int32 :
 											temp = 8
 											break;
 
@@ -181,6 +276,33 @@ function TranslateSCM(INPUT_CODE){
 								INPUT_CODE[i][index] = dataType + parameter
 							}
 
+							/*
+							const IsParam = {
+								Float : (x) => {
+									return /\d?(\d+).\d?(\d+)(?!@)/.test(x)
+								},
+								LVar : (x) => {
+									return /@/.test(x)
+								}
+							}
+
+							if(IsParam.Float(INPUT_CODE[i][index])){
+								INPUT_CODE[i][index] = TypeCode.Float32 + Number(parameter).ToHex()	
+								
+							}
+							//['lvfloat','float']
+							if(IsParam.LVar(INPUT_CODE[i][index])){
+								parameter = 
+									TypeCode.Local 
+									+ Number(parameter.r('@','')).toString(16)
+										.padStart(4,'0')
+										.ToBigEndian()
+
+								INPUT_CODE[i][index] = parameter
+							}
+							*/
+							//log({iParam,iIndex,parameter,k:INPUT_CODE[i][index],index,i})
+								
 						})
 					}
 				}
@@ -195,6 +317,9 @@ function TranslateSCM(INPUT_CODE){
 		INPUT_CODE[i][0] = a[3] + a[1] 				  // el frontal se invierta por la trasera
 	})
 
+	if (PREVENTION == 1){
+		INPUT_CODE = '0000,' + INPUT_CODE + ',4E00'
+	}
 	log('\n'+INPUT_CODE)
 
 	let OUTPUT_CODE = INPUT_CODE.toString().replace(/,/g,'')
@@ -202,17 +327,19 @@ function TranslateSCM(INPUT_CODE){
 	console.timeEnd('Compiled in time')
 	return OUTPUT_CODE
 }
-
 /*
 TranslateSCM(`
-CREAR_HILO 'caca'
+//CREAR_HILO 'caca'
 NADA
-// noop
-DETENER 0
-AGITAR_CAMARA 40
-NADA
+DETENER 0 {ms}
+AGITAR_CAMARA 100 {ms}
+DETENER 1000 {ms}
+AGITAR_CAMARA 100 {ms}
+DETENER 1000 {ms}
+AGITAR_CAMARA 100 {ms}
 PARAR_HILO
 `)
 
-log('\nCodeOriginal:\na4030963616361000000000000010004000300042800004e00'.toUpperCase())
-*/
+
+//log('\nCodeOriginal:\na4030963616361000000000000010004000300042800004e00'.toUpperCase())
+//*/

@@ -7,7 +7,18 @@
 	<link rel="stylesheet" href="https://matidragon-yt.github.io/page/css/main.css">
 </head>
 <body style="display: block;margin: 1em;">
-
+<style>
+.contador {
+    counter-increment: listing;
+    color: grey;
+    margin-right: 2.2em;
+    position: relative;
+}
+.contador::before {
+    content: counter(listing, decimal-leading-zero);
+    display: inline-block;
+}
+</style>
 <script>
 function log(value){
 	console.log(value)
@@ -15,8 +26,8 @@ function log(value){
 
 const D = document
 
-const SP = String.prototype
-const EP = Element.prototype
+//const SP = String.prototype
+//const EP = Element.prototype
 
 NodeList.prototype.forEach = Array.prototype.forEach
 
@@ -41,7 +52,7 @@ function $(element, _parent) {
 
 /** Shotcun of String.replace()
 */
-SP.r = function(text, _text, _flags){
+String.prototype.r = function(text, _text, _flags){
 	_text = _text || ''
 	_flags = _flags || ''
 	return this.replace(text, _text, _flags)
@@ -49,7 +60,7 @@ SP.r = function(text, _text, _flags){
 
 /** Polifill and shotcun of String.replaceAll()
 */
-SP.rA = function(text, _text){
+String.prototype.rA = function(text, _text){
 	var temp = this
 	_text = _text || ''
 
@@ -81,16 +92,24 @@ function apply(element, callback){
 
 <form id="FORMULARIO">
 
-	<input type="text" id="FILENAME" placeholder="not title" autocomplete="off" value="newScript.csi">
-	<pre contenteditable id="HEX" cols="30" rows="10" autocomplete="off" class="w-100 m-0" placeholder="write your hex" style="
+	<input type="text" id="FILENAME" placeholder="File name" autocomplete="off" value="newScript.csi">
+	<textarea id="HEX" autocomplete="off" class="w-100 m-0" placeholder="write your hex" style="
     position: absolute;
+    display: block;
     width: calc(100% - 2em);
-    z-index: 1;
-    filter: ;
-    mix-blend-mode: multiply;
-    outline: none;
-    /* caret-color: black; */
-">
+    color: transparent;
+    background: transparent;
+    caret-color: white;
+    resize: none;
+    padding: 4px 10px 4px 4em !important;
+    margin: 0.6rem 0px;
+    overflow: auto;
+    max-height: 50vh;
+    font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+    line-height: 1.5em;
+    font-size: 1em!important;
+    height: 50vh;
+    ">
 //CREAR_HILO 'caca'
 NADA
 DETENER 0 {ms}
@@ -99,22 +118,16 @@ DETENER 1000 {ms}
 AGITAR_CAMARA 100 {ms}
 DETENER 1000 {ms}
 AGITAR_CAMARA 100 {ms}
-PARAR_HILO</pre>
-	<pre id='PREVIEW' style="
-  user-select: none;
-  /*width: calc(100% - 5em);
-   position: fixed; */
-  /* top: 3em; */
-  /* font-size: 1em; */
-  background: hsl(215deg 21% 82%);
-  mix-blend-mode: lighten;
-" class="m-0"></pre>
+PARAR_HILO</textarea>
+	<pre id='PREVIEW' style="height: 50vh;
+	" class="m-0"></pre>
 
-	<input type="text" id="" placeholder="parseo hexadecimal" name="cleaned_hex" disabled class="w-100"><br><br>
+	<input type="text" id="" placeholder="hex's output" name="cleaned_hex" disabled class="w-100"><br><br>
 
 	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
 
-	<a id="" class="button" onclick="Convert()">compilar</a><br><br>
+	<a id="" class="button" onclick="Convert()" style="
+    cursor: pointer;">compilar</a><br><br>
 
 </form>
 
@@ -154,12 +167,12 @@ La base de cmd(comandos) por ahora esta limitada a la que ve y son las primeras 
   			return
   		}
 
-    	if ($('#HEX').innerText.length == 0){
+    	if ($('#HEX').value.length == 0){
     		alert ("E-02: Añada comandos al archivo.");
     		return
     	}
 
-      let cleaned_hex = clean_hex(TranslateSCM($('#HEX').innerText), true);
+      let cleaned_hex = clean_hex(TranslateSCM($('#HEX').value), true);
 	  	let filename = $('#FILENAME').value;	  
       
       $('#FORMULARIO').cleaned_hex.value = cleaned_hex;
@@ -205,15 +218,17 @@ function hl(){
 		comments  : span.start + "comments"   + span.end,
 		numbers   : span.start + "numbers"    + span.end,
 		variables : span.start + "variables"  + span.end,
-		opcodes   : span.start + "opcodes"  + span.end,
+		opcodes   : span.start + "opcodes"    + span.end,
 		directives: span.start + "directives" + span.end,
 		commands  : span.start + "commands"   + span.end,
 		classes   : span.start + "classes"    + span.end
 	}
 
-	$('#PREVIEW').innerHTML = $('#HEX').innerText
+	$('#PREVIEW').innerHTML = $('#HEX').value
+	.r(/(^$)/gm, '$1 ')
 	.rA('\t', '    ')
 	.rA('&lt;br/&gt;', "\\n")
+	.r(/(^.)/gm, '<font class=contador><\/font>$1')
 	//Comentarios 
 	.r(/(\/\/[^\n]+)/gm, enter.comments)
 	.r(/(\/\*[^\/]*\*\/)/gmi, enter.comments)
@@ -257,7 +272,13 @@ function hl(){
 	.r(/(\d+\@(s|v|\B)[^\w\d])/gm, enter.variables)
 	// Operadores
 	//.r(/\s(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=)\s/gmi," <font class=operador>$1<\/font> ")
+
+	$('#PREVIEW').scrollTop = $('#HEX').scrollTop
 }
+
+$('#HEX').addEventListener("scroll", function(){
+    $('#PREVIEW').scrollTop = $('#HEX').scrollTop
+})
 </script>
 
 <style id="CSS"></style>
