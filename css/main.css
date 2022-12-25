@@ -351,7 +351,8 @@ input[type='checkbox']{
 .commands { color: var(--hl-commands) }
 .numbers,
 .numbers * { color: var(--hl-numbers) }
-.variables { color: var(--hl-variables) }
+.variables,
+.variables * { color: var(--hl-variables) }
 .strings,
 .strings * { color: var(--hl-strings) }
 .comments,
