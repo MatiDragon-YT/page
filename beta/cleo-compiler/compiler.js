@@ -1,13 +1,12 @@
-const PREVENTION = 0
-function log(x){console.log(x)}
+const 	log = x => console.log(x),
 
-const SP = String.prototype
+		NP = Number.prototype,
+		SP = String.prototype,
+		AP = Array.prototype;
 
-Array.prototype.Clear = function(){
-	this.forEach((e,i) => {
-		if(e=='')this.splice(i,1)
-	})
-	return this
+
+function IsInRange(VAR, MIN, MAX){
+	return (VAR >= MIN && VAR <= MAX) ? 1 : 0;
 }
 
 /** Shotcun of String.replace()
@@ -33,16 +32,18 @@ SP.rA = function(text, _text){
 	return temp
 }
 
-SP.ToBigEndian = function(){
+SP.toBigEndian = function(){
 	let newResult = ''
 	let result = this
 		.split(/([a-f0-9]{2})/i)
-		.Clear()
+		.clear()
 		.forEach(e => newResult = e + newResult)
-	return newResult.toUpperCase()
+	return newResult
 }
 
-Number.prototype.ToHex = function(){
+/** Convert any number to HEX with BIG-ENDIAN
+*/
+NP.toHex = function(){
 	const getHex = i => ('00' + i.toString(16)).slice(-2);
 
 	let view = new DataView(new ArrayBuffer(4)),
@@ -55,291 +56,282 @@ Number.prototype.ToHex = function(){
 	    .map((_, i) => getHex(view.getUint8(i)))
 	    .join('');
 
-	return result.ToBigEndian().toUpperCase()
+	return result.toBigEndian()
 }
 
-function IsInRange(VAR, MIN, MAX){
-	return (VAR >= MIN && VAR <= MAX) ? 1 : 0;
-}
-
-const TypeCode = {
-	Null				:'00',
-	EndArgument			:'00',
-	Int32				:'01',
-	Global				:'02',
-	Local				:'03',
-	Int8				:'04',
-	Int16				:'05',
-	Float32				:'06',
-	GlobalArrayOffset	:'07',
-	LocarArrayIndex		:'08',
-	String8				:'09',
-	GlobalVarString8	:'0A',
-	LocarVarString8		:'0B',
-	GlobalArrayString8	:'0C',
-	LocarArrayString8	:'0D',
-	StringVariable		:'0E',
-	String16			:'0F',
-	GlobalVarString16	:'10',
-	LocarVarString16	:'11',
-	GlobalArrayString16	:'12',
-	LocarArrayString16	:'13'
-}
-
-function TranslateSCM(INPUT_CODE){
-	console.time('Compiled in time')
-
-	INPUT_CODE = INPUT_CODE
-		// se borran los comentarios
-		.replace(/(\n+)?(\/\/[^\n]+)/gm, '')
-		.replace(/(\n+)?(\/\*[^\/]*\*\/)/gmi, '')
-		.replace(/(\n+)?(\{[^\$][^\{\}]*\})/gmi, '')
-
-	if (INPUT_CODE.match(/(".+\x20.+"|'.+\x20.+')/)){
-		log('!!!!!!!!!!!!!!!!!!!!!!!!!\nNOT ADD SPACES AT STRINGS\n!!!!!!!!!!!!!!!!!!!!!!!!!\n')
-		return void(0)
-	}
-
-	//log(INPUT_CODE)
-
-	const strAsUnicode = str => {
-	  return str.split("").map(s => {
-	    return `${s.charCodeAt(0).toString(16).padStart(2, '0')}`;
-	  }).join("");
-	}
-
-	const SCM_DATABASE = {
-		//  opcode, parametros
-		'NADA' : [
-			'0000', 0
-		],
-		'DETENER' : [
-			'0001',['int']
-		],
-		'AGITAR_CAMARA' : [
-			'0003',['int']
-		],
-		'SET_LVAR_FLOAT':[
-			'0007',['lvfloat','float']
-		],
-		'CREAR_HILO' : [
-			'03A4',['short']
-		],
-		'PARAR_HILO' : [
-			'004E',0
-		],
-		'TEST__SHORT' : [
-			'FFF1',['short']
-		],
-		'TEST__LONG' : [
-			'FFF2',['long']
-		],
-		'TEST__INT' : [
-			'FFF3',['int']
-		],
-		'TEST__LVAR' : [
-			'FFF3',['int']
-		],
-		'TEST__GVAR' : [
-			'FFF3',['int']
-		]
-	}
-
-	// eliminamos espaciados innecesarios
-	INPUT_CODE = INPUT_CODE.replace(/^\n/gm,'').replace(/\n+/gm,'\n').replace(/\n$/gm,'')//.replace(/$/gm, ' ')
-
-	//log(INPUT_CODE)
-
-
-	INPUT_CODE = INPUT_CODE.split('\n') // se divide el codigo de entrada por lineas, para trabajarlas de una en una
-
-	INPUT_CODE.forEach((line_code,i) => {
-		//log({line_code,i})
-		
-		INPUT_CODE[i] = INPUT_CODE[i].split(/\x20/) // de divide la linea por espacios para determinar los parametros
-
-		log(INPUT_CODE[i])
-
-		if (INPUT_CODE[i].length > 1){
-
-			INPUT_CODE[i].forEach((parameter,index)=>{
-				if (index > 0){
-					if(SCM_DATABASE[INPUT_CODE[i][0]].length > 1){
-						//log(SCM_DATABASE[INPUT_CODE[i][0]][1])
-						SCM_DATABASE[INPUT_CODE[i][0]][1].forEach((iParam, iIndex) => {
-							
-							if(iParam == 'short'){
-								parameter = parameter.replace(/'(.+)'/, '$1')
-								parameter = (TypeCode.String8 + strAsUnicode(parameter) ).toUpperCase() + TypeCode.EndArgument
-								while(parameter.length < 18){
-									parameter += TypeCode.Null
-								}
-								INPUT_CODE[i][index] = parameter
-							}
-
-							if(iParam == 'long'){
-								parameter = parameter.replace(/"(.+)"/, '$1')
-								if (parameter.length < 15){
-									parameter = (TypeCode.String16 + strAsUnicode(parameter) ).toUpperCase() + TypeCode.EndArgument
-									while(parameter.length < 32){
-										parameter += TypeCode.Null
-									}
-								}else{
-									parameter = (TypeCode.StringVariable + parameter.length + strAsUnicode(parameter) ).toUpperCase()
-								}
-								INPUT_CODE[i][index] = parameter
-							}
-
-							if(iParam == 'string'){
-								parameter = parameter.replace(/('(.+)'|"(.+)")/, '$2$3')
-								parameter = (TypeCode.StringVariable + parameter.length + strAsUnicode(parameter) ).toUpperCase()
-								INPUT_CODE[i][index] = parameter
-							}
-
-							if(iParam == 'int'){
-								parameter.replace(/^0x.+/mi, hex => {
-									return parseInt(hex, 16)
-								})
-
-								let byte1   = 0x7F       // 127
-								let byte1R  = 0xFF
-								let byte2   = 0x7FFF     // 32767
-								let byte2R  = 0xFFFF
-								let byte4   = 0x7FFFFFFF // 2147483647
-								let byte4R  = 0xFFFFFFFF
-
-								let dataType;
-
-								if (0 <= parameter) {
-									if (parameter <= byte4) dataType = TypeCode.Int32;
-									if (parameter <= byte2) dataType = TypeCode.Int16;
-									if (parameter <= byte1) dataType = TypeCode.Int8;
-								} else {
-									//parameter *= -1
-
-									if (IsInRange(parameter, -(byte1+=2), 0)) {
-										dataType = TypeCode.Int8;	
-									}
-									if (IsInRange(parameter, -(byte2+=2), -byte1)) {
-										dataType = TypeCode.Int16;
-									}
-									if (IsInRange(parameter, -(byte4+=2), -byte2)) {
-										dataType = TypeCode.Int32;
-									}
-
-									parameter *= -1
-									switch (dataType){
-										case TypeCode.Int8 :
-											parameter -= byte1R;
-											break;
-
-										case TypeCode.Int16 :
-											parameter -= byte2R;
-											break;
-
-										case TypeCode.Int32 :
-											parameter -= byte4R;
-											break;
-
-										default: break;
-									}
-									parameter *= -1
-									parameter++;
-								}
-								parameter = Number(parameter).toString(16).padStart((()=>{
-									let temp
-									switch (dataType){
-										case TypeCode.Int8 :
-											temp = 2
-											break;
-
-										case TypeCode.Int16 :
-											temp = 4
-											break;
-
-										case TypeCode.Int32 :
-											temp = 8
-											break;
-
-										default: break;
-									}
-									return temp
-								})(), '0').toUpperCase()
-
-								parameter = parameter.split(/([\d\w]{2})/)
-
-								//log(parameter)
-								parameter = (parameter[7]||'') + (parameter[5]||'') + (parameter[3]||'') + (parameter[1]||'')
-								
-								//log(parameter)
-
-								INPUT_CODE[i][index] = dataType + parameter
-							}
-
-							/*
-							const IsParam = {
-								Float : (x) => {
-									return /\d?(\d+).\d?(\d+)(?!@)/.test(x)
-								},
-								LVar : (x) => {
-									return /@/.test(x)
-								}
-							}
-
-							if(IsParam.Float(INPUT_CODE[i][index])){
-								INPUT_CODE[i][index] = TypeCode.Float32 + Number(parameter).ToHex()	
-								
-							}
-							//['lvfloat','float']
-							if(IsParam.LVar(INPUT_CODE[i][index])){
-								parameter = 
-									TypeCode.Local 
-									+ Number(parameter.r('@','')).toString(16)
-										.padStart(4,'0')
-										.ToBigEndian()
-
-								INPUT_CODE[i][index] = parameter
-							}
-							*/
-							//log({iParam,iIndex,parameter,k:INPUT_CODE[i][index],index,i})
-								
-						})
-					}
-				}
-			})
-			
-		}
-
-
-		INPUT_CODE[i][0] = SCM_DATABASE[INPUT_CODE[i][0]][0] // cambia las palabras claves por los opcodes
-
-		let a = INPUT_CODE[i][0].split(/([\d\w]{2})/) // se divide el numero de opcodes en 2, para que la parte
-		INPUT_CODE[i][0] = a[3] + a[1] 				  // el frontal se invierta por la trasera
+/** Remove elements of a array what is same to ''.
+*/
+AP.clear = function(){
+	this.forEach((e,i) => {
+		if(e=='')this.splice(i,1)
 	})
-
-	if (PREVENTION == 1){
-		INPUT_CODE = '0000,' + INPUT_CODE + ',4E00'
-	}
-	log('\n'+INPUT_CODE)
-
-	let OUTPUT_CODE = INPUT_CODE.toString().replace(/,/g,'')
-	//log('\nCodeParsed:\n'+OUTPUT_CODE)
-	console.timeEnd('Compiled in time')
-	return OUTPUT_CODE
+	return this
 }
-/*
-TranslateSCM(`
-//CREAR_HILO 'caca'
-NADA
-DETENER 0 {ms}
-AGITAR_CAMARA 100 {ms}
-DETENER 1000 {ms}
-AGITAR_CAMARA 100 {ms}
-DETENER 1000 {ms}
-AGITAR_CAMARA 100 {ms}
-PARAR_HILO
-`)
 
+const TYPE_CODE = {
+	TERMINAL_NULL		:'00',
+	INT32				:'01',
+	GVAR				:'02',
+	LVAR				:'03',
+	INT8				:'04',
+	INT16				:'05',
+	FLOAT32				:'06',
+	GVAR_ARRAY_OFFSET	:'07',
+	LVAR_ARRAY_INDEX	:'08',
+	STRING8				:'09',
+	GVAR_STRING8		:'0A',
+	LVAR_STRING8		:'0B',
+	GVAR_ARRAY_STRING8	:'0C',
+	LVAR_ARRAY_STRING8	:'0D',
+	STRING_VARIABLE		:'0E',
+	STRING16			:'0F',
+	GVAR_STRING16		:'10',
+	LVAR_STRING16		:'11',
+	GVAR_ARRAY_STRING16	:'12',
+	LVAR_ARRAY_STRING16	:'13'
+}
 
-//log('\nCodeOriginal:\na4030963616361000000000000010004000300042800004e00'.toUpperCase())
-//*/
+const REG = {
+	INT			: /(\d+|0x[0-9a-f]+)([^\w]|\s|$)/gmi,
+	FLOAT		: /(^|[\s\(\)\[\],])((\d+)\.(\d+)|\.\d+|\d+(\.|f))([\s\(\)\[\],]|$)/gm,
+	MODEL		: /(\#[\w\d]+)/g,
+	LVAR		: /\d+@(i|f)?([^\d\w]|$)/gm,
+	GVAR		: /((\x{00}|s|v)(\$[0-9A-Z_a-z]+))/g,
+	MVAR		: /(\&amp;\d+)/g,
+	LONG		: /\"([^\n"]+)?\"/g,
+	SHORT		: /\'([^\n']+)?\'/g,
+	COMMENT		: /(\/\/[^\n]+|\/\*[^\/]*\*\/|\{[^\$][^\{\}]*\})/g,
+	DIRECTIVE	: /(\{\$[^{}\n]+\})/g,
+	LABEL		: /(^|[\s\(,])(\@+\w+|\:+\w+)/gm,
+	JUMP		: /(^|\s)([A-Za-z0-9_]+\(\))/gm
+}
+
+const SCM_DB = {
+	'nop'			: {
+		opcode : '0000',
+		params : []
+	},
+	'wait'			: {
+		opcode : '0001',
+		params : ['int']
+	},
+	'camera_shake'	: {
+		opcode : '0003',
+		params : ['int']
+	},
+	'set_lvar_float': {
+		opcode : '0007',
+		params : ['lvar','float']
+	},
+	'create_thread'	: {
+		opcode : '03a4',
+		params : ['short']
+	},
+	'end_thread'	: {
+		opcode : '004e',
+		params : []
+	},
+	'test__short'	: {
+		opcode : 'fff1',
+		params : ['short']
+	},
+	'test__long'	: {
+		opcode : 'fff2',
+		params : ['long']
+	},
+	'test__int'		: {
+		opcode : 'fff3',
+		params : ['int']
+	},
+	'test__lvar'	: {
+		opcode : 'fff3',
+		params : ['int']
+	},
+	'test__gvar'	: {
+		opcode : 'fff3',
+		params : ['int']
+	},
+}
+
+SP.toUnicode = function() {
+  return this.split("").map(s => {
+    return `${s.charCodeAt(0).toString(16).padStart(2, '0')}`;
+  }).join("");
+}
+
+SP.Translate = function(){
+	let codeDepurated = []
+	
+	if (this.match(/[^\w\d]("([^"\n]+)?)(\x20)(([^"\n]+)?")[^\w\d]/)) {
+		log('NO ADD SPACES IN STRINGS')
+		return
+	}
+
+	let LineComand = this
+		.r(/(:|@)[\w\d]+/gm, '')
+		// remove commits of code
+		.r(/(\s+)?\/\/([^\n]+)?/gm, '') 
+		.r(/(\s+)?\/\*([^\/]*)?\*\//gm, '')
+		.r(/(\s+)?\{([^\$\}]*)?\}/gm, '')
+		// remove spaces innesesaries
+		.r(/[\x20\t]+$/gm,'')
+		.r(/^[\x20\t]+/gm,'')
+		// remove jump lines innesesaries
+		.r(/^\n+/gm, '')
+		.r(/\n$/gm, '')
+		
+		.split('\n')
+
+	LineComand.forEach((Line, numLine) => {
+		LineComand[numLine] = Line.split(' ')
+
+		let lineDepurated = []
+		let command = ''
+		let typeData = ''
+		LineComand[numLine].forEach((Param, numParam) => {
+			if (numParam == 0) { // opcode
+				lineDepurated.push(SCM_DB[Param].opcode.toBigEndian())
+				command = Param
+			}
+			else {
+				typeData = SCM_DB[command].params[--numParam]
+
+				switch (typeData) {
+					case 'short':
+						Param = Param.replace(/'(.+)'/, '$1')
+						Param = Param.substring(0,7)
+						Param = (TYPE_CODE.STRING8 + Param.toUnicode()) + '00'
+						while(Param.length < 18){
+							Param += TYPE_CODE.TERMINAL_NULL
+						}
+					break;
+
+					case 'long':
+						Param = Param.replace(/"(.+)"/, '$1')
+						if (Param.length < 15){
+							Param = (TYPE_CODE.STRING16 + Param.toUnicode()) + '00'
+							while(Param.length < 32){
+								Param += TYPE_CODE.TERMINAL_NULL
+							}
+						}else{
+							Param = (TYPE_CODE.STRING_VARIABLE + Param.length + Param.toUnicode())
+						}
+					break;
+
+					case 'string':
+						Param = Param.replace(/('(.+)'|"(.+)")/, '$2$3')
+						Param = (TYPE_CODE.STRING_VARIABLE + Param.length + Param.toUnicode())
+						INPUT_CODE[i][index] = Param
+					break;
+
+					case 'int':
+						Param.replace(/^0x.+/mi, hex => {
+							return parseInt(hex, 16)
+						})
+
+						let byte1   = 0x7F       // 127
+						let byte1R  = 0xFF
+						let byte2   = 0x7FFF     // 32767
+						let byte2R  = 0xFFFF
+						let byte4   = 0x7FFFFFFF // 2147483647
+						let byte4R  = 0xFFFFFFFF
+
+						let dataType;
+
+						if (0 <= Param) {
+							if (Param <= byte4) dataType = TYPE_CODE.INT32;
+							if (Param <= byte2) dataType = TYPE_CODE.INT16;
+							if (Param <= byte1) dataType = TYPE_CODE.INT8;
+						} else {
+							//Param *= -1
+
+							if (IsInRange(Param, -(byte1+=2), 0)) {
+								dataType = TYPE_CODE.INT8;	
+							}
+							if (IsInRange(Param, -(byte2+=2), -byte1)) {
+								dataType = TYPE_CODE.INT16;
+							}
+							if (IsInRange(Param, -(byte4+=2), -byte2)) {
+								dataType = TYPE_CODE.INT32;
+							}
+
+							Param *= -1
+							switch (dataType){
+								case TYPE_CODE.INT8 :
+									Param -= byte1R;
+									break;
+
+								case TYPE_CODE.INT16 :
+									Param -= byte2R;
+									break;
+
+								case TYPE_CODE.INT32 :
+									Param -= byte4R;
+									break;
+
+								default: break;
+							}
+							Param *= -1
+							Param++;
+						}
+						Param = Number(Param).toString(16).padStart((()=>{
+							let temp
+							switch (dataType){
+								case TYPE_CODE.INT8 :
+									temp = 2
+									break;
+
+								case TYPE_CODE.INT16 :
+									temp = 4
+									break;
+
+								case TYPE_CODE.INT32 :
+									temp = 8
+									break;
+
+								default: break;
+							}
+							return temp
+						})(), '0')
+
+						Param = dataType + Param.toBigEndian()
+
+					break;
+
+					case 'float':
+						Param = TYPE_CODE.FLOAT32 + Number(Param).toHex()
+					break;
+
+					case 'lvar':
+						Param = 
+							TYPE_CODE.LVAR 
+							+ Number(Param.r('@','')).toString(16)
+								.padStart(4,'0')
+								.toBigEndian()
+					break;
+				}
+
+				lineDepurated.push(Param)
+			}
+		})
+
+		codeDepurated.push(lineDepurated)
+	})
+	
+	log(codeDepurated)
+
+	return codeDepurated.toString().replace(/,/g,'').toUpperCase()
+}
+
+log(`nop
+:example
+create_thread 'example'
+wait 0 {ms}
+set_lvar_float 0@ 0.0
+set_lvar_float 1@ 0.12
+camera_shake 100 {ms}
+wait 1000 {ms}
+camera_shake 100 {ms}
+wait 1000 {ms}
+camera_shake 100 {ms}
+end_thread`.Translate())
