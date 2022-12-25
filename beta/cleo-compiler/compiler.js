@@ -322,7 +322,7 @@ SP.Translate = function(){
 
 	return codeDepurated.toString().replace(/,/g,'').toUpperCase()
 }
-
+/*
 log(`nop
 :example
 create_thread 'example'
@@ -334,4 +334,4 @@ wait 1000 {ms}
 camera_shake 100 {ms}
 wait 1000 {ms}
 camera_shake 100 {ms}
-end_thread`.Translate())
+end_thread`.Translate())*/
