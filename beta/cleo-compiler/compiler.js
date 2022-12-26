@@ -90,7 +90,7 @@ const TYPE_CODE = {
 	GVAR_ARRAY_STRING16	:'12',
 	LVAR_ARRAY_STRING16	:'13'
 }
-
+/*
 const REG = {
 	INT			: /(\d+|0x[0-9a-f]+)([^\w]|\s|$)/gmi,
 	FLOAT		: /(^|[\s\(\)\[\],])((\d+)\.(\d+)|\.\d+|\d+(\.|f))([\s\(\)\[\],]|$)/gm,
@@ -105,7 +105,7 @@ const REG = {
 	LABEL		: /(^|[\s\(,])(\@+\w+|\:+\w+)/gm,
 	JUMP		: /(^|\s)([A-Za-z0-9_]+\(\))/gm
 }
-
+*/
 const SCM_DB = {
 	'nop'			: {
 		opcode : '0000',
@@ -115,13 +115,37 @@ const SCM_DB = {
 		opcode : '0001',
 		params : ['int']
 	},
+	'goto'			: {
+		opcode : '0002',
+		params : ['label']
+	},
 	'camera_shake'	: {
 		opcode : '0003',
 		params : ['int']
 	},
+	'set_var_int': {
+		opcode : '0004',
+		params : ['gvar','int']
+	},
+	'set_var_float': {
+		opcode : '0005',
+		params : ['gvar','float']
+	},
+	'set_lvar_int': {
+		opcode : '0006',
+		params : ['lvar','int']
+	},
 	'set_lvar_float': {
 		opcode : '0007',
 		params : ['lvar','float']
+	},
+	'add_val_to_int_var': {
+		opcode : '0008',
+		params : ['gvar','int']
+	},
+	'add_val_to_float_var': {
+		opcode : '0009',
+		params : ['gvar','float']
 	},
 	'create_thread'	: {
 		opcode : '03a4',
@@ -131,25 +155,33 @@ const SCM_DB = {
 		opcode : '004e',
 		params : []
 	},
-	'test__short'	: {
-		opcode : 'fff1',
+	'[short]'	: {
+		opcode : 'ffff',
 		params : ['short']
 	},
-	'test__long'	: {
-		opcode : 'fff2',
+	'[long]'	: {
+		opcode : 'ffff',
 		params : ['long']
 	},
-	'test__int'		: {
-		opcode : 'fff3',
+	'[string]'	: {
+		opcode : 'ffff',
+		params : ['string']
+	},
+	'[int]'		: {
+		opcode : 'ffff',
 		params : ['int']
 	},
-	'test__lvar'	: {
-		opcode : 'fff3',
-		params : ['int']
+	'[float]'		: {
+		opcode : 'ffff',
+		params : ['float']
 	},
-	'test__gvar'	: {
-		opcode : 'fff3',
-		params : ['int']
+	'[lvar]'	: {
+		opcode : 'ffff',
+		params : ['lvar']
+	},
+	'[gvar]'	: {
+		opcode : 'ffff',
+		params : ['gvar']
 	},
 }
 
@@ -186,11 +218,26 @@ SP.Translate = function(){
 		LineComand[numLine] = Line.split(' ')
 
 		let lineDepurated = []
+		let setOp = ''
+		let isNegative = false
 		let command = ''
 		let typeData = ''
 		LineComand[numLine].forEach((Param, numParam) => {
-			if (numParam == 0) { // opcode
-				lineDepurated.push(SCM_DB[Param].opcode.toBigEndian())
+			if (numParam == 0) {   // opcode
+				if(Param[0] == '!'){ // is negative
+					Param = Param.r('!','')
+					isNegative = true
+				}
+
+				setOp = SCM_DB[Param].opcode
+
+				if (isNegative == true){
+					setOp = (
+						parseInt(setOp, 16) + 0b1000000000000000
+					).toString(16)
+				}
+
+				lineDepurated.push(setOp.toBigEndian())
 				command = Param
 			}
 			else {
@@ -322,16 +369,5 @@ SP.Translate = function(){
 
 	return codeDepurated.toString().replace(/,/g,'').toUpperCase()
 }
-/*
-log(`nop
-:example
-create_thread 'example'
-wait 0 {ms}
-set_lvar_float 0@ 0.0
-set_lvar_float 1@ 0.12
-camera_shake 100 {ms}
-wait 1000 {ms}
-camera_shake 100 {ms}
-wait 1000 {ms}
-camera_shake 100 {ms}
-end_thread`.Translate())*/
+
+log(`!wait 12`.Translate())
