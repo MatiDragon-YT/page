@@ -207,6 +207,7 @@ SP.Translate = function(){
 		.r(/(\s+)?\{([^\$\}]*)?\}/gm, '')
 		// remove spaces innesesaries
 		.r(/[\x20\t]+$/gm,'')
+		.r(/(\t|\x20)(\t|\x20)+/gm,'$1')
 		.r(/^[\x20\t]+/gm,'')
 		// remove jump lines innesesaries
 		.r(/^\n+/gm, '')
@@ -222,57 +223,85 @@ SP.Translate = function(){
 		let isNegative = false
 		let command = ''
 		let typeData = ''
-		LineComand[numLine].forEach((Param, numParam) => {
-			if (numParam == 0) {   // opcode
-				if(Param[0] == '!'){ // is negative
-					Param = Param.r('!','')
-					isNegative = true
+		LineComand[numLine].forEach((Argument, numArgument) => {
+			if (numArgument == 0) { // command
+
+				if(/^[A-Fa-f\d]{4}:/m.test(Argument)){
+					// is opcode
+					setOp = Argument.r(':','')
+
+					if(/^[8-9A-Fa-f]/.test(Argument)){
+						isNegative = true
+						setOp = (
+							parseInt(setOp, 16) - 0b1000000000000000
+						).toString(16).padStart(4,'0')
+					}
+
+					Object.entries(SCM_DB).every(([key, value]) => {
+					  if (value.opcode == setOp) {
+					  	Argument = key
+					  	return false
+					  }
+					  return true
+					})
+
+					if (isNegative == true){
+						setOp = (
+							parseInt(setOp, 16) + 0b1000000000000000
+						).toString(16)
+					}
+				}else{
+					// is keyword
+					if(Argument[0] == '!'){ // is negative
+						Argument = Argument.r('!','')
+						isNegative = true
+					}
+
+					setOp = SCM_DB[Argument].opcode
+
+					if (isNegative == true){
+						setOp = (
+							parseInt(setOp, 16) + 0b1000000000000000
+						).toString(16)
+					}
 				}
-
-				setOp = SCM_DB[Param].opcode
-
-				if (isNegative == true){
-					setOp = (
-						parseInt(setOp, 16) + 0b1000000000000000
-					).toString(16)
-				}
-
 				lineDepurated.push(setOp.toBigEndian())
-				command = Param
+
+				command = Argument
 			}
-			else {
-				typeData = SCM_DB[command].params[--numParam]
+			else { // is Argument
+				typeData = SCM_DB[command].params[--numArgument]
 
 				switch (typeData) {
 					case 'short':
-						Param = Param.replace(/'(.+)'/, '$1')
-						Param = Param.substring(0,7)
-						Param = (TYPE_CODE.STRING8 + Param.toUnicode()) + '00'
-						while(Param.length < 18){
-							Param += TYPE_CODE.TERMINAL_NULL
+						Argument = Argument.replace(/'(.+)'/, '$1')
+						Argument = Argument.substring(0,7)
+						Argument = (TYPE_CODE.STRING8 + Argument.toUnicode()) + '00'
+						while(Argument.length < 18){
+							Argument += TYPE_CODE.TERMINAL_NULL
 						}
 					break;
 
 					case 'long':
-						Param = Param.replace(/"(.+)"/, '$1')
-						if (Param.length < 15){
-							Param = (TYPE_CODE.STRING16 + Param.toUnicode()) + '00'
-							while(Param.length < 32){
-								Param += TYPE_CODE.TERMINAL_NULL
+						Argument = Argument.replace(/"(.+)"/, '$1')
+						if (Argument.length < 15){
+							Argument = (TYPE_CODE.STRING16 + Argument.toUnicode()) + '00'
+							while(Argument.length < 32){
+								Argument += TYPE_CODE.TERMINAL_NULL
 							}
 						}else{
-							Param = (TYPE_CODE.STRING_VARIABLE + Param.length + Param.toUnicode())
+							Argument = (TYPE_CODE.STRING_VARIABLE + Argument.length + Argument.toUnicode())
 						}
 					break;
 
 					case 'string':
-						Param = Param.replace(/('(.+)'|"(.+)")/, '$2$3')
-						Param = (TYPE_CODE.STRING_VARIABLE + Param.length + Param.toUnicode())
-						INPUT_CODE[i][index] = Param
+						Argument = Argument.replace(/('(.+)'|"(.+)")/, '$2$3')
+						Argument = (TYPE_CODE.STRING_VARIABLE + Argument.length + Argument.toUnicode())
+						INPUT_CODE[i][index] = Argument
 					break;
 
 					case 'int':
-						Param.replace(/^0x.+/mi, hex => {
+						Argument.replace(/^0x.+/mi, hex => {
 							return parseInt(hex, 16)
 						})
 
@@ -285,43 +314,43 @@ SP.Translate = function(){
 
 						let dataType;
 
-						if (0 <= Param) {
-							if (Param <= byte4) dataType = TYPE_CODE.INT32;
-							if (Param <= byte2) dataType = TYPE_CODE.INT16;
-							if (Param <= byte1) dataType = TYPE_CODE.INT8;
+						if (0 <= Argument) {
+							if (Argument <= byte4) dataType = TYPE_CODE.INT32;
+							if (Argument <= byte2) dataType = TYPE_CODE.INT16;
+							if (Argument <= byte1) dataType = TYPE_CODE.INT8;
 						} else {
-							//Param *= -1
+							//Argument *= -1
 
-							if (IsInRange(Param, -(byte1+=2), 0)) {
+							if (IsInRange(Argument, -(byte1+=2), 0)) {
 								dataType = TYPE_CODE.INT8;	
 							}
-							if (IsInRange(Param, -(byte2+=2), -byte1)) {
+							if (IsInRange(Argument, -(byte2+=2), -byte1)) {
 								dataType = TYPE_CODE.INT16;
 							}
-							if (IsInRange(Param, -(byte4+=2), -byte2)) {
+							if (IsInRange(Argument, -(byte4+=2), -byte2)) {
 								dataType = TYPE_CODE.INT32;
 							}
 
-							Param *= -1
+							Argument *= -1
 							switch (dataType){
 								case TYPE_CODE.INT8 :
-									Param -= byte1R;
+									Argument -= byte1R;
 									break;
 
 								case TYPE_CODE.INT16 :
-									Param -= byte2R;
+									Argument -= byte2R;
 									break;
 
 								case TYPE_CODE.INT32 :
-									Param -= byte4R;
+									Argument -= byte4R;
 									break;
 
 								default: break;
 							}
-							Param *= -1
-							Param++;
+							Argument *= -1
+							Argument++;
 						}
-						Param = Number(Param).toString(16).padStart((()=>{
+						Argument = Number(Argument).toString(16).padStart((()=>{
 							let temp
 							switch (dataType){
 								case TYPE_CODE.INT8 :
@@ -341,24 +370,24 @@ SP.Translate = function(){
 							return temp
 						})(), '0')
 
-						Param = dataType + Param.toBigEndian()
+						Argument = dataType + Argument.toBigEndian()
 
 					break;
 
 					case 'float':
-						Param = TYPE_CODE.FLOAT32 + Number(Param).toHex()
+						Argument = TYPE_CODE.FLOAT32 + Number(Argument).toHex()
 					break;
 
 					case 'lvar':
-						Param = 
+						Argument = 
 							TYPE_CODE.LVAR 
-							+ Number(Param.r('@','')).toString(16)
+							+ Number(Argument.r('@','')).toString(16)
 								.padStart(4,'0')
 								.toBigEndian()
 					break;
 				}
 
-				lineDepurated.push(Param)
+				lineDepurated.push(Argument)
 			}
 		})
 
@@ -370,4 +399,9 @@ SP.Translate = function(){
 	return codeDepurated.toString().replace(/,/g,'').toUpperCase()
 }
 
-log(`!wait 12`.Translate())
+log(`
+nop
+0001: {wait} 0
+
+
+`.Translate())

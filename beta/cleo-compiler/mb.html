@@ -20,6 +20,11 @@
 .contador::before {
     content: counter(listing, decimal-leading-zero);
 }
+.treeLine {
+    border-left: dotted 1px #494949;
+    height: 1.25rem;
+    position: absolute;
+}
 </style>
 <script>
 
@@ -112,15 +117,13 @@ function apply(element, callback){
 nop
 :example
 create_thread 'example'
-wait 0 {ms}
-set_lvar_float 0@ 0.0
-set_lvar_float 1@ 0.12
-camera_shake 100 {ms}
-wait 1000 {ms}
-camera_shake 100 {ms}
-wait 1000 {ms}
-camera_shake 100 {ms}
-end_thread</textarea>
+    wait 0 {ms}
+    camera_shake 100 {ms}
+    0001: {wait} 1000 {ms}
+    0003: {camera_shake} 100 {ms}
+end_thread
+
+set_lvar_float 0@ {=} 0.12</textarea>
 	<pre id='PREVIEW' style="height: 50vh;
 	" class="m-0"></pre>
 
@@ -228,6 +231,7 @@ function hl(){
 
 	$('#PREVIEW').innerHTML = $('#HEX').value
 	.r(/(^$)/gm, '$1 ')
+	.r(/(\x20{4})/g, '<span class=treeLine><\/span>$1')
 	//.rA('\t', '    ')
 	.rA('&lt;br/&gt;', "\\n")
 	.r(/(^.)/gm, '<span class=contador><\/span>$1')
