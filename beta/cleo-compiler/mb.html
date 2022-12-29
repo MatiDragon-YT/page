@@ -22,7 +22,7 @@
 }
 .treeLine {
     border-left: dotted 1px #494949;
-    height: 1.25rem;
+    height: 1.46rem;
     position: absolute;
 }
 </style>
@@ -111,7 +111,7 @@ function apply(element, callback){
     max-height: 50vh;
     font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
     line-height: 1.5em;
-    font-size: 1em!important;
+    font-size: 1rem!important;
     height: 50vh;
     ">
 nop
@@ -124,7 +124,9 @@ create_thread 'example'
 end_thread
 
 set_lvar_float 0@ {=} 0.12</textarea>
-	<pre id='PREVIEW' style="height: 50vh;
+	<pre id='PREVIEW' style="
+	height: 50vh;
+	font-size: 1rem!important;
 	" class="m-0"></pre>
 
 	<input type="text" id="" placeholder="hex's output" name="cleaned_hex" disabled class="w-100"><br><br>
