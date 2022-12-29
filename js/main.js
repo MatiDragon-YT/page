@@ -186,6 +186,7 @@ function ModeLight(){
 			border-left: #c9cfd5 1px solid;
 			border-top: #c9cfd5 1px solid;
 		}
+		th, td {border-left: #c9cfd5 1px solid}
 		.labels { color: #009688 }
 		.keywords { color: #ff5722 }
 		.models { color: #607d8b }
