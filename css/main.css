@@ -433,12 +433,12 @@ input[type='checkbox']{
 
 .pre {white-space: pre}
 
-.white, .white * {color: var(--co)}
-.bg-white, .bg-white * {background: var(--co)}
-.black, .black * {color: var(--bg)}
-.bg-black, .bg-black * {background:#000;}
-.bg-black-1, .bg-black-1 * {background: var(--bg)}
-.bg-black-2, .bg-black-2 * {background: #121821}
+.white, .white *, .white-dm, .white-dm * {color: var(--co)}
+.bg-white, .bg-white *, .bg-white-dm {background: var(--co)}
+.black, .black *, .black-dm, .black-dm * {color: var(--bg)}
+.bg-black, .bg-black *, .bg-black-dm {background:#000;}
+.bg-black-1, .bg-black-1 *, .bg-black-1-dm {background: var(--bg)}
+.bg-black-2, .bg-black-2 *, .bg-black-2-dm {background: #121821}
 
 .red, .red  * { color:var(--c-red); }
 .bg-red, .bg-red  * { background:var(--c-red); }

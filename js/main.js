@@ -31,7 +31,7 @@ const LANG = ($('html').getAttribute('lang') || 'en').toUpperCase()
 /** Get the root folder of the resources internal to the language
  * @return {String}
 */
-const ROOT = $('head').innerHTML.match(/"([\/\.]+)\/css\/main\.css"/)[1] + "/"
+const ROOT = $('head').innerHTML.match(/"(https.+|[\/\.]+)\/css\/main\.css"/)[1] + "/"
 
 /** Get the root folder of the resources external to the language
  * @return {String}
@@ -200,6 +200,9 @@ function ModeLight(){
 		.comments * { color: #0288d1 }
 		.directives,
 		.directives * { color: #607d8b }
+
+		.white-dm,.white-dm * {color:#0d1117}
+		.bg-black-2-dm {background:#dfdfdf}
 		`
 	if (!modeLight) {
 		modeLight++
@@ -329,6 +332,9 @@ SP.toMarkdown = function(){
 		.r(/^%vc-r\//m,   vc   + radar)
 		.r(/^%gta3-r\//m, gta3 + radar)
 		.r(/^%sa-t\//m,   sa   + "tatoo/")
+		.r(/^%sa\//m,   sa  )
+		.r(/^%vc\//m,   vc  )
+		.r(/^%gta3\//m, gta3)
 		.r(/^%e\//m, exROOT)
 		.r(/^%g\//m, ROOT)
 	}
@@ -587,13 +593,14 @@ SP.toMarkdown = function(){
 
 $('body').innerHTML = `
 <div id="navbar">
-	<h1>MatiDragon<button id="CHANGE"><img src="${ROOT}files/img/dm-baseline.png"></button></h1>
+	<h1>MatiDragon<button id="CHANGE"><img src="${ROOT}files/img/dm-baseline.png" style="user-select:none"></button></h1>
 </div>
 <div id='nav'>
 	<section>
 		<a href="${ROOT}index.html">Inicio</a>
-		<!--<a href="${ROOT}articles.html">Articulos</a>-->
+		<!--<a href="${ROOT}topics.html">Temas</a>-->
 		<a href="${ROOT}mods.html">Mods</a>
+		<!--<a href="${ROOT}docs.html">Docs</a>-->
 	</section>
 	<!--<input id='search' type='text' placeholder='Buscar...'>-->
 </div>
