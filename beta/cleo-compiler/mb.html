@@ -10,6 +10,9 @@
 <div class="green"></div>
 <div style="margin: 1em;">
 <style>
+* {
+	font-size: 1rem;
+}
 .contador {
     counter-increment: listing;
     color: grey;
@@ -22,8 +25,7 @@
 }
 .treeLine {
     border-left: dotted 1px #494949;
-    height: 1.46rem;
-    position: absolute;
+    margin-right: -1px;
 }
 </style>
 <script>
@@ -100,6 +102,7 @@ function apply(element, callback){
 	<textarea id="HEX" autocomplete="off" class="w-100 m-0" placeholder="write your hex" spellcheck="false" style="
     position: absolute;
     display: block;
+    white-space: pre;
     width: calc(100% - 2em);
     color: transparent;
     background: transparent;
@@ -139,7 +142,7 @@ set_lvar_float 0@ {=} 0.12</textarea>
 </form>
 
 <blockquote>
-<h5>IMPORTANTE!</h5>
+<b>IMPORTANTE!</b>
 La base de cmd(comandos) por ahora esta limitada a la que ve y son las primeras palabras con las que empiezan cada linea:<br>
  - <code>create_thread %short%</code>: Le da nombre al script, con un maximo con 7 letras dentro de las comillas simples.<br>
  - <code>nop</code>: Literal no hace nada, solo por si no queremos darle nombre al mod, usamos este comando.<br>
@@ -233,7 +236,7 @@ function hl(){
 
 	$('#PREVIEW').innerHTML = $('#HEX').value
 	.r(/(^$)/gm, '$1 ')
-	.r(/(\x20{4})/g, '<span class=treeLine><\/span>$1')
+	.r(/(\x20{4}|\x20{3}|\x20{2}|\t)/g, '<span class=treeLine><\/span>$1')
 	//.rA('\t', '    ')
 	.rA('&lt;br/&gt;', "\\n")
 	.r(/(^.)/gm, '<span class=contador><\/span>$1')
