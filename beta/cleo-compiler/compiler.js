@@ -394,36 +394,37 @@ SP.Translate = function(){
 							})(), '0')
 
 							Argument = dataType + Argument.toBigEndian()
-
 						break;
 
 						case 'float':
-							Argument = TYPE_CODE.FLOAT32 + Number(Argument).toHex()
 							totalSizePerLine.push(4)
+
+							Argument = TYPE_CODE.FLOAT32 + Number(Argument).toHex()
 						break;
 
 						case 'lvar':
+							totalSizePerLine.push(2)
+
 							Argument = 
 								TYPE_CODE.LVAR 
 								+ Number(Argument.r('@','')).toString(16)
 									.padStart(4,'0')
 									.toBigEndian();
-							totalSizePerLine.push(2)
 						break;
 
 						case 'gvar':
+							totalSizePerLine.push(2)
+
 							Argument = 
 								TYPE_CODE.GVAR 
 								+ (Number(Argument.r('$','')) * 4).toString(16)
 									.padStart(4,'0')
 									.toBigEndian();
-
-							totalSizePerLine.push(2)
 						break;
 
 						case 'label':
 							totalSizePerLine.push(4)
-							//totalSizePerLine.push(Argument.toUpperCase())
+
 							Argument = TYPE_CODE.INT32 + `<${Argument}>`
 						break;
 					}
@@ -436,7 +437,7 @@ SP.Translate = function(){
 		}
 	})
 	
-	log(codeDepurated)
+	//log(codeDepurated)
 
 	let codeOfFinal = codeDepurated.toString().replace(/,/g,'').toUpperCase();
 
@@ -456,7 +457,7 @@ SP.Translate = function(){
 						if (elemento == etiqueta){
 							encontrado = true
 							//log(saltar)
-							saltar = (0xFFFFFFFF - saltar + 1).toString(16).padStart(2, 0)
+							saltar = (0xFFFFFFFF - saltar + 1).toString(16).padStart(4, 0).toUpperCase()
 							//log(saltar)
 						}
 					break;
@@ -465,7 +466,7 @@ SP.Translate = function(){
 		})
 		if (encontrado == false) {
 			alert("No se encontro la etiqueta de salto")
-			return;
+			return 'F3FFFFFF';
 		}
 
 		return saltar.toBigEndian()
@@ -474,4 +475,4 @@ SP.Translate = function(){
 	return codeOfFinalDepurated
 }
 // 0001<@MAIN>0001<@MAIN>0001<@MAIN>
-//log(`[gvar] $2`.Translate())
+log(`[gvar] $2`.Translate())

@@ -158,19 +158,6 @@ La base de cmd(comandos) por ahora esta limitada a la que ve y son las primeras 
 
 <script src="compiler.js"></script>
 <script type="text/javascript">
-    function clean_hex(input, remove_0x) {
-        input = input.toUpperCase();
-        
-        if (remove_0x) {
-          input = input.replace(/0x/gi, "");        
-        }
-        
-        let orig_input = input;
-        input = input.replace(/[^A-Fa-f0-9]/g, "");
-        // if (orig_input != input) alert ("E-01: Los caracteres no hexadecimales seran auto eliminados.");
-        return input;    
-    } 
-    
     function Convert() {
     	if ($('#FILENAME').value.length == 0){
     		alert ("E-00: Añada un nombre al archivo.");
@@ -187,21 +174,22 @@ La base de cmd(comandos) por ahora esta limitada a la que ve y son las primeras 
     		return
     	}
 
-      let cleaned_hex = clean_hex($('#HEX').value.Translate(), true);
-	  	let filename = $('#FILENAME').value;	  
-      
-      $('#FORMULARIO').cleaned_hex.value = cleaned_hex;
-      
-      //if (cleaned_hex.length % 2) {
-      //  alert ("E-03: la longitud de la cadena hexadecimal limpiada es impar.");     
-      //  return;
-      //}
+		let cleaned_hex = $('#HEX').value.Translate();
+		
+		let filename = $('#FILENAME').value;	  
 
-      let binary = new Array();
-      for (let i=0; i<cleaned_hex.length/2; i++) {
-        let h = cleaned_hex.substr(i*2, 2);
-        binary[i] = parseInt(h,16);        
-      }
+		$('#FORMULARIO').cleaned_hex.value = cleaned_hex;
+
+		if (cleaned_hex.length % 2) {
+			alert ("E-03: la longitud de la cadena hexadecimal limpiada es impar.");     
+			return;
+		}
+
+		let binary = new Array();
+		for (let i=0; i<cleaned_hex.length/2; i++) {
+			let h = cleaned_hex.substr(i*2, 2);
+			binary[i] = parseInt(h,16);        
+		}
 
 		let byteArray = new Uint8Array(binary);
 		let a = window.document.createElement('a');
