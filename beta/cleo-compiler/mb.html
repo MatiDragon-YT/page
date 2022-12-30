@@ -98,8 +98,8 @@ function apply(element, callback){
 
 <form id="FORMULARIO">
 
-	<input type="text" id="FILENAME" placeholder="File name" autocomplete="off" value="newScript.csi">
-	<textarea id="HEX" autocomplete="off" class="w-100 m-0" placeholder="write your hex" spellcheck="false" style="
+	<input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="newScript.csi">
+	<textarea id="HEX" class="w-100 m-0" placeholder="write your hex" autocomplete="off" spellcheck="false" style="
     position: absolute;
     display: block;
     white-space: pre;
@@ -141,7 +141,11 @@ set_var_float $17 = 45.78</textarea>
 
 	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
 
-	<a id="" class="button" onclick="$('#HEX').value.toCompileSCM($('#FILENAME').value)" style="
+	<a id="" class="button" onclick="
+
+$('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME').value)
+
+	" style="
     cursor: pointer;">compilar</a><br><br>
 
 </form>
@@ -156,7 +160,7 @@ La base de cmd(comandos) por ahora esta limitada a la que ve y son las primeras 
  - <code>end_thread</code>: Cierra el mod para que no se conjele el juego.<br>
 </blockquote>
 
-<script src="compiler.js"></script>
+<script src="compiler.min.js"></script>
 
 <script>
 hl()
