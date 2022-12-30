@@ -315,7 +315,7 @@ SP.Translate = function(){
 
 					switch (typeData) {
 						case 'short':
-							totalSizePerLine.push(8)
+							totalSizePerLine.push(9)
 							Argument = Argument.r(/'(.+)'/, '$1')
 							Argument = Argument.substring(0,7)
 							Argument = (TYPE_CODE.STRING8 + Argument.toUnicode() + '00').padEnd(20,'00')
@@ -542,11 +542,11 @@ SP.Translate = function(){
 	return codeOfFinalDepurated
 }
 // 0001<@MAIN>0001<@MAIN>0001<@MAIN>
-log(`0000: nop
-create_thread 'example'
+/*log(`0000: nop
+create_thread 'kaka'
     :example
     wait 0 {ms}
-    camera_shake 100 {ms}
+    0003: camera_shake 100 {ms}
     0001: wait 1000 ms
     0003: camera_shake 100 ms
     0001: wait 1000 ms
