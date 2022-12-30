@@ -92,6 +92,22 @@ const TYPE_CODE = {
 	GVAR_ARRAY_STRING16	:'12',
 	LVAR_ARRAY_STRING16	:'13'
 }
+
+let CUSTOM_VARIABLES = `
+2=PLAYER_CHAR
+3=PLAYER_ACTOR
+11=PLAYER_GROUP
+409=ONMISSION
+`
+
+CUSTOM_VARIABLES = CUSTOM_VARIABLES.split('\n').clear()
+
+CUSTOM_VARIABLES.forEach((l,i)=>{
+	CUSTOM_VARIABLES[i] = l.split('=')
+})
+
+log({CUSTOM_VARIABLES})
+
 /*
 const REG = {
 	INT			: /(\d+|0x[0-9a-f]+)([^\w]|\s|$)/gmi,
@@ -287,7 +303,7 @@ SP.Translate = function(){
 					switch (typeData) {
 						case 'short':
 							totalSizePerLine.push(8)
-							Argument = Argument.replace(/'(.+)'/, '$1')
+							Argument = Argument.r(/'(.+)'/, '$1')
 							Argument = Argument.substring(0,7)
 							Argument = (TYPE_CODE.STRING8 + Argument.toUnicode()) + '00'
 							while(Argument.length < 18){
@@ -296,7 +312,7 @@ SP.Translate = function(){
 						break;
 
 						case 'long':
-							Argument = Argument.replace(/"(.+)"/, '$1')
+							Argument = Argument.r(/"(.+)"/, '$1')
 							if (Argument.length < 15){
 								totalSizePerLine.push(16)
 								Argument = (TYPE_CODE.STRING16 + Argument.toUnicode()) + '00'
@@ -311,7 +327,7 @@ SP.Translate = function(){
 						break;
 
 						case 'string':
-							Argument = Argument.replace(/('(.+)'|"(.+)")/, '$2$3')
+							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
 							Argument = Argument.substring(0,255)
 							totalSizePerLine.push(Argument.length)
 							Argument = (TYPE_CODE.STRING_VARIABLE + Argument.length + Argument.toUnicode())
@@ -319,9 +335,12 @@ SP.Translate = function(){
 						break;
 
 						case 'int':
-							Argument.replace(/^0x.+/mi, hex => {
+							Argument = Argument.r(/^0x.+/mi, hex => {
 								return parseInt(hex, 16)
 							})
+							Argument = Argument.r('true', 1)
+							Argument = Argument.r('false', 0)
+
 
 							let byte1   = 0x7F       // 127
 							let byte1R  = 0xFF
@@ -416,8 +435,27 @@ SP.Translate = function(){
 							totalSizePerLine.push(2)
 
 							if(/\$/.test(Argument)){
-								Argument = Number(Argument.r('$','')) * 4
+								Argument = Argument.r(/(i|f)?\$/,'')
+
+								if (/\w/.test(Argument)){
+									let coincide = false
+
+									CUSTOM_VARIABLES.forEach(v => {
+										if (Argument == v[1]) coincide = v[0]
+									})
+
+									if (coincide == false){
+										Argument = parseInt(Argument.toUnicode().substring(0, 4), 16) + 0x7F
+									}
+									else {
+										Argument = coincide
+									}
+								}
+								else{
+									Argument = Argument * 4
+								}
 							}
+
 							else {
 								Argument = Number(Argument.r('&',''))
 							}
@@ -447,7 +485,7 @@ SP.Translate = function(){
 	
 	//log(codeDepurated)
 
-	let codeOfFinal = codeDepurated.toString().replace(/,/g,'').toUpperCase();
+	let codeOfFinal = codeDepurated.toString().r(/,/g,'').toUpperCase();
 
 	let codeOfFinalDepurated = codeOfFinal.r(/<@([^<>]+)>/g, input => {
 		let encontrado = false
@@ -484,4 +522,4 @@ SP.Translate = function(){
 	return codeOfFinalDepurated
 }
 // 0001<@MAIN>0001<@MAIN>0001<@MAIN>
-log(`[gvar] $2`.Translate())
+log(`[gvar] $PLAYER_ACTOR`.Translate())
