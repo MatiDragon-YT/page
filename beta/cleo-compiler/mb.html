@@ -98,6 +98,8 @@ function apply(element, callback){
 
 <form id="FORMULARIO">
 
+	<input id='file' type='file' accept='text/plain' class="button"><br><br>
+
 	<input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="newScript.csi">
 	<textarea id="HEX" class="w-100 m-0" placeholder="write your hex" autocomplete="off" spellcheck="false" style="
     position: absolute;
@@ -141,7 +143,20 @@ set_var_float $17 = 45.78</textarea>
 
 	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
 
-	<a id="" class="button" onclick="
+<a id="" class="button" onclick="
+	let a = window.document.createElement('a');
+
+	a.href = window.URL.createObjectURL(new Blob([$('#HEX').value], { type: 'text/plain' }));
+	a.download = $('#FILENAME').value.r(/\.[^\.]+$/m, '.txt');
+
+	// Append anchor to body.
+	document.body.appendChild(a)
+	a.click();
+
+	// Remove anchor from body
+	document.body.removeChild(a)
+	" style="
+    cursor: pointer;">guardar</a> <a id="" class="button" onclick="
 
 $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME').value)
 
@@ -161,7 +176,35 @@ La base de cmd(comandos) por ahora esta limitada a la que ve y son las primeras 
 </blockquote>
 
 <script src="compiler.min.js"></script>
+<script>
+const $node = document.getElementById('HEX')
+const $file = document.getElementById('file')
 
+const processTextByLine = text => {
+    const arr = text.split(/\r?\n/gm)
+    arr.map(line => console.log(line))
+}
+
+const openFile = event => {
+  const input = event.target
+  if (!input) throw new Error('null input')
+  const [first] = input.files
+
+  const reader = new FileReader()
+  reader.onload = () => {
+    const text = reader.result
+    $node.value = text
+    hl()
+    
+    processTextByLine(text)
+  }
+  
+  reader.readAsText(first)
+   $('#FILENAME').value = first.name
+}
+
+$file.onchange = openFile
+</script>
 <script>
 hl()
 $('#HEX').onclick = hl
