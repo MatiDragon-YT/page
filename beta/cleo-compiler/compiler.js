@@ -544,7 +544,7 @@ SP.Translate = function(){
 	return codeOfFinalDepurated
 }
 // 0001<@MAIN>0001<@MAIN>0001<@MAIN>
-log(`0000: nop
+/*log(`0000: nop
 create_thread 'example'
     :example
     wait 0 {ms}
@@ -560,3 +560,49 @@ set_lvar_float 0@ = 0.12
 
 set_var_int $16 = 21
 set_var_float $17 = 45.78`.Translate())
+//*/
+
+String.prototype.toCompileSCM = function(Name_File){
+	if (Name_File.length == 0){
+		alert ("E-00: Añada un nombre al archivo.");
+		return
+	}
+
+		if(!Name_File.match(/\./)){
+			alert ("E-01: Añada una extencion al archivo.");
+			return
+		}
+
+	if (this.length == 0){
+		alert ("E-02: Añada comandos al archivo.");
+		return
+	}
+
+	let cleaned_hex = this.Translate();
+
+	$('#FORMULARIO').cleaned_hex.value = cleaned_hex;
+
+	if (cleaned_hex.length % 2) {
+		alert ("E-03: la longitud de la cadena hexadecimal limpiada es impar.");
+		return;
+	}
+
+	let binary = new Array();
+	for (let i=0; i<cleaned_hex.length/2; i++) {
+		let h = cleaned_hex.substr(i*2, 2);
+		binary[i] = parseInt(h,16);
+	}
+
+	let byteArray = new Uint8Array(binary);
+	let a = window.document.createElement('a');
+
+	a.href = window.URL.createObjectURL(new Blob([byteArray], { type: 'application/octet-stream' }));
+	a.download = Name_File;
+
+	// Append anchor to body.
+	document.body.appendChild(a)
+	a.click();
+
+	// Remove anchor from body
+	document.body.removeChild(a)
+}
