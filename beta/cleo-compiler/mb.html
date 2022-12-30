@@ -116,17 +116,22 @@ function apply(element, callback){
     line-height: 1.5em;
     font-size: 1rem!important;
     height: 50vh;
-    ">
-nop
-:example
+    ">nop
 create_thread 'example'
+    :example
     wait 0 {ms}
     camera_shake 100 {ms}
     0001: {wait} 1000 {ms}
     0003: {camera_shake} 100 {ms}
+    0001: {wait} 1000 {ms}
+    jump @example
 end_thread
 
-set_lvar_float 0@ {=} 0.12</textarea>
+set_lvar_int 30@ {=} 4763
+set_lvar_float 0@ {=} 0.12
+
+set_var_int $16 {=} 21
+set_var_float $17 {=} 45.78</textarea>
 	<pre id='PREVIEW' style="
 	height: 50vh;
 	font-size: 1rem!important;
@@ -187,10 +192,10 @@ La base de cmd(comandos) por ahora esta limitada a la que ve y son las primeras 
       
       $('#FORMULARIO').cleaned_hex.value = cleaned_hex;
       
-      if (cleaned_hex.length % 2) {
-        alert ("E-03: la longitud de la cadena hexadecimal limpiada es impar.");     
-        return;
-      }
+      //if (cleaned_hex.length % 2) {
+      //  alert ("E-03: la longitud de la cadena hexadecimal limpiada es impar.");     
+      //  return;
+      //}
 
       let binary = new Array();
       for (let i=0; i<cleaned_hex.length/2; i++) {
@@ -236,7 +241,7 @@ function hl(){
 
 	$('#PREVIEW').innerHTML = $('#HEX').value
 	.r(/(^$)/gm, '$1 ')
-	.r(/(\x20{4}|\x20{3}|\x20{2}|\t)/g, '<span class=treeLine><\/span>$1')
+	.r(/(\x20{4}|\x20{3}|\x20{2}|^\x20.|\t)/gm, '<span class=treeLine><\/span>$1')
 	//.rA('\t', '    ')
 	.rA('&lt;br/&gt;', "\\n")
 	.r(/(^.)/gm, '<span class=contador><\/span>$1')
