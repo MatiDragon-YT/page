@@ -1,3 +1,5 @@
+// Tab Size: 4
+
 const 	log = x => console.log(x),
 
 		NP = Number.prototype,
@@ -115,7 +117,7 @@ const SCM_DB = {
 		opcode : '0001',
 		params : ['int']
 	},
-	'goto'			: {
+	'jump'			: {
 		opcode : '0002',
 		params : ['label']
 	},
@@ -193,6 +195,7 @@ SP.toUnicode = function() {
 
 SP.Translate = function(){
 	let codeDepurated = []
+	let totalSizePerLine = []
 	
 	if (this.match(/[^\w\d]("([^"\n]+)?)(\x20)(([^"\n]+)?")[^\w\d]/)) {
 		log('NO ADD SPACES IN STRINGS')
@@ -200,7 +203,7 @@ SP.Translate = function(){
 	}
 
 	let LineComand = this
-		.r(/(:|@)[\w\d]+/gm, '')
+		//.r(/^(\x20+)?:[\w\d]+/gm, '')
 		// remove commits of code
 		.r(/(\s+)?\/\/([^\n]+)?/gm, '') 
 		.r(/(\s+)?\/\*([^\/]*)?\*\//gm, '')
@@ -212,196 +215,263 @@ SP.Translate = function(){
 		// remove jump lines innesesaries
 		.r(/^\n+/gm, '')
 		.r(/\n$/gm, '')
-		
 		.split('\n')
 
+	let codeOfEnter = this.split('\n').clear();
+
 	LineComand.forEach((Line, numLine) => {
-		LineComand[numLine] = Line.split(' ')
+		if (Line.match(/^:/)) {
+			totalSizePerLine.push(Line.r(':','').toUpperCase())
+			//log(totalSizePerLine)
+		}
+		else {
+			LineComand[numLine] = Line.split(' ')
 
-		let lineDepurated = []
-		let setOp = ''
-		let isNegative = false
-		let command = ''
-		let typeData = ''
-		LineComand[numLine].forEach((Argument, numArgument) => {
-			if (numArgument == 0) { // command
+			let lineDepurated = []
+			let setOp = ''
+			let isNegative = false
+			let command = ''
+			let typeData = ''
+			LineComand[numLine].forEach((Argument, numArgument) => {
+				if (numArgument == 0) { // command
+					if(/^[A-Fa-f\d]{4}:/m.test(Argument)){
+						// is opcode
+						setOp = Argument.r(':','')
 
-				if(/^[A-Fa-f\d]{4}:/m.test(Argument)){
-					// is opcode
-					setOp = Argument.r(':','')
-
-					if(/^[8-9A-Fa-f]/.test(Argument)){
-						isNegative = true
-						setOp = (
-							parseInt(setOp, 16) - 0b1000000000000000
-						).toString(16).padStart(4,'0')
-					}
-
-					Object.entries(SCM_DB).every(([key, value]) => {
-					  if (value.opcode == setOp) {
-					  	Argument = key
-					  	return false
-					  }
-					  return true
-					})
-
-					if (isNegative == true){
-						setOp = (
-							parseInt(setOp, 16) + 0b1000000000000000
-						).toString(16)
-					}
-				}else{
-					// is keyword
-					if(Argument[0] == '!'){ // is negative
-						Argument = Argument.r('!','')
-						isNegative = true
-					}
-
-					setOp = SCM_DB[Argument].opcode
-
-					if (isNegative == true){
-						setOp = (
-							parseInt(setOp, 16) + 0b1000000000000000
-						).toString(16)
-					}
-				}
-				lineDepurated.push(setOp.toBigEndian())
-
-				command = Argument
-			}
-			else { // is Argument
-				typeData = SCM_DB[command].params[--numArgument]
-
-				switch (typeData) {
-					case 'short':
-						Argument = Argument.replace(/'(.+)'/, '$1')
-						Argument = Argument.substring(0,7)
-						Argument = (TYPE_CODE.STRING8 + Argument.toUnicode()) + '00'
-						while(Argument.length < 18){
-							Argument += TYPE_CODE.TERMINAL_NULL
+						if(/^[8-9A-Fa-f]/.test(Argument)){
+							isNegative = true
+							setOp = (
+								parseInt(setOp, 16) - 0b1000000000000000
+							).toString(16).padStart(4,'0')
 						}
-					break;
 
-					case 'long':
-						Argument = Argument.replace(/"(.+)"/, '$1')
-						if (Argument.length < 15){
-							Argument = (TYPE_CODE.STRING16 + Argument.toUnicode()) + '00'
-							while(Argument.length < 32){
-								Argument += TYPE_CODE.TERMINAL_NULL
-							}
-						}else{
-							Argument = (TYPE_CODE.STRING_VARIABLE + Argument.length + Argument.toUnicode())
-						}
-					break;
-
-					case 'string':
-						Argument = Argument.replace(/('(.+)'|"(.+)")/, '$2$3')
-						Argument = (TYPE_CODE.STRING_VARIABLE + Argument.length + Argument.toUnicode())
-						INPUT_CODE[i][index] = Argument
-					break;
-
-					case 'int':
-						Argument.replace(/^0x.+/mi, hex => {
-							return parseInt(hex, 16)
+						Object.entries(SCM_DB).every(([key, value]) => {
+						  if (value.opcode == setOp) {
+						  	Argument = key
+						  	return false
+						  }
+						  return true
 						})
 
-						let byte1   = 0x7F       // 127
-						let byte1R  = 0xFF
-						let byte2   = 0x7FFF     // 32767
-						let byte2R  = 0xFFFF
-						let byte4   = 0x7FFFFFFF // 2147483647
-						let byte4R  = 0xFFFFFFFF
-
-						let dataType;
-
-						if (0 <= Argument) {
-							if (Argument <= byte4) dataType = TYPE_CODE.INT32;
-							if (Argument <= byte2) dataType = TYPE_CODE.INT16;
-							if (Argument <= byte1) dataType = TYPE_CODE.INT8;
-						} else {
-							//Argument *= -1
-
-							if (IsInRange(Argument, -(byte1+=2), 0)) {
-								dataType = TYPE_CODE.INT8;	
-							}
-							if (IsInRange(Argument, -(byte2+=2), -byte1)) {
-								dataType = TYPE_CODE.INT16;
-							}
-							if (IsInRange(Argument, -(byte4+=2), -byte2)) {
-								dataType = TYPE_CODE.INT32;
-							}
-
-							Argument *= -1
-							switch (dataType){
-								case TYPE_CODE.INT8 :
-									Argument -= byte1R;
-									break;
-
-								case TYPE_CODE.INT16 :
-									Argument -= byte2R;
-									break;
-
-								case TYPE_CODE.INT32 :
-									Argument -= byte4R;
-									break;
-
-								default: break;
-							}
-							Argument *= -1
-							Argument++;
+						if (isNegative == true){
+							setOp = (
+								parseInt(setOp, 16) + 0b1000000000000000
+							).toString(16)
 						}
-						Argument = Number(Argument).toString(16).padStart((()=>{
-							let temp
-							switch (dataType){
-								case TYPE_CODE.INT8 :
-									temp = 2
-									break;
+					}else{
+						// is keyword
+						if(Argument[0] == '!'){ // is negative
+							Argument = Argument.r('!','')
+							isNegative = true
+						}
 
-								case TYPE_CODE.INT16 :
-									temp = 4
-									break;
+						setOp = SCM_DB[Argument].opcode
 
-								case TYPE_CODE.INT32 :
-									temp = 8
-									break;
+						if (isNegative == true){
+							setOp = (
+								parseInt(setOp, 16) + 0b1000000000000000
+							).toString(16)
+						}
+					}
+					lineDepurated.push(setOp.toBigEndian())
 
-								default: break;
-							}
-							return temp
-						})(), '0')
+					command = Argument
 
-						Argument = dataType + Argument.toBigEndian()
-
-					break;
-
-					case 'float':
-						Argument = TYPE_CODE.FLOAT32 + Number(Argument).toHex()
-					break;
-
-					case 'lvar':
-						Argument = 
-							TYPE_CODE.LVAR 
-							+ Number(Argument.r('@','')).toString(16)
-								.padStart(4,'0')
-								.toBigEndian()
-					break;
+					totalSizePerLine.push(2)
 				}
+				else { // is Argument
+					totalSizePerLine.push(1)
 
-				lineDepurated.push(Argument)
-			}
-		})
+					typeData = SCM_DB[command].params[--numArgument]
 
-		codeDepurated.push(lineDepurated)
+					switch (typeData) {
+						case 'short':
+							totalSizePerLine.push(8)
+							Argument = Argument.replace(/'(.+)'/, '$1')
+							Argument = Argument.substring(0,7)
+							Argument = (TYPE_CODE.STRING8 + Argument.toUnicode()) + '00'
+							while(Argument.length < 18){
+								Argument += TYPE_CODE.TERMINAL_NULL
+							}
+						break;
+
+						case 'long':
+							Argument = Argument.replace(/"(.+)"/, '$1')
+							if (Argument.length < 15){
+								totalSizePerLine.push(16)
+								Argument = (TYPE_CODE.STRING16 + Argument.toUnicode()) + '00'
+								while(Argument.length < 32){
+									Argument += TYPE_CODE.TERMINAL_NULL
+								}
+							}else{
+								Argument = Argument.substring(0,255)
+								totalSizePerLine.push(Argument.length)
+								Argument = (TYPE_CODE.STRING_VARIABLE + Argument.length + Argument.toUnicode())
+							}
+						break;
+
+						case 'string':
+							Argument = Argument.replace(/('(.+)'|"(.+)")/, '$2$3')
+							Argument = Argument.substring(0,255)
+							totalSizePerLine.push(Argument.length)
+							Argument = (TYPE_CODE.STRING_VARIABLE + Argument.length + Argument.toUnicode())
+							INPUT_CODE[i][index] = Argument
+						break;
+
+						case 'int':
+							Argument.replace(/^0x.+/mi, hex => {
+								return parseInt(hex, 16)
+							})
+
+							let byte1   = 0x7F       // 127
+							let byte1R  = 0xFF
+							let byte2   = 0x7FFF     // 32767
+							let byte2R  = 0xFFFF
+							let byte4   = 0x7FFFFFFF // 2147483647
+							let byte4R  = 0xFFFFFFFF
+
+							let dataType;
+
+							if (0 <= Argument) {
+								if (Argument <= byte4) dataType = TYPE_CODE.INT32;
+								if (Argument <= byte2) dataType = TYPE_CODE.INT16;
+								if (Argument <= byte1) dataType = TYPE_CODE.INT8;
+							}
+							else {
+								//Argument *= -1
+
+								if (IsInRange(Argument, -(byte1+=2), 0)) {
+									dataType = TYPE_CODE.INT8;
+								}
+								if (IsInRange(Argument, -(byte2+=2), -byte1)) {
+									dataType = TYPE_CODE.INT16;
+								}
+								if (IsInRange(Argument, -(byte4+=2), -byte2)) {
+									dataType = TYPE_CODE.INT32;
+								}
+
+								Argument *= -1
+								switch (dataType){
+									case TYPE_CODE.INT8 :
+										Argument -= byte1R;
+										break;
+
+									case TYPE_CODE.INT16 :
+										Argument -= byte2R;
+										break;
+
+									case TYPE_CODE.INT32 :
+										Argument -= byte4R;
+										break;
+
+									default: break;
+								}
+								Argument *= -1
+								Argument++;
+							}
+
+							Argument = Number(Argument).toString(16).padStart((()=>{
+								let temp
+								switch (dataType){
+									case TYPE_CODE.INT8 :
+										temp = 2
+										totalSizePerLine.push(1)
+										break;
+
+									case TYPE_CODE.INT16 :
+										temp = 4
+										totalSizePerLine.push(2)
+										break;
+
+									case TYPE_CODE.INT32 :
+										temp = 8
+										totalSizePerLine.push(4)
+										break;
+
+									default: break;
+								}
+								return temp
+							})(), '0')
+
+							Argument = dataType + Argument.toBigEndian()
+
+						break;
+
+						case 'float':
+							Argument = TYPE_CODE.FLOAT32 + Number(Argument).toHex()
+							totalSizePerLine.push(4)
+						break;
+
+						case 'lvar':
+							Argument = 
+								TYPE_CODE.LVAR 
+								+ Number(Argument.r('@','')).toString(16)
+									.padStart(4,'0')
+									.toBigEndian();
+							totalSizePerLine.push(2)
+						break;
+
+						case 'gvar':
+							Argument = 
+								TYPE_CODE.GVAR 
+								+ (Number(Argument.r('$','')) * 4).toString(16)
+									.padStart(4,'0')
+									.toBigEndian();
+
+							totalSizePerLine.push(2)
+						break;
+
+						case 'label':
+							totalSizePerLine.push(4)
+							//totalSizePerLine.push(Argument.toUpperCase())
+							Argument = TYPE_CODE.INT32 + `<${Argument}>`
+						break;
+					}
+
+					lineDepurated.push(Argument)
+				}
+			})
+
+			codeDepurated.push(lineDepurated)
+		}
 	})
 	
 	log(codeDepurated)
 
-	return codeDepurated.toString().replace(/,/g,'').toUpperCase()
+	let codeOfFinal = codeDepurated.toString().replace(/,/g,'').toUpperCase();
+
+	let codeOfFinalDepurated = codeOfFinal.r(/<@([^<>]+)>/g, input => {
+		let encontrado = false
+		let saltar = 0
+		let etiqueta = input.substring(2, input.length-1)
+		//log(input)
+
+		totalSizePerLine.forEach((elemento)=>{
+			if (encontrado == false){
+				switch (typeof elemento){
+					case 'number':
+						saltar += elemento
+					break;
+					case 'string':
+						if (elemento == etiqueta){
+							encontrado = true
+							//log(saltar)
+							saltar = (0xFFFFFFFF - saltar + 1).toString(16).padStart(2, 0)
+							//log(saltar)
+						}
+					break;
+				}
+			}
+		})
+		if (encontrado == false) {
+			alert("No se encontro la etiqueta de salto")
+			return;
+		}
+
+		return saltar.toBigEndian()
+	})
+
+	return codeOfFinalDepurated
 }
-
-log(`
-nop
-0001: {wait} 0
-
-
-`.Translate())
+// 0001<@MAIN>0001<@MAIN>0001<@MAIN>
+//log(`[gvar] $2`.Translate())
