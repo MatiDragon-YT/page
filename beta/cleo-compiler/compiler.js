@@ -263,6 +263,7 @@ SP.Translate = function(){
 
 			LineComand[numLine].forEach((Argument, numArgument) => {
 				if (numArgument == 0) { // command
+					Argument = Argument.toLowerCase()
 					if(/^[A-Fa-f\d]{4}:/m.test(Argument)){
 						// is opcode
 						setOp = Argument.r(':','')
