@@ -415,11 +415,19 @@ SP.Translate = function(){
 						case 'gvar':
 							totalSizePerLine.push(2)
 
-							Argument = 
-								TYPE_CODE.GVAR 
-								+ (Number(Argument.r('$','')) * 4).toString(16)
-									.padStart(4,'0')
-									.toBigEndian();
+							if(/\$/.test(Argument)){
+								Argument = Number(Argument.r('$','')) * 4
+							}
+							else {
+								Argument = Number(Argument.r('&',''))
+							}
+
+							Argument = TYPE_CODE.GVAR + (
+								Argument.toString(16)
+								.padStart(4,'0')
+								.toBigEndian()
+							)
+
 						break;
 
 						case 'label':
@@ -465,8 +473,9 @@ SP.Translate = function(){
 			}
 		})
 		if (encontrado == false) {
-			alert("No se encontro la etiqueta de salto")
-			return 'F3FFFFFF';
+			alert("No se encontro la etiqueta de punto de salto: " +etiqueta+
+				"\n- Revise si la escribio correctamente o si incluso la creeo.")
+			return 'F3FFFFFF'
 		}
 
 		return saltar.toBigEndian()
