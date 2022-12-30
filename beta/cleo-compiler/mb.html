@@ -200,7 +200,7 @@ const openFile = event => {
   }
   
   reader.readAsText(first)
-   $('#FILENAME').value = first.name
+   $('#FILENAME').value = first.name.r(/\.txt$/m, '.csi')
 }
 
 $file.onchange = openFile
