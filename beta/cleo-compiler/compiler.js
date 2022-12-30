@@ -318,10 +318,7 @@ SP.Translate = function(){
 							totalSizePerLine.push(8)
 							Argument = Argument.r(/'(.+)'/, '$1')
 							Argument = Argument.substring(0,7)
-							Argument = (TYPE_CODE.STRING8 + Argument.toUnicode()) + '00'
-							while(Argument.length < 18){
-								Argument += TYPE_CODE.TERMINAL_NULL
-							}
+							Argument = (TYPE_CODE.STRING8 + Argument.toUnicode() + '00').padEnd(20,'00')
 						break;
 
 						case 'long':
@@ -506,6 +503,7 @@ SP.Translate = function(){
 	})
 	
 	//log(codeDepurated)
+	log(codeDepurated)
 
 	let codeOfFinal = codeDepurated.toString().r(/,/g,'').toUpperCase();
 
@@ -544,7 +542,7 @@ SP.Translate = function(){
 	return codeOfFinalDepurated
 }
 // 0001<@MAIN>0001<@MAIN>0001<@MAIN>
-/*log(`0000: nop
+log(`0000: nop
 create_thread 'example'
     :example
     wait 0 {ms}
@@ -553,13 +551,7 @@ create_thread 'example'
     0003: camera_shake 100 ms
     0001: wait 1000 ms
     jump @example
-end_thread
-
-set_lvar_int 30@ = 4763
-set_lvar_float 0@ = 0.12
-
-set_var_int $16 = 21
-set_var_float $17 = 45.78`.Translate())
+end_thread`.Translate())
 //*/
 
 
