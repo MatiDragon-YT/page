@@ -106,7 +106,7 @@ CUSTOM_VARIABLES.forEach((l,i)=>{
 	CUSTOM_VARIABLES[i] = l.split('=')
 })
 
-log({CUSTOM_VARIABLES})
+//log({CUSTOM_VARIABLES})
 
 /*
 const REG = {
@@ -166,7 +166,7 @@ const SCM_DB = {
 		params : ['gvar','float']
 	},
 	'create_thread'	: {
-		opcode : '03a4',
+		opcode : '004f',
 		params : ['short']
 	},
 	'end_thread'	: {
@@ -248,6 +248,19 @@ SP.Translate = function(){
 			let isNegative = false
 			let command = ''
 			let typeData = ''
+			
+			LineComand[numLine].forEach((Argument, numArgument) => {
+				if (numArgument >= 1) {
+					if (/(^[a-zA-Z]{2}|^[a-zA-Z]$|^[=/*+\-%^]$)/m.test(Argument)){
+						//log(Argument+': es un comentario')
+						LineComand[numLine][numArgument] = ''
+					}
+				}
+				LineComand[numLine] = LineComand[numLine].clear()
+			})
+
+			//log(LineComand[numLine])
+
 			LineComand[numLine].forEach((Argument, numArgument) => {
 				if (numArgument == 0) { // command
 					if(/^[A-Fa-f\d]{4}:/m.test(Argument)){
@@ -445,7 +458,11 @@ SP.Translate = function(){
 									})
 
 									if (coincide == false){
-										Argument = parseInt(Argument.toUnicode().substring(0, 4), 16) + 0x7F
+										Argument = parseInt(Number(String(parseInt(Argument, 35)).substring(0, 4) / 2))
+										if (Argument > 1000) Argument /= 5
+										if (Argument > 500) Argument /= 2
+										Argument = parseInt(Argument)
+										//log(Argument)
 									}
 									else {
 										Argument = coincide
@@ -462,10 +479,10 @@ SP.Translate = function(){
 
 							Argument = TYPE_CODE.GVAR + (
 								Argument.toString(16)
+								.substring(0, 4)
 								.padStart(4,'0')
 								.toBigEndian()
 							)
-
 						break;
 
 						case 'label':
@@ -473,6 +490,11 @@ SP.Translate = function(){
 
 							Argument = TYPE_CODE.INT32 + `<${Argument}>`
 						break;
+
+						default:
+							Argument = ''
+						break;
+
 					}
 
 					lineDepurated.push(Argument)
@@ -522,4 +544,19 @@ SP.Translate = function(){
 	return codeOfFinalDepurated
 }
 // 0001<@MAIN>0001<@MAIN>0001<@MAIN>
-log(`[gvar] $PLAYER_ACTOR`.Translate())
+log(`0000: nop
+create_thread 'example'
+    :example
+    wait 0 {ms}
+    camera_shake 100 {ms}
+    0001: wait 1000 ms
+    0003: camera_shake 100 ms
+    0001: wait 1000 ms
+    jump @example
+end_thread
+
+set_lvar_int 30@ = 4763
+set_lvar_float 0@ = 0.12
+
+set_var_int $16 = 21
+set_var_float $17 = 45.78`.Translate())
