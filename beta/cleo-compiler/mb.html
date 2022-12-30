@@ -126,10 +126,10 @@ create_thread 'example'
     0001: wait 1000 ms
     jump @example
 end_thread
-
 set_lvar_int 30@ = 4763
 set_lvar_float 0@ = 0.12
 
+set_var_int &16 = 21
 set_var_int $16 = 21
 set_var_float $17 = 45.78</textarea>
 	<pre id='PREVIEW' style="
@@ -220,7 +220,7 @@ function hl(){
 	.r(/\b(true|false)\b/gmi, enter.numbers)
 	.r(/(?!\#)(\W)(?!\$)(\d+)(?!\:|\@)([ifsv]?)\b/gmi, '$1<span class=numbers>$2$3<\/span>')
 	//Modelos
-	.r(/(\#[^\"\'\#\s]+)\b/gm, "<span class='models uppercase'>$1<\/span>")
+	.r(/(\#[^\"\'\#\s]+)\b/gm, "<span class='models'>$1<\/span>")
 	//Clases
 	.r(/\b([a-z0-9]+)\.([a-z0-9]+)/gmi, "<span class=classes>$1</span>.<span class=commands>$2</span>")
 	.r(/(\w+)(\(.+\)\.)(\w+)/gmi, "<span class=classes>$1</span>$2<span class=commands>$3</span>")
