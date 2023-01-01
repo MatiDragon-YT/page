@@ -119,27 +119,21 @@ function apply(element, callback){
     font-size: 1rem!important;
     height: 50vh;
     ">nop
-create_thread 'example'
+start_new_script 'example'
     :example
     wait 0 ms
-    camera_shake 100 {ms}
+    shake_cam 100 {ms}
     0001: wait 1000 // ms
-    0003: camera_shake 100 ms
+    0003: shake_cam 100 ms
     0001: wait 1000 ms
-    jump @example
-end_thread
-set_lvar_int 30@ = 4763
-set_lvar_float 0@ = 0.12
-
-set_var_int &16 = 21
-set_var_int $16 = 21
-set_var_float $17 = 45.78</textarea>
+    goto @example
+terminate_this_script</textarea>
 	<pre id='PREVIEW' style="
 	height: 50vh;
 	font-size: 1rem!important;
 	" class="m-0"></pre>
 
-	<input type="text" id="" placeholder="hex's output" name="cleaned_hex" disabled class="w-100"><br><br>
+	<input type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100"><br><br>
 
 	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
 
@@ -156,26 +150,20 @@ set_var_float $17 = 45.78</textarea>
 	// Remove anchor from body
 	document.body.removeChild(a)
 	" style="
-    cursor: pointer;">guardar</a> <a id="" class="button" onclick="
+    cursor: pointer;">save</a> <a id="" class="button" onclick="
 
 $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME').value)
 
 	" style="
-    cursor: pointer;">compilar</a><br><br>
+    cursor: pointer;">compiler</a><br><br>
 
 </form>
 
 <blockquote>
-<b>IMPORTANTE!</b>
-La base de cmd(comandos) por ahora esta limitada a la que ve y son las primeras palabras con las que empiezan cada linea:<br>
- - <code>create_thread %short%</code>: Le da nombre al script, con un maximo con 7 letras dentro de las comillas simples.<br>
- - <code>nop</code>: Literal no hace nada, solo por si no queremos darle nombre al mod, usamos este comando.<br>
- - <code>wait %int%</code>: Frena la ejecucion del script por el numero de milesimas de segundos que asignemos.<br>
- - <code>camera_shake %int%</code>: Por un numero de milesimas de segundos que asignemos.<br>
- - <code>end_thread</code>: Cierra el mod para que no se conjele el juego.<br>
+This editor use the data base of library.sannybuilder.com with none extension.
 </blockquote>
 
-<script src="compiler.min.js"></script>
+<script type="module" src="compiler.js"></script>
 <script>
 const $node = document.getElementById('HEX')
 const $file = document.getElementById('file')
@@ -210,6 +198,16 @@ hl()
 $('#HEX').onclick = hl
 $('#HEX').oninput = hl
 
+$('#HEX').onkeyup = (event) =>{
+	//console.log(event)
+    if (event.code == 'Enter' 
+    	|| event.code == 'Backspace'
+    	|| event.code == 'Space'){
+        let tempC = $('#HEX').value.Translate(true)
+        $('#OUTHEX').value = tempC
+    }
+}
+
 function hl(){
 	const span = {
 		start : "<span class=",
@@ -227,6 +225,8 @@ function hl(){
 	}
 
 	$('#PREVIEW').innerHTML = $('#HEX').value
+	//Palabras Reservadas
+	.r(/(^((\x20|\t)+)?[a-z_]+)(\s|$)/gmi, "<span class=keywords>$1<\/span>$4")
 	.r(/(^$)/gm, '$1 ')
 	.r(/(\x20{4}|\x20{3}|\x20{2}|^\x20.|\t)/gm, '<span class=treeLine><\/span>$1')
 	//.rA('\t', '    ')
@@ -245,8 +245,6 @@ function hl(){
 	.r(/\'([^\n']+)\'/gmi, "<span class=strings>'$1'<\/span>")
 	.rA("\\'</span>", "\\'")
 	.rA("\\'<span>", "\\'")
-	//Palabras Reservadas
-	.r(/([^\w\d])(longstring|shortstring|integer|thread|create_thread|create_custom_thread|end_thread|name_thread|end_thread_named|if and|if or|if|then|else|hex|end|else_jump|jump|jf|print|const|while|not|wait|repeat|until|break|continue|for|gosub|goto|var|array|to|downto|step|return|ret|rf|tr|Inc|Dec|Mul|Div|Alloc|Sqr|Random|int|string|float|bool|fade|DEFINE|nop|wasted_or_busted)($|[^\w\d])/gmi, "$1<span class=keywords>$2<\/span>$3")
 	//Etiquetas
 	.r(/([^\w\d])([@:])([\w\d]+)?/gm, "$1<span class=labels>$2$3<\/span>")
 	.r(/([^\w\d])([A-Za-z0-9_]+\(\))/gm, "$1<span class=commands>$2<\/span>")
