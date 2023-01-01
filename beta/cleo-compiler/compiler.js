@@ -1,3 +1,4 @@
+'use strict';
 // Tab Size: 4
 
 const 	log = x => console.log(x),
@@ -64,10 +65,13 @@ NP.toHex = function(){
 /** Remove elements of a array what is same to ''.
 */
 AP.clear = function(){
-	this.forEach((e,i) => {
-		if(e=='')this.splice(i,1)
+	let result = []
+
+	this.forEach((e) => {
+		if(!e=='') result.push(e)
 	})
-	return this
+
+	return result
 }
 
 const TYPE_CODE = {
@@ -93,20 +97,55 @@ const TYPE_CODE = {
 	LVAR_ARRAY_STRING16	:'13'
 }
 
-let CUSTOM_VARIABLES = `
-2=PLAYER_CHAR
-3=PLAYER_ACTOR
-11=PLAYER_GROUP
-409=ONMISSION
-`
-
-CUSTOM_VARIABLES = CUSTOM_VARIABLES.split('\n').clear()
-
+let CUSTOM_VARIABLES = await fetch('./data/CustomVariables.ini')
+CUSTOM_VARIABLES = await CUSTOM_VARIABLES.text()
+CUSTOM_VARIABLES = CUSTOM_VARIABLES
+	.r(/;.+/g,'')
+	.r(/\r/g,'\n')
+	.split('\n')
+	.clear()
 CUSTOM_VARIABLES.forEach((l,i)=>{
 	CUSTOM_VARIABLES[i] = l.split('=')
 })
 
-//log({CUSTOM_VARIABLES})
+let CONSTANTS = await fetch('./data/constants.txt')
+CONSTANTS = await CONSTANTS.text()
+CONSTANTS = CONSTANTS
+	.r(/(^const|end$)/gm, '')
+	.r(/\r/g, '\n')
+	.r(/^[\x20\t]+/gm, '')
+	.r(/(\x20+)?=(\x20+)?/g, '=')
+	.split('\n')
+	.clear()
+CONSTANTS.forEach((e,i) => CONSTANTS[i] = e.split('='))
+CONSTANTS = Object.fromEntries(CONSTANTS)
+//log(CONSTANTS)
+
+let DATA_DB = await fetch('https://raw.githubusercontent.com/sannybuilder/library/master/sa/sa.json')
+DATA_DB = await DATA_DB.json()
+let SCM_DB = {}
+DATA_DB.extensions.forEach(extension =>{
+	//log(extension.name)
+	extension.commands.forEach((command, c) =>{
+		//if (c < 2) {
+			if (command.attrs){
+				if (command.attrs.is_unsupported == undefined){
+					SCM_DB[command.name.toLowerCase()] = {
+						opcode : command.id.toLowerCase(),
+						params : []
+					}
+					//log(command.input)// is (array || undefined)
+
+					if (command.input) {
+						command.input.forEach(param =>{
+							SCM_DB[command.name.toLowerCase()].params.push(param.type.toLowerCase())
+						})
+					}
+				}
+			}
+		//}
+	})
+})
 
 /*
 const REG = {
@@ -124,84 +163,6 @@ const REG = {
 	JUMP		: /(^|\s)([A-Za-z0-9_]+\(\))/gm
 }
 */
-const SCM_DB = {
-	'nop'			: {
-		opcode : '0000',
-		params : []
-	},
-	'wait'			: {
-		opcode : '0001',
-		params : ['int']
-	},
-	'jump'			: {
-		opcode : '0002',
-		params : ['label']
-	},
-	'camera_shake'	: {
-		opcode : '0003',
-		params : ['int']
-	},
-	'set_var_int': {
-		opcode : '0004',
-		params : ['gvar','int']
-	},
-	'set_var_float': {
-		opcode : '0005',
-		params : ['gvar','float']
-	},
-	'set_lvar_int': {
-		opcode : '0006',
-		params : ['lvar','int']
-	},
-	'set_lvar_float': {
-		opcode : '0007',
-		params : ['lvar','float']
-	},
-	'add_val_to_int_var': {
-		opcode : '0008',
-		params : ['gvar','int']
-	},
-	'add_val_to_float_var': {
-		opcode : '0009',
-		params : ['gvar','float']
-	},
-	'create_thread'	: {
-		opcode : '004f',
-		params : ['short']
-	},
-	'end_thread'	: {
-		opcode : '004e',
-		params : []
-	},
-	'[short]'	: {
-		opcode : 'ffff',
-		params : ['short']
-	},
-	'[long]'	: {
-		opcode : 'ffff',
-		params : ['long']
-	},
-	'[string]'	: {
-		opcode : 'ffff',
-		params : ['string']
-	},
-	'[int]'		: {
-		opcode : 'ffff',
-		params : ['int']
-	},
-	'[float]'		: {
-		opcode : 'ffff',
-		params : ['float']
-	},
-	'[lvar]'	: {
-		opcode : 'ffff',
-		params : ['lvar']
-	},
-	'[gvar]'	: {
-		opcode : 'ffff',
-		params : ['gvar']
-	},
-}
 
 SP.toUnicode = function() {
   return this.split("").map(s => {
@@ -209,7 +170,14 @@ SP.toUnicode = function() {
   }).join("");
 }
 
-SP.Translate = function(){
+SP.Translate = function(_SepareWithComes = false){
+	const come = a => {
+		if (_SepareWithComes){
+			return a + ','
+		}
+		return a
+	}
+
 	let codeDepurated = []
 	let totalSizePerLine = []
 	
@@ -219,6 +187,8 @@ SP.Translate = function(){
 	}
 
 	let LineComand = this
+
+	LineComand = LineComand
 		//.r(/^(\x20+)?:[\w\d]+/gm, '')
 		// remove commits of code
 		.r(/(\s+)?\/\/([^\n]+)?/gm, '') 
@@ -252,8 +222,13 @@ SP.Translate = function(){
 			LineComand[numLine].forEach((Argument, numArgument) => {
 				if (numArgument >= 1) {
 					if (/(^[a-zA-Z]{2}|^[a-zA-Z]$|^[=/*+\-%^]$)/m.test(Argument)){
-						//log(Argument+': es un comentario')
-						LineComand[numLine][numArgument] = ''
+						if(/(^[a-z]{2})/.test(Argument)){
+							LineComand[numLine][numArgument] = CONSTANTS[Argument] || ''
+						}
+						else{
+							//log(Argument+': es un comentario')
+							LineComand[numLine][numArgument] = ''
+						}
 					}
 				}
 				LineComand[numLine] = LineComand[numLine].clear()
@@ -314,26 +289,33 @@ SP.Translate = function(){
 
 					typeData = SCM_DB[command].params[--numArgument]
 
+					if (typeData != 'short' && Argument[0] == "'") typeData = 'short';
+					if (typeData != 'long' && Argument[0] == '"') typeData = 'long';
+					if (typeData == 'int' || typeData == 'float'){
+						if (/\@/.test(Argument)) typeData = 'lvar';
+						if (/\$/.test(Argument)) typeData = 'gvar';
+					}
+
 					switch (typeData) {
 						case 'short':
 							totalSizePerLine.push(9)
-							Argument = Argument.r(/'(.+)'/, '$1')
+							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
 							Argument = Argument.substring(0,7)
-							Argument = (TYPE_CODE.STRING8 + Argument.toUnicode() + '00').padEnd(20,'00')
+							Argument = (come(TYPE_CODE.STRING8) + Argument.toUnicode() + '00').padEnd(20,'00')
 						break;
 
 						case 'long':
-							Argument = Argument.r(/"(.+)"/, '$1')
+							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
 							if (Argument.length < 15){
 								totalSizePerLine.push(16)
-								Argument = (TYPE_CODE.STRING16 + Argument.toUnicode()) + '00'
+								Argument = (come(TYPE_CODE.STRING16) + Argument.toUnicode()) + '00'
 								while(Argument.length < 32){
-									Argument += TYPE_CODE.TERMINAL_NULL
+									Argument += come(TYPE_CODE.TERMINAL_NULL)
 								}
 							}else{
 								Argument = Argument.substring(0,255)
 								totalSizePerLine.push(Argument.length)
-								Argument = (TYPE_CODE.STRING_VARIABLE + Argument.length + Argument.toUnicode())
+								Argument = (come(TYPE_CODE.STRING_VARIABLE) + Argument.length + Argument.toUnicode())
 							}
 						break;
 
@@ -341,17 +323,15 @@ SP.Translate = function(){
 							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
 							Argument = Argument.substring(0,255)
 							totalSizePerLine.push(Argument.length)
-							Argument = (TYPE_CODE.STRING_VARIABLE + Argument.length + Argument.toUnicode())
+							Argument = (come(TYPE_CODE.STRING_VARIABLE) + Argument.length + Argument.toUnicode())
 							INPUT_CODE[i][index] = Argument
 						break;
 
+						case 'bool':
 						case 'int':
 							Argument = Argument.r(/^0x.+/mi, hex => {
 								return parseInt(hex, 16)
 							})
-							Argument = Argument.r('true', 1)
-							Argument = Argument.r('false', 0)
-
 
 							let byte1   = 0x7F       // 127
 							let byte1R  = 0xFF
@@ -363,34 +343,34 @@ SP.Translate = function(){
 							let dataType;
 
 							if (0 <= Argument) {
-								if (Argument <= byte4) dataType = TYPE_CODE.INT32;
-								if (Argument <= byte2) dataType = TYPE_CODE.INT16;
-								if (Argument <= byte1) dataType = TYPE_CODE.INT8;
+								if (Argument <= byte4) dataType = come(TYPE_CODE.INT32);
+								if (Argument <= byte2) dataType = come(TYPE_CODE.INT16);
+								if (Argument <= byte1) dataType = come(TYPE_CODE.INT8);
 							}
 							else {
 								//Argument *= -1
 
 								if (IsInRange(Argument, -(byte1+=2), 0)) {
-									dataType = TYPE_CODE.INT8;
+									dataType = come(TYPE_CODE.INT8);
 								}
 								if (IsInRange(Argument, -(byte2+=2), -byte1)) {
-									dataType = TYPE_CODE.INT16;
+									dataType = come(TYPE_CODE.INT16);
 								}
 								if (IsInRange(Argument, -(byte4+=2), -byte2)) {
-									dataType = TYPE_CODE.INT32;
+									dataType = come(TYPE_CODE.INT32);
 								}
 
 								Argument *= -1
 								switch (dataType){
-									case TYPE_CODE.INT8 :
+									case come(TYPE_CODE.INT8) :
 										Argument -= byte1R;
 										break;
 
-									case TYPE_CODE.INT16 :
+									case come(TYPE_CODE.INT16) :
 										Argument -= byte2R;
 										break;
 
-									case TYPE_CODE.INT32 :
+									case come(TYPE_CODE.INT32) :
 										Argument -= byte4R;
 										break;
 
@@ -403,17 +383,17 @@ SP.Translate = function(){
 							Argument = Number(Argument).toString(16).padStart((()=>{
 								let temp
 								switch (dataType){
-									case TYPE_CODE.INT8 :
+									case come(TYPE_CODE.INT8) :
 										temp = 2
 										totalSizePerLine.push(1)
 										break;
 
-									case TYPE_CODE.INT16 :
+									case come(TYPE_CODE.INT16) :
 										temp = 4
 										totalSizePerLine.push(2)
 										break;
 
-									case TYPE_CODE.INT32 :
+									case come(TYPE_CODE.INT32) :
 										temp = 8
 										totalSizePerLine.push(4)
 										break;
@@ -429,14 +409,14 @@ SP.Translate = function(){
 						case 'float':
 							totalSizePerLine.push(4)
 
-							Argument = TYPE_CODE.FLOAT32 + Number(Argument).toHex()
+							Argument = come(TYPE_CODE.FLOAT32) + Number(Argument).toHex()
 						break;
 
 						case 'lvar':
 							totalSizePerLine.push(2)
 
 							Argument = 
-								TYPE_CODE.LVAR 
+								come(TYPE_CODE.LVAR) 
 								+ Number(Argument.r('@','')).toString(16)
 									.padStart(4,'0')
 									.toBigEndian();
@@ -475,7 +455,7 @@ SP.Translate = function(){
 								Argument = Number(Argument.r('&',''))
 							}
 
-							Argument = TYPE_CODE.GVAR + (
+							Argument = come(TYPE_CODE.GVAR) + (
 								Argument.toString(16)
 								.substring(0, 4)
 								.padStart(4,'0')
@@ -486,7 +466,7 @@ SP.Translate = function(){
 						case 'label':
 							totalSizePerLine.push(4)
 
-							Argument = TYPE_CODE.INT32 + `<${Argument}>`
+							Argument = come(TYPE_CODE.INT32) + `<${Argument}>`
 						break;
 
 						default:
@@ -506,7 +486,10 @@ SP.Translate = function(){
 	//log(codeDepurated)
 	log(codeDepurated)
 
-	let codeOfFinal = codeDepurated.toString().r(/,/g,'').toUpperCase();
+	let codeOfFinal = (_SepareWithComes
+						  ? codeDepurated.toString().r(/,,/g,',')
+						  : codeDepurated.toString().r(/,/g,'')
+					  ).toUpperCase()
 
 	let codeOfFinalDepurated = codeOfFinal.r(/<@([^<>]+)>/g, input => {
 		let encontrado = false
@@ -532,9 +515,9 @@ SP.Translate = function(){
 			}
 		})
 		if (encontrado == false) {
-			alert("No se encontro la etiqueta de punto de salto: " +etiqueta+
+			console.log("No se encontro la etiqueta de punto de salto: " +etiqueta+
 				"\n- Revise si la escribio correctamente o si incluso la creeo.")
-			return 'F3FFFFFF'
+			return "<@"+etiqueta+">"
 		}
 
 		return saltar.toBigEndian()
@@ -543,16 +526,16 @@ SP.Translate = function(){
 	return codeOfFinalDepurated
 }
 // 0001<@MAIN>0001<@MAIN>0001<@MAIN>
-/*log(`0000: nop
-create_thread 'kaka'
+/*log(`nop
+start_new_script 'example'
     :example
-    wait 0 {ms}
-    0003: camera_shake 100 {ms}
+    wait 0 ms
+    shake_cam 100 {ms}
+    0001: wait 1000 // ms
+    0003: shake_cam 100 ms
     0001: wait 1000 ms
-    0003: camera_shake 100 ms
-    0001: wait 1000 ms
-    jump @example
-end_thread`.Translate())
+    goto @example
+terminate_this_script`.Translate())
 //*/
 
 
