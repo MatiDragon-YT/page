@@ -118,8 +118,19 @@ CONSTANTS = CONSTANTS
 	.split('\n')
 	.clear()
 CONSTANTS.forEach((e,i) => CONSTANTS[i] = e.split('='))
+//log(CONSTANTS)
 CONSTANTS = Object.fromEntries(CONSTANTS)
 //log(CONSTANTS)
+
+let MODELS = await fetch('./data/models.ide')
+MODELS = await MODELS.text()
+MODELS = MODELS
+	.r(/\r/g,'')
+	.r(/(\d+) (.+)/g, '$2 $1')
+	.split('\n')
+	.clear()
+MODELS.forEach((e,i) => MODELS[i] = e.split(' '))
+MODELS = Object.fromEntries(MODELS)
 
 let DATA_DB = await fetch('https://raw.githubusercontent.com/sannybuilder/library/master/sa/sa.json')
 DATA_DB = await DATA_DB.json()
@@ -146,6 +157,7 @@ DATA_DB.extensions.forEach(extension =>{
 		//}
 	})
 })
+//log(SCM_DB)
 
 /*
 const REG = {
@@ -188,6 +200,8 @@ SP.Translate = function(_SepareWithComes = false){
 
 	let LineComand = this
 
+	//CONSTANTS.forEach(a=>{})
+
 	LineComand = LineComand
 		//.r(/^(\x20+)?:[\w\d]+/gm, '')
 		// remove commits of code
@@ -221,8 +235,9 @@ SP.Translate = function(_SepareWithComes = false){
 			
 			LineComand[numLine].forEach((Argument, numArgument) => {
 				if (numArgument >= 1) {
-					if (/(^[a-zA-Z]{2}|^[a-zA-Z]$|^[=/*+\-%^]$)/m.test(Argument)){
-						if(/(^[a-z]{2})/.test(Argument)){
+					if (/^(_|[a-z]{2}|[a-z]$|[=/*+\-_%^]$)/mi.test(Argument)){
+						if(/^(_|[a-z]{2}|[a-z]$)/im.test(Argument)){
+							//log(Argument)
 							LineComand[numLine][numArgument] = CONSTANTS[Argument] || ''
 						}
 						else{
@@ -258,7 +273,7 @@ SP.Translate = function(_SepareWithComes = false){
 						  return true
 						})
 
-						if (isNegative == true){
+						if (isNegative){
 							setOp = (
 								parseInt(setOp, 16) + 0b1000000000000000
 							).toString(16)
@@ -270,9 +285,14 @@ SP.Translate = function(_SepareWithComes = false){
 							isNegative = true
 						}
 
-						setOp = SCM_DB[Argument].opcode
+						if (SCM_DB[Argument]){
+							setOp = SCM_DB[Argument].opcode
+						}else{
+							log(`KEYWORD UNDEFINED: ${Argument}\nCHANGED TO 0000: nop`)
+							setOp = '0000'
+						}
 
-						if (isNegative == true){
+						if (isNegative){
 							setOp = (
 								parseInt(setOp, 16) + 0b1000000000000000
 							).toString(16)
@@ -289,8 +309,16 @@ SP.Translate = function(_SepareWithComes = false){
 
 					typeData = SCM_DB[command].params[--numArgument]
 
+					if (typeData == 'any'){
+						if (/^\d/.test(Argument))
+							typeData = /\./.test(Argument) ? 'float' : 'int';
+						
+						if (/@/.test(Argument))
+							typeData = 'label';
+					}
 					if (typeData != 'short' && Argument[0] == "'") typeData = 'short';
 					if (typeData != 'long' && Argument[0] == '"') typeData = 'long';
+					if (typeData != 'int' && Argument[0] == '#') typeData = 'int';
 					if (typeData == 'int' || typeData == 'float'){
 						if (/\@/.test(Argument)) typeData = 'lvar';
 						if (/\$/.test(Argument)) typeData = 'gvar';
@@ -329,9 +357,14 @@ SP.Translate = function(_SepareWithComes = false){
 
 						case 'bool':
 						case 'int':
-							Argument = Argument.r(/^0x.+/mi, hex => {
-								return parseInt(hex, 16)
-							})
+							Argument = Argument
+								.r(/^0x.+/mi, hex => {
+									return parseInt(hex, 16)
+								})
+								.r(/^#.+/m, model =>{
+									return MODELS[model.r('#','').toUpperCase()] || '-1'
+									log(Argument)
+								})
 
 							let byte1   = 0x7F       // 127
 							let byte1R  = 0xFF
@@ -417,7 +450,7 @@ SP.Translate = function(_SepareWithComes = false){
 
 							Argument = 
 								come(TYPE_CODE.LVAR) 
-								+ Number(Argument.r('@','')).toString(16)
+								+ Number(Argument.r(/@(i|f)?/,'')).toString(16)
 									.padStart(4,'0')
 									.toBigEndian();
 						break;
@@ -435,7 +468,7 @@ SP.Translate = function(_SepareWithComes = false){
 										if (Argument == v[1]) coincide = v[0]
 									})
 
-									if (coincide == false){
+									if (!coincide){
 										Argument = parseInt(Number(String(parseInt(Argument, 35)).substring(0, 4) / 2))
 										if (Argument > 1000) Argument /= 5
 										if (Argument > 500) Argument /= 2
@@ -484,7 +517,6 @@ SP.Translate = function(_SepareWithComes = false){
 	})
 	
 	//log(codeDepurated)
-	log(codeDepurated)
 
 	let codeOfFinal = (_SepareWithComes
 						  ? codeDepurated.toString().r(/,,/g,',')
@@ -498,7 +530,7 @@ SP.Translate = function(_SepareWithComes = false){
 		//log(input)
 
 		totalSizePerLine.forEach((elemento)=>{
-			if (encontrado == false){
+			if (!encontrado){
 				switch (typeof elemento){
 					case 'number':
 						saltar += elemento
@@ -514,7 +546,7 @@ SP.Translate = function(_SepareWithComes = false){
 				}
 			}
 		})
-		if (encontrado == false) {
+		if (!encontrado) {
 			console.log("No se encontro la etiqueta de punto de salto: " +etiqueta+
 				"\n- Revise si la escribio correctamente o si incluso la creeo.")
 			return "<@"+etiqueta+">"

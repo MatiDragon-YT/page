@@ -160,7 +160,7 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
 </form>
 
 <blockquote>
-This editor use the data base of library.sannybuilder.com with none extension.
+This editor use the data base of Library.SannyBuilder.com and files of edition MatiDragon.
 </blockquote>
 
 <script type="module" src="compiler.js"></script>
@@ -195,7 +195,11 @@ $file.onchange = openFile
 </script>
 <script>
 hl()
-$('#HEX').onclick = hl
+$('#HEX').onclick = () => {
+	hl()
+    let tempC = $('#HEX').value.Translate(true)
+    $('#OUTHEX').value = tempC
+}
 $('#HEX').oninput = hl
 
 $('#HEX').onkeyup = (event) =>{
@@ -228,7 +232,7 @@ function hl(){
 	//Palabras Reservadas
 	.r(/(^((\x20|\t)+)?[a-z_]+)(\s|$)/gmi, "<span class=keywords>$1<\/span>$4")
 	.r(/(^$)/gm, '$1 ')
-	.r(/(\x20{4}|\x20{3}|\x20{2}|^\x20.|\t)/gm, '<span class=treeLine><\/span>$1')
+	.r(/^(\x20{4}|\x20{3}|\x20{2}|\x20.|\t)/gm, '<span class=treeLine><\/span>$1')
 	//.rA('\t', '    ')
 	.rA('&lt;br/&gt;', "\\n")
 	.r(/(^.)/gm, '<span class=contador><\/span>$1')
