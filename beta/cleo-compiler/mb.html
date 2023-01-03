@@ -1,13 +1,12 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Compilador de mods</title>
+	<title>MattyBuilder</title>
 	<link rel="stylesheet" href="https://matidragon-yt.github.io/page/css/main.css">
 </head>
 <body style="display: block;">
-<div class="green"></div>
 <div style="margin: 1em;">
 <style>
 * {
@@ -204,12 +203,12 @@ $('#HEX').oninput = hl
 
 $('#HEX').onkeyup = (event) =>{
 	//console.log(event)
-    if (event.code == 'Enter' 
-    	|| event.code == 'Backspace'
-    	|| event.code == 'Space'){
-        let tempC = $('#HEX').value.Translate(true)
-        $('#OUTHEX').value = tempC
-    }
+    //if (event.code == 'Enter' 
+    //	|| event.code == 'Backspace'
+    //	|| event.code == 'Space'){
+        //let tempC = $('#HEX').value.Translate(true)
+        $('#OUTHEX').value = $('#HEX').value.Translate(true)
+    //}
 }
 
 function hl(){
@@ -232,7 +231,7 @@ function hl(){
 	//Palabras Reservadas
 	.r(/(^((\x20|\t)+)?[a-z_]+)(\s|$)/gmi, "<span class=keywords>$1<\/span>$4")
 	.r(/(^$)/gm, '$1 ')
-	.r(/^(\x20{4}|\x20{3}|\x20{2}|\x20.|\t)/gm, '<span class=treeLine><\/span>$1')
+	.r(/(\x20{4}|\x20{3}|\x20{2}|^\x20.|\t)/gm, '<span class=treeLine><\/span>$1')
 	//.rA('\t', '    ')
 	.rA('&lt;br/&gt;', "\\n")
 	.r(/(^.)/gm, '<span class=contador><\/span>$1')
@@ -358,5 +357,11 @@ let tempCSS = ``
 	})
 $('#CSS').innerHTML = tempCSS
 </script>
+</div>
+<div class="bg-red black p-1" id='ScriptLoad' style="
+    position: fixed;
+    width: 100%;
+    bottom: 0;
+    ">Loading components, wait a second please for your can compile your code.</div>
 </body>
 </html>

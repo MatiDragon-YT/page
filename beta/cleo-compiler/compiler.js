@@ -1,12 +1,12 @@
 'use strict';
 // Tab Size: 4
 
-const 	log = x => console.log(x),
+const 	log = x  => console.log(x),
+		sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
 
 		NP = Number.prototype,
 		SP = String.prototype,
 		AP = Array.prototype;
-
 
 function IsInRange(VAR, MIN, MAX){
 	return (VAR >= MIN && VAR <= MAX) ? 1 : 0;
@@ -199,10 +199,6 @@ SP.Translate = function(_SepareWithComes = false){
 	}
 
 	let LineComand = this
-
-	//CONSTANTS.forEach(a=>{})
-
-	LineComand = LineComand
 		//.r(/^(\x20+)?:[\w\d]+/gm, '')
 		// remove commits of code
 		.r(/(\s+)?\/\/([^\n]+)?/gm, '') 
@@ -309,16 +305,38 @@ SP.Translate = function(_SepareWithComes = false){
 
 					typeData = SCM_DB[command].params[--numArgument]
 
+					let foundType = false
+					const TYPES = ['any','int','float','lvar','gvar','var_any','short','long','string','label','bool']
+					TYPES.forEach(a => {
+						if (foundType == false && a == typeData){
+							foundType = true
+						}
+					})
+					if (foundType == false) typeData = 'any';
+
 					if (typeData == 'any'){
-						if (/^\d/.test(Argument))
+						//log({typeData, Argument})
+						if (/^[\d#]/m.test(Argument))
 							typeData = /\./.test(Argument) ? 'float' : 'int';
-						
-						if (/@/.test(Argument))
+						if (/^@/m.test(Argument))
 							typeData = 'label';
+						if (/\d@/.test(Argument))
+							typeData = 'lvar';
+						if (/\$/.test(Argument))
+							typeData = 'gvar';
+						if (/^'/.test(Argument))
+							typeData = 'short';
+						if (/^"/.test(Argument))
+							typeData = 'long';
+						//log({typeData, Argument})
+					}
+
+					if (typeData == 'var_any'){
+						typeData = /@/.test(Argument) ? 'lvar' : 'gvar';
 					}
 					if (typeData != 'short' && Argument[0] == "'") typeData = 'short';
 					if (typeData != 'long' && Argument[0] == '"') typeData = 'long';
-					if (typeData != 'int' && Argument[0] == '#') typeData = 'int';
+					if (typeData != 'int' && Argument[0] == '#' || typeData == 'bool') typeData = 'int';
 					if (typeData == 'int' || typeData == 'float'){
 						if (/\@/.test(Argument)) typeData = 'lvar';
 						if (/\$/.test(Argument)) typeData = 'gvar';
@@ -336,10 +354,7 @@ SP.Translate = function(_SepareWithComes = false){
 							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
 							if (Argument.length < 15){
 								totalSizePerLine.push(16)
-								Argument = (come(TYPE_CODE.STRING16) + Argument.toUnicode()) + '00'
-								while(Argument.length < 32){
-									Argument += come(TYPE_CODE.TERMINAL_NULL)
-								}
+								Argument = (come(TYPE_CODE.STRING16) + Argument.toUnicode() + '00').padEnd(32,'00')
 							}else{
 								Argument = Argument.substring(0,255)
 								totalSizePerLine.push(Argument.length)
@@ -351,15 +366,14 @@ SP.Translate = function(_SepareWithComes = false){
 							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
 							Argument = Argument.substring(0,255)
 							totalSizePerLine.push(Argument.length)
-							Argument = (come(TYPE_CODE.STRING_VARIABLE) + Argument.length + Argument.toUnicode())
-							INPUT_CODE[i][index] = Argument
+							Argument = come(TYPE_CODE.STRING_VARIABLE + Argument.length + Argument.toUnicode())
+							//INPUT_CODE[i][index] = Argument
 						break;
 
-						case 'bool':
 						case 'int':
 							Argument = Argument
-								.r(/^0x.+/mi, hex => {
-									return parseInt(hex, 16)
+								.r(/^(-)?0x.+/mi, hex => {
+									return parseInt(hex, 16).toString()
 								})
 								.r(/^#.+/m, model =>{
 									return MODELS[model.r('#','').toUpperCase()] || '-1'
@@ -524,35 +538,35 @@ SP.Translate = function(_SepareWithComes = false){
 					  ).toUpperCase()
 
 	let codeOfFinalDepurated = codeOfFinal.r(/<@([^<>]+)>/g, input => {
-		let encontrado = false
-		let saltar = 0
-		let etiqueta = input.substring(2, input.length-1)
+		let found = false
+		let jump = 0
+		let label = input.substring(2, input.length-1)
 		//log(input)
 
-		totalSizePerLine.forEach((elemento)=>{
-			if (!encontrado){
-				switch (typeof elemento){
+		totalSizePerLine.forEach(element => {
+			if (!found){
+				switch (typeof element){
 					case 'number':
-						saltar += elemento
+						jump += element
 					break;
 					case 'string':
-						if (elemento == etiqueta){
-							encontrado = true
-							//log(saltar)
-							saltar = (0xFFFFFFFF - saltar + 1).toString(16).padStart(4, 0).toUpperCase()
-							//log(saltar)
+						if (element == label){
+							found = true
+							//log(jump)
+							jump = (0xFFFFFFFF - jump + 1).toString(16).padStart(4, 0).toUpperCase()
+							//log(jump)
 						}
 					break;
 				}
 			}
 		})
-		if (!encontrado) {
-			console.log("No se encontro la etiqueta de punto de salto: " +etiqueta+
+		if (!found) {
+			console.log("No se encontro la label de punto de salto: " +label+
 				"\n- Revise si la escribio correctamente o si incluso la creeo.")
-			return "<@"+etiqueta+">"
+			return "<@"+label+">"
 		}
 
-		return saltar.toBigEndian()
+		return jump.toBigEndian()
 	})
 
 	return codeOfFinalDepurated
@@ -619,4 +633,17 @@ String.prototype.toCompileSCM = function(Name_File){
 	document.body.removeChild(a)
 
 	return cleaned_hex
+}
+
+const ScriptLoaded = $('#ScriptLoad')
+if (ScriptLoaded){
+	const c = ScriptLoaded.classList
+	c.remove('bg-red')
+	c.add('bg-green')
+
+	ScriptLoaded.innerText = 'Load completed! Thx 4 wait <3'
+
+	await sleep(1700)
+
+	c.add('d-none')
 }
