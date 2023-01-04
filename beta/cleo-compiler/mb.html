@@ -159,9 +159,17 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
 </form>
 
 <blockquote>
-This editor use the data base of Library.SannyBuilder.com and files of edition MatiDragon.
+This editor use the data base of Library.SannyBuilder.com and files of edition MatiDragon.<br>
+You can use the name of a command how Keywords or Opcodes for create scripts.<br>
+The editor can invert Keywords with the prefix ! and NOT.<br>
 </blockquote>
-
+<blockquote class="warning">
+ARRAY not have support.<br>
+Spaces in strings not have support.<br>
+Syntax High-Level not implemented.<br>
+The opcodes & keywords indefined, is remplace for the OP:0000.<br>
+</blockquote>
+<br>
 <script type="module" src="compiler.js"></script>
 <script>
 const $node = document.getElementById('HEX')
@@ -229,7 +237,7 @@ function hl(){
 
 	$('#PREVIEW').innerHTML = $('#HEX').value
 	//Palabras Reservadas
-	.r(/(^((\x20|\t)+)?[a-z_]+)(\s|$)/gmi, "<span class=keywords>$1<\/span>$4")
+	.r(/(^((\x20|\t|!)+)?[a-z_]+)(\s|$)/gmi, "<span class=keywords>$1<\/span>$4")
 	.r(/(^$)/gm, '$1 ')
 	.r(/(\x20{4}|\x20{3}|\x20{2}|^\x20.|\t)/gm, '<span class=treeLine><\/span>$1')
 	//.rA('\t', '    ')
@@ -278,7 +286,7 @@ function hl(){
 	.r(/\b(timer(a|b))\b/gmi, enter.variables)
 	.r(/(\d+\@(s|v|\B)([^\w\d]|$))/gmi, enter.variables)
 	// Operadores
-	//.r(/\s(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=)\s/gmi," <font class=operador>$1<\/font> ")
+	.r(/(^|\s)(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=)(\s|$)/gmi,"$1<span class=labels>$2<\/span>$3")
 
 	$('#PREVIEW').scrollTop = $('#HEX').scrollTop
 	$('#PREVIEW').scrollLeft = $('#HEX').scrollLeft

@@ -82,8 +82,8 @@ const TYPE_CODE = {
 	INT8				:'04',
 	INT16				:'05',
 	FLOAT32				:'06',
-	GVAR_ARRAY_OFFSET	:'07',
-	LVAR_ARRAY_INDEX	:'08',
+	GVAR_ARRAY			:'07',
+	LVAR_ARRAY			:'08',
 	STRING8				:'09',
 	GVAR_STRING8		:'0A',
 	LVAR_STRING8		:'0B',
@@ -95,6 +95,13 @@ const TYPE_CODE = {
 	LVAR_STRING16		:'11',
 	GVAR_ARRAY_STRING16	:'12',
 	LVAR_ARRAY_STRING16	:'13'
+}
+
+const ELEMENT_TYPE = {
+	INT      : '00',
+	FLOAT    : '01',
+	STRING8  : '02',
+	STRING16 : '03'
 }
 
 let CUSTOM_VARIABLES = await fetch('./data/CustomVariables.ini')
@@ -154,6 +161,17 @@ DATA_DB.extensions.forEach(extension =>{
 					}
 				}
 			}
+			else{
+				SCM_DB[command.name.toLowerCase()] = {
+					opcode : command.id.toLowerCase(),
+					params : []
+				}
+				if (command.input) {
+					command.input.forEach(param =>{
+						SCM_DB[command.name.toLowerCase()].params.push(param.type.toLowerCase())
+					})
+				}
+			}
 		//}
 	})
 })
@@ -193,12 +211,15 @@ SP.Translate = function(_SepareWithComes = false){
 	let codeDepurated = []
 	let totalSizePerLine = []
 	
-	if (this.match(/[^\w\d]("([^"\n]+)?)(\x20)(([^"\n]+)?")[^\w\d]/)) {
+	if (this.match(/[^\w\d]("([^"\n]+)?)(\x20)(([^"\n]+)?")[^\w\d]/)
+		|| this.match(/[^\w\d]('([^'\n]+)?)(\x20)(([^'\n]+)?')[^\w\d]/)
+		|| this.match(/[^\w\d](`([^`\n]+)?)(\x20)(([^`\n]+)?`)[^\w\d]/)) {
 		log('NO ADD SPACES IN STRINGS')
 		return
 	}
 
 	let LineComand = this
+		.r(/^not /m, '!')
 		//.r(/^(\x20+)?:[\w\d]+/gm, '')
 		// remove commits of code
 		.r(/(\s+)?\/\/([^\n]+)?/gm, '') 
@@ -284,7 +305,7 @@ SP.Translate = function(_SepareWithComes = false){
 						if (SCM_DB[Argument]){
 							setOp = SCM_DB[Argument].opcode
 						}else{
-							log(`KEYWORD UNDEFINED: ${Argument}\nCHANGED TO 0000: nop`)
+							//log(`KEYWORD UNDEFINED: ${Argument}\nCHANGED TO 0000: nop`)
 							setOp = '0000'
 						}
 
@@ -320,18 +341,18 @@ SP.Translate = function(_SepareWithComes = false){
 							typeData = /\./.test(Argument) ? 'float' : 'int';
 						if (/^@/m.test(Argument))
 							typeData = 'label';
-						if (/\d@/.test(Argument))
+						if (/^\d@([ifsv])?/m.test(Argument))
 							typeData = 'lvar';
-						if (/\$/.test(Argument))
+						if (/^([ifsv])?[$&]./m.test(Argument))
 							typeData = 'gvar';
-						if (/^'/.test(Argument))
+						if (/^'/m.test(Argument))
 							typeData = 'short';
-						if (/^["`]/.test(Argument))
+						if (/^["`]/m.test(Argument))
 							typeData = 'long';
 						//log({typeData, Argument})
 					}
 					if (typeData == 'var_any'){
-						typeData = /@/.test(Argument) ? 'lvar' : 'gvar';
+						typeData = /^\d@([ifsv])?/m.test(Argument) ? 'lvar' : 'gvar';
 					}
 					if (typeData != 'short' && Argument[0] == "'") typeData = 'short';
 					if (typeData != 'long' && Argument[0] == '"' || Argument[0] == "`") typeData = 'long';
@@ -480,44 +501,50 @@ SP.Translate = function(_SepareWithComes = false){
 						break;
 
 						case 'gvar':
-							totalSizePerLine.push(2)
-
-							if(/\$/.test(Argument)){
-								Argument = Argument.r(/(i|f)?\$/,'')
-
-								if (/\w/.test(Argument)){
-									let coincide = false
-
-									CUSTOM_VARIABLES.forEach(v => {
-										if (Argument == v[1]) coincide = v[0]
-									})
-
-									if (!coincide){
-										Argument = parseInt(Number(String(parseInt(Argument, 35)).substring(0, 4) / 2))
-										if (Argument > 1000) Argument /= 5
-										if (Argument > 500) Argument /= 2
-										Argument = parseInt(Argument)
-										//log(Argument)
-									}
-									else {
-										Argument = coincide
-									}
-								}
-								else{
-									Argument = Argument * 4
-								}
+							if(/[\(\)]/.test(Argument)){ // is array
+								//log(Argument)
+								Argument = '<'+Argument+'>'
 							}
-
 							else {
-								Argument = Number(Argument.r('&',''))
-							}
+								totalSizePerLine.push(2)
 
-							Argument = come(TYPE_CODE.GVAR) + (
-								Argument.toString(16)
-								.substring(0, 4)
-								.padStart(4,'0')
-								.toBigEndian()
-							)
+								if(/\$/.test(Argument)){
+									Argument = Argument.r(/(i|f)?\$/,'')
+
+									if (/\w/.test(Argument)){
+										let coincide = false
+
+										CUSTOM_VARIABLES.forEach(v => {
+											if (Argument == v[1]) coincide = v[0]
+										})
+
+										if (!coincide){
+											Argument = parseInt(Number(String(parseInt(Argument, 35)).substring(0, 4) / 2))
+											if (Argument > 1000) Argument /= 5
+											if (Argument > 500) Argument /= 2
+											Argument = parseInt(Argument)
+											//log(Argument)
+										}
+										else {
+											Argument = coincide
+										}
+									}
+									else{
+										Argument = Argument * 4
+									}
+								}
+
+								else {
+									Argument = Number(Argument.r('&',''))
+								}
+
+								Argument = come(TYPE_CODE.GVAR) + (
+									Argument.toString(16)
+									.substring(0, 4)
+									.padStart(4,'0')
+									.toBigEndian()
+								)
+							}
 						break;
 
 						case 'label':
@@ -545,7 +572,7 @@ SP.Translate = function(_SepareWithComes = false){
 	let codeOfFinal = (_SepareWithComes
 						  ? codeDepurated.toString().r(/,,/g,',')
 						  : codeDepurated.toString().r(/,/g,'')
-					  ).toUpperCase()
+					  ).r(/\./,'').toUpperCase()
 
 	let codeOfFinalDepurated = codeOfFinal.r(/<@([^<>]+)>/g, input => {
 		let found = false
@@ -648,13 +675,16 @@ String.prototype.toCompileSCM = function(Name_File){
 
 const ScriptLoaded = $('#ScriptLoad')
 if (ScriptLoaded){
+	$('#HEX').select()
+	$('#OUTHEX').value = $('#HEX').value.Translate(true)
+
 	const c = ScriptLoaded.classList
 	c.remove('bg-red')
 	c.add('bg-green')
 
 	ScriptLoaded.innerText = 'Load completed! Thx 4 wait <3'
 
-	await sleep(1700)
+	await sleep(2250)
 
 	c.add('d-none')
 }

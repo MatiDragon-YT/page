@@ -294,7 +294,7 @@ blockquote {
 }
 
 .warning {
-	border-left: var(--c-red); 4px solid;
+	border-left: var(--c-red) 4px solid;
 	color: var(--c-red);
 }
 
