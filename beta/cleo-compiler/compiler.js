@@ -326,16 +326,15 @@ SP.Translate = function(_SepareWithComes = false){
 							typeData = 'gvar';
 						if (/^'/.test(Argument))
 							typeData = 'short';
-						if (/^"/.test(Argument))
+						if (/^["`]/.test(Argument))
 							typeData = 'long';
 						//log({typeData, Argument})
 					}
-
 					if (typeData == 'var_any'){
 						typeData = /@/.test(Argument) ? 'lvar' : 'gvar';
 					}
 					if (typeData != 'short' && Argument[0] == "'") typeData = 'short';
-					if (typeData != 'long' && Argument[0] == '"') typeData = 'long';
+					if (typeData != 'long' && Argument[0] == '"' || Argument[0] == "`") typeData = 'long';
 					if (typeData != 'int' && Argument[0] == '#' || typeData == 'bool') typeData = 'int';
 					if (typeData == 'int' || typeData == 'float'){
 						if (/\@/.test(Argument)) typeData = 'lvar';
@@ -344,30 +343,41 @@ SP.Translate = function(_SepareWithComes = false){
 
 					switch (typeData) {
 						case 'short':
-							totalSizePerLine.push(9)
-							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
+							Argument = Argument.r(/'(.+)'/, '$1')
 							Argument = Argument.substring(0,7)
+							totalSizePerLine.push(9)
+
 							Argument = (come(TYPE_CODE.STRING8) + Argument.toUnicode() + '00').padEnd(20,'00')
 						break;
 
 						case 'long':
+							Argument = Argument.r(/("(.+)"|`(.+)`)/, '$2$3')
+							Argument = Argument.substring(0,255)
+
+							totalSizePerLine.push(Argument.length + 2)
+							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode()) + '00'
+							
+							/*
 							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
-							if (Argument.length < 15){
-								totalSizePerLine.push(16)
-								Argument = (come(TYPE_CODE.STRING16) + Argument.toUnicode() + '00').padEnd(32,'00')
-							}else{
-								Argument = Argument.substring(0,255)
-								totalSizePerLine.push(Argument.length)
-								Argument = (come(TYPE_CODE.STRING_VARIABLE) + Argument.length + Argument.toUnicode())
-							}
+							Argument = Argument.substring(0,255)
+
+							let ArgumentLength = Argument.length
+							let ArgumentTranslate = Argument.toUnicode()
+							let ArgumentLengthTranslate = ArgumentTranslate.length
+
+							log({Argument, ArgumentLength, ArgumentTranslate, ArgumentLengthTranslate})
+							
+							totalSizePerLine.push(Argument.length + 2)
+							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode()) + '00'
+							//}
+						*/
 						break;
 
 						case 'string':
-							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
+							Argument = Argument.r(/(`(.+)`|"(.+)")/, '$2$3')
 							Argument = Argument.substring(0,255)
 							totalSizePerLine.push(Argument.length)
-							Argument = come(TYPE_CODE.STRING_VARIABLE + Argument.length + Argument.toUnicode())
-							//INPUT_CODE[i][index] = Argument
+							Argument = come(TYPE_CODE.STRING_VARIABLE + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode()) + '00'
 						break;
 
 						case 'int':
@@ -609,6 +619,7 @@ String.prototype.toCompileSCM = function(Name_File){
 	let cleaned_hex = this.Translate();
 
 	if (cleaned_hex.length % 2) {
+		log(this.Translate())
 		alert ("E-03: la longitud de la cadena hexadecimal limpiada es impar.");
 		return;
 	}

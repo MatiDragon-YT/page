@@ -248,6 +248,9 @@ function hl(){
 	.r(/\'([^\n']+)\'/gmi, "<span class=strings>'$1'<\/span>")
 	.rA("\\'</span>", "\\'")
 	.rA("\\'<span>", "\\'")
+	.r(/\`([^\n`]+)\`/gmi, "<span class=strings>`$1`<\/span>")
+	.rA("\\`</span>", "\\`")
+	.rA("\\`<span>", "\\`")
 	//Etiquetas
 	.r(/([^\w\d])([@:])([\w\d]+)?/gm, "$1<span class=labels>$2$3<\/span>")
 	.r(/([^\w\d])([A-Za-z0-9_]+\(\))/gm, "$1<span class=commands>$2<\/span>")
