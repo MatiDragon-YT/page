@@ -327,7 +327,7 @@ SP.Translate = function(_SepareWithComes = false){
 					typeData = SCM_DB[command].params[--numArgument]
 
 					let foundType = false
-					const TYPES = ['any','int','float','lvar','gvar','var_any','short','long','string','label','bool']
+					const TYPES = ['any','int','float','lvar','gvar','var_any','short','long','label','bool']
 					TYPES.forEach(a => {
 						if (foundType == false && a == typeData){
 							foundType = true
@@ -375,8 +375,8 @@ SP.Translate = function(_SepareWithComes = false){
 							Argument = Argument.r(/("(.+)"|`(.+)`)/, '$2$3')
 							Argument = Argument.substring(0,255)
 
-							totalSizePerLine.push(Argument.length + 2)
-							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode()) + '00'
+							totalSizePerLine.push(Argument.length + (SCM_DB[command].opcode[1] == '0' ? 2 : 1))
+							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode()) + (SCM_DB[command].opcode[1] == '0' ? '00' : '')
 							
 							/*
 							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
@@ -392,13 +392,6 @@ SP.Translate = function(_SepareWithComes = false){
 							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode()) + '00'
 							//}
 						*/
-						break;
-
-						case 'string':
-							Argument = Argument.r(/(`(.+)`|"(.+)")/, '$2$3')
-							Argument = Argument.substring(0,255)
-							totalSizePerLine.push(Argument.length)
-							Argument = come(TYPE_CODE.STRING_VARIABLE + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode()) + '00'
 						break;
 
 						case 'int':
