@@ -112,8 +112,10 @@ CUSTOM_VARIABLES = CUSTOM_VARIABLES
 	.split('\n')
 	.clear()
 CUSTOM_VARIABLES.forEach((l,i)=>{
-	CUSTOM_VARIABLES[i] = l.split('=')
+	CUSTOM_VARIABLES[i] = l.r(/(.+)=(.+)/,'$2=$1').split('=')
 })
+CUSTOM_VARIABLES = Object.fromEntries(CUSTOM_VARIABLES)
+//log(CUSTOM_VARIABLES)
 
 let CONSTANTS = await fetch('./data/constants.txt')
 CONSTANTS = await CONSTANTS.text()
@@ -125,7 +127,6 @@ CONSTANTS = CONSTANTS
 	.split('\n')
 	.clear()
 CONSTANTS.forEach((e,i) => CONSTANTS[i] = e.split('='))
-//log(CONSTANTS)
 CONSTANTS = Object.fromEntries(CONSTANTS)
 //log(CONSTANTS)
 
@@ -515,16 +516,15 @@ SP.Translate = function(_SepareWithComes = false){
 									if (/\w/.test(Argument)){
 										let coincide = false
 
-										CUSTOM_VARIABLES.forEach(v => {
-											if (Argument == v[1]) coincide = v[0]
-										})
+										if (CUSTOM_VARIABLES[Argument] != undefined){
+											coincide = CUSTOM_VARIABLES[Argument] * 4
+										}
 
 										if (!coincide){
 											Argument = parseInt(Number(String(parseInt(Argument, 35)).substring(0, 4) / 2))
 											if (Argument > 1000) Argument /= 5
 											if (Argument > 500) Argument /= 2
 											Argument = parseInt(Argument)
-											//log(Argument)
 										}
 										else {
 											Argument = coincide
