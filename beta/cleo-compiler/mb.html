@@ -117,16 +117,31 @@ function apply(element, callback){
     line-height: 1.5em;
     font-size: 1rem!important;
     height: 50vh;
-    ">nop
-start_new_script 'example'
-    :example
-    wait 0 ms
-    shake_cam 100 {ms}
-    0001: wait 1000 // ms
-    0003: shake_cam 100 ms
-    0001: wait 1000 ms
-    goto @example
-terminate_this_script</textarea>
+    ">0000: nop
+
+:Noname_2
+0001: wait false ms 
+00D6: if 0
+0ADC:   test_cheat "active" 
+004D: jump_if_false @Noname_5E 
+0247: load_model #JESTER 
+
+:Noname_20
+0001: wait 0 ms 
+00D6: if 0
+0248:   model #JESTER available 
+004D: jump_if_false @Noname_57 
+00A5: create_car #JESTER at 0.0 0.0 0.0 saved_at 0@
+0249: release_model #JESTER 
+0002: jump @Noname_5E 
+
+:Noname_57
+0002: jump @Noname_20 
+
+:Noname_5E
+0002: jump @Noname_2
+
+0000: nop</textarea>
 	<pre id='PREVIEW' style="
 	height: 50vh;
 	font-size: 1rem!important;
@@ -267,9 +282,9 @@ function hl(){
 	//Opcodes
 	.r(/([a-fA-F0-9]{4}\:)/gmi, enter.opcodes)
 	//Variables ADMA
-	.r(/((\&)([\d\-abcdefx]+)?)/gim, enter.variables)
+	.r(/((\&)([\d\-a-fx]+)?)/gim, enter.variables)
 	//Variables globales
-	.r(/((\x{00}|s|v)(\$[\d\w]+))/gm, enter.variables)
+	.r(/((\x{00}|[ifsv])(\$[\d\w]+))/gm, enter.variables)
 	//Numeros
 	.r(/\b(\d+(x|\.)\w+)\b/gmi, enter.numbers)
 	.r(/\b(true|false)\b/gmi, enter.numbers)
@@ -284,7 +299,7 @@ function hl(){
 	.r(/\.([0-9A-Z_a-z]+)\n/gm,"." + enter.commands +"\n")
 	//Variables  
 	.r(/\b(timer(a|b))\b/gmi, enter.variables)
-	.r(/(\d+\@(s|v|\B)([^\w\d]|$))/gmi, enter.variables)
+	.r(/(\d+\@([ifsv]|\B)([^\w\d]|$))/gmi, enter.variables)
 	// Operadores
 	.r(/(^|\s)(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=)(\s|$)/gmi,"$1<span class=labels>$2<\/span>$3")
 

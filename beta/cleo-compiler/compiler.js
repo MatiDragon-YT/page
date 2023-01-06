@@ -252,19 +252,16 @@ SP.Translate = function(_SepareWithComes = false){
 			
 			LineComand[numLine].forEach((Argument, numArgument) => {
 				if (numArgument >= 1) {
-					if (/^(_|[a-z]{2}|[a-z]$|[=/*+\-_%^]$)/mi.test(Argument)){
-						if(/^(_|[a-z]{2}|[a-z]$)/im.test(Argument)){
-							//log(Argument)
-							LineComand[numLine][numArgument] = CONSTANTS[Argument] || ''
-						}
-						else{
-							//log(Argument+': es un comentario')
-							LineComand[numLine][numArgument] = ''
-						}
+					if (/^[a-z_]+$/mi.test(Argument)){
+						LineComand[numLine][numArgument] = CONSTANTS[Argument] || ''
+					}
+					if (/^[!=+\-/*%\^]+$/mi.test(Argument)) {
+						LineComand[numLine][numArgument] = ''
 					}
 				}
-				LineComand[numLine] = LineComand[numLine].clear()
 			})
+			LineComand[numLine] = LineComand[numLine].clear()
+			//log(LineComand)
 
 			//log(LineComand[numLine])
 
@@ -338,7 +335,7 @@ SP.Translate = function(_SepareWithComes = false){
 					if (typeData == 'any'){
 						//log({typeData, Argument})
 						if (/^[\d#]/m.test(Argument))
-							typeData = /\./.test(Argument) ? 'float' : 'int';
+							typeData = /[.f]/.test(Argument) ? 'float' : 'int';
 						if (/^@/m.test(Argument))
 							typeData = 'label';
 						if (/^\d@([ifsv])?/m.test(Argument))
@@ -359,7 +356,7 @@ SP.Translate = function(_SepareWithComes = false){
 					if (typeData != 'int' && Argument[0] == '#' || typeData == 'bool') typeData = 'int';
 					if (typeData == 'int' || typeData == 'float'){
 						if (/\@/.test(Argument)) typeData = 'lvar';
-						if (/\$/.test(Argument)) typeData = 'gvar';
+						if (/[$&]/.test(Argument)) typeData = 'gvar';
 					}
 
 					switch (typeData) {
@@ -378,6 +375,17 @@ SP.Translate = function(_SepareWithComes = false){
 							totalSizePerLine.push(Argument.length + (SCM_DB[command].opcode[1] == '0' ? 2 : 1))
 							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode()) + (SCM_DB[command].opcode[1] == '0' ? '00' : '')
 							
+							//log(SCM_DB[command].opcode)
+							switch (SCM_DB[command].opcode){
+								case '05b6' : 
+									totalSizePerLine[totalSizePerLine.length - 1] = 128
+									Argument = Argument.padEnd(260,'0')
+								break;
+								//case '0660':
+								//case '0661':
+								//case '0662':
+								//break;
+							}
 							/*
 							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
 							Argument = Argument.substring(0,255)
@@ -401,7 +409,7 @@ SP.Translate = function(_SepareWithComes = false){
 								})
 								.r(/^#.+/m, model =>{
 									return MODELS[model.r('#','').toUpperCase()] || '-1'
-									log(Argument)
+									//log(Argument)
 								})
 
 							let byte1   = 0x7F       // 127
@@ -480,7 +488,7 @@ SP.Translate = function(_SepareWithComes = false){
 						case 'float':
 							totalSizePerLine.push(4)
 
-							Argument = come(TYPE_CODE.FLOAT32) + Number(Argument).toHex()
+							Argument = come(TYPE_CODE.FLOAT32) + Number(Argument.r('f','')).toHex()
 						break;
 
 						case 'lvar':
@@ -488,7 +496,7 @@ SP.Translate = function(_SepareWithComes = false){
 
 							Argument = 
 								come(TYPE_CODE.LVAR) 
-								+ Number(Argument.r(/@(i|f)?/,'')).toString(16)
+								+ Number(Argument.r(/@(i|f|s|v)?/,'')).toString(16)
 									.padStart(4,'0')
 									.toBigEndian();
 						break;
@@ -502,7 +510,7 @@ SP.Translate = function(_SepareWithComes = false){
 								totalSizePerLine.push(2)
 
 								if(/\$/.test(Argument)){
-									Argument = Argument.r(/(i|f)?\$/,'')
+									Argument = Argument.r(/(i|f|s|v)?\$/,'')
 
 									if (/\w/.test(Argument)){
 										let coincide = false
