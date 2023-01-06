@@ -112,7 +112,7 @@ CUSTOM_VARIABLES = CUSTOM_VARIABLES
 	.split('\n')
 	.clear()
 CUSTOM_VARIABLES.forEach((l,i)=>{
-	CUSTOM_VARIABLES[i] = l.r(/(.+)=(.+)/,'$2=$1').split('=')
+	CUSTOM_VARIABLES[i] = l.r(/(.+)=(.+)/,'$2=$1').toUpperCase().split('=')
 })
 CUSTOM_VARIABLES = Object.fromEntries(CUSTOM_VARIABLES)
 //log(CUSTOM_VARIABLES)
@@ -124,6 +124,7 @@ CONSTANTS = CONSTANTS
 	.r(/\r/g, '\n')
 	.r(/^[\x20\t]+/gm, '')
 	.r(/(\x20+)?=(\x20+)?/g, '=')
+	.toUpperCase()
 	.split('\n')
 	.clear()
 CONSTANTS.forEach((e,i) => CONSTANTS[i] = e.split('='))
@@ -135,6 +136,7 @@ MODELS = await MODELS.text()
 MODELS = MODELS
 	.r(/\r/g,'')
 	.r(/(\d+) (.+)/g, '$2 $1')
+	.toUpperCase()
 	.split('\n')
 	.clear()
 MODELS.forEach((e,i) => MODELS[i] = e.split(' '))
@@ -254,7 +256,7 @@ SP.Translate = function(_SepareWithComes = false){
 			LineComand[numLine].forEach((Argument, numArgument) => {
 				if (numArgument >= 1) {
 					if (/^[a-z_]+$/mi.test(Argument)){
-						LineComand[numLine][numArgument] = CONSTANTS[Argument] || ''
+						LineComand[numLine][numArgument] = CONSTANTS[Argument.toUpperCase()] || ''
 					}
 					if (/^[!=+\-/*%\^]+$/mi.test(Argument)) {
 						LineComand[numLine][numArgument] = ''
@@ -516,8 +518,8 @@ SP.Translate = function(_SepareWithComes = false){
 									if (/\w/.test(Argument)){
 										let coincide = false
 
-										if (CUSTOM_VARIABLES[Argument] != undefined){
-											coincide = CUSTOM_VARIABLES[Argument] * 4
+										if (CUSTOM_VARIABLES[Argument.toUpperCase()] != undefined){
+											coincide = CUSTOM_VARIABLES[Argument.toUpperCase()] * 4
 										}
 
 										if (!coincide){
