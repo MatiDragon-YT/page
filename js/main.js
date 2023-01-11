@@ -122,6 +122,12 @@ const CSSComputarized = function(){
 	return tempCSS
 }()
 
+const META = {
+	TITLE : $("title").innerHTML,
+	DESCRIPTION : $('meta[name=description]') ? $('meta[name=description]').content : 'Mods y herramientas para GTASA por MatiDragon',
+	VIDEO_ID : $('meta[name=image]') ? $('meta[name=image]').content : '',
+}
+
 $('head').innerHTML = $('head').innerHTML + `
 	<meta name="Author" content="MatiDragon">
 	<meta name="Publisher" content="MatiDragon">
@@ -135,6 +141,19 @@ $('head').innerHTML = $('head').innerHTML + `
 	<meta name="HandheldFriendly" content="true">
 	<meta name="apple-mobile-web-app-capable" content="true">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<!-- Property-->
+	<meta property="og:locale" content="es_AR" />
+	<meta property="og:title" content="${META.TITLE} - MatiDragon" />
+	<meta property="og:description" content="${META.DESCRIPTION}" />
+	<meta property="article:publisher" content="https://matidragon-yt.github.io/page/" />
+	<meta property="og:url" content="${location.href}" />
+	<meta property="og:site_name" content="MatiDragon" />
+	<meta property="article:published_time" content="2022-11-6T05:29:00+00:00" />
+	<meta property="article:modified_time" content="2022-11-6T13:39:22+00:00" />
+	<meta property="og:image" content="https://i.ytimg.com/vi/${META.VIDEO_ID}/hqdefault.jpg" />
+	<meta property="og:image:width" content="480" />
+	<meta property="og:image:height" content="360" />
+	<meta property="og:image:type" content="image/jpeg" />
 	<!-- Favicons-->
 	<meta name="msapplication-TileColor" content="green">
 	<meta name="msapplication-TileImage" content="${ROOT}static/images/icon/144x144.png">
@@ -144,7 +163,7 @@ $('head').innerHTML = $('head').innerHTML + `
 	<link rel="icon" href="${ROOT}static/images/icon/96x96.png" sizes="96x96">
 	<link rel="icon" href="${ROOT}static/images/icon/144x144.png" sizes="144x144">
 	<link rel="shortcut icon" href="${ROOT}static/images/icon/favicon.ico" type="image/x-icon">
-	<!-- CSS-->
+	<!-- Resto-->
 `
 
 var CSS = {
@@ -372,7 +391,7 @@ SP.toMarkdown = function(){
 	.r(/\[([^\[\]]+)\]\[\]/g, '<a id="$1"></a>')
 
 	// DIVS
-		.r(/:::([\w\d\x20\-_]+)(#([\w\d\-_]+))?(\x20([^\n]+))?\n/g, '<div id="$3" class="$1" style="$5">\n')
+	.r(/:::([\w\d\x20\-_]+)(#([\w\d\-_]+))?(\x20([^\n]+))?\n/g, '<div id="$3" class="$1" style="$5">\n')
 	.r(/:::\n/g, '</div>\n')
 
 	// BLOCKQUOTES
@@ -523,7 +542,8 @@ SP.toMarkdown = function(){
 	.r(/^--+-$/gm, '<hr>')
 
 	// BR
-	.r(/([^`])`\n\n`([^`])/, "$1`<br><br>`$2")
+	.r(/[^\s]\x20\x20$/gm, '<br>')
+	.r(/([^`])`\n\n`([^`])/g, "$1`<br><br>`$2")
 	.r(/(\n^\.\n|(\.|:|\!|\)|b>|a>)\n\n([0-9\u0041-\u005A\u0061-\u007A\u00C0-\uFFFF]|¿|<b|<(ul|ol)?!|\*|`[^`]))/g, '$2<br><br>$3')
 	.r(/(\x20\x20\n|\\\n|\\n\w|(\.|:|\!|\)|b>|a>)\n([0-9\u0041-\u005A\u0061-\u007A\u00C0-\uFFFF]|¿|<b|<(ul|ol)?!|\*|`[^`]))/g, '$2<br>$3')
 
@@ -590,6 +610,13 @@ SP.toMarkdown = function(){
 	})
 	.r(/<(\/tr|tbody)>\n<(tr|\/thead)>/g, "<$1><$2>")
 	.r(/^(<tr>(.+)<\/tr>)/gm, "<table><thead>$1</tbody></table>")
+
+	// Import the value of vars
+	.r(/{{-var (.+)}}/g, input => {
+		input = input.r(/{{-var (.+)}}/, '$1')
+
+		return new Function('return '+ input)()
+	})
 }
 
 $('body').innerHTML = `
