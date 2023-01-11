@@ -366,6 +366,7 @@ input[type='checkbox']{
 .d-flex {display: flex}
 .d-flex.wrap {flex-wrap: wrap}
 .d-flex.column {flex-direction: column}
+.d-flex.reverse {flex-direction: row-reverse}
 .d-flex.between {justify-content: space-between}
 
 .col-1, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-9, .col-10, .col-11, .col-12 {
