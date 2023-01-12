@@ -190,11 +190,11 @@ async function dbSBL(game){
 
 
 const $IDE_mode = $('#mode')
-if (LS.get('IDE:mode') == null) LS.set('IDE:mode', 'sa')
-$IDE_mode.value = LS.get('IDE:mode')
-await dbSBL(LS.get('IDE:mode'))
+if (LS.get('Compiler/IDE:mode') == null) LS.set('Compiler/IDE:mode', 'sa')
+$IDE_mode.value = LS.get('Compiler/IDE:mode')
+await dbSBL(LS.get('Compiler/IDE:mode'))
 
-let game = LS.get('IDE:mode')
+let game = LS.get('Compiler/IDE:mode')
 await dbSBL(game)
 
 let version = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/version.txt`)
@@ -360,7 +360,7 @@ SP.Translate = function(_SepareWithComes = false){
 
 					if (typeData == 'any'){
 						//log({typeData, Argument})
-						if (/^[\d#]/m.test(Argument))
+						if (/^[\d#\-]/m.test(Argument))
 							typeData = /[.f]/.test(Argument) ? 'float' : 'int';
 						if (/^@/m.test(Argument))
 							typeData = 'label';
@@ -669,17 +669,17 @@ String.prototype.toCompileSCM = function(Name_File){
 		return
 	}
 
-	let cleaned_hex = this.Translate();
+	let code_hex = this.Translate();
 
-	if (cleaned_hex.length % 2) {
+	if (code_hex.length % 2) {
 		log(this.Translate())
-		alert ("E-03: la longitud de la cadena hexadecimal limpiada es impar.");
+		alert ("E-03: la longitud de la cadena hexadecimal es impar.");
 		return;
 	}
 
 	let binary = new Array();
-	for (let i=0; i<cleaned_hex.length/2; i++) {
-		let h = cleaned_hex.substr(i*2, 2);
+	for (let i=0; i<code_hex.length/2; i++) {
+		let h = code_hex.substr(i*2, 2);
 		binary[i] = parseInt(h,16);
 	}
 
@@ -696,30 +696,31 @@ String.prototype.toCompileSCM = function(Name_File){
 	// Remove anchor from body
 	document.body.removeChild(a)
 
-	return cleaned_hex
+	return code_hex
 }
-
-
 
 const $SBL_State = $('#state')
-//$SBL_State.innerText = 'Okey'
-$IDE_mode.onchange = async function(){
-	$SBL_State.innerText = 'Loading...'
-	LS.set('IDE:mode', $IDE_mode.value)
-	
-	game = LS.get('IDE:mode')
-	await dbSBL(game)
-
-	version = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/version.txt`)
-	version = await version.text()
-	
-	$('#version_sbl').innerHTML = 'SBL ' + version
-	$SBL_State.innerText = 'Okey'
-}
-
 if ($SBL_State){
+	const c = $SBL_State.classList
+	$SBL_State.innerText = 'Okey'
+	c.remove('loading')
+
 	$('#HEX').select()
 	$('#OUTHEX').value = $('#HEX').value.Translate(true)
 
-	$SBL_State.innerText = 'Okey'
+	$IDE_mode.onchange = async function(){
+		$SBL_State.innerText = 'Loading...'
+		c.add('loading')
+		LS.set('Compiler/IDE:mode', $IDE_mode.value)
+		
+		game = LS.get('Compiler/IDE:mode')
+		await dbSBL(game)
+
+		version = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/version.txt`)
+		version = await version.text()
+		
+		$('#version_sbl').innerHTML = 'SBL ' + version
+		$SBL_State.innerText = 'Okey'
+		c.remove('loading')
+	}
 }

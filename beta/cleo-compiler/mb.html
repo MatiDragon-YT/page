@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" commit="45">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,6 +25,16 @@
 .treeLine {
     border-left: dotted 1px #494949;
     margin-right: -1px;
+}
+#state {
+    border: #00c853 solid 1px;
+}
+#state.loading {
+    border: #ff5252 solid 1px !important;
+}
+#version_sbl, #state{
+    width: 5rem;
+    text-align: center;
 }
 </style>
 <script>
@@ -132,9 +142,9 @@ goto @main</textarea>
 	<input type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100">
 
 <div class="d-flex end">
-<span id='state' class="my-3">Loading...</span>
-<span id='version_sbl' class="my-3">SBL</span>
-<select id='mode' class="ml-3">
+<span id='state' class="loading">Loading...</span>
+<span id='version_sbl' class="">SBL</span>
+<select id='mode' class="ml-1">
   <option value="gta3">GTA III</option>
   <option value="lcs">GTA LCS</option>
   <option value="sa" selected>GTA SA</option>
@@ -170,16 +180,16 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
 
 </form>
 
-<blockquote>
-This editor use the data base of Library.SannyBuilder.com and files of edition MatiDragon.<br>
-You can use the name of a command how Keywords or Opcodes for create scripts.<br>
-The editor can invert Keywords with the prefix ! and NOT.<br>
-</blockquote>
 <blockquote class="warning">
 ARRAY not have support.<br>
 Spaces in strings not have support.<br>
 Syntax High-Level not implemented.<br>
 The opcodes & keywords indefined, is remplace for the OP:0000.<br>
+</blockquote>
+<blockquote>
+This editor use the data base of Library.SannyBuilder.com and files of edition MatiDragon.<br>
+You can use the name of a command how Keywords or Opcodes for create scripts.<br>
+The editor can invert Keywords with the prefix ! and NOT.<br>
 </blockquote>
 <br>
 <script type="module" src="compiler.js"></script>
@@ -256,11 +266,11 @@ function hl(){
 	.rA('&lt;br/&gt;', "\\n")
 	.r(/(^.)/gm, '<span class=contador><\/span>$1')
 	//Comentarios 
-	.r(/(\/\/[^\n]+)/gm, enter.comments)
-	.r(/(\/\*[^\/]*\*\/)/gmi, enter.comments)
-	.r(/(\{[^\$][^\{\}]*\})/gmi, enter.comments)
+	.r(/(\/\/([^\n]+)?)/gm, enter.comments)
+	.r(/(\/\*[^\/]*\*\/)/gm, enter.comments)
+	.r(/(\{([^\$][^\{\}]*)?\})/gm, enter.comments)
 	//Directivas
-	.r(/(\{\$[^{}\n]+\})/gmi, enter.directives)
+	.r(/(\{\$[^{}\n]+\})/gm, enter.directives)
 	//Cadenas de texto
 	.r(/\"([^\n"]+)\"/gmi, '<span class=strings>"$1"<\/span>')
 	.rA('\\"</span>', '\\"')
