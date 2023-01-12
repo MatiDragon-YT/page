@@ -56,8 +56,8 @@ export const settings = () => {
 		//get set
 		ITEMS[0].forEach(KEY => {
 			const ELEMENT = $('#' + KEY).value
-			if(_get(KEY) != ELEMENT){
-				_set(KEY, ELEMENT)
+			if(_get('OpSearch/'+KEY) != ELEMENT){
+				_set('OpSearch/'+KEY, ELEMENT)
 			}
 		})
 
@@ -91,7 +91,7 @@ export const settings = () => {
 		ITEMS[0].forEach((ELEMENT, index) => {
 			if(index > 0) {
 				const SAVED =
-					_get(ELEMENT)
+					_get('OpSearch/'+ELEMENT)
 					|| css([$(':root'), PREFIX + ELEMENT])
 
 				$('#' + ELEMENT).value = SAVED
@@ -101,7 +101,7 @@ export const settings = () => {
 
 		})
 		
-		$('#' + ITEMS[0][0]).value = _get(ITEMS[0][0]) || 50
+		$('#' + ITEMS[0][0]).value = _get('OpSearch/'+ITEMS[0][0]) || 50
 
 		const _h = location.hash.replace('%20', ' ').replace('#', '')
 		
@@ -113,7 +113,7 @@ export const settings = () => {
 		translate()
 
 		$('#lang').onchange = () => {
-			_set('set-lang-at', $('#lang').value)
+			_set('OpSearch/set-lang-at', $('#lang').value)
 			translate()
 		}
 		function translate () {
@@ -127,10 +127,10 @@ export const settings = () => {
 					}
 				}
 
-			$(`#lang`).value = _get('set-lang-at') || k()
+			$(`#lang`).value = _get('OpSearch/'+'set-lang-at') || k()
 			
 			fileServer.get(
-				local() + `assets/lang/${_get('set-lang-at')
+				local() + `/beta/opcode-search/assets/lang/${_get('OpSearch/'+'set-lang-at')
 				|| $('#lang').value}.json`,
 
 				json => {

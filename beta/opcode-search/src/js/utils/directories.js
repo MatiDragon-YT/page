@@ -3,7 +3,7 @@ const
 	B = location
 
 export const local = () =>
-	A == 'https://matidragon-yt.github.io'
+	A == 'https://matidragon-yt.github.io/page/beta'
 		? A + '/opcode-search/'
 		: A + '/'
 
