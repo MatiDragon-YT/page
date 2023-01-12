@@ -50,8 +50,14 @@ export const settings = () => {
 		css([$('#sms'), {display : ''}])
 		found(0)
 	}
-	$('#pref-settings').onclick = () => display('modal', 'grid')
-	$('#modal-close').onclick = () => display('modal', 'none')
+	$('#pref-settings').onclick = () => {
+		display('modal', 'grid')
+		$('#body').style = 'filter: blur(3px)'
+	}
+	$('#modal-close').onclick = () => {
+		display('modal', 'none')
+		$('#body').style = ''
+	}
 	$('#modal-save').onclick = () => {
 		//get set
 		ITEMS[0].forEach(KEY => {

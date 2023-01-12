@@ -13,7 +13,7 @@
     background: var(--ground);
     width: 100vw;
     height: 100vh;
-    box-shadow: 0px 6px 13px 1px black;
+    box-shadow: 0px 6px 13px 1px #000000b5;
 }
 #modal-header{
     display: flex;

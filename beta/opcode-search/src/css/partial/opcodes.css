@@ -2,7 +2,7 @@ pre {
 	color: var(--op-text);
 	background: var(--op-ground);
 	padding: 3px 5px;
-	font-family: Lucida Console, monospace;
+	font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
 	overflow-y: auto;
 }
 

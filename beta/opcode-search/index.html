@@ -25,64 +25,66 @@
 	<link rel="stylesheet" href="src/css/main.css">
 </head>
 <body>
-	<header id="searchBar">
-		<nav>
-			<item><span key="file"></span>
-				<div>
-					<p key="load" id="file-load"></p>
-					<p key="save" disabled></p>
-					<hr>
-					<a key="download" download href="assets/opcodes/sa.txt"></a>
-					<hr>
-					<p key="clear" id="file-clear"></p>
-				</div>
-			</item>
-			<item><span key="pref"></span>
-				<div>
-					<p key="settings" id="pref-settings"></p>
-				</div>
-			</item>
-			<item><span key="seacher"></span>
-				<div>
-					<a key="help" target="_black" href="https://github.com/MatiDragon-YT/opcode-search/discussions"></a>
-					<a key="issue" target="_black" href="https://github.com/MatiDragon-YT/opcode-search/issues"></a>
-					<a key="about" target="_black" href="https://github.com/MatiDragon-YT/opcode-search"></a>
-				</div>
-			</item>
-			<select id="lang">
-				<option value="en" selected>English</option>
-				<option value="es">Español</option>
-				<option value="pt">Português</option>
-			</select>
-		</nav>
-		<section >
-			<input type="text" id="myInput" placeholder="Search"><i class="icon">search</i>
-		</section>
-	</header>
-	<main>
-		<section>
-			<div key="description" id="sms"></div>
-			<div key="loading" id="sms2"></div>
-			<ul id="showed"></ul>
-			<ul id="list" style="display: none;"></ul>
-		</section>
-		<!--
-		<section class="pagenumbers" id="pagination"></section>
-		-->
-	</main>
-	<footer>
-		<section><span key="found"></span>: <span id="found">0</span></section>
-		<section>
-			<item>
-				<input type="checkbox" id="reverse"> <label key="reverse" for="reverse"></label>
-			</item>
+	<div id="body">
+		<header id="searchBar">
+			<nav>
+				<item><span key="file"></span>
+					<div>
+						<p key="load" id="file-load"></p>
+						<p key="save" disabled></p>
+						<hr>
+						<a key="download" download href="assets/opcodes/sa.txt"></a>
+						<hr>
+						<p key="clear" id="file-clear"></p>
+					</div>
+				</item>
+				<item><span key="pref"></span>
+					<div>
+						<p key="settings" id="pref-settings"></p>
+					</div>
+				</item>
+				<item><span key="seacher"></span>
+					<div>
+						<a key="help" target="_black" href="https://github.com/MatiDragon-YT/opcode-search/discussions"></a>
+						<a key="issue" target="_black" href="https://github.com/MatiDragon-YT/opcode-search/issues"></a>
+						<a key="about" target="_black" href="https://github.com/MatiDragon-YT/opcode-search"></a>
+					</div>
+				</item>
+				<select id="lang">
+					<option value="en" selected>English</option>
+					<option value="es">Español</option>
+					<option value="pt">Português</option>
+				</select>
+			</nav>
+			<section >
+				<input type="text" id="myInput" placeholder="Search"><i class="icon">search</i>
+			</section>
+		</header>
+		<main>
+			<section>
+				<div key="description" id="sms"></div>
+				<div key="loading" id="sms2"></div>
+				<ul id="showed"></ul>
+				<ul id="list" style="display: none;"></ul>
+			</section>
 			<!--
-			<item>
-				<i class="icon">format_size</i> <input type="number" id="fontSize">
-			</item>
+			<section class="pagenumbers" id="pagination"></section>
 			-->
-		</section>
-	</footer>
+		</main>
+		<footer>
+			<section><span key="found"></span>: <span id="found">0</span></section>
+			<section>
+				<item>
+					<input type="checkbox" id="reverse"> <label key="reverse" for="reverse"></label>
+				</item>
+				<!--
+				<item>
+					<i class="icon">format_size</i> <input type="number" id="fontSize">
+				</item>
+				-->
+			</section>
+		</footer>
+	</div>
 	<script src="src/html/modal.js"></script>
 </body>
 <script type="module" src="src/js/main.js"></script>
