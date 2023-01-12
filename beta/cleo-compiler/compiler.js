@@ -190,7 +190,8 @@ async function dbSBL(game){
 
 
 const $IDE_mode = $('#mode')
-$IDE_mode.value = LS.get('IDE:mode') || 'sa'
+if (LS.get('IDE:mode') == null) LS.set('IDE:mode', 'sa')
+$IDE_mode.value = LS.get('IDE:mode')
 await dbSBL(LS.get('IDE:mode'))
 
 let game = LS.get('IDE:mode')
