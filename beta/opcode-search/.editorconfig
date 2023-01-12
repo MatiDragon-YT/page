@@ -1,0 +1,6 @@
+Tab Size: 4
+Max chars per line: 90 (except for templates & regex)
+Spaces between operators: Required
+PascalCase: Classes and objects
+SNAKE_CASE: Variables constant
+camelCase: Variables dynamics & functions

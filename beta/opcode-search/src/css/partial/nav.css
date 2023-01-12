@@ -1,0 +1,60 @@
+nav {
+    display: flex;
+    background: #000;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: normal;
+    height: 1.4rem;
+    cursor: default;
+    user-select: none;
+}
+nav item {
+    position: relative;
+    padding: 0px 6px;
+}
+nav item:hover {
+    background: var(--hover);
+}
+nav item:hover div {
+    display: flex;
+    flex-direction: column;
+    border: #a8a8a8 solid 1px;
+}
+nav item div {
+    display: none;
+    position: absolute;
+    background: black;
+    left: 0;
+    width: max-content;
+}
+nav item p,
+nav item a {
+    padding: 3px 7px 3px 31px;
+    color: white;
+    text-decoration: none;
+    cursor: default;
+    min-width: 132px;
+}
+nav item p:hover,
+nav item a:hover {
+    background: var(--hover);
+    z-index: 1;
+}
+nav item p[disabled],
+nav item a[disabled] {
+    color: #545454;
+}
+nav item p[disabled]:hover,
+nav item a[disabled]:hover {
+    background: black;
+    color: #545454;
+}
+nav hr {
+    border-bottom: white solid 1px;
+    margin: 3px 4px 3px 31px;
+}
+#lang {
+    right: 0px;
+    height: inherit;
+    position: absolute;
+}

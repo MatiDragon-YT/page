@@ -1,0 +1,38 @@
+:root {
+	--color:#F9F9F9;
+	--ground:#16252c;
+	--hover:rgb(255 255 255 / 25%);
+	--font-size:1rem;
+
+	--bar-color:#000;/* black  */
+	--bar-ground:#4CAF50;/* green  */
+	--bar-border:#0F191E;
+	
+	--nav-color:#fff;
+	--nav-ground:#000;
+	--nav-size:.9rem;
+
+	--bar-color:#000;
+	--bar-ground:#4CAF50;
+	--bar-size:.9rem;
+
+/*
+	--list-color: ;
+	--list-ground: ;
+	--list-size: ;
+*/
+
+	--scroll-color:#4CAF50;
+	--scroll-ground:#0F191E;
+	--scroll-size:.7rem;
+
+	--op-text:#F9F9F9;
+	--op-ground:#0F191E;
+	--op-comment:#4C636F;
+	--op-opcode:#4C636F;
+	--op-variable:#2196F3;
+	--op-string:#FF9100;
+	--op-number:#F44336;
+	--op-label:#4CAF50;
+	--op-operator:#C554FF;
+}

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Opcode Search</title>
+	<meta name="description" content="Find fast and easy any opcode of gta sa.">
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+	<meta name="color-scheme" content="dark light">
+	<meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
+	<meta name="theme-color" media="(prefers-color-scheme: dark)" content="black">
+
+	<meta name="msapplication-TileColor" content="#0000ff">
+	<meta name="MobileOptimized" content="width">
+	<meta name="HandheldFriendly" content="true">
+	<meta name="apple-mobile-web-app-capable" content="true">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	
+	<link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+	<link rel="stylesheet" href="src/css/main.css">
+</head>
+<body>
+	<header id="searchBar">
+		<nav>
+			<item><span key="file"></span>
+				<div>
+					<p key="load" id="file-load"></p>
+					<p key="save" disabled></p>
+					<hr>
+					<a key="download" download href="assets/opcodes/sa.txt"></a>
+					<hr>
+					<p key="clear" id="file-clear"></p>
+				</div>
+			</item>
+			<item><span key="pref"></span>
+				<div>
+					<p key="settings" id="pref-settings"></p>
+				</div>
+			</item>
+			<item><span key="seacher"></span>
+				<div>
+					<a key="help" target="_black" href="https://github.com/MatiDragon-YT/opcode-search/discussions"></a>
+					<a key="issue" target="_black" href="https://github.com/MatiDragon-YT/opcode-search/issues"></a>
+					<a key="about" target="_black" href="https://github.com/MatiDragon-YT/opcode-search"></a>
+				</div>
+			</item>
+			<select id="lang">
+				<option value="en" selected>English</option>
+				<option value="es">Español</option>
+				<option value="pt">Português</option>
+			</select>
+		</nav>
+		<section >
+			<input type="text" id="myInput" placeholder="Search"><i class="icon">search</i>
+		</section>
+	</header>
+	<main>
+		<section>
+			<div key="description" id="sms"></div>
+			<div key="loading" id="sms2"></div>
+			<ul id="showed"></ul>
+			<ul id="list" style="display: none;"></ul>
+		</section>
+		<!--
+		<section class="pagenumbers" id="pagination"></section>
+		-->
+	</main>
+	<footer>
+		<section><span key="found"></span>: <span id="found">0</span></section>
+		<section>
+			<item>
+				<input type="checkbox" id="reverse"> <label key="reverse" for="reverse"></label>
+			</item>
+			<!--
+			<item>
+				<i class="icon">format_size</i> <input type="number" id="fontSize">
+			</item>
+			-->
+		</section>
+	</footer>
+	<script src="src/html/modal.js"></script>
+</body>
+<script type="module" src="src/js/main.js"></script>
+</html>

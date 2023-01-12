@@ -1,0 +1,18 @@
+pre {
+	color: var(--op-text);
+	background: var(--op-ground);
+	padding: 3px 5px;
+	font-family: Lucida Console, monospace;
+	overflow-y: auto;
+}
+
+hlV,hlS,hlN,hlL,hlC,hlO,hlG{font-weight: bolder;}
+
+hlC {color: var(--op-comment)}
+hlF {color: var(--op-opcode)}
+hlV {color: var(--op-variable)}
+hlS {color: var(--op-string)}
+hlN {color: var(--op-number)}
+hlL {color: var(--op-label)}
+hlO {color: var(--op-operator)}
+hlG {color: var(--op-variable)}
