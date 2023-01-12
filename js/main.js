@@ -145,12 +145,12 @@ $('head').innerHTML = $('head').innerHTML + `
 	<meta property="og:locale" content="es_AR" />
 	<meta property="og:title" content="${META.TITLE} - MatiDragon" />
 	<meta property="og:description" content="${META.DESCRIPTION}" />
+	<meta property="og:image" content="https://i.ytimg.com/vi/${META.VIDEO_ID}/hqdefault.jpg" />
 	<meta property="article:publisher" content="https://matidragon-yt.github.io/page/" />
 	<meta property="og:url" content="${location.href}" />
 	<meta property="og:site_name" content="MatiDragon" />
 	<meta property="article:published_time" content="2022-11-6T05:29:00+00:00" />
 	<meta property="article:modified_time" content="2022-11-6T13:39:22+00:00" />
-	<meta property="og:image" content="https://i.ytimg.com/vi/${META.VIDEO_ID}/hqdefault.jpg" />
 	<meta property="og:image:width" content="480" />
 	<meta property="og:image:height" content="360" />
 	<meta property="og:image:type" content="image/jpeg" />
