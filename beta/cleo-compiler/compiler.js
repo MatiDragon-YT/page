@@ -104,6 +104,12 @@ const ELEMENT_TYPE = {
 	STRING16 : '03'
 }
 
+const LS = {
+	t : localStorage,
+	get : (x) => LS.t.getItem(x),
+	set : (x,y) => LS.t.setItem(x, y)
+}
+
 let CUSTOM_VARIABLES = await fetch('./data/CustomVariables.ini')
 CUSTOM_VARIABLES = await CUSTOM_VARIABLES.text()
 CUSTOM_VARIABLES = CUSTOM_VARIABLES
@@ -142,42 +148,59 @@ MODELS = MODELS
 MODELS.forEach((e,i) => MODELS[i] = e.split(' '))
 MODELS = Object.fromEntries(MODELS)
 
-let DATA_DB = await fetch('https://raw.githubusercontent.com/sannybuilder/library/master/sa/sa.json')
-DATA_DB = await DATA_DB.json()
 let SCM_DB = {}
-DATA_DB.extensions.forEach(extension =>{
-	//log(extension.name)
-	extension.commands.forEach((command, c) =>{
-		//if (c < 2) {
-			if (command.attrs){
-				if (command.attrs.is_unsupported == undefined){
+async function dbSBL(game){
+	let DATA_DB = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/${game}.json`)
+	DATA_DB = await DATA_DB.json()
+	DATA_DB.extensions.forEach(extension =>{
+		//log(extension.name)
+		extension.commands.forEach((command, c) =>{
+			//if (c < 2) {
+				if (command.attrs){
+					if (command.attrs.is_unsupported == undefined){
+						SCM_DB[command.name.toLowerCase()] = {
+							opcode : command.id.toLowerCase(),
+							params : []
+						}
+						//log(command.input)// is (array || undefined)
+
+						if (command.input) {
+							command.input.forEach(param =>{
+								SCM_DB[command.name.toLowerCase()].params.push(param.type.toLowerCase())
+							})
+						}
+					}
+				}
+				else{
 					SCM_DB[command.name.toLowerCase()] = {
 						opcode : command.id.toLowerCase(),
 						params : []
 					}
-					//log(command.input)// is (array || undefined)
-
 					if (command.input) {
 						command.input.forEach(param =>{
 							SCM_DB[command.name.toLowerCase()].params.push(param.type.toLowerCase())
 						})
 					}
 				}
-			}
-			else{
-				SCM_DB[command.name.toLowerCase()] = {
-					opcode : command.id.toLowerCase(),
-					params : []
-				}
-				if (command.input) {
-					command.input.forEach(param =>{
-						SCM_DB[command.name.toLowerCase()].params.push(param.type.toLowerCase())
-					})
-				}
-			}
-		//}
+			//}
+		})
 	})
-})
+	return true
+}
+
+
+const $IDE_mode = $('#mode')
+$IDE_mode.value = LS.get('IDE:mode') || 'sa'
+await dbSBL(LS.get('IDE:mode'))
+
+let game = LS.get('IDE:mode')
+await dbSBL(game)
+
+let version = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/version.txt`)
+version = await version.text()
+$('#version_sbl').innerHTML = 'SBL ' + version
+
+//await sleep(1000)
 //log(SCM_DB)
 
 /*
@@ -200,9 +223,8 @@ const REG = {
 SP.toUnicode = function() {
   return this.split("").map(s => {
     return `${s.charCodeAt(0).toString(16).padStart(2, '0')}`;
-  }).join("");
+  }).join("-");
 }
-
 SP.Translate = function(_SepareWithComes = false){
 	const come = a => {
 		if (_SepareWithComes){
@@ -364,11 +386,11 @@ SP.Translate = function(_SepareWithComes = false){
 
 					switch (typeData) {
 						case 'short':
-							Argument = Argument.r(/'(.+)'/, '$1')
+							Argument = /'(.+)'/.test(Argument) ? Argument.r(/'(.+)'/, '$1') : '\x00'
 							Argument = Argument.substring(0,7)
 							totalSizePerLine.push(9)
 
-							Argument = (come(TYPE_CODE.STRING8) + Argument.toUnicode() + '00').padEnd(20,'00')
+							Argument = (come(TYPE_CODE.STRING8) + Argument.toUnicode() + '-00').padEnd(26,'-00')
 						break;
 
 						case 'long':
@@ -574,8 +596,8 @@ SP.Translate = function(_SepareWithComes = false){
 
 	let codeOfFinal = (_SepareWithComes
 						  ? codeDepurated.toString().r(/,,/g,',')
-						  : codeDepurated.toString().r(/,/g,'')
-					  ).r(/\./,'').toUpperCase()
+						  : codeDepurated.toString().r(/,/g,'').r(/\-/g,'')
+					  ).r(/\./g,'').toUpperCase()
 
 	let codeOfFinalDepurated = codeOfFinal.r(/<@([^<>]+)>/g, input => {
 		let found = false
@@ -676,18 +698,27 @@ String.prototype.toCompileSCM = function(Name_File){
 	return cleaned_hex
 }
 
-const ScriptLoaded = $('#ScriptLoad')
-if (ScriptLoaded){
+
+
+const $SBL_State = $('#state')
+//$SBL_State.innerText = 'Okey'
+$IDE_mode.onchange = async function(){
+	$SBL_State.innerText = 'Loading...'
+	LS.set('IDE:mode', $IDE_mode.value)
+	
+	game = LS.get('IDE:mode')
+	await dbSBL(game)
+
+	version = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/version.txt`)
+	version = await version.text()
+	
+	$('#version_sbl').innerHTML = 'SBL ' + version
+	$SBL_State.innerText = 'Okey'
+}
+
+if ($SBL_State){
 	$('#HEX').select()
 	$('#OUTHEX').value = $('#HEX').value.Translate(true)
 
-	const c = ScriptLoaded.classList
-	c.remove('bg-red')
-	c.add('bg-green')
-
-	ScriptLoaded.innerText = 'Load completed! Thx 4 wait <3'
-
-	await sleep(2250)
-
-	c.add('d-none')
+	$SBL_State.innerText = 'Okey'
 }

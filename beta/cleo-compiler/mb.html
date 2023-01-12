@@ -97,7 +97,9 @@ function apply(element, callback){
 
 <form id="FORMULARIO">
 
-	<input id='file' type='file' accept='text/plain' class="button"><br><br>
+<input id='file' type='file' accept='text/plain' class="button">
+
+<br><br>
 
 	<input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="newScript.csi">
 	<textarea id="HEX" class="w-100 m-0" placeholder="write your hex" autocomplete="off" spellcheck="false" style="
@@ -117,37 +119,32 @@ function apply(element, callback){
     line-height: 1.5em;
     font-size: 1rem!important;
     height: 50vh;
-    ">0000: nop
+    ">nop
 
-:Noname_2
-0001: wait false ms 
-00D6: if 0
-0ADC:   test_cheat "active" 
-004D: jump_if_false @Noname_5E 
-0247: load_model #JESTER 
-
-:Noname_20
-0001: wait 0 ms 
-00D6: if 0
-0248:   model #JESTER available 
-004D: jump_if_false @Noname_57 
-00A5: create_car #JESTER at 0.0 0.0 0.0 saved_at 0@
-0249: release_model #JESTER 
-0002: jump @Noname_5E 
-
-:Noname_57
-0002: jump @Noname_20 
-
-:Noname_5E
-0002: jump @Noname_2
-
-0000: nop</textarea>
+:main
+    wait 0
+goto @main</textarea>
 	<pre id='PREVIEW' style="
 	height: 50vh;
 	font-size: 1rem!important;
 	" class="m-0"></pre>
 
-	<input type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100"><br><br>
+	<input type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100">
+
+<div class="d-flex end">
+<span id='state' class="my-3">Loading...</span>
+<span id='version_sbl' class="my-3">SBL</span>
+<select id='mode' class="ml-3">
+  <option value="gta3">GTA III</option>
+  <option value="lcs">GTA LCS</option>
+  <option value="sa" selected>GTA SA</option>
+  <option value="vc">GTA VC</option>
+  <option value="vcs">GTA VCS</option>
+  <option value="gta3_mobile">III Mobile</option>
+  <option value="sa_mobile">SA Mobile</option>
+  <option value="vc_mobile">VC Mobile</option>
+</select>
+</div>
 
 	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
 
@@ -384,10 +381,5 @@ let tempCSS = ``
 $('#CSS').innerHTML = tempCSS
 </script>
 </div>
-<div class="bg-red black p-1" id='ScriptLoad' style="
-    position: fixed;
-    width: 100%;
-    bottom: 0;
-    ">Loading components, wait a second please for your can compile your code.</div>
 </body>
 </html>
