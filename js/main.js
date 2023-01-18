@@ -22,6 +22,15 @@ const $ = (element, _parent = D) => {
 			? undefined
 			: xElements
 }
+/** Smart selector for elements of the DOM
+ * @param {DOMString}
+ * @return {Element}
+*/
+const new$ = element => {
+	let $temp = D.createElement(element)
+	$('body').appendChild($temp)
+	return $temp
+}
 
 /** Get the language specified in the html
  * @return {String}
@@ -122,11 +131,13 @@ const CSSComputarized = function(){
 	return tempCSS
 }()
 
-const META = {
+let META = {
 	TITLE : $("title").innerHTML,
 	DESCRIPTION : $('meta[name=description]') ? $('meta[name=description]').content : 'Mods y herramientas para GTASA por MatiDragon',
-	VIDEO_ID : $('meta[name=image]') ? $('meta[name=image]').content : '',
+	YT_ID : $('meta[name=image]') ? $('meta[name=image]').content : ''
 }
+
+META = {...META, YT_V: `https://www.youtube.com/watch?v=${ META.YT_ID }`}
 
 $('head').innerHTML = $('head').innerHTML + `
 	<meta name="Author" content="MatiDragon">
@@ -264,9 +275,8 @@ EP.toggle = function(){
 }
 
 const CopyTextContent = function(id) {
-	var $temp = D.createElement("textarea")
+	var $temp = new$("textarea")
 	$temp.value = (typeof id == 'object' ? id.textContent : id)
-	$('body').appendChild($temp)
 	$temp.select();
 	D.execCommand("copy")
 	$('body').removeChild($temp)
@@ -339,14 +349,18 @@ SP.toMarkdown = function(){
 		const img   = exROOT + "img/",
 			
 			sa   = img+"sa/",
+			sam  = img+"sa_mobile/",
+			samp = img+"samp/",
 			vc   = img+"vc/",
 			gta3 = img+"gta3/",
 			
 			weapon = "weapon/",
+			widget = "widget/",
 			radar  = "radar/"
 		
 		return this
 		.r(/^%sa-w\//m,   sa   + weapon)
+		.r(/^%sam-w\//m,  sam  + widget)
 		.r(/^%vc-w\//m,   vc   + weapon)
 		.r(/^%sa-r\//m,   sa   + radar)
 		.r(/^%vc-r\//m,   vc   + radar)
@@ -363,38 +377,33 @@ SP.toMarkdown = function(){
 
 	/******** LIST ********/
 
+	// Import the value of vars
+	.r(/{{ (.+) }}/g, input => {
+		input = input.r(/{{ (.+) }}/, '$1')
+
+		return new Function('return '+ input)()
+	})
 	// SCAPE CHAR
-	.rA("\\[", "&#91;")
-	.rA("\\]", "&#93;")
-	.rA("\\(", "&lpar;")
-	.rA("\\)", "&rpar;")
-	.rA("\\<", "&#x3C;")
-	.rA("\\>", "&#x3E;")
-	.rA("\\-", "&#45;")
-	.rA("\\+", "&#x2B;")
-	.rA("\\*", "&#x2A;")
-	.rA("\\\\", "&#x5C;")
-	.rA("\\|", "&vert;")
-	.rA("\\~", "&#126;")
-	.rA("\\^", "&#x5E;")
-	.rA("\\.", "&#x2E;")
-	.rA("\\s", "&nbsp;")
 	.rA("\\n", "<br/>")
-	.rA("\\`", "&#x60;")
-	.rA("\\#", "&#x23;")
-	.rA("\\:", "&#x3A;")
-	.rA("\\=", "&#x3D;")
-	.rA("\\_", "&#x5F;")
+	.rA("\\s", "&nbsp;")
+	.rA("\\\\", "&#x5C;")
+	.r(/\\./g, function(input){
+		return '&#' + input.r('\\').charCodeAt(0) + ';'
+	})
 	.r(/<\!--(.+)-->/g, '')
 
 	// ID
 	.r(/\[([^\[\]]+)\]\[\]/g, '<a id="$1"></a>')
 
 	// DIVS
-	.r(/:::([\w\d\x20\-_]+)(#([\w\d\-_]+))?(\x20([^\n]+))?\n/g, '<div id="$3" class="$1" style="$5">\n')
-	.r(/:::\n/g, '</div>\n')
+	//:::[class]<#[id]>< [styles]>
+	//<body of element>
+	//:::
+	.r(/^:::([\w\d\x20\-_]+)(#([^\s#]+))?(\x20([^\n]+))?\n/gm, '<div id="$3" class="$1" style="$5">\n')
+	.r(/^:::\n/gm, '</div>\n')
 
 	// BLOCKQUOTES
+	//> [body of element]
 	.r(/^>\x20(.+)/gm, '<blockquote>\n$1</blockquote>')
 	.r(/<\/blockquote>(\s+)<blockquote>/g, '<br>')
 
@@ -418,12 +427,18 @@ SP.toMarkdown = function(){
 	.rA('<\/ol><ol>', '')
 
 	// DL DD
+	.r(/^(\x20)?\-\x20\[\]\s(.+)/gim, "<dl><dd><input type='checkbox' disabled> $1$2</dd></dl>")
+	.r(/^(\x20)?\-\x20\[x\]\s(.+)/gim, "<dl><dd><input type='checkbox' disabled checked> $1$2</dd></dl>")
 	.r(/^(\x20)?\-\s(.+)/gim, '<dl><dd>$1$2</dd></dl>')
 	.r(/^(\x20)?\x20{2}\-\s(.+)/gim, '<dl><dl><dd>$1$2</dd></dl></dl>')
 	.r(/^(\x20)?\x20{4}\-\s(.+)/gim, '<dl><dl><dl><dd>$1$2</dd></dl></dl></dl>')
 	.r(/<\/dl>(\s+)<dl>/g, '')
 	.rA('<\/dl><\/dl><dl><dl>', '')
 	.rA('<\/dl><dl>', '')
+
+	// CHECKBOX
+	.r(/^(\x20|\t)?\[\]\x20(.+)/gm, "<div><input type='checkbox' disabled> $2</div>")
+	.r(/^(\x20|\t)?\[x\]\x20(.+)/gim, "<div><input type='checkbox' disabled checked> $2</div>")
 
 	/*** FORMAT ***/
 	.r(/\*\*\*([^\*\n]+)\*\*\*/g, '<b><i>$1</i></b>')
@@ -488,10 +503,6 @@ SP.toMarkdown = function(){
 			'</h' + header.length + '>'
 	})
 
-	// CHECKBOX
-	.r(/^\[\]\x20(.+)/gm, "<input type='checkbox' disabled> $1<br>")
-	.r(/^\[x\]\x20(.+)/gim, "<input type='checkbox' disabled checked > $1<br>")
-
 	// VIDEO
 	.r(/\!yt\[\]\(([^\s\[\]]+)\)/g, `<div class="video-responsive"><iframe src="https://www.youtube.com/embed/$1?rel=0" frameborder="0" allowfullscreen></iframe></div>`)
 
@@ -515,6 +526,10 @@ SP.toMarkdown = function(){
 	// A
 	.r(/\[([^\[\]]+)\]\(([^\(\)\s]+)(\x20"[^"]+")?(\x20'[^']+')?(\x20`[^`]+`)?\)/g, function(input){
 		input = input.match(/\[([^\[\]]+)\]\(([^\(\)\s]+)(\x20"[^"]+")?(\x20'[^']+')?(\x20`[^`]+`)?\)/)
+
+		if(/^[.\/\w\d-]+(\\|\/)$/.test(input[2])){
+			input[2] = input[2] + 'README.html'
+		}
 
 		var display = input[1],
 			comilla = '"',
@@ -544,12 +559,12 @@ SP.toMarkdown = function(){
 	// BR
 	.r(/[^\s]\x20\x20$/gm, '<br>')
 	.r(/([^`])`\n\n`([^`])/g, "$1`<br><br>`$2")
-	.r(/(\n^\.\n|(\.|:|\!|\)|b>|a>)\n\n([0-9\u0041-\u005A\u0061-\u007A\u00C0-\uFFFF]|¿|<b|<(ul|ol)?!|\*|`[^`]))/g, '$2<br><br>$3')
+	.r(/(\n^\.\n|(\.|:|\!|\)|b>|a>)\n\n([0-9\u0041-\u005A\u0061-\u007A\u00C0-\uFFFF]|¿|<b|<(ul|ol)?!|\*|`[^`]))/gm, '$2<br><br>$3')
 	.r(/(\x20\x20\n|\\\n|\\n\w|(\.|:|\!|\)|b>|a>)\n([0-9\u0041-\u005A\u0061-\u007A\u00C0-\uFFFF]|¿|<b|<(ul|ol)?!|\*|`[^`]))/g, '$2<br>$3')
 
 	// PRE
 	.r(/```([^`]*)```/g, function(input){
-		input = input.match(/```([\w\d\x20\-_]+)?(#[\w\d\-_]+)?\n([^`]*)```/)
+		input = input.match(/```([^`\n]+)?(#[\w\d\-_]+)?\n([^`]*)```/)
 
 		const eClass = input[1] || ''
 		const eId = (input[2] || '').r('#', '')
@@ -610,13 +625,6 @@ SP.toMarkdown = function(){
 	})
 	.r(/<(\/tr|tbody)>\n<(tr|\/thead)>/g, "<$1><$2>")
 	.r(/^(<tr>(.+)<\/tr>)/gm, "<table><thead>$1</tbody></table>")
-
-	// Import the value of vars
-	.r(/{{-var (.+)}}/g, input => {
-		input = input.r(/{{-var (.+)}}/, '$1')
-
-		return new Function('return '+ input)()
-	})
 }
 
 $('body').innerHTML = `
@@ -743,7 +751,7 @@ var hightlight = {
 		.r(/^(\w+)=(\d+([\.\d]+)?)/gm, "<span class=variables>$1<\/span>=<span class=numbers>$2<\/span>")
 		// variable
 		.r(/^(\w+)=(\w.+)/gm, "<span class=variables>$1<\/span>=<span class=strings>$2<\/span>")
-		.r(/\[(\w+)\]/gm, "[<span class=variables>$1<\/span>]")
+		.r(/\[(\w+)\]/gm, "[<span class=keywords>$1<\/span>]")
 	},
 }
 
