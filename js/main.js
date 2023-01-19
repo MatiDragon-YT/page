@@ -396,14 +396,14 @@ SP.toMarkdown = function(){
 	.r(/\[([^\[\]]+)\]\[\]/g, '<a id="$1"></a>')
 
 	// DIVS
-	//:::[class]<#[id]>< [styles]>
+	//:::<class>[#<id>][ <styles>]
 	//<body of element>
 	//:::
 	.r(/^:::([\w\d\x20\-_]+)(#([^\s#]+))?(\x20([^\n]+))?\n/gm, '<div id="$3" class="$1" style="$5">\n')
 	.r(/^:::\n/gm, '</div>\n')
 
 	// BLOCKQUOTES
-	//> [body of element]
+	//> <body of element>
 	.r(/^>\x20(.+)/gm, '<blockquote>\n$1</blockquote>')
 	.r(/<\/blockquote>(\s+)<blockquote>/g, '<br>')
 
@@ -469,6 +469,7 @@ SP.toMarkdown = function(){
 			'memo' : '📝',
 			'warning' : '⚠',
 			'bulb' : '💡',
+			'tip' : '💡',
 		}
 
 		input = input.split(':')
@@ -554,7 +555,7 @@ SP.toMarkdown = function(){
 	})
 	
 	// HR
-	.r(/^--+-$/gm, '<hr>')
+	.r(/^(--+-|\*\*+\*|__+_)$/gm, '<hr />')
 
 	// BR
 	.r(/[^\s]\x20\x20$/gm, '<br>')
@@ -563,8 +564,15 @@ SP.toMarkdown = function(){
 	.r(/(\x20\x20\n|\\\n|\\n\w|(\.|:|\!|\)|b>|a>)\n([0-9\u0041-\u005A\u0061-\u007A\u00C0-\uFFFF]|¿|<b|<(ul|ol)?!|\*|`[^`]))/g, '$2<br>$3')
 
 	// PRE
-	.r(/```([^`]*)```/g, function(input){
-		input = input.match(/```([^`\n]+)?(#[\w\d\-_]+)?\n([^`]*)```/)
+	//```<classes>[#<id>]
+	//<body of element>
+	//```
+	.r(/(```([^`]*)```|~~~([^~]*)~~~)/g, function(input){
+		if (/^`/m.test(input)){
+			input = input.match(/```([^\n`#]+)?(#[^\s`#]+)?\n([^`]*)```/)
+		}else{
+			input = input.match(/~~~([^\n~#]+)?(#[^\s~#]+)?\n([^~]*)~~~/)
+		}
 
 		const eClass = input[1] || ''
 		const eId = (input[2] || '').r('#', '')
