@@ -378,8 +378,8 @@ SP.toMarkdown = function(){
 	/******** LIST ********/
 
 	// Import the value of vars
-	.r(/{{ (.+) }}/g, input => {
-		input = input.r(/{{ (.+) }}/, '$1')
+	.r(/{{ ([^\n]+) }}/g, input => {
+		input = input.r(/{{ ([^\n]+) }}/, '$1')
 
 		return new Function('return '+ input)()
 	})
@@ -558,7 +558,7 @@ SP.toMarkdown = function(){
 	.r(/^(--+-|\*\*+\*|__+_)$/gm, '<hr />')
 
 	// BR
-	.r(/[^\s]\x20\x20$/gm, '<br>')
+	.r(/([^\s])\x20\x20$/gm, '$1<br>')
 	.r(/([^`])`\n\n`([^`])/g, "$1`<br><br>`$2")
 	.r(/(\n^\.\n|(\.|:|\!|\)|b>|a>)\n\n([0-9\u0041-\u005A\u0061-\u007A\u00C0-\uFFFF]|¿|<b|<(ul|ol)?!|\*|`[^`]))/gm, '$2<br><br>$3')
 	.r(/(\x20\x20\n|\\\n|\\n\w|(\.|:|\!|\)|b>|a>)\n([0-9\u0041-\u005A\u0061-\u007A\u00C0-\uFFFF]|¿|<b|<(ul|ol)?!|\*|`[^`]))/g, '$2<br>$3')
