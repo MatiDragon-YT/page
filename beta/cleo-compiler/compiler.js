@@ -237,15 +237,18 @@ SP.Translate = function(_SepareWithComes = false){
 	let codeDepurated = []
 	let totalSizePerLine = []
 	
+	/*
 	if (this.match(/[^\w\d]("([^"\n]+)?)(\x20)(([^"\n]+)?")[^\w\d]/)
 		|| this.match(/[^\w\d]('([^'\n]+)?)(\x20)(([^'\n]+)?')[^\w\d]/)
 		|| this.match(/[^\w\d](`([^`\n]+)?)(\x20)(([^`\n]+)?`)[^\w\d]/)) {
 		log('NO ADD SPACES IN STRINGS')
 		return
 	}
+	*/
 
 	let LineComand = this
-		.r(/^not /m, '!')
+		.r(/"([^\n"]+)?"/gm, fixString => fixString.r(/\x20/g, '\x00'))
+		.r(/^not /gm, '!')
 		//.r(/^(\x20+)?:[\w\d]+/gm, '')
 		// remove commits of code
 		.r(/(\s+)?\/\/([^\n]+)?/gm, '') 
@@ -395,11 +398,11 @@ SP.Translate = function(_SepareWithComes = false){
 						break;
 
 						case 'long':
-							Argument = Argument.r(/("(.+)"|`(.+)`)/, '$2$3')
+							Argument = Argument.r(/("(.+)"|`(.+)`)/, '$2$3').r(/\x00/g,'\x20')
 							Argument = Argument.substring(0,255)
 
 							totalSizePerLine.push(Argument.length + (SCM_DB[command].opcode[1] == '0' ? 2 : 1))
-							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode()) + (SCM_DB[command].opcode[1] == '0' ? '00' : '')
+							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode())// + (SCM_DB[command].opcode[1] == '0' ? '00' : '')
 							
 							//log(SCM_DB[command].opcode)
 							switch (SCM_DB[command].opcode){
@@ -437,6 +440,8 @@ SP.Translate = function(_SepareWithComes = false){
 									return MODELS[model.r('#','').toUpperCase()] || '-1'
 									//log(Argument)
 								})
+
+							if (Argument > 0x7FFFFFFF) Argument = 0x7FFFFFFF;
 
 							let byte1   = 0x7F       // 127
 							let byte1R  = 0xFF
