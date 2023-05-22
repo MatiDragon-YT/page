@@ -98,10 +98,14 @@ const TYPE_CODE = {
 }
 
 const ELEMENT_TYPE = {
-	INT      : '00',
-	FLOAT    : '01',
-	STRING8  : '02',
-	STRING16 : '03'
+	LINT      : '00',
+	LFLOAT    : '01',
+	LSTRING8  : '02',
+	LSTRING16 : '03',
+	GINT      : '80',
+	GFLOAT    : '81',
+	GSTRING8  : '82',
+	GSTRING16 : '83'
 }
 
 const LS = {
@@ -226,6 +230,15 @@ SP.toUnicode = function() {
     return `${s.charCodeAt(0).toString(16).padStart(2, '0')}`;
   }).join("-");
 }
+SP.PrePost = function(){
+	return this
+		.r(/KeepAngle\((.+)\)$/gim, `if $1 > 360.0
+then $1 -= 360.0
+end
+if $1 < 0.0
+then $1 += 360.0
+end`)
+}
 SP.Translate = function(_SepareWithComes = false){
 	const come = a => {
 		if (_SepareWithComes){
@@ -342,9 +355,9 @@ SP.Translate = function(_SepareWithComes = false){
 						}
 					}
 					lineDepurated.push(setOp.toBigEndian())
-
+					
 					command = Argument
-
+					
 					totalSizePerLine.push(2)
 				}
 				else { // is Argument
@@ -523,21 +536,155 @@ SP.Translate = function(_SepareWithComes = false){
 						break;
 
 						case 'lvar':
-							totalSizePerLine.push(2)
 
-							Argument = 
-								come(TYPE_CODE.LVAR) 
-								+ Number(Argument.r(/@(i|f|s|v)?/,'')).toString(16)
+							function translateDate(dataInput){
+								dataInput = 
+									Number(dataInput.r(/@(i|f|s|v)?/,'')).toString(16)
 									.padStart(4,'0')
 									.toBigEndian();
+
+								return dataInput
+							}
+
+
+							if (/@(.+)@/.test(Argument)){
+								totalSizePerLine.push(6)
+
+								Argument = 
+									come(TYPE_CODE.LVAR_ARRAY)
+									+ Argument
+										.r(/\d+@(i|f|s|v)?/g, inputVar => {
+											return Number(inputVar.r(/@(i|f|s|v)?/,'')).toString(16)
+											.padStart(4,'0')
+											.toBigEndian() + ',';
+										})
+										.r(/,,/,',')
+										.r(/\(/)
+										.r(/[^,]\d+$/m, inputSize => {
+											return Number(inputSize.r(',').r(')')).toString(16)
+											.padStart(2,'0')
+										})
+										.r(/(i|f|s|v)\)/, inputType => {
+											inputType = inputType.r(')')
+
+											switch (inputType){
+												case 'i':
+													inputType = ELEMENT_TYPE.LINT
+												break;
+												case 'f':
+													inputType = ELEMENT_TYPE.LFLOAT
+												break;
+												case 's':
+													inputType = ELEMENT_TYPE.LSTRING8
+												break;
+												case 'v':
+													inputType = ELEMENT_TYPE.LSTRING16
+												break;
+											}
+
+											return ',' + inputType
+										})
+										.r(/\d+,\d+$/m, inputSize => {
+											inputSize = inputSize.split(',')
+
+											inputSize[0] = Number(inputSize[0]).toString(16).padStart(2,'0')
+											
+
+											return inputSize
+										})
+							}
+							else{
+								totalSizePerLine.push(2)
+
+								Argument = 
+									come(TYPE_CODE.LVAR) 
+									+ Number(Argument.r(/@(i|f|s|v)?/,'')).toString(16)
+										.padStart(4,'0')
+										.toBigEndian();
+							}
 						break;
 
 						case 'gvar':
-							if(/[\(\)]/.test(Argument)){ // is array
-								//log(Argument)
-								Argument = '<'+Argument+'>'
+							if (/(&|\$)(.+)(&|\$)/.test(Argument)){
+								totalSizePerLine.push(6)
+
+								Argument = 
+									come(TYPE_CODE.GVAR_ARRAY)
+									+ Argument
+										.r(/(i|f|s|v)?\$[\w\d_]+/g, inputVar => {
+											if(/\$/.test(inputVar)){
+												inputVar = inputVar.r(/(i|f|s|v)?\$/,'')
+
+												if (/\w/.test(inputVar)){
+													let coincide = false
+
+													if (CUSTOM_VARIABLES[inputVar.toUpperCase()] != undefined){
+														coincide = CUSTOM_VARIABLES[inputVar.toUpperCase()] * 4
+													}
+
+													if (!coincide){
+														inputVar = parseInt(Number(String(parseInt(inputVar, 35)).substring(0, 4) / 2))
+														if (inputVar > 1000) inputVar /= 5
+														if (inputVar > 500) inputVar /= 2
+														inputVar = parseInt(inputVar)
+													}
+													else {
+														inputVar = coincide
+													}
+												}
+												else{
+													inputVar = inputVar * 4
+												}
+											}
+
+											else {
+												inputVar = Number(inputVar.r('&',''))
+											}
+
+											inputVar = come(TYPE_CODE.GVAR) + (
+												inputVar.toString(16)
+												.substring(0, 4)
+												.padStart(4,'0')
+												.toBigEndian()
+											)
+											return inputVar
+										})
+										.r(/,,/,',')
+										.r(/\(/)
+										.r(/[^,]\d+$/m, inputSize => {
+											return Number(inputSize.r(',').r(')')).toString(16)
+											.padStart(2,'0')
+										})
+										.r(/(i|f|s|v)\)/, inputType => {
+											inputType = inputType.r(')')
+
+											switch (inputType){
+												case 'i':
+													inputType = ELEMENT_TYPE.GINT
+												break;
+												case 'f':
+													inputType = ELEMENT_TYPE.GFLOAT
+												break;
+												case 's':
+													inputType = ELEMENT_TYPE.GSTRING8
+												break;
+												case 'v':
+													inputType = ELEMENT_TYPE.GSTRING16
+												break;
+											}
+
+											return ',' + inputType
+										})
+										.r(/[\w\d_]+,[\w\d_]+$/m, inputSize => {
+											inputSize = inputSize.split(',')
+
+											inputSize[0] = Number(inputSize[0]).toString(16).padStart(2,'0')
+											
+
+											return inputSize
+										})
 							}
-							else {
+							else{
 								totalSizePerLine.push(2)
 
 								if(/\$/.test(Argument)){
