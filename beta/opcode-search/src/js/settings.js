@@ -136,7 +136,7 @@ export const settings = () => {
 			$(`#lang`).value = _get('OpSearch/'+'set-lang-at') || k()
 			
 			fileServer.get(
-				local() + `/beta/opcode-search/assets/lang/${_get('OpSearch/'+'set-lang-at')
+				local() + `assets/lang/${_get('OpSearch/'+'set-lang-at')
 				|| $('#lang').value}.json`,
 
 				json => {

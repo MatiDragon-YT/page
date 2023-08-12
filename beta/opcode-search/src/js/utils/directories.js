@@ -4,7 +4,7 @@ const
 
 export const local = () =>
 	A == 'https://matidragon-yt.github.io'
-		? A + '/opcode-search/'
+		? A + '/beta/opcode-search/'
 		: A + '/'
 
 export const hash = {
