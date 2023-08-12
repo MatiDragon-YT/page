@@ -3,9 +3,9 @@ const
 	B = location
 
 export const local = () =>
-	A == 'https://matidragon-yt.github.io'
-		? A + '/beta/opcode-search/'
-		: A + '/'
+	A == 'https://matidragon-yt.github.io/page/beta'
+		? A + '/opcode-search/'
+		: A + '/beta/opcode-search/'
 
 export const hash = {
 	get : () => B.hash,
