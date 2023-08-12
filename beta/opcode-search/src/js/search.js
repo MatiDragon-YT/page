@@ -12,7 +12,7 @@ export function found(COUNTER = $showed.childElementCount) {
 		COUNTER + '/' + ($showed.childElementCount + $list.childElementCount)
 }
 
-export function load (FILELIST = local() + 'beta/opcode-search/assets/opcodes/sa.txt'){
+export function load (FILELIST = local() + 'page/beta/opcode-search/assets/opcodes/sa.txt'){
 	const _ = localStorage
 	const _get = _.getItem('OPs')
 	
