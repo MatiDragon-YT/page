@@ -59,7 +59,8 @@ let template = `
 </a>
 :::
 `.toMarkdown()
-	setTimeout(()=>{$('#db').innerHTML += template}, cont += 83)
+	
+    setTimeout(()=>{$('#db').innerHTML += template}, cont += 0)
 })
 </script>
 <style>
@@ -75,5 +76,40 @@ let template = `
     padding: 0 0.25rem;
     background: var(--bg-t);
     color: var(--co-t);
+}
+
+@keyframes show {
+    from {
+        opacity: 0;
+        scale: 25%;
+    }
+    to {
+        opacity: 1;
+        scale: 100%;
+    }
+}
+
+.col-12.col-md-6.col-lg-4.col-xxl-3.p-2 {
+    view-timeline-name: --image;
+    view-timeline-axis: block;
+
+    animation-timeline: --image;
+    animation-name: show;
+
+    animation-range: entry 0% cover 30%;
+    animation-fill-mode: both;
+}
+
+@keyframes showImg {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+img {
+    animation-name: showImg;
+    animation-duration: 0.5s;
 }
 </style>
