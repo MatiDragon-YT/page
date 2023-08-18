@@ -2,6 +2,7 @@
 	margin: 0;
 	padding: 0;
 	/* outline: 1px solid cadetblue; */
+	scroll-behavior: smooth;
 }
 
 *, :after, :before {
@@ -37,7 +38,7 @@ html {
 	background: var(--bg);
 	color: var(--co);
 	scroll-behavior: smooth;
-	transition: background .24s;
+	transition: background 0.24s;
 }
 
 body {
@@ -87,6 +88,13 @@ body {
   align-items: center;
 }
 
+#navbar h1 a{
+	color: white;
+}
+#navbar h1 a:hover{
+	text-decoration: none;
+}
+
 .row {
 	display: flex;
 	flex-wrap: wrap;
@@ -102,21 +110,22 @@ body {
   align-items: center;
 	padding: 9px 33px;
 	background: #11161c;
-}
 
-#nav section {
-	gap: .7em;
-	margin: 0;
-	list-style: none;
-}
+	& section {
+		gap: .7em;
+		margin: 0;
+		list-style: none;
+		
+		& a {
+			color: #fff;
+		}
 
-#nav a {
-	color: #fff;
-}
+		& a:hover {
+			text-decoration: none;
+		}
+	}
+} 
 
-#nav a:hover {
-	text-decoration: none;
-}
 
 #credits {
 	line-height: 22px;
@@ -233,6 +242,7 @@ pre {
 	margin: 0.6rem 0px;
 	overflow-y: auto;
 	max-height: 80vh;
+	border-radius: .25rem;
 }
 
 code, .code {
