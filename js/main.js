@@ -123,8 +123,16 @@ const CSSComputarized = function(){
 		].forEach((value, index) => {
 			tempCSS += `.col${prefix}${++index} { width : ${value} !important}\n`
 			tempCSS += `.offset${prefix}${++index} { margin-left : ${value} !important}\n`
-		})
+		});
 
+		[
+			'flex',
+			'none',
+			'block',
+			'inline-block'
+		].forEach((value, index) => {
+			tempCSS += `.d${prefix}${value} { display : ${value} !important}\n`
+		});
 
 		if (resolucion != 0) {tempCSS += '}\n\n'}
 	})
@@ -186,14 +194,14 @@ let modeLight = 0
 function ModeLight(){
 	const TEMPLADE = `
 		#navbar {
-		    background: #ddd;
-		    color: #000;
+		    background: #ddd!important;
+		    color: #000!important;
 		}
-		#nav { background: #f2f2f2 }
-		#nav a { color: #0d1117 }
+		#nav { background: #f2f2f2!important}
+		#nav *, #navbar *{ color: #0d1117!important}
 		html{
-			background: #fff;
-			color: #0d1117;
+			background: #fff!important;
+			color: #0d1117!important;
 		}
 		::-webkit-scrollbar { width: 1rem;}
 		::-webkit-scrollbar-track { background: #ddd }
