@@ -70,7 +70,7 @@ const CSSComputarized = function(){
 	prefixes.forEach((prefix, resolucion) => {
 		if (resolucion != 0) {tempCSS += `@media (min-width:${size[resolucion]}px) {\n`}
 	
-		var vIndex = 0
+		let vIndex = 0
 		while(vIndex < 13){
 			tempCSS += '.cols'+prefix+vIndex+'{columns:'+vIndex+' auto}'
 
@@ -177,12 +177,12 @@ $('head').innerHTML = $('head').innerHTML + `
 	<!-- Resto-->
 `
 
-var CSS = {
+let CSS = {
 	Add: function(styles){STYLES.innerHTML += styles},
 	Remove: function(styles){STYLES.innerHTML = STYLES.innerHTML.r(styles, "")}
 }
 
-var modeLight = 0
+let modeLight = 0
 function ModeLight(){
 	const TEMPLADE = `
 		#navbar {
@@ -275,7 +275,7 @@ EP.toggle = function(){
 }
 
 const CopyTextContent = function(id) {
-	var $temp = new$("textarea")
+	let $temp = new$("textarea")
 	$temp.value = (typeof id == 'object' ? id.textContent : id)
 	$temp.select();
 	D.execCommand("copy")
@@ -284,16 +284,14 @@ const CopyTextContent = function(id) {
 
 /** Shotcun of String.replace()
 */
-SP.r = function(a, b, c){
-	b = b || ''
-	c = c || ''
+SP.r = function(a, b = '', c = ''){
 	return this.replace(a, b, c)
 }
 
 /** Polifill and shotcun of String.replaceAll()
 */
 SP.rA = function(xText, zText){
-	var temp = this
+	let temp = this
 
 	if(temp.indexOf(xText, 0) !== -1){
 		temp = temp
@@ -329,7 +327,7 @@ function apply(element, callback){
 	}
 }
 
-var aTables = [] // contenedor de tablas
+let aTables = [] // contenedor de tablas
 
 SP.toMarkdown = function(){
 	SP.toLinkCase = function(){
@@ -408,6 +406,9 @@ SP.toMarkdown = function(){
 	.r(/<\/blockquote>(\s+)<blockquote>/g, '<br>')
 
 	// UL LI
+	// * <body of element>
+	//   * <body of element>
+	//     * <body of element>
 	.r(/^(\x20)?\*\s(.+)/gim, '<ul><li>$1$2</li></ul>')
 	.r(/^(\x20)?\x20{2}\*\s(.+)/gim, '<ul><ul><li>$1$2</li></ul></ul>')
 	.r(/^(\x20)?\x20{4}\*\s(.+)/gim, '<ul><ul><ul><li>$1$2</li></ul></ul></ul>')
@@ -416,6 +417,9 @@ SP.toMarkdown = function(){
 	.rA('<\/ul><ul>', '')
 
 	// OL LI
+	// <any number>. <body of element>
+	//   <any number>. <body of element>
+	//     <any number>. <body of element>
 	.r(/^(\x20)?\d\.\s(.+)/gim, '<ol><li>$1$2</li></ol>')
 	.r(/^(\x20)?\x20{2}\d\.\s(.+)/gim, '<ol><ol><li>$1$2</li></ol></ol>')
 	.r(/^(\x20)?\x20{4}\d\.\s(.+)/gim, '<ol><ol><ol><li>$1$2</li></ol></ol></ol>')
@@ -427,6 +431,9 @@ SP.toMarkdown = function(){
 	.rA('<\/ol><ol>', '')
 
 	// DL DD
+	// - <body of element>
+	//   - <body of element>
+	//     - <body of element>
 	.r(/^(\x20)?\-\x20\[\]\s(.+)/gim, "<dl><dd><input type='checkbox' disabled> $1$2</dd></dl>")
 	.r(/^(\x20)?\-\x20\[x\]\s(.+)/gim, "<dl><dd><input type='checkbox' disabled checked> $1$2</dd></dl>")
 	.r(/^(\x20)?\-\s(.+)/gim, '<dl><dd>$1$2</dd></dl>')
@@ -437,10 +444,15 @@ SP.toMarkdown = function(){
 	.rA('<\/dl><dl>', '')
 
 	// CHECKBOX
+	// [] <body of element>
+	// [x] <body of element>
 	.r(/^(\x20|\t)?\[\]\x20(.+)/gm, "<div><input type='checkbox' disabled> $2</div>")
 	.r(/^(\x20|\t)?\[x\]\x20(.+)/gim, "<div><input type='checkbox' disabled checked> $2</div>")
 
 	/*** FORMAT ***/
+	//***<bold and itatic>***
+	//**<bold>**
+	//*<itatic>*
 	.r(/\*\*\*([^\*\n]+)\*\*\*/g, '<b><i>$1</i></b>')
 	.r(/\*\*([^\*\n]+)\*\*/g, '<b>$1</b>')
 	.r(/\*([^\*\n]+)\*/g, '<i>$1</i>')
@@ -513,7 +525,7 @@ SP.toMarkdown = function(){
 			/\!\[([^\[\]]+)?\]\(([^\(\)\s]+)(\x20"(([\w\d\x20\-_]+)(#[\w\d\-_]+)?)")?\)/
 		)
 		
-		var comilla = '"',
+		let comilla = '"',
 
 			title   = input[1] ? ' title="' + input[1]          + comilla : "",
 			src     = input[2] ? ' src="'   + input[2].rLinks() + comilla : "",
@@ -532,7 +544,7 @@ SP.toMarkdown = function(){
 			input[2] = input[2] + 'README.html'
 		}
 
-		var display = input[1],
+		let display = input[1],
 			comilla = '"',
 
 			href = ' href="' + input[2]
@@ -545,7 +557,7 @@ SP.toMarkdown = function(){
 			func    = ' onclick="' + (input[5] ? input[5].r(/`/g, '').r(/"/g, '\'').r(/\(([^\(\)]+)?\)(\s+)?=>(\s+)?\{/g, 'function($1){') + comilla : comilla),
 
 			target = function(){
-				var set = ' target="'
+				let set = ' target="'
 				return /http/.test(href)
 					? set + '_blank"'
 					: set + '_self"'
@@ -620,7 +632,7 @@ SP.toMarkdown = function(){
 	.r(/\|[^\n]+\|/g, function (input) {
 		input = input.split('|')
 
-		var newTable = ""
+		let newTable = ""
 
 		input.forEach( function (element, count) {
 			if (count == 0) newTable += "<tr>";
@@ -637,7 +649,7 @@ SP.toMarkdown = function(){
 
 $('body').innerHTML = `
 <div id="navbar">
-	<h1>MatiDragon<button id="CHANGE"><img src="${ROOT}files/img/dm-baseline.png" style="user-select:none"></button></h1>
+	<h1><a href="${ROOT}index.html">MatiDragon</a><button id="CHANGE"><img src="${ROOT}files/img/dm-baseline.png" style="user-select:none"></button></h1>
 </div>
 <div id='nav'>
 	<section>
@@ -657,7 +669,7 @@ $('body').innerHTML = `
 	</p>
 </div></div><style id="STYLES"></style>`
 
-var htmlGenerated = $('#inputText').value.toMarkdown()
+let htmlGenerated = $('#inputText').value.toMarkdown()
 
 $('.markdown .cont').innerHTML = htmlGenerated
 
@@ -673,7 +685,7 @@ setTimeout(function(){$('#c').style.opacity = 1}, 12)
 
 aTables.forEach(function(tabla, numTabla){
 	if (tabla.length != 0){ 
-		var $tablas = $("table")
+		let $tablas = $("table")
 		tabla.forEach(function(alineaminto, columna){
 			if("" + $tablas == '[object NodeList]'){
 				$("tr" ,$tablas[numTabla]).forEach(function(fila){
@@ -689,7 +701,7 @@ aTables.forEach(function(tabla, numTabla){
 	}
 })
 
-var hightlight = {
+let hightlight = {
 	sb3 : function(element){
 		const span = {
 			start : "<span class=",
