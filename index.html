@@ -58,7 +58,7 @@ let i = 0;
 function typeWriter(x) {
   if (i < txt[x].length) {
     $('#one').innerText += txt[x][i++]
-    setTimeout(typeWriter, Math.floor(Math.random() * 86), x)
+    setTimeout(typeWriter, Math.floor(Math.random() * 25), x)
   	hightlight.sb3($('#one'))
   }
 }
