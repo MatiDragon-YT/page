@@ -1,5 +1,5 @@
-const log = (MESSAGE) =>
-	console.log(MESSAGE)
+const log =(MESSAGE, _CSS = '') =>
+	console.log('%c'+ MESSAGE, _CSS)
 
 // GLOBAL VARS
 const D = document
@@ -613,7 +613,8 @@ SP.toMarkdown = function(){
 	})
 	
 	// SPAN
-	.r(/\[([\w\d\s\-\+]+)\]\[([^\[\]]+)\]/gm, `<span class='$1'>$2</span>`)
+	// [classes #id][content]
+	.r(/\[([\w\d\s\-\+]+)?(#([^#\]]+))?\]\[([^\[\]]+)\]/gm, `<span class='$1' id='$3'>$4</span>`)
 
 	// TABLE
 	.r(/\|[\|\-\x20:]+\|/g, function(input){
@@ -657,7 +658,7 @@ SP.toMarkdown = function(){
 
 $('body').innerHTML = `
 <div id="navbar">
-	<h1><a href="${ROOT}index.html">MatiDragon</a><button id="CHANGE"><img src="${ROOT}files/img/dm-baseline.png" style="user-select:none"></button></h1>
+	<h1><a href="${ROOT}index.html">MatiDragon</a><button id="CHANGE"><img src="${ROOT}files/img/dm-baseline.png" alt="icono de modo oscuro" style="user-select:none"></button></h1>
 </div>
 <div id='nav'>
 	<section>
@@ -672,9 +673,9 @@ $('body').innerHTML = `
 <div class="markdown">
 	<div class="cont"></div>
 	<hr>
-	<p id="credits">
+	<footer id="credits">
 		© 2017-${(new Date).getFullYear()} MatiDragon, All rights reserved with love.
-	</p>
+	</footer>
 </div></div><style id="STYLES"></style>`
 
 let htmlGenerated = $('#inputText').value.toMarkdown()

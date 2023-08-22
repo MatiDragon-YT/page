@@ -27,11 +27,11 @@
 :::
 
 :::col-12
-##### Direcciones
-[Discord](https://discord.gg/d5dZSfgBZr)
-[GitHub](https://github.com/MatiDragon-YT)
-[YouTube](https://youtube.com/@MatiDragon)
-[Twitter](https://twitter.com/@MatiDragon)
+[#direcciones][Direcciones]
+[Discord](https://discord.gg/vazntGqVuh "La Loquendo House")
+[GitHub](https://github.com/MatiDragon-YT "Repositorios")
+[YouTube](https://youtube.com/@MatiDragon "Canal")
+[Twitter](https://twitter.com/@MatiDragon "Perfil")
 :::
 <script src="./js/main.min.js"></script>
 
@@ -51,7 +51,22 @@ while true
 		until Pressed
 		Actor.Release(0@)
 	end
-end`
+end`, `:IniciarMenu
+    GetUpdatePlayerPosition()
+
+    Display.SetRadar(false)
+
+    if not Actor.IsDriving(_Player)
+    then Actor.SetCollisionDetection(_Player, false)
+    end
+    Player.SetCanMove(_Char, false)
+
+    Text.UseCommands(true)
+	Text.SetWrapX(630.0)
+
+    AparecerMenu()
+    Text.ClearHelp()
+  `
 ]
 
 let i = 0;
@@ -63,7 +78,7 @@ function typeWriter(x) {
   }
 }
 
-typeWriter(0)
+typeWriter(Math.floor(Math.random() * 2))
 </script>
 <style>
 #one {

@@ -21,7 +21,7 @@
 	--hl-models: #7091a0;
 	--hl-classes: #7091a0;
 	--hl-commands: #0288d1;
-	--hl-numbers: #7e57c2;
+	--hl-numbers: #8b58e4;
 	--hl-variables: #7091a0;
 	--hl-strings: #ffd54f;
 	--hl-comments: #919191;
@@ -132,6 +132,7 @@ body {
 	font-weight: 500;
 	font-size: 14px;
 	color: #8b949e;
+	padding: 8px 0;
 }
 .markdown {
 	font-size: 1rem;
@@ -469,6 +470,13 @@ input[type='checkbox']{
 .bg-gray, .bg-gray  * { background:#9e9e9e }
 
 .no-decoration, .no-decoration:hover {text-decoration: none;}
+
+#direcciones {
+  display: block;
+	font-size: 1.25rem;
+  padding: .5rem 0;
+  font-weight: 600;
+}
 
 #CHANGE {
 	background: none;

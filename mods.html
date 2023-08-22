@@ -8,11 +8,16 @@
 	<link rel="stylesheet" type="text/css" href="./css/main.css">
 </head>
 <body>
-
+<!--
+:::d-flex wrap#pagination
+[1](# `paginar(1)`)
+[2](# `paginar(2)`)
+:::
+-->
 :::d-flex wrap#db
 :::
 
-<script src="./js/main.min.js"></script>
+<script src="./js/main.js"></script>
 <script>
 const DB = 
 `n|DYOS |1.3.0| La mejor alternativa a DYOM con soporte multi-plataforma, multi-lenguaje y con decenas de caractetisticas unicas que lo...
@@ -41,11 +46,47 @@ a|Sultan con Rampa  |1.4| Inspirado en Rapido y Furioso 6. Este mod nos permitir
 .split('\n')
 
 
+Array.prototype.paginate = function(paginacion = 1,size_pag = 3){
+    paginacion--
+
+    let pag = []
+
+    let actual_item = 0
+    let primer_item = 0
+
+        actual_item += paginacion * size_pag
+        primer_item += paginacion * size_pag
+        size_pag += paginacion * size_pag
+
+    while (true){
+        if (!this[actual_item]) break;
+
+        pag.push(this[actual_item])
+        actual_item++
+
+        if (actual_item == size_pag)    {
+            actual_item++
+            break
+        }
+    }
+
+    return pag
+}
+
+//console.log(DB.paginate(3))
+
+
+function paginar (pagina_actual = 1, show_items = 50){
+
+    console.log('numero de paginaciones: ' + Math.round(DB.length / show_items))
+
+    $('#db').innerHTML = ''
+let nuevoResultado = DB.paginate(pagina_actual,show_items)
 
 let cont = 0
-DB.forEach((e, i) => {
+nuevoResultado.forEach((e, i) => {
 e = e.split('|')
-let mod = (DB.length - i).toString(36)
+let mod = (nuevoResultado.length - i).toString(36)
 let template = `
 :::col-12 col-md-6 col-lg-4 col-xxl-3 p-2
 <a href='mods/${e[0]}.html' class='d-flex w-100 no-decoration white-dm' style="height: 100%;">
@@ -59,9 +100,12 @@ let template = `
 </a>
 :::
 `.toMarkdown()
-	
+    
     setTimeout(()=>{$('#db').innerHTML += template}, cont += 0)
 })
+}
+
+paginar()
 </script>
 <style>
 .bg-black-2 img {
@@ -96,8 +140,13 @@ let template = `
     animation-timeline: --image;
     animation-name: show;
 
-    animation-range: entry 0% cover 30%;
+    animation-range: entry 0% cover 45%;
     animation-fill-mode: both;
+}
+@media (min-width:576px) {
+    .col-12.col-md-6.col-lg-4.col-xxl-3.p-2 {
+        animation-range: entry 0% cover 30%;
+    }
 }
 
 @keyframes showImg {
