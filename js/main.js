@@ -663,7 +663,7 @@ $('body').innerHTML = `
 <div id='nav'>
 	<section>
 		<a href="${ROOT}index.html">Inicio</a>
-		<!--<a href="${ROOT}topics.html">Temas</a>-->
+		<a href="${ROOT}topics.html">Temas</a>
 		<a href="${ROOT}mods.html">Mods</a>
 		<!--<a href="${ROOT}docs.html">Docs</a>-->
 	</section>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<title>Temas</title>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" type="text/css" href="./css/main.css">
+</head>
+<body>
+
+[h1][Temas]
+
+<body>
+<!--
+:::d-flex wrap#pagination
+[1](# `paginar(1)`)
+[2](# `paginar(2)`)
+:::
+-->
+:::d-flex wrap#db
+:::
+
+<script src="./js/main.min.js"></script>
+<script>
+const DB = 
+`3|Editando el main.scm\rP1: flujos por opcodes 3/3
+2|Editando el main.scm\rP1: flujos por opcodes 2/3
+1|Editando el main.scm\rP1: flujos por opcodes 1/3`
+.split('\n')
+
+
+Array.prototype.paginate = function(paginacion = 1,size_pag = 3){
+    paginacion--
+
+    let pag = []
+
+    let actual_item = 0
+    let primer_item = 0
+
+        actual_item += paginacion * size_pag
+        primer_item += paginacion * size_pag
+        size_pag += paginacion * size_pag
+
+    while (true){
+        if (!this[actual_item]) break;
+
+        pag.push(this[actual_item])
+        actual_item++
+
+        if (actual_item == size_pag)    {
+            actual_item++
+            break
+        }
+    }
+
+    return pag
+}
+
+//console.log(DB.paginate(3))
+
+
+function paginar (pagina_actual = 1, show_items = 50){
+
+    console.log('numero de paginaciones: ' + Math.round(DB.length / show_items))
+
+    $('#db').innerHTML = ''
+let nuevoResultado = DB.paginate(pagina_actual,show_items)
+
+let cont = 0
+nuevoResultado.forEach((e, i) => {
+e = e.split('|')
+let mod = (nuevoResultado.length - i).toString(36)
+let template = `
+:::col-12 mx-2
+<a href='topics/${e[0]}.html' class='d-flex w-100 no-decoration white-dm' style="height: 100%;">
+:::col-2
+![img](./topics/img/S-0.webp)
+:::
+:::p-2 bg-black-2-dm w-100
+#### ${e[1].trim()}
+:::
+</a>
+:::
+`.toMarkdown()
+    
+    setTimeout(()=>{$('#db').innerHTML += template}, cont += 0)
+})
+}
+
+paginar()
+</script>
+<style>
+.bg-black-2 img {
+    box-shadow: 1px 1px 2px #000d;
+    border-top: solid 1px #0d1117;
+    border-left: solid 1px #0d1117;
+}
+
+.d-flex.end.button::before {
+    content: 'v' attr(id);
+    position: absolute;
+    padding: 0 0.25rem;
+    background: var(--bg-t);
+    color: var(--co-t);
+}
+
+@keyframes show {
+    from {
+        opacity: 0;
+        scale: 25%;
+    }
+    to {
+        opacity: 1;
+        scale: 100%;
+    }
+}
+
+.col-12.col-md-6.col-lg-4.col-xxl-3.p-2 {
+    view-timeline-name: --image;
+    view-timeline-axis: block;
+
+    animation-timeline: --image;
+    animation-name: show;
+
+    animation-range: entry 0% cover 45%;
+    animation-fill-mode: both;
+}
+@media (min-width:576px) {
+    .col-12.col-md-6.col-lg-4.col-xxl-3.p-2 {
+        animation-range: entry 0% cover 30%;
+    }
+}
+
+@keyframes showImg {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+#db {
+    animation-name: showImg;
+    animation-duration: 0.5s;
+}
+</style>

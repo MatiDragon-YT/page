@@ -78,6 +78,7 @@ body {
 	color: #fff;
 	font-weight: 700;
 	overflow: hidden;
+	/* width: calc(100% - 1vmax); */
 }
 #navbar h1{
 	padding: 9px 33px;
@@ -374,13 +375,16 @@ input[type='checkbox']{
 
 .d-none {display: none}
 .d-block {display: block}
-.d-flex {display: flex}
-.d-flex.wrap {flex-wrap: wrap}
-.d-flex.column {flex-direction: column}
-.d-flex.reverse {flex-direction: row-reverse}
-.d-flex.end {justify-content: flex-end}
-.d-flex.between {justify-content: space-between}
-.d-flex.button {align-items: flex-end}
+.d-flex {
+	display: flex;
+
+	&.wrap {flex-wrap: wrap}
+	&.column {flex-direction: column}
+	&.reverse {flex-direction: row-reverse}
+	&.end {justify-content: flex-end}
+	&.between {justify-content: space-between}
+	&.button {align-items: flex-end}
+}
 
 .col-1, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-9, .col-10, .col-11, .col-12 {
 	flex: 0 0 auto;

@@ -51,7 +51,8 @@ while true
 		until Pressed
 		Actor.Release(0@)
 	end
-end`, `:IniciarMenu
+end`,
+`:StartMenu
     GetUpdatePlayerPosition()
 
     Display.SetRadar(false)
@@ -64,9 +65,23 @@ end`, `:IniciarMenu
     Text.UseCommands(true)
 	Text.SetWrapX(630.0)
 
-    AparecerMenu()
-    Text.ClearHelp()
-  `
+    ShowMenu()
+    Text.ClearHelp()`,
+`$PANEL = Menu.Create(none, 29.0, 154.0, 160.0, 2, true, true, Align.Left) 
+    Menu.SetColumnWidth($PANEL, 1, 40)
+    Menu.SetColumnAlignment($PANEL, 1, Align.Center)
+
+    Display.SetRadar(false)
+    if $CompileMode == f_PC
+    then
+        Menu.SetColumnWidth($PANEL, 0, 160)
+        Text.SetHelpMessageBoxSize( 218 )
+    end
+
+    0@ = B_VAR_MENU_DISPLAY
+    1@ = MENU_DISPLAY_BLOCK
+    bset_var()
+return`
 ]
 
 let i = 0;
@@ -78,7 +93,7 @@ function typeWriter(x) {
   }
 }
 
-typeWriter(Math.floor(Math.random() * 2))
+typeWriter(Math.floor(Math.random() * 3))
 </script>
 <style>
 #one {
