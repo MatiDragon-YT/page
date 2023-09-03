@@ -91,9 +91,9 @@ let template = `
 :::col-12 col-md-6 col-lg-4 col-xxl-3 p-2
 <a href='mods/${e[0]}.html' class='d-flex w-100 no-decoration white-dm' style="height: 100%;">
 :::p-2 bg-black-2-dm
-:::d-flex end button#${e[2]}\n
-![](mods/docs/${e[0]}/x1.webp)
-:::
+<div class='d-flex end button' id='#${e[2]}'>\n
+![img](mods/docs/${e[0]}/x1.webp)
+</div>
 #### ${e[1].trim()}
 **${e[3].trim()}**
 :::
@@ -148,7 +148,21 @@ paginar()
         animation-range: entry 0% cover 30%;
     }
 }
+.d-flex.end.button {
+    position: relative;
+    padding-bottom: 56.25%;
+    padding-inline: 30px;
+    height: 0;
+    overflow: hidden;
 
+    & img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%
+    }
+}
 @keyframes showImg {
     from {
         opacity: 0;
