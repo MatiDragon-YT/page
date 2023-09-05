@@ -91,7 +91,7 @@ let template = `
 :::col-12 col-md-6 col-lg-4 col-xxl-3 p-2
 <a href='mods/${e[0]}.html' class='d-flex w-100 no-decoration white-dm' style="height: 100%;">
 :::p-2 bg-black-2-dm
-<div class='d-flex end button' id='#${e[2]}'>\n
+<div class='d-flex end button grid-item' id='#${e[2]}' style='opacity: 0;'>\n
 ![img](mods/docs/${e[0]}/x1.webp)
 </div>
 #### ${e[1].trim()}
@@ -101,13 +101,30 @@ let template = `
 :::
 `.toMarkdown()
     
-    setTimeout(()=>{$('#db').innerHTML += template}, cont += 0)
+    $('#db').innerHTML += template
 })
 }
 
 paginar()
+
+function diagonalFade() {
+  let elements = $('.grid-item');
+  let index = 0;
+
+  function show() {
+    elements[index++].style.opacity = 1
+    setTimeout(show, 86)
+  }
+
+  show();
+}
+
+diagonalFade();
 </script>
 <style>
+.grid-item {
+    transition: opacity .5s;
+}
 .bg-black-2 img {
     box-shadow: 1px 1px 2px #000d;
     border-top: solid 1px #0d1117;
