@@ -78,7 +78,6 @@ body {
 	color: #fff;
 	font-weight: 700;
 	overflow: hidden;
-	/* width: calc(100% - 1vmax); */
 }
 #navbar h1{
 	padding: 9px 33px;
@@ -121,6 +120,7 @@ body {
 			color: #ddd;
 			transition: all .2s;
 			height: 2.5rem;
+			justify-content: center;
 
 			&:hover {
 				text-decoration: none;
