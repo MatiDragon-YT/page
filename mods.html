@@ -159,6 +159,22 @@ diagonalFade();
 
     animation-range: entry 0% cover 45%;
     animation-fill-mode: both;
+
+    transition: all .3s;
+    
+    &:hover {
+        z-index: 1;
+        transition-timing-function: cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        transform: scale(1.1);
+        &> a{
+            box-shadow: #36b3ff57 0px 0.5rem 2rem 0px;
+        }
+    }
+    & a {
+        transition: all .3s;
+        transition-timing-function: cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        
+    }
 }
 @media (min-width:576px) {
     .col-12.col-md-6.col-lg-4.col-xxl-3.p-2 {
