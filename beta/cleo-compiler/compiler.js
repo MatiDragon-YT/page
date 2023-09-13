@@ -155,6 +155,62 @@ MODELS = Object.fromEntries(MODELS)
 let SCM_DB = {}
 async function dbSBL(game){
 	let DATA_DB = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/${game}.json`)
+	.then(response => {
+		console.clear()
+
+    const contentLength = response.headers.get('content-length');
+    // Gets length in bytes (must be provided by server)
+
+    let loaded = 0;
+    // Will be used to track loading
+
+    return new Response(
+
+      new ReadableStream({
+      // Creates new readable stream on the new response object
+        
+        start(controller) {
+        // Controller has methods on that allow the new stream to be constructed
+
+          const reader = response.body.getReader();
+          // Creates a new reader to read the body of the fetched resources
+
+          read();
+          // Fires function below that starts reading
+
+          function read() {
+
+            reader.read()
+            .then((progressEvent) => {
+            // Starts reading, when there is progress this function will fire
+              
+              if (progressEvent.done) {
+                controller.close();
+                return; 
+                // Will finish constructing new stream if reading fetched of resource is complete
+              }
+              
+              loaded += progressEvent.value.byteLength;
+              // Increase value of 'loaded' by latest reading of fetched resource
+
+              const percentace = Math.round((loaded/contentLength)/120*1000)+'%'
+              $('#state.loading').style = `background: linear-gradient(90deg, #10a122 ${percentace}, transparent ${percentace});`
+              log(percentace)
+              // Displays progress via console log as %
+
+              controller.enqueue(progressEvent.value);
+              // Add newly read data to the new readable stream
+
+              read();
+              // Runs function again to continue reading and creating new stream
+
+            })
+          }
+        }
+      })
+    );
+  })
+
 	DATA_DB = await DATA_DB.json()
 	DATA_DB.extensions.forEach(extension =>{
 		//log(extension.name)
@@ -196,8 +252,6 @@ async function dbSBL(game){
 const $IDE_mode = $('#mode')
 if (LS.get('Compiler/IDE:mode') == null) LS.set('Compiler/IDE:mode', 'sa')
 $IDE_mode.value = LS.get('Compiler/IDE:mode')
-await dbSBL(LS.get('Compiler/IDE:mode'))
-
 let game = LS.get('Compiler/IDE:mode')
 await dbSBL(game)
 
@@ -901,6 +955,8 @@ const $SBL_State = $('#state')
 if ($SBL_State){
 	const c = $SBL_State.classList
 	$SBL_State.innerText = 'Okey'
+	$SBL_State.style = ''
+	$('#PREVIEW').style.filter = ''
 	c.remove('loading')
 
 	$('#HEX').select()
@@ -908,6 +964,7 @@ if ($SBL_State){
 
 	$IDE_mode.onchange = async function(){
 		$SBL_State.innerText = 'Loading...'
+		$('#PREVIEW').style.filter = 'blur(2px)'
 		c.add('loading')
 		LS.set('Compiler/IDE:mode', $IDE_mode.value)
 		
@@ -919,6 +976,8 @@ if ($SBL_State){
 		
 		$('#version_sbl').innerHTML = 'SBL ' + version
 		$SBL_State.innerText = 'Okey'
+		$SBL_State.style = ''
+		$('#PREVIEW').style.filter = ''
 		c.remove('loading')
 	}
 }
