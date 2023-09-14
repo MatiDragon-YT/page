@@ -287,13 +287,26 @@ SP.toUnicode = function() {
 
 SP.PrePost = function(){
 	return this
-		.r(/KeepAngle\((.+)\)$/gim, `if $1 > 360.0
-then $1 -= 360.0
-end
-if $1 < 0.0
-then $1 += 360.0
-end`)
-		
+		.r(/^(int )?(\$.+) = (\d+)$/gim, `0004: $2 $3`)
+		.r(/^(float )?(\$.+) = (\d+\.\d+)$/gim, `0005: $2 $3`)
+		.r(/^(int )?(\d+@) = (\d+)$/gim, `0006: $2 $3`)
+		.r(/^(float )?(\d+@) = (\d+\.\d+)$/gim, `0007: $2 $3`)
+		.r(/^(int )?(\$.+) \+= (\d+)$/gim, `0008: $2 $3`)
+		.r(/^(float )?(\$.+) \+= (\d+\.\d+)$/gim, `0009: $2 $3`)
+		.r(/^(int )?(\d+@) \+= (\d+)$/gim, `000A: $2 $3`)
+		.r(/^(float )?(\d+@) \+= (\d+\.\d+)$/gim, `000B: $2 $3`)
+		.r(/^(int )?(\$.+) \-= (\d+)$/gim, `000C: $2 $3`)
+		.r(/^(float )?(\$.+) \-= (\d+\.\d+)$/gim, `000D: $2 $3`)
+		.r(/^(int )?(\d+@) \-= (\d+)$/gim, `000E: $2 $3`)
+		.r(/^(float )?(\d+@) \-= (\d+\.\d+)$/gim, `000F: $2 $3`)
+		.r(/^(int )?(\$.+) \*= (\d+)$/gim, `0010: $2 $3`)
+		.r(/^(float )?(\$.+) \*= (\d+\.\d+)$/gim, `0011: $2 $3`)
+		.r(/^(int )?(\d+@) \*= (\d+)$/gim, `0012: $2 $3`)
+		.r(/^(float )?(\d+@) \*= (\d+\.\d+)$/gim, `0013: $2 $3`)
+		.r(/^(int )?(\$.+) \/= (\d+)$/gim, `0014: $2 $3`)
+		.r(/^(float )?(\$.+) \/= (\d+\.\d+)$/gim, `0015: $2 $3`)
+		.r(/^(int )?(\d+@) \/= (\d+)$/gim, `0016: $2 $3`)
+		.r(/^(float )?(\d+@) \/= (\d+\.\d+)$/gim, `0017: $2 $3`)
 }
 
 SP.ValidateSyntax = function(){
@@ -374,6 +387,7 @@ SP.Translate = function(_SepareWithComes = false){
 		// remove jump lines innesesaries
 		.r(/^\n+/gm, '')
 		.r(/\n$/gm, '')
+		.PrePost()
 		.split('\n')
 
 	let codeOfEnter = this.split('\n').clear();
