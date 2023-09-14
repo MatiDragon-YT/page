@@ -34,10 +34,6 @@
 .contador::before {
     content: counter(listing, decimal-leading-zero);
 }
-.treeLine {
-    border-left: dotted 1px #494949;
-    margin-right: -1px;
-}
 #state {
     border: #00c853 solid 1px;
 }
@@ -155,7 +151,11 @@ goto @main</textarea>
 
 	<input type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100">
 
-<div class="d-flex end">
+<div class="d-flex between">
+<div class="d-flex">
+<span id='line'>Line 1, Column 0</span>
+</div>
+<div class="d-flex">
 <span id='state' class="loading">Loading...</span>
 <span id='version_sbl' class="">SBL</span>
 <select id='mode' class="ml-1">
@@ -168,6 +168,7 @@ goto @main</textarea>
   <option value="sa_mobile">SA Mobile</option>
   <option value="vc_mobile">VC Mobile</option>
 </select>
+</div>
 </div>
 
 	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
@@ -209,8 +210,8 @@ The editor can invert Keywords with the prefix ! and NOT.<br>
 <br>
 <script type="module" src="compiler.js"></script>
 <script>
-const $node = document.getElementById('HEX')
-const $file = document.getElementById('file')
+const $node = $('#HEX')
+const $file = $('#file')
 
 const processTextByLine = text => {
     const arr = text.split(/\r?\n/gm)
@@ -239,24 +240,39 @@ $file.onchange = openFile
 </script>
 <script>
 hl()
-$('#HEX').onclick = () => {
-	hl()
-    let tempC = $('#HEX').value.Translate(true)
-    $('#OUTHEX').value = tempC
-}
-$('#HEX').oninput = hl
+function getLine(){
+	let t = [$node.selectionStart, $node.selectionEnd]
+	let posicionCursor = t[0] != t[1] ? t[0] - t[1] : t[0];
+	let lineaCursor = $node.value.substr(0, posicionCursor).split("\n").length;
+	let posicionLinea = $node.value.substr(0, posicionCursor).lastIndexOf("\n") + 1;
 
-$('#HEX').onkeyup = (event) =>{
+	if (posicionCursor < 0)
+		$('#line').innerText = `${posicionCursor*-1} characters selected`
+	else
+		$('#line').innerText = `Line ${lineaCursor}, Column ${posicionCursor-posicionLinea}`
+}
+getLine()
+$node.onclick = () => {
+	hl()
+    $('#OUTHEX').value = $node.value.Translate(true)
+    getLine()
+}
+$node.oninput = hl
+$node.onmousemove = getLine
+$node.onkeyup = (event) =>{
 	//console.log(event)
     //if (event.code == 'Enter' 
     //	|| event.code == 'Backspace'
     //	|| event.code == 'Space'){
-        //let tempC = $('#HEX').value.Translate(true)
-        $('#OUTHEX').value = $('#HEX').value.Translate(true)
+        //let tempC = $node.value.Translate(true)
+        $('#OUTHEX').value = $node.value.Translate(true)
+        getLine()
     //}
 }
 
 function hl(){
+	getLine()
+
 	const span = {
 		start : "<span class=",
 		end : ">$1<\/span>"
@@ -276,7 +292,6 @@ function hl(){
 	//Palabras Reservadas
 	.r(/(^((\x20|\t|!)+)?[a-z_]+)(\s|$)/gmi, "<span class=keywords>$1<\/span>$4")
 	.r(/(^$)/gm, '$1 ')
-	.r(/(\x20{4}|\x20{3}|\x20{2}|^\x20.|\t)/gm, '<span class=treeLine><\/span>$1')
 	//.rA('\t', '    ')
 	.rA('&lt;br/&gt;', "\\n")
 	.r(/(^.)/gm, '<span class=contador><\/span>$1')
