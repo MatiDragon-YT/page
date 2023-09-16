@@ -156,54 +156,39 @@ let SCM_DB = {}
 async function dbSBL(game){
 	let DATA_DB = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/${game}.json`)
 	.then(response => {
-		console.clear()
 
     const contentLength = response.headers.get('content-length');
     // Gets length in bytes (must be provided by server)
-
     let loaded = 0;
     // Will be used to track loading
-
     return new Response(
-
       new ReadableStream({
       // Creates new readable stream on the new response object
-        
         start(controller) {
         // Controller has methods on that allow the new stream to be constructed
-
           const reader = response.body.getReader();
           // Creates a new reader to read the body of the fetched resources
-
           read();
           // Fires function below that starts reading
-
           function read() {
-
             reader.read()
             .then((progressEvent) => {
             // Starts reading, when there is progress this function will fire
-              
               if (progressEvent.done) {
                 controller.close();
                 return; 
                 // Will finish constructing new stream if reading fetched of resource is complete
               }
-              
               loaded += progressEvent.value.byteLength;
               // Increase value of 'loaded' by latest reading of fetched resource
-
               const percentace = Math.round((loaded/contentLength)/120*1000)+'%'
               $('#state.loading').style = `background: linear-gradient(90deg, #10a122 ${percentace}, transparent ${percentace});`
-              log(percentace)
+              //log(percentace)
               // Displays progress via console log as %
-
               controller.enqueue(progressEvent.value);
               // Add newly read data to the new readable stream
-
               read();
               // Runs function again to continue reading and creating new stream
-
             })
           }
         }
@@ -287,26 +272,30 @@ SP.toUnicode = function() {
 
 SP.PrePost = function(){
 	return this
-		.r(/^(int )?(\$.+) = (\d+)$/gim, `0004: $2 $3`)
+		.r(/^(int )?(\$.+) = (\d+(\x.+)?)$/gim, `0004: $2 $3`)
 		.r(/^(float )?(\$.+) = (\d+\.\d+)$/gim, `0005: $2 $3`)
-		.r(/^(int )?(\d+@) = (\d+)$/gim, `0006: $2 $3`)
-		.r(/^(float )?(\d+@) = (\d+\.\d+)$/gim, `0007: $2 $3`)
-		.r(/^(int )?(\$.+) \+= (\d+)$/gim, `0008: $2 $3`)
+		.r(/^(int )?(\d+@([^\s]+)?) = (\d+(\x.+)?)$/gim, `0006: $2 $4`)
+		.r(/^(float )?(\d+@([^\s]+)?) = (\d+\.\d+)$/gim, `0007: $2 $4`)
+		.r(/^(int )?(\$.+) \+= (\d+(\x.+)?)$/gim, `0008: $2 $3`)
 		.r(/^(float )?(\$.+) \+= (\d+\.\d+)$/gim, `0009: $2 $3`)
-		.r(/^(int )?(\d+@) \+= (\d+)$/gim, `000A: $2 $3`)
-		.r(/^(float )?(\d+@) \+= (\d+\.\d+)$/gim, `000B: $2 $3`)
-		.r(/^(int )?(\$.+) \-= (\d+)$/gim, `000C: $2 $3`)
+		.r(/^(int )?(\d+@([^\s]+)?) \+= (\d+(\x.+)?)$/gim, `000A: $2 $4`)
+		.r(/^(float )?(\d+@([^\s]+)?) \+= (\d+\.\d+)$/gim, `000B: $2 $4`)
+		.r(/^(int )?(\$.+) \-= (\d+(\x.+)?)$/gim, `000C: $2 $3`)
 		.r(/^(float )?(\$.+) \-= (\d+\.\d+)$/gim, `000D: $2 $3`)
-		.r(/^(int )?(\d+@) \-= (\d+)$/gim, `000E: $2 $3`)
-		.r(/^(float )?(\d+@) \-= (\d+\.\d+)$/gim, `000F: $2 $3`)
-		.r(/^(int )?(\$.+) \*= (\d+)$/gim, `0010: $2 $3`)
+		.r(/^(int )?(\d+@([^\s]+)?) \-= (\d+(\x.+)?)$/gim, `000E: $2 $4`)
+		.r(/^(float )?(\d+@([^\s]+)?) \-= (\d+\.\d+)$/gim, `000F: $2 $4`)
+		.r(/^(int )?(\$.+) \*= (\d+(\x.+)?)$/gim, `0010: $2 $3`)
 		.r(/^(float )?(\$.+) \*= (\d+\.\d+)$/gim, `0011: $2 $3`)
-		.r(/^(int )?(\d+@) \*= (\d+)$/gim, `0012: $2 $3`)
-		.r(/^(float )?(\d+@) \*= (\d+\.\d+)$/gim, `0013: $2 $3`)
-		.r(/^(int )?(\$.+) \/= (\d+)$/gim, `0014: $2 $3`)
+		.r(/^(int )?(\d+@([^\s]+)?) \*= (\d+(\x.+)?)$/gim, `0012: $2 $4`)
+		.r(/^(float )?(\d+@([^\s]+)?) \*= (\d+\.\d+)$/gim, `0013: $2 $4`)
+		.r(/^(int )?(\$.+) \/= (\d+(\x.+)?)$/gim, `0014: $2 $3`)
 		.r(/^(float )?(\$.+) \/= (\d+\.\d+)$/gim, `0015: $2 $3`)
-		.r(/^(int )?(\d+@) \/= (\d+)$/gim, `0016: $2 $3`)
-		.r(/^(float )?(\d+@) \/= (\d+\.\d+)$/gim, `0017: $2 $3`)
+		.r(/^(int )?(\d+@([^\s]+)?) \/= (\d+(\x.+)?)$/gim, `0016: $2 $4`)
+		.r(/^(float )?(\d+@([^\s]+)?) \/= (\d+\.\d+)$/gim, `0017: $2 $4`)
+
+		
+		.r(/^(string )?(\d+@[^\s]+) = ('([^\n\']+)?')$/gim, `05A9: $2 $3`)
+		.r(/^(long )?(\d+@[^\s]+) = ("([^\n\"]+)?")$/gim, `06D1: $2 $3`)
 }
 
 SP.ValidateSyntax = function(){
@@ -477,7 +466,11 @@ SP.Translate = function(_SepareWithComes = false){
 				else { // is Argument
 					totalSizePerLine.push(1)
 
-					typeData = SCM_DB[command].params[--numArgument]
+					try {
+						typeData = SCM_DB[command].params[--numArgument]
+					}catch{
+						throw new SyntaxError(`unknown parameter\n\tparameter ${Argument}\n\tat line ${(1+numLine)}\n\t\topcode ${setOp == '0000' ? 'autodefined' : setOp} ${command.toUpperCase()}`);
+					}
 
 					let foundType = false
 					const TYPES = ['any','int','float','lvar','gvar','var_any','short','long','label','bool']
@@ -525,8 +518,10 @@ SP.Translate = function(_SepareWithComes = false){
 						break;
 
 						case 'long':
-							Argument = Argument.r(/("(.+)"|`(.+)`)/, '$2$3').r(/\x00/g,'\x20')
+							Argument = Argument.r(/("([^\"]+)?"|`(.+)?`)/, '$2$3').r(/\x00/g,'\x20')
 							Argument = Argument.substring(0,255)
+							console.log(Argument)
+							if (Argument.length == 0) Argument = '\x00'
 
 							totalSizePerLine.push(Argument.length + (SCM_DB[command].opcode[1] == '0' ? 2 : 1))
 							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode())// + (SCM_DB[command].opcode[1] == '0' ? '00' : '')
@@ -752,7 +747,9 @@ SP.Translate = function(_SepareWithComes = false){
 											}
 
 											else {
+												console.log(inputVar)
 												inputVar = Number(inputVar.r('&',''))
+
 											}
 
 											inputVar = come(TYPE_CODE.GVAR) + (
@@ -761,6 +758,9 @@ SP.Translate = function(_SepareWithComes = false){
 												.padStart(4,'0')
 												.toBigEndian()
 											)
+
+											if (isNaN(inputVar)) throw new SyntaxError(`NAN parameter\n\tparameter ${Argument}\n\tat line ${(1+numLine)}\n\t\topcode ${setOp == '0000' ? 'autodefined' : setOp} ${command.toUpperCase()}`);
+
 											return inputVar
 										})
 										.r(/,,/,',')
@@ -827,7 +827,10 @@ SP.Translate = function(_SepareWithComes = false){
 								}
 
 								else {
+									let tempNumber = Argument
 									Argument = Number(Argument.r('&',''))
+
+									if (isNaN(Argument)) throw new SyntaxError(`NAN parameter\n\tparameter ${tempNumber}\n\tat line ${(1+numLine)}\n\t\topcode ${setOp == '0000' ? 'autodefined' : setOp} ${command.toUpperCase()}`);
 								}
 
 								Argument = come(TYPE_CODE.GVAR) + (
@@ -890,8 +893,7 @@ SP.Translate = function(_SepareWithComes = false){
 			}
 		})
 		if (!found) {
-			console.log("No se encontro la label de punto de salto: " +label+
-				"\n- Revise si la escribio correctamente o si incluso la creeo.")
+			throw new Error(`label not found "${label}"`)
 			return "<@"+label+">"
 		}
 
@@ -974,6 +976,7 @@ if ($SBL_State){
 	c.remove('loading')
 
 	$('#HEX').select()
+	getLine()
 	$('#OUTHEX').value = $('#HEX').value.Translate(true)
 
 	$IDE_mode.onchange = async function(){

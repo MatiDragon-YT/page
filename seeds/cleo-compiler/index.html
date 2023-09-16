@@ -4,7 +4,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>MattyBuilder</title>
-	<link rel="stylesheet" href="https://matidragon-yt.github.io/page/css/main.css">
+	<link rel="stylesheet" href="./../../css/main.css">
 </head>
 <body style="display: block;">
 <!--
@@ -111,14 +111,46 @@ function apply(element, callback){
 		}
 	}
 }
+
+function getLine(){
+	let t = [$node.selectionStart, $node.selectionEnd]
+	let posicionCursor = t[0] != t[1] ? t[0] - t[1] : t[0];
+	let lineaCursor = $node.value.substr(0, posicionCursor).split("\n").length;
+	let posicionLinea = $node.value.substr(0, posicionCursor).lastIndexOf("\n") + 1;
+
+	if (posicionCursor < 0)
+		$('#line').innerText = `${posicionCursor*-1} characters selected`
+	else
+		$('#line').innerText = `Line ${lineaCursor}, Column ${posicionCursor-posicionLinea}`
+}
 </script>
 
 <form id="FORMULARIO">
 
-<input id='file' type='file' accept='text/plain' class="button">
+<input id='file' type='file' accept='text/plain' class="d-none">
+<label class="button" for="file">load</label>
 
-<br><br>
+<a id="" class="button" onclick="
+	let a = window.document.createElement('a');
 
+	a.href = window.URL.createObjectURL(new Blob([$('#HEX').value], { type: 'text/plain' }));
+	a.download = $('#FILENAME').value.r(/\.[^\.]+$/m, '.txt');
+
+	// Append anchor to body.
+	document.body.appendChild(a)
+	a.click();
+
+	// Remove anchor from body
+	document.body.removeChild(a)
+	" style="
+    cursor: pointer;">save</a> <a id="" class="button" onclick="
+
+$('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME').value)
+
+	$('#HEX').click();
+
+	" style="
+    cursor: pointer;">compiler</a><br><br>
 	<input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="newScript.csi">
 	<textarea id="HEX" class="w-100 m-0" placeholder="write your hex" autocomplete="off" spellcheck="false" style="
     position: absolute;
@@ -138,9 +170,9 @@ function apply(element, callback){
     font-size: 1rem!important;
     height: 50vh;
     ">nop
-
+0@ = 0x0C
 :main
-    wait 0
+    wait 0@
 goto @main</textarea>
 	<pre id='PREVIEW' style="
 	height: 50vh;
@@ -149,6 +181,11 @@ goto @main</textarea>
 	transition: all 0.2s ease 0s;
 	" class="m-0"></pre>
 
+	<div id="error" placeholder="hex's output" name="cleaned_hex" class="w-100 p-1" style="
+    background: #290000;
+    color: #ff8080;
+    white-space: pre-wrap;
+    display: none;"></div>
 	<input type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100">
 
 <div class="d-flex between">
@@ -172,28 +209,6 @@ goto @main</textarea>
 </div>
 
 	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
-
-<a id="" class="button" onclick="
-	let a = window.document.createElement('a');
-
-	a.href = window.URL.createObjectURL(new Blob([$('#HEX').value], { type: 'text/plain' }));
-	a.download = $('#FILENAME').value.r(/\.[^\.]+$/m, '.txt');
-
-	// Append anchor to body.
-	document.body.appendChild(a)
-	a.click();
-
-	// Remove anchor from body
-	document.body.removeChild(a)
-	" style="
-    cursor: pointer;">save</a> <a id="" class="button" onclick="
-
-$('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME').value)
-
-	$('#HEX').click();
-
-	" style="
-    cursor: pointer;">compiler</a><br><br>
 
 </form>
 
@@ -240,17 +255,6 @@ $file.onchange = openFile
 </script>
 <script>
 hl()
-function getLine(){
-	let t = [$node.selectionStart, $node.selectionEnd]
-	let posicionCursor = t[0] != t[1] ? t[0] - t[1] : t[0];
-	let lineaCursor = $node.value.substr(0, posicionCursor).split("\n").length;
-	let posicionLinea = $node.value.substr(0, posicionCursor).lastIndexOf("\n") + 1;
-
-	if (posicionCursor < 0)
-		$('#line').innerText = `${posicionCursor*-1} characters selected`
-	else
-		$('#line').innerText = `Line ${lineaCursor}, Column ${posicionCursor-posicionLinea}`
-}
 getLine()
 $node.onclick = () => {
 	hl()
@@ -260,6 +264,7 @@ $node.onclick = () => {
 $node.oninput = hl
 $node.onmousemove = getLine
 $node.onkeyup = (event) =>{
+	try {
 	//console.log(event)
     //if (event.code == 'Enter' 
     //	|| event.code == 'Backspace'
@@ -267,7 +272,12 @@ $node.onkeyup = (event) =>{
         //let tempC = $node.value.Translate(true)
         $('#OUTHEX').value = $node.value.Translate(true)
         getLine()
+        $('#error').style.display = 'none'
     //}
+    } catch(error) {
+        $('#error').style.display = 'flex'
+		$('#error').innerText = error
+	}
 }
 
 function hl(){
@@ -414,6 +424,16 @@ let tempCSS = ``
 		].forEach(function(value, index){
 			tempCSS += '.col' + prefix + (index == 0 ? 'auto' : ++index) + '{width:' + value + '!important}'
 			tempCSS += '.offset' + prefix + (index == 0 ? 'auto' : ++index) + '{margin-left:' + value + '!important}'
+		});
+
+		[
+			'flex',
+			'none',
+			'block',
+			'inline-block',
+			'grid'
+		].forEach((value, index) => {
+			tempCSS += `.d${prefix}${value} { display : ${value} !important}\n`
 		});
 
 		if (resolucion != 0) {tempCSS += '}\n\n'}

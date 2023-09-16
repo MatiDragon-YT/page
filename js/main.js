@@ -129,7 +129,8 @@ const CSSComputarized = function(){
 			'flex',
 			'none',
 			'block',
-			'inline-block'
+			'inline-block',
+			'grid'
 		].forEach((value, index) => {
 			tempCSS += `.d${prefix}${value} { display : ${value} !important}\n`
 		});
@@ -663,9 +664,10 @@ $('body').innerHTML = `
 <div id='nav'>
 	<section>
 		<a href="${ROOT}index.html">Inicio</a>
+		<!--<a href="${ROOT}docs.html">Docs</a>-->
+		<a href="${ROOT}seeds.html">Seeds</a>
 		<a href="${ROOT}topics.html">Temas</a>
 		<a href="${ROOT}mods.html">Mods</a>
-		<!--<a href="${ROOT}docs.html">Docs</a>-->
 	</section>
 	<!--<input id='search' type='text' placeholder='Buscar...'>-->
 </div>

@@ -10,6 +10,11 @@
 	transition: background .2s;
 }
 
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: .2s;
+}
+
 :root {
 	--bg: #0d1117;
 	--bg-t: #0d111788;
@@ -303,7 +308,7 @@ a, a *{
 a:hover {
 	text-decoration: underline
 }
-a.button {
+a.button, label.button {
     background: var(--c-blue);
     color: black;
     padding: .8em 0;
@@ -313,6 +318,7 @@ a.button {
     text-align: center;
     text-transform: uppercase;
     font-size: .84em;
+    cursor: pointer;
 }
 
 a.button:hover {
@@ -397,8 +403,6 @@ input[type='checkbox']{
 .d-none {display: none}
 .d-block {display: block}
 .d-flex {
-	display: flex;
-
 	&.wrap {flex-wrap: wrap}
 	&.column {flex-direction: column}
 	&.reverse {flex-direction: row-reverse}
@@ -413,34 +417,18 @@ input[type='checkbox']{
 
 @media (min-width:576px) {
 	.markdown { max-width: 87.7% }
-
-	.d-sm-none {display: none}
-	.d-sm-block {display: block}
-	.d-sm-flex {display: flex}
 }
 @media (min-width:768px) {
-	.d-md-none {display: none}
-	.d-md-block {display: block}
-	.d-md-flex {display: flex}
 }
 @media (min-width:992px) {
-	.d-lg-none {display: none}
-	.d-lg-block {display: block}
-	.d-lg-flex {display: flex}
 }
 @media (min-width:1200px) {
 	h1 { font-size: 2.5rem }
 	h2 { font-size: 2rem }
 	h3 { font-size: 1.75rem }
 	h4 { font-size: 1.5rem }
-	.d-xl-none {display: none}
-	.d-xl-block {display: block}
-	.d-xl-flex {display: flex}
 }
 @media (min-width:1400px) {
-	.d-xxl-none {display: none}
-	.d-xxl-block {display: block}
-	.d-xxl-flex {display: flex}
 }
 @media (min-width:1600px) {
 	.markdown { max-width: 90% }
@@ -455,7 +443,6 @@ input[type='checkbox']{
 
 .uppercase { text-transform: uppercase }
 
-.d-inline-block {display: inline-block}
 .f-center {align-self: center;}
 
 .mw-50 {
