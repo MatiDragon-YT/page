@@ -127,7 +127,7 @@ function getLine(){
 
 <form id="FORMULARIO">
 
-<input id='file' type='file' accept='text/plain' class="d-none">
+<input id='file' type='file' accept='.txt' class="d-none">
 <label class="button" for="file">load</label>
 
 <a id="" class="button" onclick="
@@ -169,8 +169,15 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
     line-height: 1.5em;
     font-size: 1rem!important;
     height: 50vh;
-    ">nop
-0@ = 0x0C
+    ">nop // operations aritmetics suports: =, +=, -=, *=, /=, >, <, >=, <=
+0@ += 0      // int
+1@ -= 0x1C   // int
+2@ = #jester // int
+3@ *= 2f     // float
+4@ /= 5.0    // float
+5@ > .75     // float
+6@ = 'string'
+7@ = 'longstring'
 :main
     wait 0@
 goto @main</textarea>

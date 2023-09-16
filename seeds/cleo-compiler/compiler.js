@@ -114,7 +114,51 @@ const LS = {
 	set : (x,y) => LS.t.setItem(x, y)
 }
 
+function fetchPercentece(response, background){
+  const contentLength = response.headers.get('Content-Length');
+  // Gets length in bytes (must be provided by server)
+  let loaded = 0;
+  // Will be used to track loading
+  return new Response(
+    new ReadableStream({
+    // Creates new readable stream on the new response object
+      start(controller) {
+      // Controller has methods on that allow the new stream to be constructed
+        const reader = response.body.getReader();
+        // Creates a new reader to read the body of the fetched resources
+        read();
+        // Fires function below that starts reading
+        function read() {
+          reader.read()
+          .then((progressEvent) => {
+          // Starts reading, when there is progress this function will fire
+            if (progressEvent.done) {
+              controller.close();
+              return; 
+              // Will finish constructing new stream if reading fetched of resource is complete
+            }
+            loaded += progressEvent.value.byteLength;
+            // Increase value of 'loaded' by latest reading of fetched resource
+            const percentace = Math.round((loaded/contentLength)/120*1000)+'%'
+            $('#state.loading').style = `background: linear-gradient(90deg, ${background} ${percentace}, transparent ${percentace});`
+            //log(percentace)
+            // Displays progress via console log as %
+            controller.enqueue(progressEvent.value);
+            // Add newly read data to the new readable stream
+            read();
+            // Runs function again to continue reading and creating new stream
+          })
+        }
+      }
+    })
+  );
+}
+
 let CUSTOM_VARIABLES = await fetch('./data/CustomVariables.ini')
+	.then(response => {
+		return fetchPercentece(response, 'red')
+  })
+
 CUSTOM_VARIABLES = await CUSTOM_VARIABLES.text()
 CUSTOM_VARIABLES = CUSTOM_VARIABLES
 	.r(/;.+/g,'')
@@ -128,6 +172,9 @@ CUSTOM_VARIABLES = Object.fromEntries(CUSTOM_VARIABLES)
 //log(CUSTOM_VARIABLES)
 
 let CONSTANTS = await fetch('./data/constants.txt')
+	.then(response => {
+		return fetchPercentece(response, 'orange')
+  })
 CONSTANTS = await CONSTANTS.text()
 CONSTANTS = CONSTANTS
 	.r(/(^const|end$)/gm, '')
@@ -142,6 +189,9 @@ CONSTANTS = Object.fromEntries(CONSTANTS)
 //log(CONSTANTS)
 
 let MODELS = await fetch('./data/models.ide')
+	.then(response => {
+		return fetchPercentece(response, 'yellow')
+  })
 MODELS = await MODELS.text()
 MODELS = MODELS
 	.r(/\r/g,'')
@@ -156,44 +206,7 @@ let SCM_DB = {}
 async function dbSBL(game){
 	let DATA_DB = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/${game}.json`)
 	.then(response => {
-
-    const contentLength = response.headers.get('content-length');
-    // Gets length in bytes (must be provided by server)
-    let loaded = 0;
-    // Will be used to track loading
-    return new Response(
-      new ReadableStream({
-      // Creates new readable stream on the new response object
-        start(controller) {
-        // Controller has methods on that allow the new stream to be constructed
-          const reader = response.body.getReader();
-          // Creates a new reader to read the body of the fetched resources
-          read();
-          // Fires function below that starts reading
-          function read() {
-            reader.read()
-            .then((progressEvent) => {
-            // Starts reading, when there is progress this function will fire
-              if (progressEvent.done) {
-                controller.close();
-                return; 
-                // Will finish constructing new stream if reading fetched of resource is complete
-              }
-              loaded += progressEvent.value.byteLength;
-              // Increase value of 'loaded' by latest reading of fetched resource
-              const percentace = Math.round((loaded/contentLength)/120*1000)+'%'
-              $('#state.loading').style = `background: linear-gradient(90deg, #10a122 ${percentace}, transparent ${percentace});`
-              //log(percentace)
-              // Displays progress via console log as %
-              controller.enqueue(progressEvent.value);
-              // Add newly read data to the new readable stream
-              read();
-              // Runs function again to continue reading and creating new stream
-            })
-          }
-        }
-      })
-    );
+		return fetchPercentece(response, '#10a122')
   })
 
 	DATA_DB = await DATA_DB.json()
@@ -272,30 +285,97 @@ SP.toUnicode = function() {
 
 SP.PrePost = function(){
 	return this
-		.r(/^(int )?(\$.+) = (\d+(\x.+)?)$/gim, `0004: $2 $3`)
-		.r(/^(float )?(\$.+) = (\d+\.\d+)$/gim, `0005: $2 $3`)
-		.r(/^(int )?(\d+@([^\s]+)?) = (\d+(\x.+)?)$/gim, `0006: $2 $4`)
-		.r(/^(float )?(\d+@([^\s]+)?) = (\d+\.\d+)$/gim, `0007: $2 $4`)
-		.r(/^(int )?(\$.+) \+= (\d+(\x.+)?)$/gim, `0008: $2 $3`)
-		.r(/^(float )?(\$.+) \+= (\d+\.\d+)$/gim, `0009: $2 $3`)
-		.r(/^(int )?(\d+@([^\s]+)?) \+= (\d+(\x.+)?)$/gim, `000A: $2 $4`)
-		.r(/^(float )?(\d+@([^\s]+)?) \+= (\d+\.\d+)$/gim, `000B: $2 $4`)
-		.r(/^(int )?(\$.+) \-= (\d+(\x.+)?)$/gim, `000C: $2 $3`)
-		.r(/^(float )?(\$.+) \-= (\d+\.\d+)$/gim, `000D: $2 $3`)
-		.r(/^(int )?(\d+@([^\s]+)?) \-= (\d+(\x.+)?)$/gim, `000E: $2 $4`)
-		.r(/^(float )?(\d+@([^\s]+)?) \-= (\d+\.\d+)$/gim, `000F: $2 $4`)
-		.r(/^(int )?(\$.+) \*= (\d+(\x.+)?)$/gim, `0010: $2 $3`)
-		.r(/^(float )?(\$.+) \*= (\d+\.\d+)$/gim, `0011: $2 $3`)
-		.r(/^(int )?(\d+@([^\s]+)?) \*= (\d+(\x.+)?)$/gim, `0012: $2 $4`)
-		.r(/^(float )?(\d+@([^\s]+)?) \*= (\d+\.\d+)$/gim, `0013: $2 $4`)
-		.r(/^(int )?(\$.+) \/= (\d+(\x.+)?)$/gim, `0014: $2 $3`)
-		.r(/^(float )?(\$.+) \/= (\d+\.\d+)$/gim, `0015: $2 $3`)
-		.r(/^(int )?(\d+@([^\s]+)?) \/= (\d+(\x.+)?)$/gim, `0016: $2 $4`)
-		.r(/^(float )?(\d+@([^\s]+)?) \/= (\d+\.\d+)$/gim, `0017: $2 $4`)
+		.r(/^(int )?(\$.+) = (\d+|#.+|0x.+)$/gim, `0004: $2 $3`)									//0004: $CUSTOM_TOURNAMENT_FLAG = 0
+		.r(/^(float )?(\$.+) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0005: $2 $3`)							//0005: $166 = 292.33
+		.r(/^(int )?(\d+@([^\s]+)?) = (\d+|#.+|0x.+)$/gim, `0006: $2 $4`)					//0006: 0@ = -1
+		.r(/^(float )?(\d+@([^\s]+)?) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0007: $2 $4`)		//0007: 7@ = 0.0
+		.r(/^(int )?(\$.+) \+= (\d+|#.+|0x.+)$/gim, `0008: $2 $3`)								//0008: $89 += 1
+		.r(/^(float )?(\$.+) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `0009: $2 $3`)						//0009: $TEMPVAR_FLOAT_1 += 1.741
+		.r(/^(int )?(\d+@([^\s]+)?) \+= (\d+|#.+|0x.+)$/gim, `000A: $2 $4`)				//000A: 3@ += 3000
+		.r(/^(float )?(\d+@([^\s]+)?) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `000B: $2 $4`)	//000B: 6@ += 0.1
+		.r(/^(int )?(\$.+) \-= (\d+|#.+|0x.+)$/gim, `000C: $2 $3`)								//000C: $1020 -= 1
+		.r(/^(float )?(\$.+) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000D: $2 $3`)						//000D: $TEMPVAR_Z_COORD -= 0.5
+		.r(/^(int )?(\d+@([^\s]+)?) \-= (\d+|#.+|0x.+)$/gim, `000E: $2 $4`)				//000E: 0@ -= 1
+		.r(/^(float )?(\d+@([^\s]+)?) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000F: $2 $4`)	//000F: 692@ -= 8.0
+		.r(/^(int )?(\$.+) \*= (\d+|#.+|0x.+)$/gim, `0010: $2 $3`)								//0010: $GS_GANG_CASH *= 100
+		.r(/^(float )?(\$.+) \*= (\d+\.\d+|\.\d+|\d+f)$/gim, `0011: $2 $3`)						//0011: $HJ_TEMP_FLOAT *= 100.0
+		.r(/^(int )?(\d+@([^\s]+)?) \*= (\d+|#.+|0x.+)$/gim, `0012: $2 $4`)				//0012: 22@ *= -1
+		.r(/^(float )?(\d+@([^\s]+)?) \*= (\d+\.\d+|\.\d+|\d+f)$/gim, `0013: $2 $4`)	//0013: 17@ *= 9.8
+		.r(/^(int )?(\$.+) \/= (\d+|#.+|0x.+)$/gim, `0014: $2 $3`)								//0014: $HJ_TWOWHEELS_TIME /= 1000
+		.r(/^(float )?(\$.+) \/= (\d+\.\d+|\.\d+|\d+f)$/gim, `0015: $2 $3`)						//0015: $EXPORT_PRICE_HEALTH_MULTIPLIER /= 1000.0
+		.r(/^(int )?(\d+@([^\s]+)?) \/= (\d+|#.+|0x.+)$/gim, `0016: $2 $4`)				//0016: 4@ /= 2
+		.r(/^(float )?(\d+@([^\s]+)?) \/= (\d+\.\d+|\.\d+|\d+f)$/gim, `0017: $2 $4`)	//0017: 14@ /= 1000.0
 
-		
-		.r(/^(string )?(\d+@[^\s]+) = ('([^\n\']+)?')$/gim, `05A9: $2 $3`)
-		.r(/^(long )?(\d+@[^\s]+) = ("([^\n\"]+)?")$/gim, `06D1: $2 $3`)
+		.r(/^(int )?(\$.+) > (\d+|#.+|0x.+)$/gim, `0018: $2 $4`)											//0018:   $CATALINA_TOTAL_PASSED_MISSIONS > 2
+		.r(/^(int )?(\d+@([^\s]+)?) > (\d+|#.+|0x.+)$/gim, `0019: $2 $4`)					//0019:   0@ > 0
+		.r(/^(int )?(\d+|#.+|0x.+) > (\$.+)$/gim, `001A: $2 $4`)									//001A:   10 > $SYNDICATE_TOTAL_PASSED_MISSIONS
+		.r(/^(int )?(\d+|#.+|0x.+) > (\d+@([^\s]+)?)$/gim, `001B: $2 $4`)					//001B:   3 > 20@
+		.r(/^(int )?(\$.+) > (\$.+)$/gim, `001C: $2 $4`)															//001C:   $CURRENT_MONTH_DAY > $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
+		.r(/^(int )?(\d+@([^\s]+)?) > (\d+@([^\s]+)?)$/gim, `001D: $2 $4`)						//001D:   27@ > 33@  // (int)
+		.r(/^(int )?(\$.+) > (\d+@([^\s]+)?)$/gim, `001E: $2 $4`)											//001E:   $CURRENT_TIME_IN_MS2 > 3@ // (int)
+		.r(/^(int )?(\d+@([^\s]+)?) > (\$.+)$/gim, `001F: $2 $4`)											//001F:   9@ > $GIRL_PROGRESS[0] // (int)
+		.r(/^(float )?(\$.+) > (\d+\.\d+|\.\d+|\d+f)$/gim, `0020: $2 $4`)								//0020:   $HJ_TWOWHEELS_DISTANCE_FLOAT > 0.0
+		.r(/^(float )?(\d+@([^\s]+)?) > (\d+\.\d+|\.\d+|\d+f)$/gim, `0021: $2 $4`)				//0021:   26@ > 64.0
+		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) > (\$.+)$/gim, `0022: $2 $4`)								//0022:   -180.0 > $1316
+		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) > (\d+@([^\s]+)?)$/gim, `0023: $2 $4`)				//0023:   0.0 > 7@
+		.r(/^(float )?(\$.+) > (\$.+)$/gim, `0024: $2 $4`)														//0024:   $HJ_CAR_Z > $HJ_CAR_Z_MAX // (float)
+		.r(/^(float )?(\d+@([^\s]+)?) > (\d+@([^\s]+)?)$/gim, `0025: $2 $4`)					//0025:   3@ > 6@  // (float)
+		.r(/^(float )?(\$.+) > (\d+@([^\s]+)?)$/gim, `0026: $2 $4`)										//0026:   $TEMPVAR_FLOAT_1 > 513@(227@,10f)  // (float)
+		.r(/^(float )?(\d+@([^\s]+)?) > (\$.+)$/gim, `0027: $2 $4`)										//0027:   513@(227@,10f) > $TEMPVAR_FLOAT_2 // (float)
+
+		.r(/^(int )?(\$.+) < (\d+|#.+|0x.+)$/gim, `8018: $2 $4`)									//8018:   $CATALINA_TOTAL_PASSED_MISSIONS < 2
+		.r(/^(int )?(\d+@([^\s]+)?) < (\d+|#.+|0x.+)$/gim, `8019: $2 $4`)					//8019:   0@ < 0
+		.r(/^(int )?(\d+|#.+|0x.+) < (\$.+)$/gim, `801A: $2 $4`)									//801A:   10 < $SYNDICATE_TOTAL_PASSED_MISSIONS
+		.r(/^(int )?(\d+|#.+|0x.+) < (\d+@([^\s]+)?)$/gim, `801B: $2 $4`)					//801B:   3 < 20@
+		.r(/^(int )?(\$.+) < (\$.+)$/gim, `801C: $2 $4`)															//801C:   $CURRENT_MONTH_DAY < $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
+		.r(/^(int )?(\d+@([^\s]+)?) < (\d+@([^\s]+)?)$/gim, `801D: $2 $4`)						//801D:   27@ < 33@  // (int)
+		.r(/^(int )?(\$.+) < (\d+@([^\s]+)?)$/gim, `801E: $2 $4`)											//801E:   $CURRENT_TIME_IN_MS2 < 3@ // (int)
+		.r(/^(int )?(\d+@([^\s]+)?) < (\$.+)$/gim, `801F: $2 $4`)											//801F:   9@ < $GIRL_PROGRESS[0] // (int)
+		.r(/^(float )?(\$.+) < (\d+\.\d+|\.\d+|\d+f)$/gim, `8020: $2 $4`)								//8020:   $HJ_TWOWHEELS_DISTANCE_FLOAT < 0.0
+		.r(/^(float )?(\d+@([^\s]+)?) < (\d+\.\d+|\.\d+|\d+f)$/gim, `8021: $2 $4`)				//8021:   26@ < 64.0
+		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) < (\$.+)$/gim, `8022: $2 $4`)								//8022:   -180.0 < $1316
+		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) < (\d+@([^\s]+)?)$/gim, `8023: $2 $4`)				//8023:   0.0 < 7@
+		.r(/^(float )?(\$.+) < (\$.+)$/gim, `8024: $2 $4`)														//8024:   $HJ_CAR_Z < $HJ_CAR_Z_MAX // (float)
+		.r(/^(float )?(\d+@([^\s]+)?) < (\d+@([^\s]+)?)$/gim, `8025: $2 $4`)					//8025:   3@ < 6@  // (float)
+		.r(/^(float )?(\$.+) < (\d+@([^\s]+)?)$/gim, `8026: $2 $4`)										//8026:   $TEMPVAR_FLOAT_1 < 513@(227@,10f)  // (float)
+		.r(/^(float )?(\d+@([^\s]+)?) < (\$.+)$/gim, `8027: $2 $4`)										//8027:   513@(227@,10f) < $TEMPVAR_FLOAT_2 // (float)
+
+		.r(/^(int )?(\$.+) >= (\d+|#.+|0x.+)$/gim, `0028: $2 $4`)									//0028:   $CATALINA_TOTAL_PASSED_MISSIONS >= 2
+		.r(/^(int )?(\d+@([^\s]+)?) >= (\d+|#.+|0x.+)$/gim, `0029: $2 $4`)				//0029:   0@ >= 0
+		.r(/^(int )?(\d+|#.+|0x.+) >= (\$.+)$/gim, `002A: $2 $4`)									//002A:   10 >= $SYNDICATE_TOTAL_PASSED_MISSIONS
+		.r(/^(int )?(\d+|#.+|0x.+) >= (\d+@([^\s]+)?)$/gim, `002B: $2 $4`)				//002B:   3 >= 20@
+		.r(/^(int )?(\$.+) >= (\$.+)$/gim, `002C: $2 $4`)															//002C:   $CURRENT_MONTH_DAY >= $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
+		.r(/^(int )?(\d+@([^\s]+)?) >= (\d+@([^\s]+)?)$/gim, `002D: $2 $4`)						//002D:   27@ >= 33@  // (int)
+		.r(/^(int )?(\$.+) >= (\d+@([^\s]+)?)$/gim, `002E: $2 $4`)										//002E:   $CURRENT_TIME_IN_MS2 >= 3@ // (int)
+		.r(/^(int )?(\d+@([^\s]+)?) >= (\$.+)$/gim, `002F: $2 $4`)										//002F:   9@ >= $GIRL_PROGRESS[0] // (int)
+		.r(/^(float )?(\$.+) >= (\d+\.\d+|\.\d+|\d+f)$/gim, `0030: $2 $4`)								//0030:   $HJ_TWOWHEELS_DISTANCE_FLOAT >= 0.0
+		.r(/^(float )?(\d+@([^\s]+)?) >= (\d+\.\d+|\.\d+|\d+f)$/gim, `0031: $2 $4`)			//0031:   26@ >= 64.0
+		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) >= (\$.+)$/gim, `0032: $2 $4`)								//0032:   -180.0 >= $1316
+		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) >= (\d+@([^\s]+)?)$/gim, `0033: $2 $4`)			//0033:   0.0 >= 7@
+		.r(/^(float )?(\$.+) >= (\$.+)$/gim, `0034: $2 $4`)														//0034:   $HJ_CAR_Z >= $HJ_CAR_Z_MAX // (float)
+		.r(/^(float )?(\d+@([^\s]+)?) >= (\d+@([^\s]+)?)$/gim, `0035: $2 $4`)					//0035:   3@ >= 6@  // (float)
+		.r(/^(float )?(\$.+) >= (\d+@([^\s]+)?)$/gim, `0036: $2 $4`)									//0036:   $TEMPVAR_FLOAT_1 >= 513@(227@,10f)  // (float)
+		.r(/^(float )?(\d+@([^\s]+)?) >= (\$.+)$/gim, `0037: $2 $4`)									//0037:   513@(227@,10f) >= $TEMPVAR_FLOAT_2 // (float)
+
+		.r(/^(int )?(\$.+) <= (\d+|#.+|0x.+)$/gim, `8028: $2 $4`)									//8028:   $CATALINA_TOTAL_PASSED_MISSIONS <= 2
+		.r(/^(int )?(\d+@([^\s]+)?) <= (\d+|#.+|0x.+)$/gim, `8029: $2 $4`)				//8029:   0@ <= 0
+		.r(/^(int )?(\d+|#.+|0x.+) <= (\$.+)$/gim, `802A: $2 $4`)									//802A:   10 <= $SYNDICATE_TOTAL_PASSED_MISSIONS
+		.r(/^(int )?(\d+|#.+|0x.+) <= (\d+@([^\s]+)?)$/gim, `802B: $2 $4`)				//802B:   3 <= 20@
+		.r(/^(int )?(\$.+) <= (\$.+)$/gim, `802C: $2 $4`)															//802C:   $CURRENT_MONTH_DAY <= $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
+		.r(/^(int )?(\d+@([^\s]+)?) <= (\d+@([^\s]+)?)$/gim, `802D: $2 $4`)						//802D:   27@ <= 33@  // (int)
+		.r(/^(int )?(\$.+) <= (\d+@([^\s]+)?)$/gim, `802E: $2 $4`)										//802E:   $CURRENT_TIME_IN_MS2 <= 3@ // (int)
+		.r(/^(int )?(\d+@([^\s]+)?) <= (\$.+)$/gim, `802F: $2 $4`)										//802F:   9@ <= $GIRL_PROGRESS[0] // (int)
+		.r(/^(float )?(\$.+) <= (\d+\.\d+|\.\d+|\d+f)$/gim, `8030: $2 $4`)								//8030:   $HJ_TWOWHEELS_DISTANCE_FLOAT <= 0.0
+		.r(/^(float )?(\d+@([^\s]+)?) <= (\d+\.\d+|\.\d+|\d+f)$/gim, `8031: $2 $4`)			//8031:   26@ <= 64.0
+		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) <= (\$.+)$/gim, `8032: $2 $4`)								//8032:   -180.0 <= $1316
+		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) <= (\d+@([^\s]+)?)$/gim, `8033: $2 $4`)			//8033:   0.0 <= 7@
+		.r(/^(float )?(\$.+) <= (\$.+)$/gim, `8034: $2 $4`)														//8034:   $HJ_CAR_Z <= $HJ_CAR_Z_MAX // (float)
+		.r(/^(float )?(\d+@([^\s]+)?) <= (\d+@([^\s]+)?)$/gim, `8035: $2 $4`)					//8035:   3@ <= 6@  // (float)
+		.r(/^(float )?(\$.+) <= (\d+@([^\s]+)?)$/gim, `8036: $2 $4`)									//8036:   $TEMPVAR_FLOAT_1 <= 513@(227@,10f)  // (float)
+		.r(/^(float )?(\d+@([^\s]+)?) <= (\$.+)$/gim, `8037: $2 $4`)									//8037:   513@(227@,10f) <= $TEMPVAR_FLOAT_2 // (float)
+
+		.r(/^(string )?(\d+@([^\s]+)?) = ('([^\n\']+)?')$/gim, `05A9: $2 $3`)
+		.r(/^(long )?(\d+@([^\s]+)?) = ("([^\n\"]+)?")$/gim, `06D1: $2 $3`)
 }
 
 SP.ValidateSyntax = function(){
@@ -559,7 +639,13 @@ SP.Translate = function(_SepareWithComes = false){
 									return parseInt(hex, 16).toString()
 								})
 								.r(/^#.+/m, model =>{
-									return MODELS[model.r('#','').toUpperCase()] || '-1'
+									model = MODELS[model.r('#','').toUpperCase()]
+
+									if (!model) {
+										throw new SyntaxError(`Model undefined\n\tparameter ${Argument}\n\tat line ${(1+numLine)}\n\t\topcode ${setOp == '0000' ? 'autodefined' : setOp} ${command.toUpperCase()}`);
+									}
+
+									return model
 									//log(Argument)
 								})
 
