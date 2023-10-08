@@ -8,18 +8,19 @@
 	<link rel="stylesheet" type="text/css" href="./css/main.css">
 </head>
 <body>
-<!--
-:::d-flex wrap#pagination
-[1](# `paginar(1)`)
-[2](# `paginar(2)`)
+:::d-flex wrap between
+:::start
+<input type="text" name="search" id='search' placeholder="Buscar" class="update" oninput="inputSearch = this.value;paginaActual = 1;parserList();showPages();"><label for="search" class="bg-black-2 py-2 px-1 :pointer">🔍</label>
 :::
--->
+:::d-flex end g-2#pagination
+:::
+:::
 :::d-flex wrap#db
 :::
 
 <script src="./js/main.min.js"></script>
 <script>
-const DB = 
+const DATA_BASE = 
 `n|DYOS |1.3.0| La mejor alternativa a DYOM con soporte multi-plataforma, multi-lenguaje y con decenas de caractetisticas unicas que lo...
 m|Velocimeter       |1.0| El primer velocimetro digital en 2.5D que veras en GTA SA y personalizable para el tipo de m...
 l|Aquatic Sanchez   |1.0| Cruza rios, lagos e incluso oceanos en tu motocross como moto acuatica, al estilo papu maste...
@@ -43,50 +44,48 @@ a|Sultan con Rampa  |1.4| Inspirado en Rapido y Furioso 6. Este mod nos permitir
 3|FPS de Reservas   |1.4| Con este mod, podremos casi duplicar la taza de FPS en un segundo. Al inicial el mismo juego...
 2|Doc. Clasica      |1.1.5| La documentación original de Sanny Builder, traducida al español con nuevo contenido para tu...
 1|Entrar al Garaje  |1.7| Con este grandioso mod, podremos acceder al interior del Garaje de Doherty sin la necesidad ...`
-.split('\n')
 
+let paginaActual = 1
+let inputSearch = ''
+let pagina = ()=> paginarResultados(buscador(inputSearch, DATA_BASE), paginaActual, 12)
+let numPaginas = pagina().numPaginas
 
-Array.prototype.paginate = function(paginacion = 1,size_pag = 3){
-    paginacion--
+let showPages = ()=> {
+    let paginas = ''
+    numPaginas = pagina().numPaginas
+    if (numPaginas >= 4){
+        paginas += `[<](# 'py-3 px-2 black bg-blue no-decoration#GoToLastPage' \`inputSearch = $('#search').value;paginaActual--;if(paginaActual < 1)paginaActual = 1;parserList();\`)`
+    }
 
-    let pag = []
+    paginas += `[1](# 'py-3 px-2 black bg-blue no-decoration#GoToFirstPage' \`paginaActual = 1;parserList();\`)`
 
-    let actual_item = 0
-    let primer_item = 0
-
-        actual_item += paginacion * size_pag
-        primer_item += paginacion * size_pag
-        size_pag += paginacion * size_pag
-
-    while (true){
-        if (!this[actual_item]) break;
-
-        pag.push(this[actual_item])
-        actual_item++
-
-        if (actual_item == size_pag)    {
-            actual_item++
-            break
+    if (numPaginas >= 4){
+        paginas += `<input type="number" max=${numPaginas} min=1 placeholder="..." class="update" oninput="inputSearch = $('#search').value;paginaActual = this.value == '' ? 1 : this.value;parserList();" style="text-align: center;padding-right: 0;">`
+    }else{
+        if (numPaginas == 3){
+            paginas += `[2](# 'py-3 px-2 black bg-blue no-decoration#GoToLastPage' \`paginaActual = 2;parserList();\`)`
         }
     }
 
-    return pag
+    if (numPaginas > 1){
+        paginas += `[${numPaginas}](# 'py-3 px-2 black bg-blue no-decoration#GoToLastPage' \`paginaActual = ${numPaginas};parserList();\`)`
+    }
+
+    if (numPaginas >= 4){
+        paginas += `[>](# 'py-3 px-2 black bg-blue no-decoration#GoToLastPage' \`inputSearch = $('#search').value;paginaActual++;if(paginaActual > numPaginas)paginaActual = numPaginas;parserList();\`)`
+    }
+
+    $('#pagination').innerHTML = paginas.toMarkdown()   
 }
 
-//console.log(DB.paginate(3))
-
-
-function paginar (pagina_actual = 1, show_items = 50){
-
-    console.log('numero de paginaciones: ' + Math.round(DB.length / show_items))
-
+function parserList(){
+    let resultados = pagina().resultados
     $('#db').innerHTML = ''
-let nuevoResultado = DB.paginate(pagina_actual,show_items)
 
 let cont = 0
-nuevoResultado.forEach((e, i) => {
+resultados.forEach((e, i) => {
 e = e.split('|')
-let mod = (nuevoResultado.length - i).toString(36)
+let mod = (resultados.length - i).toString(36)
 let template = `
 :::col-12 col-md-6 col-lg-4 col-xxl-3 p-2
 <a href='mods/${e[0]}.html' class='d-flex w-100 no-decoration white-dm' style="height: 100%;">
@@ -103,23 +102,30 @@ let template = `
     
     $('#db').innerHTML += template
 })
+    diagonalFade()
 }
 
-paginar()
+parserList()
 
 function diagonalFade() {
-  let elements = $('.grid-item');
-  let index = 0;
+    let elements = $('.grid-item');
+    let index = 0;
 
-  function show() {
-    elements[index++].style.opacity = 1
-    setTimeout(show, 86)
-  }
-
-  show();
+    if('' + elements == '[object NodeList]'){
+        function show() {
+            elements[index++].style.opacity = 1
+            setTimeout(show, 86)
+        }
+        show();
+    }
+    else{
+        elements.style.opacity = 1
+    }
 }
 
 diagonalFade();
+
+showPages()
 </script>
 <style>
 .grid-item {
@@ -165,10 +171,18 @@ diagonalFade();
     &:hover {
         z-index: 1;
         transition-timing-function: cubic-bezier(0.18, 0.89, 0.32, 1.28);
-        transform: scale(1.1);
+        transform: scale(1.05);
         &> a{
             box-shadow: #36b3ff57 0px 0.5rem 2rem 0px;
         }
+    }
+    & a:focus {
+        box-shadow: #36b3ff57 0px 0.5rem 2rem 0px;
+        outline: none;
+
+        z-index: 1;
+        transition-timing-function: cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        transform: scale(1.05);
     }
     & a {
         transition: all .3s;

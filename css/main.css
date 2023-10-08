@@ -127,15 +127,16 @@ body {
 			transition: all .2s;
 			height: 2.5rem;
 			justify-content: center;
+	outline: none;
 
-			&:hover {
+			&:hover, &:focus {
 				text-decoration: none;
 				color: #fff;
 				scale: 1.01;
 				transform: translate(0px, -2px);
 			}
 
-			&:hover::before {
+			&:hover::before, &:focus::before {
 		    width: 100%;
 		    height: 2px;
 			}
@@ -305,7 +306,7 @@ a, a *{
 	text-decoration: none;
 	font-weight: 500;
 }
-a:hover {
+a:hover, a:focus {
 	text-decoration: underline
 }
 a.button, label.button {
@@ -321,7 +322,7 @@ a.button, label.button {
     cursor: pointer;
 }
 
-a.button:hover {
+a.button:hover, a.button:focus {
 	text-decoration: none
 }
 
@@ -360,19 +361,22 @@ input[disabled]{
 	color: var(--co-t) !important;
 }
 
-input[type='text'], input[type='number'], textarea {
+input[type='text'], input[type='search'], input[type='number'], textarea {
 	border: none;
 	outline: none;
 	font-size: 1em;
 	background: #161b22;
 	color: var(--co);
-	padding: 0.4em 0.6em;
-	border-bottom: #0000 solid 1px;
+  padding: 0.4em 0.6em;
+	border-bottom: #0000 solid 0px;
 	transition: border-bottom .2s;
 }
 
-input[type='text']:focus, input[type='number']:focus {
+input[type='text']:focus, input[type='search']:focus, input[type='number']:focus {
 	border-bottom: #30363d solid 1px;
+	&.update {
+		border-bottom: #00a2e8 solid 1px;
+	}
 }
 
 input[type='checkbox']{
@@ -481,7 +485,7 @@ input[type='checkbox']{
 .gray, .gray  * { color:#9e9e9e }
 .bg-gray, .bg-gray  * { background:#9e9e9e }
 
-.no-decoration, .no-decoration:hover {text-decoration: none;}
+.no-decoration, .no-decoration:hover, .no-decoration:focus {text-decoration: none;}
 
 #direcciones {
   display: block;
@@ -566,4 +570,8 @@ input[type='checkbox']{
 }
 @media only screen and (max-width:360px) {
 	.flow-text { font-size: 1.2rem }
+}
+
+.\:pointer {
+	cursor: pointer;
 }

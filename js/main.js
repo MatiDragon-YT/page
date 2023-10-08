@@ -546,6 +546,9 @@ SP.toMarkdown = function(){
 	})
 
 	// A
+	// Syntax:
+	//        [text](url "title" 'class#id' `function onclick`)
+
 	.r(/\[([^\[\]]+)\]\(([^\(\)\s]+)(\x20"[^"]+")?(\x20'[^']+')?(\x20`[^`]+`)?\)/g, function(input){
 		input = input.match(/\[([^\[\]]+)\]\(([^\(\)\s]+)(\x20"[^"]+")?(\x20'[^']+')?(\x20`[^`]+`)?\)/)
 
@@ -799,4 +802,44 @@ $("#CHANGE").onclick = function(){
 	ModeLight()
 		? IMAGE('out')
 		: IMAGE('base')
+}
+
+function buscador(palabras, base_de_datos, orden_A_Z = false){
+    palabras = palabras.split(' ')
+
+    if (typeof base_de_datos == 'string') {
+    	base_de_datos = base_de_datos.split('\n')
+    }
+
+    base_de_datos = base_de_datos.filter(elemento => {
+        return palabras.every(palabra => elemento.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(palabra.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")));
+    })
+
+
+    if (orden_A_Z == true){
+        base_de_datos = base_de_datos.sort((a, b) => {
+          if (isNaN(a) || isNaN(b)) {
+            return a.localeCompare(b);
+          } else {
+            return a - b;
+          }
+        });   
+    }
+
+    return base_de_datos
+}
+
+function paginarResultados(base_de_datos, paginaActual = 1, resultadosPorPagina = 12){
+    const indicePrimerResultado = (paginaActual - 1) * resultadosPorPagina
+    const indiceUltimoResultado = (paginaActual * resultadosPorPagina) - 1
+
+    const resultadosPaginados = base_de_datos.slice(indicePrimerResultado, indiceUltimoResultado + 1)
+
+    const numPaginas = Math.ceil(base_de_datos.length / resultadosPorPagina)
+
+    return {
+        resultados: resultadosPaginados,
+        numPaginas: numPaginas,
+        paginaActual: paginaActual
+    }   
 }
