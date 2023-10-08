@@ -283,11 +283,24 @@ SP.toUnicode = function() {
   }).join("-");
 }
 
+SP.binToDec = function() {
+	let input = this.r('0b','')
+  let sum = 0
+  for (let i = 0; i < input.length; i++) {
+    sum += +input[i] * 2 ** (input.length - 1 - i)
+  }
+  return sum
+}
+
+SP.hexToDec = function(){
+	parseInt(hex, 16).toString()
+}
+
 SP.PrePost = function(){
 	return this
-		.r(/^(int )?(\$.+) = (\d+|#.+|0x.+)$/gim, `0004: $2 $3`)									//0004: $CUSTOM_TOURNAMENT_FLAG = 0
+		.r(/^(int )?(\$.+) = (\d+|#.+|0x.+|0b.+)$/gim, `0004: $2 $3`)									//0004: $CUSTOM_TOURNAMENT_FLAG = 0
 		.r(/^(float )?(\$.+) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0005: $2 $3`)							//0005: $166 = 292.33
-		.r(/^(int )?(\d+@([^\s]+)?) = (\d+|#.+|0x.+)$/gim, `0006: $2 $4`)					//0006: 0@ = -1
+		.r(/^(int )?(\d+@([^\s]+)?) = (\d+|#.+|0x.+|0b.+)$/gim, `0006: $2 $4`)					//0006: 0@ = -1
 		.r(/^(float )?(\d+@([^\s]+)?) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0007: $2 $4`)		//0007: 7@ = 0.0
 		.r(/^(int )?(\$.+) \+= (\d+|#.+|0x.+)$/gim, `0008: $2 $3`)								//0008: $89 += 1
 		.r(/^(float )?(\$.+) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `0009: $2 $3`)						//0009: $TEMPVAR_FLOAT_1 += 1.741
@@ -376,6 +389,8 @@ SP.PrePost = function(){
 
 		.r(/^(string )?(\d+@([^\s]+)?) = ('([^\n\']+)?')$/gim, `05A9: $2 $3`)
 		.r(/^(long )?(\d+@([^\s]+)?) = ("([^\n\"]+)?")$/gim, `06D1: $2 $3`)
+		.r(/^(string )?(\d+@([^\s]+)?) == ('([^\n\']+)?')$/gim, `05A9: $2 $3`)
+		.r(/^(long )?(\d+@([^\s]+)?) == ("([^\n\"]+)?")$/gim, `06D1: $2 $3`)
 }
 
 SP.ValidateSyntax = function(){
@@ -549,7 +564,7 @@ SP.Translate = function(_SepareWithComes = false){
 					try {
 						typeData = SCM_DB[command].params[--numArgument]
 					}catch{
-						throw new SyntaxError(`unknown parameter\n\tparameter ${Argument}\n\tat line ${(1+numLine)}\n\t\topcode ${setOp == '0000' ? 'autodefined' : setOp} ${command.toUpperCase()}`);
+						throw new SyntaxError(`unknown parameter\n\tat line ${(1+numLine)} the value ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp}: ${Line}`);
 					}
 
 					let foundType = false
@@ -635,8 +650,11 @@ SP.Translate = function(_SepareWithComes = false){
 
 						case 'int':
 							Argument = Argument
+								.r(/^(-)?0b.+/mi, hex => {
+									return hex.binToDec()
+								})
 								.r(/^(-)?0x.+/mi, hex => {
-									return parseInt(hex, 16).toString()
+									return hex.hexToDec()
 								})
 								.r(/^#.+/m, model =>{
 									model = MODELS[model.r('#','').toUpperCase()]
