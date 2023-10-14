@@ -10,7 +10,7 @@
 <body>
 :::d-flex wrap between
 :::start
-<input type="text" name="search" id='search' placeholder="Buscar" class="update" oninput="inputSearch = this.value;paginaActual = 1;parserList();showPages();"><label for="search" style="font-size: 1em;
+<input type="text" name="search" id='search' placeholder="Buscar" class="update" oninput="enfocar(1)"><label for="search" style="font-size: 1em;
     display: inline;
     right: 1.7rem;
     position: relative;" class=":pointer">🔍</label>
@@ -53,29 +53,67 @@ let inputSearch = ''
 let pagina = ()=> paginarResultados(buscador(inputSearch, DATA_BASE), paginaActual, 12)
 let numPaginas = pagina().numPaginas
 
+let enfocar = (x)=> {
+    paginaActual = x || paginaActual
+    if (paginaActual < 1)          paginaActual = 1;
+    if (paginaActual > numPaginas) paginaActual = numPaginas;
+
+    parserList()
+
+    if ($('.active')) $('.active').classList.remove('active');
+
+    inputSearch = $('#search').value;
+
+    switch (paginaActual){
+        case 1:
+            $('#GoToFirstPage').classList.add('active')
+            if ($('#GoToNumberPage')){
+                $('#GoToNumberPage').value = ''
+                $('#GoToNumberPage').setAttribute('value') = 1
+            }
+        break;
+        case numPaginas:
+            $('#GoToLastPage').classList.add('active')
+            if ($('#GoToNumberPage')){
+                $('#GoToNumberPage').value = ''
+                $('#GoToNumberPage').setAttribute('value') = numPaginas
+            }
+        break;
+        default:
+            if (numPaginas == 3){
+                $('#GoToMidPage').classList.add('active')
+            }else{
+                $('#GoToNumberPage').classList.add('active')
+                $('#GoToNumberPage').value = paginaActual
+                $('#GoToNumberPage').setAttribute('value') = paginaActual
+            }
+        break;
+    }
+}
+
 let showPages = ()=> {
     let paginas = ''
     numPaginas = pagina().numPaginas
     if (numPaginas >= 4){
-        paginas += `[<](# 'py-3 px-2 black bg-blue no-decoration#GoToLastPage' \`inputSearch = $('#search').value;paginaActual--;if(paginaActual < 1)paginaActual = 1;parserList();\`)`
+        paginas += `[<](# 'py-3 px-2 black bg-blue no-decoration#GoToPreviusPage' \`paginaActual--;enfocar()\`)`
     }
 
-    paginas += `[1](# 'py-3 px-2 black bg-blue no-decoration#GoToFirstPage' \`paginaActual = 1;parserList();\`)`
+    paginas += `[1](# 'py-3 px-2 black bg-blue no-decoration active#GoToFirstPage' \`enfocar(1)\`)`
 
     if (numPaginas >= 4){
-        paginas += `<input type="number" max=${numPaginas} min=1 placeholder="..." class="update" oninput="inputSearch = $('#search').value;paginaActual = this.value == '' ? 1 : this.value;parserList();" style="text-align: center;padding-right: 0;">`
+        paginas += `<input type="number" max=${numPaginas-1} min=2 placeholder="..." id="GoToNumberPage" class="update" oninput="paginaActual = this.value == '' ? 2 : this.value;enfocar()" style="text-align: center;padding-right: 0;">`
     }else{
         if (numPaginas == 3){
-            paginas += `[2](# 'py-3 px-2 black bg-blue no-decoration#GoToLastPage' \`paginaActual = 2;parserList();\`)`
+            paginas += `[2](# 'py-3 px-2 black bg-blue no-decoration#GoToMidPage' \`enfocar(2)\`)`
         }
     }
 
     if (numPaginas > 1){
-        paginas += `[${numPaginas}](# 'py-3 px-2 black bg-blue no-decoration#GoToLastPage' \`paginaActual = ${numPaginas};parserList();\`)`
+        paginas += `[${numPaginas}](# 'py-3 px-2 black bg-blue no-decoration#GoToLastPage' \`enfocar(${numPaginas})\`)`
     }
 
     if (numPaginas >= 4){
-        paginas += `[>](# 'py-3 px-2 black bg-blue no-decoration#GoToLastPage' \`inputSearch = $('#search').value;paginaActual++;if(paginaActual > numPaginas)paginaActual = numPaginas;parserList();\`)`
+        paginas += `[>](# 'py-3 px-2 black bg-blue no-decoration#GoToNextPage' \`paginaActual++;enfocar()\`)`
     }
 
     $('#pagination').innerHTML = paginas.toMarkdown()   
@@ -176,7 +214,9 @@ showPages()
         transition-timing-function: cubic-bezier(0.18, 0.89, 0.32, 1.28);
         transform: scale(1.05);
         &> a{
-            box-shadow: #36b3ff57 0px 0.5rem 2rem 0px;
+            animation-name: lightPulsar;
+            animation-duration: 2s;
+            animation-iteration-count: infinite;
         }
     }
     & a:focus {
@@ -221,8 +261,31 @@ showPages()
         opacity: 1;
     }
 }
+@keyframes lightPulsar {
+    0% {
+        box-shadow: #36b3ff57 0px 0.5rem 1.5rem 0px;
+    }
+    50% {
+        box-shadow: #36b3ff57 0px 0.5rem 2rem 0px;
+    }
+    100% {
+        box-shadow: #36b3ff57 0px 0.5rem 1.5rem 0px;
+    }
+}
 #db {
     animation-name: showImg;
     animation-duration: 0.5s;
+}
+
+a.active {
+    border: solid #2196f3 .2rem;
+    background: none;
+    color: #2196f3;
+    padding: 0.4rem 0.8rem !important;
+    font-weight: bold;
+}
+input[type=number].active{
+    border: solid #2196f3 .2rem;
+    padding: 0.2rem 0.2rem !important;
 }
 </style>
