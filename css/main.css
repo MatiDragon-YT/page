@@ -376,6 +376,7 @@ input[type='text']:focus, input[type='search']:focus, input[type='number']:focus
 	border-bottom: #30363d solid 1px;
 	&.update {
 		border-bottom: #00a2e8 solid 1px;
+		box-shadow: #36b3ff57 0px 3px 5px -1px;
 	}
 }
 
@@ -413,6 +414,7 @@ input[type='checkbox']{
 	&.end {justify-content: flex-end}
 	&.between {justify-content: space-between}
 	&.button {align-items: flex-end}
+	&.center {justify-content: center}
 }
 
 .col-1, .col-2, .col-3, .col-4, .col-5, .col-6, .col-7, .col-8, .col-9, .col-10, .col-11, .col-12 {

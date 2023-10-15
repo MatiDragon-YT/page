@@ -9,16 +9,19 @@
 </head>
 <body>
 :::d-flex wrap between
-:::start
-<input type="text" name="search" id='search' placeholder="Buscar" class="update" oninput="enfocar(1)"><label for="search" style="font-size: 1em;
+:::start d-flex center
+<input type="text" name="search" id='search' placeholder="Moto, armas, dyos..." autocomplete="off" class="update" oninput="enfocar(1)"><label for="search" style="font-size: 1em;
     display: inline;
     right: 1.7rem;
-    position: relative;" class=":pointer">🔍</label>
+    position: relative;
+    align-self: center;" class=":pointer" title="Buscar">🔍</label>
 :::
-:::d-flex end g-2#pagination
+:::d-flex end g-2 pagination
 :::
 :::
 :::d-flex wrap#db
+:::
+:::d-flex center g-2 pagination
 :::
 
 <script src="./js/main.min.js"></script>
@@ -49,8 +52,9 @@ a|Sultan con Rampa  |1.4| Inspirado en Rapido y Furioso 6. Este mod nos permitir
 1|Entrar al Garaje  |1.7| Con este grandioso mod, podremos acceder al interior del Garaje de Doherty sin la necesidad ...`
 
 let paginaActual = 1
-let inputSearch = ''
-let pagina = ()=> paginarResultados(buscador(inputSearch, DATA_BASE), paginaActual, 12)
+let inputSearch = () => $('#search').value.trim().r(/,/g,' ').r(/  /g, '');
+let invert = 0
+let pagina = () => paginarResultados(buscador(inputSearch(), DATA_BASE, invert), paginaActual, 12)
 let numPaginas = pagina().numPaginas
 
 let enfocar = (x)=> {
@@ -60,63 +64,63 @@ let enfocar = (x)=> {
 
     parserList()
 
-    if ($('.active')) $('.active').classList.remove('active');
-
-    inputSearch = $('#search').value;
+    $('.active',e => e.classList.remove('active'))
 
     switch (paginaActual){
         case 1:
-            $('#GoToFirstPage').classList.add('active')
-            if ($('#GoToNumberPage')){
-                $('#GoToNumberPage').value = ''
-                $('#GoToNumberPage').setAttribute('value') = 1
-            }
+            $('.GoToFirstPage', e => e.classList.add('active'))
+            $('.GoToNumberPage', e => {
+                e.value = ''
+                e.setAttribute('value') = 1
+            })
         break;
         case numPaginas:
-            $('#GoToLastPage').classList.add('active')
-            if ($('#GoToNumberPage')){
-                $('#GoToNumberPage').value = ''
-                $('#GoToNumberPage').setAttribute('value') = numPaginas
-            }
+            $('.GoToLastPage', e => e.classList.add('active'))
+            $('.GoToNumberPage', e => {
+                e.value = ''
+                e.setAttribute('value') = numPaginas
+            })
         break;
         default:
             if (numPaginas == 3){
-                $('#GoToMidPage').classList.add('active')
+                $('.GoToMidPage', e => e.classList.add('active'))
             }else{
-                $('#GoToNumberPage').classList.add('active')
-                $('#GoToNumberPage').value = paginaActual
-                $('#GoToNumberPage').setAttribute('value') = paginaActual
+                $('.GoToNumberPage', e => {
+                    e.classList.add('active')
+                    e.value = paginaActual
+                    e.setAttribute('value') = paginaActual
+                })
             }
         break;
     }
 }
 
 let showPages = ()=> {
-    let paginas = ''
+    let paginas = `[⇅](# "Invertir resultados" 'py-3 px-2 black bg-blue no-decoration Inverter' \`invert=invert==1?0:1;enfocar()\`)`
     numPaginas = pagina().numPaginas
     if (numPaginas >= 4){
-        paginas += `[<](# 'py-3 px-2 black bg-blue no-decoration#GoToPreviusPage' \`paginaActual--;enfocar()\`)`
+        paginas += `[<](# 'py-3 px-2 black bg-blue no-decoration GoToPreviusPage' \`paginaActual--;enfocar()\`)`
     }
 
-    paginas += `[1](# 'py-3 px-2 black bg-blue no-decoration active#GoToFirstPage' \`enfocar(1)\`)`
+    paginas += `[1](# 'py-3 px-2 black bg-blue no-decoration active GoToFirstPage' \`enfocar(1)\`)`
 
     if (numPaginas >= 4){
-        paginas += `<input type="number" max=${numPaginas-1} min=2 placeholder="..." id="GoToNumberPage" class="update" oninput="paginaActual = this.value == '' ? 2 : this.value;enfocar()" style="text-align: center;padding-right: 0;">`
+        paginas += `<input type="number" max=${numPaginas-1} min=2 placeholder="..." class="update GoToNumberPage" oninput="paginaActual = this.value == '' ? 2 : this.value;enfocar()" style="text-align: center;padding-right: 0;">`
     }else{
         if (numPaginas == 3){
-            paginas += `[2](# 'py-3 px-2 black bg-blue no-decoration#GoToMidPage' \`enfocar(2)\`)`
+            paginas += `[2](# 'py-3 px-2 black bg-blue no-decoration GoToMidPage' \`enfocar(2)\`)`
         }
     }
 
     if (numPaginas > 1){
-        paginas += `[${numPaginas}](# 'py-3 px-2 black bg-blue no-decoration#GoToLastPage' \`enfocar(${numPaginas})\`)`
+        paginas += `[${numPaginas}](# 'py-3 px-2 black bg-blue no-decoration GoToLastPage' \`enfocar(${numPaginas})\`)`
     }
 
     if (numPaginas >= 4){
-        paginas += `[>](# 'py-3 px-2 black bg-blue no-decoration#GoToNextPage' \`paginaActual++;enfocar()\`)`
+        paginas += `[>](# 'py-3 px-2 black bg-blue no-decoration GoToNextPage' \`paginaActual++;enfocar()\`)`
     }
 
-    $('#pagination').innerHTML = paginas.toMarkdown()   
+    $('.pagination', e => e.innerHTML = paginas.toMarkdown())
 }
 
 function parserList(){
@@ -132,7 +136,7 @@ let template = `
 <a href='mods/${e[0]}.html' class='d-flex w-100 no-decoration white-dm' style="height: 100%;">
 :::p-2 bg-black-2-dm
 <div class='d-flex end button grid-item' id='#${e[2]}' style='opacity: 0;'>\n
-![img](mods/docs/${e[0]}/x1.webp)
+![IMG of ${e[1].trim()}](mods/docs/${e[0]}/x1.webp)
 </div>
 #### ${e[1].trim()}
 **${e[3].trim()}**
@@ -150,17 +154,20 @@ parserList()
 
 function diagonalFade() {
     let elements = $('.grid-item');
-    let index = 0;
-
-    if('' + elements == '[object NodeList]'){
-        function show() {
-            elements[index++].style.opacity = 1
-            setTimeout(show, 86)
+    if (elements){
+        let index = 0;
+        if('' + elements == '[object NodeList]'){
+            function show() {
+                elements[index].style.opacity = 1
+                index++
+                if (!elements[index]) return;
+                setTimeout(show, 86)
+            }
+            show();
         }
-        show();
-    }
-    else{
-        elements.style.opacity = 1
+        else{
+            elements.style.opacity = 1
+        }
     }
 }
 

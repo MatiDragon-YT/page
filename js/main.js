@@ -13,15 +13,34 @@ const EP = Element.prototype
  * @return {Element}
 */
 const $ = (element, _parent = D) => {
+	const callback = _parent
+	if (typeof _parent == 'function'){
+		_parent = D
+	}
 	const xElements = _parent.querySelectorAll(element)
 	const length = xElements.length
 
-	return element.charAt(0) === '#' && !/\s/.test(element) || length === 1
+	element = element.charAt(0) === '#' && !/\s/.test(element) || length === 1
 		? _parent.querySelector(element)
 		: length === 0
 			? undefined
 			: xElements
+
+	if (typeof callback == 'function'){
+		if(element){
+			if('' + element == '[object NodeList]'){ 
+				element.forEach(function(e){
+					callback(e)
+				})
+			}else{  
+				callback(element)
+			}
+		}
+	}else{
+		return element
+	}
 }
+
 /** Smart selector for elements of the DOM
  * @param {DOMString}
  * @return {Element}
@@ -319,22 +338,6 @@ SP.toCapitalCase = function(){
 	})
 }
 */
-
-/** Apply a function to all elements of the DOM
- * @param {NodeList || [...NodeList]} 
- * @param {function}
-*/
-function apply(element, callback){
-	if(element){
-		if('' + element == '[object NodeList]'){ 
-			element.forEach(function(e){
-				callback(e)
-			})
-		}else{  
-			callback(element)
-		}
-	}
-}
 
 let aTables = [] // contenedor de tablas
 
@@ -687,8 +690,8 @@ let htmlGenerated = $('#inputText').value.toMarkdown()
 
 $('.markdown .cont').innerHTML = htmlGenerated
 
-apply($('thead'), function(element){
-	element.innerHTML = element.innerHTML
+$('thead', e => {
+	e.innerHTML = e.innerHTML
 	.r(/<td(\/)?>/g, '<th$1>')
 })
 
@@ -789,9 +792,9 @@ let hightlight = {
 	},
 }
 
-apply($('.sb3'), hightlight.sb3)
+$('.sb3',e=>hightlight.sb3(e))
 
-apply($('.ini'), hightlight.ini)
+$('.ini',e=>hightlight.ini(e))
 
 $("#CHANGE").onclick = function(){
 	const $THIS_ELEMENT = this
