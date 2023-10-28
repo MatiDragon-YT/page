@@ -544,7 +544,7 @@ SP.toMarkdown = function(){
 			classes = input[5] ? ' class="' + input[5]          + comilla : "",
 			id      = input[6] ? ' id="'    + input[6]          + comilla : ""
 
-		return '<img'+ id + src + title + classes +'>'
+		return '<img'+ id + src + title + classes +' loading="lazy">'
 
 	})
 
@@ -665,7 +665,7 @@ SP.toMarkdown = function(){
 
 $('body').innerHTML = `
 <div id="navbar">
-	<h1><a href="${ROOT}index.html">MatiDragon</a><button id="CHANGE"><img src="${ROOT}files/img/dm-baseline.png" alt="icono de modo oscuro" style="user-select:none"></button></h1>
+	<h1><a href="${ROOT}index.html">MatiDragon</a><button id="CHANGE"><img src="${ROOT}files/img/dm-baseline.png" alt="🌓" style="user-select:none"></button></h1>
 </div>
 <div id='nav'>
 	<section>
