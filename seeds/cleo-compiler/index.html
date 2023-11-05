@@ -172,12 +172,13 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
     ">nop // operations aritmetics suports: =, +=, -=, *=, /=, >, <, >=, <=
 0@ += 0      // int
 1@ -= 0x1C   // int
-2@ = #jester // int
-3@ *= 2f     // float
-4@ /= 5.0    // float
-5@ > .75     // float
-6@ = 'string'
-7@ = 'longstring'
+2@ -= 0b1111 // int
+3@ = #jester // int
+4@ *= 2f     // float
+5@ /= 5.0    // float
+6@ > .75     // float
+7@ = 'string'
+8@ = "longstring"
 :main
     wait 0@
 goto @main</textarea>
@@ -287,6 +288,14 @@ $node.onkeyup = (event) =>{
 	}
 }
 
+function hasScrollBar(e) {
+    return {
+        vertical: e.scrollHeight > e.clientHeight,
+        horizontal: e.scrollWidth > e.clientWidth
+    };
+}
+
+
 function hl(){
 	getLine()
 
@@ -340,7 +349,7 @@ function hl(){
 	//Variables globales
 	.r(/((\x{00}|[ifsv])(\$[\d\w]+))/gm, enter.variables)
 	//Numeros
-	.r(/\b(\d+(x|\.)\w+)\b/gmi, enter.numbers)
+	.r(/\b(\d+(b|x|\.)\w+)\b/gmi, enter.numbers)
 	.r(/\b(true|false)\b/gmi, enter.numbers)
 	.r(/(?!\#)(\W)(?!\$)(\d+)(?!\:|\@)([ifsv]?)\b/gmi, '$1<span class=numbers>$2$3<\/span>')
 	//Modelos
@@ -357,14 +366,15 @@ function hl(){
 	// Operadores
 	.r(/(^|\s)(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=)(\s|$)/gmi,"$1<span class=labels>$2<\/span>$3")
 
-	$('#PREVIEW').scrollTop = $('#HEX').scrollTop
-	$('#PREVIEW').scrollLeft = $('#HEX').scrollLeft
+	if (hasScrollBar($('#PREVIEW')).vertical) $('#PREVIEW').scrollTop = $('#HEX').scrollTop;
+	if (hasScrollBar($('#PREVIEW')).horizontal) $('#PREVIEW').scrollLeft = $('#HEX').scrollLeft;
 }
 
-$('#HEX').addEventListener("scroll", function(){
-    $('#PREVIEW').scrollTop = $('#HEX').scrollTop
-	$('#PREVIEW').scrollLeft = $('#HEX').scrollLeft
-})
+$('#HEX').onscroll = () =>{
+    
+	if (hasScrollBar($('#PREVIEW')).vertical) $('#PREVIEW').scrollTop = $('#HEX').scrollTop;
+	if (hasScrollBar($('#PREVIEW')).horizontal) $('#PREVIEW').scrollLeft = $('#HEX').scrollLeft;
+}
 </script>
 
 <style id="CSS"></style>

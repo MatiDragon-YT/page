@@ -293,7 +293,7 @@ SP.binToDec = function() {
 }
 
 SP.hexToDec = function(){
-	parseInt(hex, 16).toString()
+	return parseInt(this, 16).toString()
 }
 
 SP.PrePost = function(){
@@ -302,27 +302,27 @@ SP.PrePost = function(){
 		.r(/^(float )?(\$.+) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0005: $2 $3`)							//0005: $166 = 292.33
 		.r(/^(int )?(\d+@([^\s]+)?) = (\d+|#.+|0x.+|0b.+)$/gim, `0006: $2 $4`)					//0006: 0@ = -1
 		.r(/^(float )?(\d+@([^\s]+)?) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0007: $2 $4`)		//0007: 7@ = 0.0
-		.r(/^(int )?(\$.+) \+= (\d+|#.+|0x.+)$/gim, `0008: $2 $3`)								//0008: $89 += 1
+		.r(/^(int )?(\$.+) \+= (\d+|#.+|0x.+|0b.+)$/gim, `0008: $2 $3`)								//0008: $89 += 1
 		.r(/^(float )?(\$.+) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `0009: $2 $3`)						//0009: $TEMPVAR_FLOAT_1 += 1.741
-		.r(/^(int )?(\d+@([^\s]+)?) \+= (\d+|#.+|0x.+)$/gim, `000A: $2 $4`)				//000A: 3@ += 3000
+		.r(/^(int )?(\d+@([^\s]+)?) \+= (\d+|#.+|0x.+|0b.+)$/gim, `000A: $2 $4`)				//000A: 3@ += 3000
 		.r(/^(float )?(\d+@([^\s]+)?) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `000B: $2 $4`)	//000B: 6@ += 0.1
-		.r(/^(int )?(\$.+) \-= (\d+|#.+|0x.+)$/gim, `000C: $2 $3`)								//000C: $1020 -= 1
+		.r(/^(int )?(\$.+) \-= (\d+|#.+|0x.+|0b.+)$/gim, `000C: $2 $3`)								//000C: $1020 -= 1
 		.r(/^(float )?(\$.+) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000D: $2 $3`)						//000D: $TEMPVAR_Z_COORD -= 0.5
-		.r(/^(int )?(\d+@([^\s]+)?) \-= (\d+|#.+|0x.+)$/gim, `000E: $2 $4`)				//000E: 0@ -= 1
+		.r(/^(int )?(\d+@([^\s]+)?) \-= (\d+|#.+|0x.+|0b.+)$/gim, `000E: $2 $4`)				//000E: 0@ -= 1
 		.r(/^(float )?(\d+@([^\s]+)?) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000F: $2 $4`)	//000F: 692@ -= 8.0
-		.r(/^(int )?(\$.+) \*= (\d+|#.+|0x.+)$/gim, `0010: $2 $3`)								//0010: $GS_GANG_CASH *= 100
+		.r(/^(int )?(\$.+) \*= (\d+|#.+|0x.+|0b.+)$/gim, `0010: $2 $3`)								//0010: $GS_GANG_CASH *= 100
 		.r(/^(float )?(\$.+) \*= (\d+\.\d+|\.\d+|\d+f)$/gim, `0011: $2 $3`)						//0011: $HJ_TEMP_FLOAT *= 100.0
-		.r(/^(int )?(\d+@([^\s]+)?) \*= (\d+|#.+|0x.+)$/gim, `0012: $2 $4`)				//0012: 22@ *= -1
+		.r(/^(int )?(\d+@([^\s]+)?) \*= (\d+|#.+|0x.+|0b.+)$/gim, `0012: $2 $4`)				//0012: 22@ *= -1
 		.r(/^(float )?(\d+@([^\s]+)?) \*= (\d+\.\d+|\.\d+|\d+f)$/gim, `0013: $2 $4`)	//0013: 17@ *= 9.8
-		.r(/^(int )?(\$.+) \/= (\d+|#.+|0x.+)$/gim, `0014: $2 $3`)								//0014: $HJ_TWOWHEELS_TIME /= 1000
+		.r(/^(int )?(\$.+) \/= (\d+|#.+|0x.+|0b.+)$/gim, `0014: $2 $3`)								//0014: $HJ_TWOWHEELS_TIME /= 1000
 		.r(/^(float )?(\$.+) \/= (\d+\.\d+|\.\d+|\d+f)$/gim, `0015: $2 $3`)						//0015: $EXPORT_PRICE_HEALTH_MULTIPLIER /= 1000.0
-		.r(/^(int )?(\d+@([^\s]+)?) \/= (\d+|#.+|0x.+)$/gim, `0016: $2 $4`)				//0016: 4@ /= 2
+		.r(/^(int )?(\d+@([^\s]+)?) \/= (\d+|#.+|0x.+|0b.+)$/gim, `0016: $2 $4`)				//0016: 4@ /= 2
 		.r(/^(float )?(\d+@([^\s]+)?) \/= (\d+\.\d+|\.\d+|\d+f)$/gim, `0017: $2 $4`)	//0017: 14@ /= 1000.0
 
-		.r(/^(int )?(\$.+) > (\d+|#.+|0x.+)$/gim, `0018: $2 $4`)											//0018:   $CATALINA_TOTAL_PASSED_MISSIONS > 2
-		.r(/^(int )?(\d+@([^\s]+)?) > (\d+|#.+|0x.+)$/gim, `0019: $2 $4`)					//0019:   0@ > 0
-		.r(/^(int )?(\d+|#.+|0x.+) > (\$.+)$/gim, `001A: $2 $4`)									//001A:   10 > $SYNDICATE_TOTAL_PASSED_MISSIONS
-		.r(/^(int )?(\d+|#.+|0x.+) > (\d+@([^\s]+)?)$/gim, `001B: $2 $4`)					//001B:   3 > 20@
+		.r(/^(int )?(\$.+) > (\d+|#.+|0x.+|0b.+)$/gim, `0018: $2 $4`)											//0018:   $CATALINA_TOTAL_PASSED_MISSIONS > 2
+		.r(/^(int )?(\d+@([^\s]+)?) > (\d+|#.+|0x.+|0b.+)$/gim, `0019: $2 $4`)					//0019:   0@ > 0
+		.r(/^(int )?(\d+|#.+|0x.+|0b.+) > (\$.+)$/gim, `001A: $2 $4`)									//001A:   10 > $SYNDICATE_TOTAL_PASSED_MISSIONS
+		.r(/^(int )?(\d+|#.+|0x.+|0b.+) > (\d+@([^\s]+)?)$/gim, `001B: $2 $4`)					//001B:   3 > 20@
 		.r(/^(int )?(\$.+) > (\$.+)$/gim, `001C: $2 $4`)															//001C:   $CURRENT_MONTH_DAY > $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
 		.r(/^(int )?(\d+@([^\s]+)?) > (\d+@([^\s]+)?)$/gim, `001D: $2 $4`)						//001D:   27@ > 33@  // (int)
 		.r(/^(int )?(\$.+) > (\d+@([^\s]+)?)$/gim, `001E: $2 $4`)											//001E:   $CURRENT_TIME_IN_MS2 > 3@ // (int)
@@ -336,10 +336,10 @@ SP.PrePost = function(){
 		.r(/^(float )?(\$.+) > (\d+@([^\s]+)?)$/gim, `0026: $2 $4`)										//0026:   $TEMPVAR_FLOAT_1 > 513@(227@,10f)  // (float)
 		.r(/^(float )?(\d+@([^\s]+)?) > (\$.+)$/gim, `0027: $2 $4`)										//0027:   513@(227@,10f) > $TEMPVAR_FLOAT_2 // (float)
 
-		.r(/^(int )?(\$.+) < (\d+|#.+|0x.+)$/gim, `8018: $2 $4`)									//8018:   $CATALINA_TOTAL_PASSED_MISSIONS < 2
-		.r(/^(int )?(\d+@([^\s]+)?) < (\d+|#.+|0x.+)$/gim, `8019: $2 $4`)					//8019:   0@ < 0
-		.r(/^(int )?(\d+|#.+|0x.+) < (\$.+)$/gim, `801A: $2 $4`)									//801A:   10 < $SYNDICATE_TOTAL_PASSED_MISSIONS
-		.r(/^(int )?(\d+|#.+|0x.+) < (\d+@([^\s]+)?)$/gim, `801B: $2 $4`)					//801B:   3 < 20@
+		.r(/^(int )?(\$.+) < (\d+|#.+|0x.+|0b.+)$/gim, `8018: $2 $4`)									//8018:   $CATALINA_TOTAL_PASSED_MISSIONS < 2
+		.r(/^(int )?(\d+@([^\s]+)?) < (\d+|#.+|0x.+|0b.+)$/gim, `8019: $2 $4`)					//8019:   0@ < 0
+		.r(/^(int )?(\d+|#.+|0x.+|0b.+) < (\$.+)$/gim, `801A: $2 $4`)									//801A:   10 < $SYNDICATE_TOTAL_PASSED_MISSIONS
+		.r(/^(int )?(\d+|#.+|0x.+|0b.+) < (\d+@([^\s]+)?)$/gim, `801B: $2 $4`)					//801B:   3 < 20@
 		.r(/^(int )?(\$.+) < (\$.+)$/gim, `801C: $2 $4`)															//801C:   $CURRENT_MONTH_DAY < $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
 		.r(/^(int )?(\d+@([^\s]+)?) < (\d+@([^\s]+)?)$/gim, `801D: $2 $4`)						//801D:   27@ < 33@  // (int)
 		.r(/^(int )?(\$.+) < (\d+@([^\s]+)?)$/gim, `801E: $2 $4`)											//801E:   $CURRENT_TIME_IN_MS2 < 3@ // (int)
@@ -353,10 +353,10 @@ SP.PrePost = function(){
 		.r(/^(float )?(\$.+) < (\d+@([^\s]+)?)$/gim, `8026: $2 $4`)										//8026:   $TEMPVAR_FLOAT_1 < 513@(227@,10f)  // (float)
 		.r(/^(float )?(\d+@([^\s]+)?) < (\$.+)$/gim, `8027: $2 $4`)										//8027:   513@(227@,10f) < $TEMPVAR_FLOAT_2 // (float)
 
-		.r(/^(int )?(\$.+) >= (\d+|#.+|0x.+)$/gim, `0028: $2 $4`)									//0028:   $CATALINA_TOTAL_PASSED_MISSIONS >= 2
-		.r(/^(int )?(\d+@([^\s]+)?) >= (\d+|#.+|0x.+)$/gim, `0029: $2 $4`)				//0029:   0@ >= 0
-		.r(/^(int )?(\d+|#.+|0x.+) >= (\$.+)$/gim, `002A: $2 $4`)									//002A:   10 >= $SYNDICATE_TOTAL_PASSED_MISSIONS
-		.r(/^(int )?(\d+|#.+|0x.+) >= (\d+@([^\s]+)?)$/gim, `002B: $2 $4`)				//002B:   3 >= 20@
+		.r(/^(int )?(\$.+) >= (\d+|#.+|0x.+|0b.+)$/gim, `0028: $2 $4`)									//0028:   $CATALINA_TOTAL_PASSED_MISSIONS >= 2
+		.r(/^(int )?(\d+@([^\s]+)?) >= (\d+|#.+|0x.+|0b.+)$/gim, `0029: $2 $4`)				//0029:   0@ >= 0
+		.r(/^(int )?(\d+|#.+|0x.+|0b.+) >= (\$.+)$/gim, `002A: $2 $4`)									//002A:   10 >= $SYNDICATE_TOTAL_PASSED_MISSIONS
+		.r(/^(int )?(\d+|#.+|0x.+|0b.+) >= (\d+@([^\s]+)?)$/gim, `002B: $2 $4`)				//002B:   3 >= 20@
 		.r(/^(int )?(\$.+) >= (\$.+)$/gim, `002C: $2 $4`)															//002C:   $CURRENT_MONTH_DAY >= $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
 		.r(/^(int )?(\d+@([^\s]+)?) >= (\d+@([^\s]+)?)$/gim, `002D: $2 $4`)						//002D:   27@ >= 33@  // (int)
 		.r(/^(int )?(\$.+) >= (\d+@([^\s]+)?)$/gim, `002E: $2 $4`)										//002E:   $CURRENT_TIME_IN_MS2 >= 3@ // (int)
@@ -370,10 +370,10 @@ SP.PrePost = function(){
 		.r(/^(float )?(\$.+) >= (\d+@([^\s]+)?)$/gim, `0036: $2 $4`)									//0036:   $TEMPVAR_FLOAT_1 >= 513@(227@,10f)  // (float)
 		.r(/^(float )?(\d+@([^\s]+)?) >= (\$.+)$/gim, `0037: $2 $4`)									//0037:   513@(227@,10f) >= $TEMPVAR_FLOAT_2 // (float)
 
-		.r(/^(int )?(\$.+) <= (\d+|#.+|0x.+)$/gim, `8028: $2 $4`)									//8028:   $CATALINA_TOTAL_PASSED_MISSIONS <= 2
-		.r(/^(int )?(\d+@([^\s]+)?) <= (\d+|#.+|0x.+)$/gim, `8029: $2 $4`)				//8029:   0@ <= 0
-		.r(/^(int )?(\d+|#.+|0x.+) <= (\$.+)$/gim, `802A: $2 $4`)									//802A:   10 <= $SYNDICATE_TOTAL_PASSED_MISSIONS
-		.r(/^(int )?(\d+|#.+|0x.+) <= (\d+@([^\s]+)?)$/gim, `802B: $2 $4`)				//802B:   3 <= 20@
+		.r(/^(int )?(\$.+) <= (\d+|#.+|0x.+|0b.+)$/gim, `8028: $2 $4`)									//8028:   $CATALINA_TOTAL_PASSED_MISSIONS <= 2
+		.r(/^(int )?(\d+@([^\s]+)?) <= (\d+|#.+|0x.+|0b.+)$/gim, `8029: $2 $4`)				//8029:   0@ <= 0
+		.r(/^(int )?(\d+|#.+|0x.+|0b.+) <= (\$.+)$/gim, `802A: $2 $4`)									//802A:   10 <= $SYNDICATE_TOTAL_PASSED_MISSIONS
+		.r(/^(int )?(\d+|#.+|0x.+|0b.+) <= (\d+@([^\s]+)?)$/gim, `802B: $2 $4`)				//802B:   3 <= 20@
 		.r(/^(int )?(\$.+) <= (\$.+)$/gim, `802C: $2 $4`)															//802C:   $CURRENT_MONTH_DAY <= $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
 		.r(/^(int )?(\d+@([^\s]+)?) <= (\d+@([^\s]+)?)$/gim, `802D: $2 $4`)						//802D:   27@ <= 33@  // (int)
 		.r(/^(int )?(\$.+) <= (\d+@([^\s]+)?)$/gim, `802E: $2 $4`)										//802E:   $CURRENT_TIME_IN_MS2 <= 3@ // (int)
@@ -649,12 +649,14 @@ SP.Translate = function(_SepareWithComes = false){
 						break;
 
 						case 'int':
+							let isNumberNegative = /-/.test(Argument)
+
 							Argument = Argument
-								.r(/^(-)?0b.+/mi, hex => {
-									return hex.binToDec()
+								.r(/^(-)?0b.+/mi, bin => {
+									return bin.r(/(-)?0b/,'').binToDec()
 								})
 								.r(/^(-)?0x.+/mi, hex => {
-									return hex.hexToDec()
+									return hex.r(/(-)?0b/,'').hexToDec()
 								})
 								.r(/^#.+/m, model =>{
 									model = MODELS[model.r('#','').toUpperCase()]
@@ -667,6 +669,7 @@ SP.Translate = function(_SepareWithComes = false){
 									//log(Argument)
 								})
 
+							if (isNumberNegative && Argument > 0) Argument *= -1 
 							if (Argument > 0x7FFFFFFF) Argument = 0x7FFFFFFF;
 
 							let byte1   = 0x7F       // 127
@@ -1007,15 +1010,19 @@ SP.Translate = function(_SepareWithComes = false){
 	return codeOfFinalDepurated
 }
 // 0001<@MAIN>0001<@MAIN>0001<@MAIN>
-/*log(`nop
-start_new_script 'example'
-    :example
-    wait 0 ms
-    shake_cam 100 {ms}
-    0001: wait 1000 // ms
-    0003: shake_cam 100 ms
-    0001: wait 1000 ms
-    goto @example
+/*log(`
+nop // operations aritmetics suports: =, +=, -=, *=, /=, >, <, >=, <=
+0@ += 0      // int
+1@ -= 0x1C   // int
+2@ = #jester // int
+3@ *= 2f     // float
+4@ /= 5.0    // float
+5@ > .75     // float
+6@ = 'string'
+7@ = 'longstring'
+:main
+    wait 0@
+goto @main
 terminate_this_script`.Translate())
 //*/
 
