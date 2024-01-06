@@ -18,8 +18,8 @@
 		const xElements = _parent.querySelectorAll(element)
 		const length = xElements.length
 
-		return element.charAt(0) === '#' && !/\s/.test(element) || length === 1
-			? _parent.querySelector(element)
+		return /^#[^\s]+$/.test(element) || length === 1
+			? _parent.getElementById(element.slice(1)) || _parent.querySelector(element)
 			: length === 0
 				? undefined
 				: xElements
