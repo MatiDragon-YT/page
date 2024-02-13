@@ -127,7 +127,7 @@ function getLine(){
 
 <form id="FORMULARIO">
 
-<input id='file' type='file' accept='.txt' class="d-none">
+<input id='file' type='file' accept='.txt,.ini' class="d-none">
 <label class="button" for="file">load</label>
 
 <a id="" class="button" onclick="
@@ -235,6 +235,224 @@ The editor can invert Keywords with the prefix ! and NOT.<br>
 <br>
 <script type="module" src="compiler.js"></script>
 <script>
+
+// Función para leer un archivo INI y obtener un valor específico
+function IniFile_GET(iniContent, section, key) {
+	// Supongamos que tienes el contenido del archivo INI en una cadena llamada 'iniContent'
+	// Puedes cargar el contenido desde un archivo o proporcionarlo directamente
+
+	// Parseamos el contenido del archivo INI
+	function parseINIString(data) {
+			const regex = {
+					section: /^\s*\[\s*([^\]]*)\s*\]\s*$/,
+					param: /^\s*([^=]+?)\s*=\s*(.*?)\s*$/,
+					comment: /^\s*;.*$/
+			};
+
+			const value = {};
+			let currentSection = null;
+
+			data.split(/\r?\n/).forEach(line => {
+					if (regex.comment.test(line)) {
+							return;
+					} else if (regex.param.test(line)) {
+							const [, key, val] = line.match(regex.param);
+							if (currentSection) {
+									value[currentSection][key] = val;
+							} else {
+									value[key] = val;
+							}
+					} else if (regex.section.test(line)) {
+							const [, section] = line.match(regex.section);
+							value[section] = {};
+							currentSection = section;
+					}
+			});
+
+			return value;
+	}
+
+	// Aquí debes cargar el contenido del archivo INI o proporcionarlo directamente
+
+	const parsedINI = parseINIString(iniContent);
+
+	// Buscamos el valor en la sección y clave especificadas
+	if (parsedINI[section] && parsedINI[section][key]) {
+			return parsedINI[section][key];
+	} else {
+			return null; // Valor no encontrado
+	}
+}
+
+function parseIniToCLEO (ini){
+	let code = ''
+
+	let indActor   = 0, numActor   = IniFile_GET(ini, 'numbers', 'actors'),
+			indAutos   = 0, numAutos   = IniFile_GET(ini, 'numbers', 'actors'),
+			indObjetos = 0, numObjetos = IniFile_GET(ini, 'numbers', 'actors')
+
+	const GENERATION = {
+			NORMAL:0,
+			SPECIAL:1,
+			CUSTOM:2,
+			RANDOM:3,
+			ROPE_NORMAL:4,
+			ROPE_SPECIAL:5,
+			ROPE_CUSTOM:6,
+			ROPE_RANDOM:7,
+	}
+
+	const LoadSpecialActor = {
+		0 : 'ANDRE',
+		1 : 'BBTHIN',
+		2 : 'BB',
+		3 : 'CAT',
+		4 : 'CESAR',
+		5 : 'COPGRL1',
+		6 : 'COPGRL2',
+		7 : 'CLAUDE',
+		8 : 'CROGRL1',
+		9 : 'CROGRL2',
+		10 : 'DWAYNE',
+		11 : 'EMMET',
+		12 : 'FORELLI',
+		13 : 'JANITOR',
+		14 : 'JETHRO',
+		15 : 'JIZZY',
+		16 : 'HERN',
+		17 : 'GANGRL1',
+		18 : 'GANGRL2',
+		19 : 'GUNGRL1',
+		20 : 'GUNGRL2',
+		21 : 'KENDL',
+		22 : 'MACCER',
+		23 : 'MADDOGG',
+		24 : 'MECGRL1',
+		25 : 'MECGRL2',
+		26 : 'NURGRL1',
+		27 : 'NURGRL2',
+		28 : 'OGLOC',
+		29 : 'PAUL',
+		30 : 'PULASKI',
+		31 : 'ROSE',
+		32 : 'RYDER',
+		33 : 'RYDER2',
+		34 : 'RYDER3',
+		35 : 'SINDACO',
+		36 : 'SMOKE',
+		37 : 'SMOKEV',
+		38 : 'SUZIE',
+		39 : 'SWEET',
+		40 : 'TBONE',
+		41 : 'TENPEN',
+		42 : 'TORINO',
+		43 : 'TRUTH',
+		44 : 'WUZIMU',
+		45 : 'ZERO',
+		46 : 'PSYCHO',
+		47 : 'MEDIATR',
+		48 : 'LVPDM1',
+		49 : 'SFPDM1',
+		50 : 'WMYCD2',
+		51 : 'VWMYAP',
+		52 : 'CDEPUT',
+		53 : 'CSBLUE3',
+		54 : 'CSOMOST',
+		55 : 'CSPRO1',
+		56 : 'SBMYTR4',
+		57 : 'CSMECH',
+		58 : 'FAM4',
+		59 : 'FAM5',
+
+		60 : 'OGBURG',
+		61 : 'MAFZI2',
+		62 : 'MAFZI1',
+		63 : 'SALVAR',
+		64 : 'RALPH',
+		65 : 'BOGM',
+		66 : 'TRIDA',
+		67 : 'TRIDB',
+		68 : 'TBOSS',
+		69 : 'SILVERM',
+		70 : 'HELPER',
+		71 : 'DANCA',
+		72 : 'DANCB',
+		73 : 'BETS',
+		74 : 'SUTA',
+		75 : 'CSSUZIE',
+		76 : 'CSKENDL',
+		77 : 'CSDRUG1',
+		78 : 'CSTEXAN',
+		79 : 'CSJOSE',
+		80 : 'CSBDUP',
+		81 : 'CSSLUT',
+		82 : 'CSWMORI',
+		83 : 'CSHO',
+		84 : 'CSBLUE2',
+		85 : 'SOMYAP',
+		86 : 'VWFYPR1',
+	}
+
+	let jumpCode = 0
+
+	while (numActor > indActor){
+		indActor++
+		let slot = 'ACTOR'+indActor
+		let actor = {
+			modelType : IniFile_GET(ini, slot, 'special'),
+			modelId : IniFile_GET(ini, slot, 'model'),
+			pedType : IniFile_GET(ini, slot, 'type'),
+			generation : 0,
+			globalCoordX : IniFile_GET(ini, slot, 'gcoord.x'),
+			globalCoordY : IniFile_GET(ini, slot, 'gcoord.y'),
+			globalCoordZ : IniFile_GET(ini, slot, 'gcoord.z'),
+			globalCoordA : IniFile_GET(ini, slot, 'gcoord.a'),
+			localCoordX : IniFile_GET(ini, slot, 'lcoord.x'),
+			localCoordY : IniFile_GET(ini, slot, 'lcoord.y'),
+			localCoordZ : IniFile_GET(ini, slot, 'lcoord.z'),
+			localCoordA : IniFile_GET(ini, slot, 'lcoord.a'),
+		}
+
+		if (actor.pedType == 23) {
+			actor.modelId = ~~(actor.modelType / 10)
+			actor.generation = actor.modelType
+
+			while (actor.generation >= 10){
+				actor.generation -= 10
+			}
+
+			if (actor.generation == (GENERATION.SPECIAL || GENERATION.ROPE_SPECIAL)){
+				code += `023c: load_special_actor '${LoadSpecialActor[actor.modelId]}' as 1\n`
+			}
+			if (actor.generation == (GENERATION.CUSTOM || GENERATION.ROPE_CUSTOM)){
+				code += `023c: load_special_actor '@${actor.modelId}' as 1\n`
+			}
+			jumpCode = code.length
+			code += `:L${jumpCode}
+	wait 0
+	if 0x0
+	023D:  special_actor 1 loaded
+	004D: jump_if_false @L${jumpCode}
+	`
+			if (actor.generation == GENERATION.SPECIAL
+				||actor.generation == GENERATION.CUSTOM){
+				code += `009A: create_actor_type ${actor.pedType} model ${actor.modelId} at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
+			}
+			if (actor.generation == GENERATION.ROPE_SPECIAL
+				||actor.generation == GENERATION.ROPE_CUSTOM){
+				code += `create_actorRope_type ${actor.pedType} model ${actor.modelId} at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
+			}
+			code += '0296: release_special_actor 1\n'
+
+		}else{
+			code += `009A: create_actor_type ${actor.pedType} model ${actor.modelId} at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
+		}
+		code += '\n'
+	}
+	code = 'nop\n' + code + ':L${jumpCode}\nwait 5000\ngoto @L${jumpCode}'
+	return code
+}
+
 const $node = $('#HEX')
 const $file = $('#file')
 
@@ -250,7 +468,13 @@ const openFile = event => {
 
   const reader = new FileReader()
   reader.onload = () => {
-    const text = reader.result
+    let text = reader.result
+
+
+    if(first.name.toLowerCase().endsWith('.ini')){
+		text = parseIniToCLEO(text)
+    }
+
     $node.value = text
     hl()
     
@@ -258,7 +482,7 @@ const openFile = event => {
   }
   
   reader.readAsText(first)
-   $('#FILENAME').value = first.name.r(/\.txt$/m, '.csi')
+   $('#FILENAME').value = first.name.r(/\.([^.]+)$/m, '.csi')
 }
 
 $file.onchange = openFile
