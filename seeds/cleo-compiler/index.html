@@ -449,7 +449,7 @@ function parseIniToCLEO (ini){
 		}
 		code += '\n'
 	}
-	code = 'nop\n' + code + ':L${jumpCode}\nwait 5000\ngoto @L${jumpCode}'
+	code = 'nop\n' + code + `:L${jumpCode}\nwait 5000\ngoto @L${jumpCode}`
 	return code
 }
 
