@@ -429,27 +429,40 @@ function parseIniToCLEO (ini){
 			}
 			jumpCode = code.length
 			code += `:L${jumpCode}
-	wait 0
-	if 0x0
-	023D:  special_actor 1 loaded
-	004D: jump_if_false @L${jumpCode}
-	`
+wait 0
+if 0x0
+023D:  special_actor 1 loaded
+004D: jump_if_false @L${jumpCode}
+`
 			if (actor.generation == GENERATION.SPECIAL
 				||actor.generation == GENERATION.CUSTOM){
-				code += `009A: create_actor_type ${actor.pedType} model ${actor.modelId} at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
+				code += `009A: create_actor_type ${actor.pedType} model #SPECIAL01 at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
 			}
 			if (actor.generation == GENERATION.ROPE_SPECIAL
 				||actor.generation == GENERATION.ROPE_CUSTOM){
-				code += `create_actorRope_type ${actor.pedType} model ${actor.modelId} at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
+				code += `create_actorRope_type ${actor.pedType} model #SPECIAL01 at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
 			}
 			code += '0296: release_special_actor 1\n'
 
 		}else{
-			code += `009A: create_actor_type ${actor.pedType} model ${actor.modelId} at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
+			jumpCode = code.length
+			code += `0247: load_model ${actor.modelId}
+:L${jumpCode}
+wait 0
+if 0x0
+023D:  model ${actor.modelId} available
+004D: jump_if_false @L${jumpCode}
+009A: create_actor_type ${actor.pedType} model ${actor.modelId} at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@
+0249: release_model ${actor.modelId}
+\n`
 		}
 		code += '\n'
 	}
-	code = 'nop\nwait 0\n' + code + `terminate_this_script`
+	code = `nop
+wait 0
+${code}
+terminate_this_script
+`
 	return code
 }
 
