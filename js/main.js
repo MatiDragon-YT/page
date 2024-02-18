@@ -113,7 +113,7 @@ const CSSComputarized = function(){
 			['py', 'padding-inline'],
 			['g', 'gap'],
 			['r', 'border-radius']
-		].forEach(attribute => {
+		].forEach(function(attribute){
 			[
 				'0',
 				'.25rem',
@@ -121,12 +121,13 @@ const CSSComputarized = function(){
 				'1rem',
 				'1.5rem',
 				'3rem'
-			].forEach((value, index) => {
-				tempCSS += `.${attribute[0]}${prefix}${index} { ${attribute[1]} : ${value} !important}\n`
+			].forEach(function(value, index){
+				tempCSS += '.' + attribute[0] + prefix + index + '{' + attribute[1]+ ':' + value + '!important}'
 			})
 		});
 
 		[
+			'auto',
 			'8.33333333%',
 			'16.66666667%',
 			'25%',
@@ -139,10 +140,16 @@ const CSSComputarized = function(){
 			'83.33333333%',
 			'91.66666667%',
 			'100%'
-		].forEach((value, index) => {
-			tempCSS += `.col${prefix}${++index} { width : ${value} !important}\n`
-			tempCSS += `.offset${prefix}${++index} { margin-left : ${value} !important}\n`
+		].forEach(function(value, index){
+			tempCSS += '.col' + prefix + (index == 0 ? 'auto' : ++index) + '{width:' + value + '!important}'
+			tempCSS += '.offset' + prefix + (index == 0 ? 'auto' : ++index) + '{margin-left:' + value + '!important}'
 		});
+
+		for(let i = 0; i < 100; i++){
+			tempCSS += '.w' + prefix + i + '{width:' + i + '%!important}'
+			tempCSS += '.w' + prefix + i + 'rem{width:' + i + 'rem!important}'
+			tempCSS += '.h' + prefix + i + '{height:' + i + 'vh!important}'
+		};
 
 		[
 			'flex',
@@ -152,6 +159,26 @@ const CSSComputarized = function(){
 			'grid'
 		].forEach((value, index) => {
 			tempCSS += `.d${prefix}${value} { display : ${value} !important}\n`
+		});
+
+		[
+			'relative',
+			'absolute',
+			'initial',
+			'fixed',
+			'reverse',
+			'reverse-inline'
+		].forEach((value, index) => {
+			tempCSS += `.p${prefix}${value} { position : ${value} !important}\n`
+		});
+
+		[
+			'right',
+			'left',
+			'top',
+			'buttom',
+		].forEach((value, index) => {
+			tempCSS += `.r${prefix}${value} { ${value} : 0 !important}\n`
 		});
 
 		if (resolucion != 0) {tempCSS += '}\n\n'}

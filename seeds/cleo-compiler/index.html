@@ -123,6 +123,7 @@ function getLine(){
 	else
 		$('#line').innerText = `Line ${lineaCursor}, Column ${posicionCursor-posicionLinea}`
 }
+
 </script>
 
 <form id="FORMULARIO">
@@ -169,6 +170,7 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
     line-height: 1.5em;
     font-size: 1rem!important;
     height: 50vh;
+    text-wrap: balance;
     ">nop // operations aritmetics suports: =, +=, -=, *=, /=, >, <, >=, <=
 0@ += 0      // int
 1@ -= 0x1C   // int
@@ -189,6 +191,7 @@ goto @main
 	font-size: 1rem!important;
 	filter: blur(2px);
 	transition: all 0.2s ease 0s;
+    text-wrap: balance;
 	" class="m-0"></pre>
 
 	<div id="error" placeholder="hex's output" name="cleaned_hex" class="w-100 p-1" style="

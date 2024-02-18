@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MattyBuilder</title>
+<link rel="stylesheet" href="./../../css/main.css">
+</head>
+<body style="display: block;">
+<script>
+	const log =(MESSAGE, _CSS = '') =>
+		console.log('%c'+ MESSAGE, _CSS)
+
+	// GLOBAL VARS
+	const D = document
+
+	const SP = String.prototype
+	const EP = Element.prototype
+
+	//const SP = String.prototype
+	//const EP = Element.prototype
+
+	NodeList.prototype.forEach = Array.prototype.forEach
+
+	/** Smart selector for elements of the DOM
+	 * @param {DOMString}
+	 * @param {Element} optional
+	 * @return {Element}
+	*/
+	function $(element, _parent) {
+		_parent = _parent || D;
+
+		const xElements = _parent.querySelectorAll(element)
+		const length = xElements.length
+
+		if (element.charAt(0) === '#' && !/\s/.test(element) || length === 1) { 
+			return _parent.querySelector(element);
+		}
+		else {
+			if(length === 0){return null}
+			return xElements;
+		}
+	}
+
+	/** Shotcun of String.replace()
+	*/
+	String.prototype.r = function(text, _text, _flags){
+		_text = _text || ''
+		_flags = _flags || ''
+		return this.replace(text, _text, _flags)
+	}
+
+	/** Polifill and shotcun of String.replaceAll()
+	*/
+	String.prototype.rA = function(text, _text){
+		var temp = this
+		_text = _text || ''
+
+		if(temp.indexOf(text, 0) !== -1){
+			temp = temp
+			.r(text, _text)
+			.rA(text, _text)
+		}
+		
+		return temp
+	}
+
+	/** Apply a function to all elements of the DOM
+	 * @param {NodeList} 
+	 * @param {function}
+	*/
+	function apply(element, callback){
+		if(element){
+			if('' + element == '[object NodeList]'){ 
+				element.forEach(function(e){
+					callback(e)
+				})
+			}else{  
+				callback(element)
+			}
+		}
+	}
+
+	EP.next = function(){
+		return this.nextElementSibling
+	}
+
+	EP.previous = function(){
+		return this.previousElementSibling
+	}
+
+	EP.show = function(){
+	    this.style.display = "block"
+	}
+
+	EP.hide = function(){
+	    this.style.display = "none"
+	}
+
+	EP.toggle = function(c){
+		if (c){
+			setTimeout(function(){
+				// Clear the hash
+				history.pushState('', document.title, location.pathname)
+			}, 12)	
+		}
+
+		if (this.classList.contains("d-block")){
+			this.classList.remove('d-block')
+			this.style = 'display:block'
+		}
+		if (this.classList.contains("d-none")){
+			this.classList.remove('d-none')
+			this.style = 'display:none'
+		}
+
+		getComputedStyle(this).display == "block"
+			? this.hide()
+			: this.show()
+		;
+	}
+
+	EP.setCursor = function(atPosition){
+	    this.setSelectionRange(atPosition, atPosition);
+	    this.focus();
+	}
+
+	EP.getCursor = function(){
+		return [this.selectionStart, this.selectionEnd]
+	}
+
+	EP.getLine = function(){
+		let t = this.getCursor()
+		let posicionCursor = t[0] != t[1] ? t[0] - t[1] : t[0];
+		let lineaCursor = this.value.substr(0, posicionCursor).split("\n").length;
+		let posicionLinea = this.value.substr(0, posicionCursor).lastIndexOf("\n") + 1;
+
+		const columnaCursor = posicionCursor-posicionLinea
+		const inSelection = posicionCursor < 0
+		const charsSelected = inSelection ? posicionCursor*-1 : 0
+
+		return [lineaCursor, columnaCursor, inSelection, charsSelected]
+	}
+
+	EP.AddSystemTAB = function(){
+		this.addEventListener('keydown', function(e) {
+		    if (e.key === 'Tab') {
+		        e.preventDefault(); // Evita que se mueva al siguiente campo
+		        var start = this.selectionStart;
+		        var end = this.selectionEnd;
+		        this.value = this.value.substring(0, start) + '\t' + this.value.substring(end);
+		        this.selectionStart = this.selectionEnd = start + 1; // Posiciona el cursor
+		    }
+		});
+	}
+</script>
+
+<nav class="bg-green py-1 d-flex between black">
+	<section>
+		<button title=Cargar>⬆️</button>
+		<button title=Descargar>⬇️</button>
+		<button title=Compilar>👍</button>
+	</section>
+	<section>
+		<b>MatiBuilder</b>
+	</section>
+	<section>
+		<button title="Ajustes">⚙️</button>
+		<button title="Opcodes">🔍</button>
+	</section>
+</nav>
+<main class="py-2">
+
+<article>
+	<div class="d-flex w-100 between">
+		<span class="d-flex p-relative">
+			<input type="text" placeholder="Sin nombre.cs" value="">
+			<button class="bg-none p-absolute r-right">❌</button>
+		</span>
+		<div>
+			<button class="bg-none" onclick="$('#input').toggle();$('#output').toggle()">🔃</button>
+		</div>
+	</div>
+	<div class="d-flex">
+		<textarea class="green h-75 w-4rem" disabled>01
+02
+03</textarea>
+		<textarea class="w-100  h-75 d-block d-sm-block" id='input' placeholder="escribe tu codigo" autocomplete="off" spellcheck="false">nop
+wait 0
+terminate_this_script</textarea>
+		<textarea class="pink w-100 w-sm-30 h-75 d-none d-sm-block" id='output' disabled>0000
+0100 04 00
+4E00</textarea>
+	</div>
+</article>
+
+</main>
+
+<footer class="bg-green black d-flex between py-1 my-2">
+<section>[2:6] 0001 {1/1}</section>
+<section><span>T:4</span> <span>F:14</span></section>
+<section><span>Okey</span> <span>SBL 0.564</span>
+<select id='mode' class="ml-1" style="border: none;">
+  <option value="gta3">GTA III</option>
+  <option value="lcs">GTA LCS</option>
+  <option value="sa" selected>GTA SA</option>
+  <option value="vc">GTA VC</option>
+  <option value="vcs">GTA VCS</option>
+  <option value="gta3_mobile">III Mobile</option>
+  <option value="sa_mobile">SA Mobile</option>
+  <option value="vc_mobile">VC Mobile</option>
+</select></section>
+</footer>
+
+<style>
+.f-2 {
+	font-size: 1.2rem;
+}
+.bg-none {
+	background: none!important;
+}
+button {
+	border: none;
+	font-size: 1.2rem;
+}
+article {
+	div {
+	}
+}
+textarea {
+    caret-color: white;
+    resize: none;
+}
+</style>
+
+
+<script>
+let tempCSS = ``
+
+	const prefixes = ['-','-sm-','-md-','-lg-','-xl-','-xxl-']
+	const size = [0,576,768,992,1200,1400]
+
+	prefixes.forEach(function(prefix, resolucion){
+		if (resolucion != 0) {tempCSS += '@media(min-width:' + size[resolucion] + 'px){'}
+	
+		var vIndex = 0
+		while(vIndex < 13){
+			tempCSS += '.cols'+prefix+vIndex+'{columns:'+vIndex+' auto}'
+
+			vIndex++
+		}
+		
+		[
+			['m', 'margin'],
+			['mt', 'margin-top'],
+			['mb', 'margin-bottom'],
+			['ml', 'margin-left'],
+			['mr', 'margin-right'],
+			['mx', 'margin-block'],
+			['my', 'margin-inline'],
+			['p', 'padding'],
+			['pt', 'padding-top'],
+			['pb', 'padding-bottom'],
+			['pl', 'padding-left'],
+			['pr', 'padding-right'],
+			['px', 'padding-block'],
+			['py', 'padding-inline'],
+			['g', 'gap'],
+			['r', 'border-radius']
+		].forEach(function(attribute){
+			[
+				'0',
+				'.25rem',
+				'.5rem',
+				'1rem',
+				'1.5rem',
+				'3rem'
+			].forEach(function(value, index){
+				tempCSS += '.' + attribute[0] + prefix + index + '{' + attribute[1]+ ':' + value + '!important}'
+			})
+		});
+
+		[
+			'auto',
+			'8.33333333%',
+			'16.66666667%',
+			'25%',
+			'33.33333333%',
+			'41.66666667%',
+			'50%',
+			'58.33333333%',
+			'66.66666667%',
+			'75%',
+			'83.33333333%',
+			'91.66666667%',
+			'100%'
+		].forEach(function(value, index){
+			tempCSS += '.col' + prefix + (index == 0 ? 'auto' : ++index) + '{width:' + value + '!important}'
+			tempCSS += '.offset' + prefix + (index == 0 ? 'auto' : ++index) + '{margin-left:' + value + '!important}'
+		});
+
+		for(let i = 0; i < 100; i++){
+			tempCSS += '.w' + prefix + i + '{width:' + i + '%!important}'
+			tempCSS += '.w' + prefix + i + 'rem{width:' + i + 'rem!important}'
+			tempCSS += '.h' + prefix + i + '{height:' + i + 'vh!important}'
+		};
+
+		[
+			'flex',
+			'none',
+			'block',
+			'inline-block',
+			'grid'
+		].forEach((value, index) => {
+			tempCSS += `.d${prefix}${value} { display : ${value} !important}\n`
+		});
+
+		[
+			'relative',
+			'absolute',
+			'initial',
+			'fixed',
+			'reverse',
+			'reverse-inline'
+		].forEach((value, index) => {
+			tempCSS += `.p${prefix}${value} { position : ${value} !important}\n`
+		});
+
+		[
+			'right',
+			'left',
+			'top',
+			'buttom',
+		].forEach((value, index) => {
+			tempCSS += `.r${prefix}${value} { ${value} : 0 !important}\n`
+		});
+
+		if (resolucion != 0) {tempCSS += '}\n\n'}
+	})
+
+let $cssGenerated = document.createElement('style')
+$cssGenerated.id = 'newCss'
+$cssGenerated.innerHTML = tempCSS
+$('body').append($cssGenerated)
+
+const CopyTextContent = function(id) {
+	let $temp = new$("textarea")
+	$temp.value = (typeof id == 'object' ? id.textContent : id)
+	$temp.select();
+	D.execCommand("copy")
+	$('body').removeChild($temp)
+}
+
+$('#input').AddSystemTAB()
+</script>
+</div>
+</body>
+</html>

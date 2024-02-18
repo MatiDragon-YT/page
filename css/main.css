@@ -35,6 +35,7 @@
 	--c-red: #ff5252;
 	--c-blue: #2196f3;
 	--c-green: #00e676;
+	--c-pink: #e91e63;
 }
 
 html {
@@ -284,6 +285,7 @@ code, .code {
 textarea{
 	font-size: 1rem !important;
 	padding: 0.5rem !important;
+	tab-size: 4;
 }
 
 img {
@@ -482,6 +484,8 @@ input[type='checkbox']{
 .bg-yellow, .bg-yellow  * { background:#ffeb3b }
 .blue, .blue  * { color:var(--c-blue); }
 .bg-blue, .bg-blue  * { background:var(--c-blue); }
+.pink, .pink  * { color:var(--c-pink); }
+.bg-pink, .bg-pink  * { background:var(--c-pink); }
 .purple, .purple  * { color:#e040fb }
 .bg-purple, .bg-purple  * { background:#e040fb }
 .gray, .gray  * { color:#9e9e9e }
