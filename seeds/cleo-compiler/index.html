@@ -414,6 +414,18 @@ function parseIniToCLEO (ini){
 			localCoordY : IniFile_GET(ini, slot, 'lcoord.y'),
 			localCoordZ : IniFile_GET(ini, slot, 'lcoord.z'),
 			localCoordA : IniFile_GET(ini, slot, 'lcoord.a'),
+			flags : IniFile_GET(ini, slot, 'props'),
+			health_armor : IniFile_GET(ini, slot, 'health_armor'),
+			attached : IniFile_GET(ini, slot, 'attached'),
+			weapon_ammon : IniFile_GET(ini, slot, 'weapon_ammon'),
+			acuraci_mlle : IniFile_GET(ini, slot, 'acu.mlle'),
+			acuraci_wpon : IniFile_GET(ini, slot, 'acu.wpon'),
+			acuraci_dist : IniFile_GET(ini, slot, 'acu.dist'),
+			rep_anim : IniFile_GET(ini, slot, 'rep.anim'),
+			ifp_file : IniFile_GET(ini, slot, 'ifp.file'),
+			ifp_anim : IniFile_GET(ini, slot, 'ifp.anim'),
+			style_fght : IniFile_GET(ini, slot, 'sty.fght'),
+			style_walk : IniFile_GET(ini, slot, 'sty.walk'),
 		}
 
 		if (actor.pedType == 23) {
@@ -439,13 +451,14 @@ if 0x0
 `
 			if (actor.generation == GENERATION.SPECIAL
 				||actor.generation == GENERATION.CUSTOM){
-				code += `009A: create_actor_type ${actor.pedType} model #SPECIAL01 at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
+				code += `009A: create_actor_type 23 model #SPECIAL01 at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
 			}
 			if (actor.generation == GENERATION.ROPE_SPECIAL
 				||actor.generation == GENERATION.ROPE_CUSTOM){
-				code += `create_actorRope_type ${actor.pedType} model #SPECIAL01 at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
+				code += `0503: create_actor_onrope_type 23 model #SPECIAL01 at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
 			}
-			code += '0296: release_special_actor 1\n'
+			code += `0173: actor ${indActor}@ set_angle ${actor.globalCoordA}
+0296: release_special_actor 1\n`
 
 		}else{
 			jumpCode = code.length
@@ -456,6 +469,7 @@ if 0x0
 023D:  model ${actor.modelId} available
 004D: jump_if_false @L${jumpCode}
 009A: create_actor_type ${actor.pedType} model ${actor.modelId} at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@
+0173: actor ${indActor}@ set_angle ${actor.globalCoordA}
 0249: release_model ${actor.modelId}
 \n`
 		}
