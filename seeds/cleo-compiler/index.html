@@ -170,7 +170,7 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
     line-height: 1.5em;
     font-size: 1rem!important;
     height: 50vh;
-    text-wrap: balance;
+    text-wrap: wrap;
     ">nop // operations aritmetics suports: =, +=, -=, *=, /=, >, <, >=, <=
 0@ += 0      // int
 1@ -= 0x1C   // int
@@ -191,7 +191,7 @@ goto @main
 	font-size: 1rem!important;
 	filter: blur(2px);
 	transition: all 0.2s ease 0s;
-    text-wrap: balance;
+    text-wrap: wrap;
 	" class="m-0"></pre>
 
 	<div id="error" placeholder="hex's output" name="cleaned_hex" class="w-100 p-1" style="
@@ -288,6 +288,9 @@ function IniFile_GET(iniContent, section, key) {
 }
 
 function parseIniToCLEO (ini){
+	let MODELS = localStorage.getItem('models').split('\n')
+	MODELS.forEach((model, i) => MODELS[i] = model.split(' '))
+
 	let code = ''
 
 	let indActor   = 0, numActor   = IniFile_GET(ini, 'numbers', 'actors'),
@@ -437,40 +440,48 @@ function parseIniToCLEO (ini){
 			}
 
 			if (actor.generation == (GENERATION.SPECIAL || GENERATION.ROPE_SPECIAL)){
-				code += `023c: load_special_actor '${LoadSpecialActor[actor.modelId]}' as 1\n`
+				code += `23c: load_special_actor '${LoadSpecialActor[actor.modelId]}' as 1\n`
 			}
 			if (actor.generation == (GENERATION.CUSTOM || GENERATION.ROPE_CUSTOM)){
-				code += `023c: load_special_actor '@${actor.modelId}' as 1\n`
+				code += `23c: load_special_actor '@${actor.modelId}' as 1\n`
 			}
 			jumpCode = code.length
 			code += `:L${jumpCode}
 wait 0
 if 0x0
-023D:  special_actor 1 loaded
-004D: jump_if_false @L${jumpCode}
+23D:  special_actor 1 loaded
+4D: jump_if_false @L${jumpCode}
 `
 			if (actor.generation == GENERATION.SPECIAL
 				||actor.generation == GENERATION.CUSTOM){
-				code += `009A: create_actor_type 23 model #SPECIAL01 at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
+				code += `9A: create_actor_type 23 model #SPECIAL01 at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
 			}
 			if (actor.generation == GENERATION.ROPE_SPECIAL
 				||actor.generation == GENERATION.ROPE_CUSTOM){
-				code += `0503: create_actor_onrope_type 23 model #SPECIAL01 at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
+				code += `503: create_actor_onrope_type 23 model #SPECIAL01 at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@\n`
 			}
-			code += `0173: actor ${indActor}@ set_angle ${actor.globalCoordA}
-0296: release_special_actor 1\n`
+			code += `173: actor ${indActor}@ set_angle ${actor.globalCoordA}
+296: release_special_actor 1\n`
 
 		}else{
+			for (let search = 0; search < MODELS.length; search++) {
+				if (MODELS[search][0] == actor.modelId){
+					actor.modelId = '#'+ MODELS[search][1].r(/[\s\r]/, '')
+					break
+				}
+			}
+
+
 			jumpCode = code.length
-			code += `0247: load_model ${actor.modelId}
+			code += `247: load_model ${actor.modelId}
 :L${jumpCode}
 wait 0
 if 0x0
-023D:  model ${actor.modelId} available
-004D: jump_if_false @L${jumpCode}
-009A: create_actor_type ${actor.pedType} model ${actor.modelId} at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@
-0173: actor ${indActor}@ set_angle ${actor.globalCoordA}
-0249: release_model ${actor.modelId}
+247:  model ${actor.modelId} available
+4D: jump_if_false @L${jumpCode}
+9A: create_actor_type ${actor.pedType} model ${actor.modelId} at ${actor.globalCoordX} ${actor.globalCoordY} ${actor.globalCoordZ} saving_at ${indActor}@
+173: actor ${indActor}@ set_angle ${actor.globalCoordA}
+249: release_model ${actor.modelId}
 \n`
 		}
 		code += '\n'

@@ -12,6 +12,12 @@ function IsInRange(VAR, MIN, MAX){
 	return (VAR >= MIN && VAR <= MAX) ? 1 : 0;
 }
 
+const LS = {
+	t : localStorage,
+	get : (x) => LS.t.getItem(x),
+	set : (x,y) => LS.t.setItem(x, y)
+}
+
 /** Shotcun of String.replace()
 */
 SP.r = function(text, _text, _flags){
@@ -108,12 +114,6 @@ const ELEMENT_TYPE = {
 	GSTRING16 : '83'
 }
 
-const LS = {
-	t : localStorage,
-	get : (x) => LS.t.getItem(x),
-	set : (x,y) => LS.t.setItem(x, y)
-}
-
 function fetchPercentece(response, background){
   const contentLength = response.headers.get('Content-Length');
   // Gets length in bytes (must be provided by server)
@@ -193,6 +193,7 @@ let MODELS = await fetch('./data/models.ide')
 		return fetchPercentece(response, 'yellow')
   })
 MODELS = await MODELS.text()
+LS.set('models', MODELS)
 MODELS = MODELS
 	.r(/\r/g,'')
 	.r(/(\d+) (.+)/g, '$2 $1')
@@ -508,9 +509,19 @@ SP.Translate = function(_SepareWithComes = false){
 			LineComand[numLine].forEach((Argument, numArgument) => {
 				if (numArgument == 0) { // command
 					Argument = Argument.toLowerCase()
-					if(/^[A-Fa-f\d]{4}:/m.test(Argument)){
+					if (/:/.test(Argument)){
+						Argument = Argument.padStart(6,'0')
+					}
+
+					if (
+						/[A-Fa-f\d]+:$/m.test(Argument)
+						&& Argument.length <= 6
+					){
 						// is opcode
-						setOp = Argument.r(':','')
+						setOp = Argument.r(':','').r('!', '8').padStart(4,'0')
+						if (setOp.length >= 5){
+							setOp = setOp.r(/^(.)/m,'')
+						}
 
 						if(/^[8-9A-Fa-f]/.test(Argument)){
 							isNegative = true
@@ -543,7 +554,7 @@ SP.Translate = function(_SepareWithComes = false){
 							setOp = SCM_DB[Argument].opcode
 						}else{
 							//log(`KEYWORD UNDEFINED: ${Argument}\nCHANGED TO 0000: nop`)
-							setOp = '0000'
+							throw new SyntaxError(`opcode undefined\n\tin line ${(1+numLine)} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`);
 						}
 
 						if (isNegative){
@@ -615,7 +626,7 @@ SP.Translate = function(_SepareWithComes = false){
 						case 'long':
 							Argument = Argument.r(/("([^\"]+)?"|`(.+)?`)/, '$2$3').r(/\x00/g,'\x20')
 							Argument = Argument.substring(0,255)
-							console.log(Argument)
+							//console.log(Argument)
 							if (Argument.length == 0) Argument = '\x00'
 
 							totalSizePerLine.push(Argument.length + (SCM_DB[command].opcode[1] == '0' ? 2 : 1))
@@ -854,7 +865,7 @@ SP.Translate = function(_SepareWithComes = false){
 											}
 
 											else {
-												console.log(inputVar)
+												//console.log(inputVar)
 												inputVar = Number(inputVar.r('&',''))
 
 											}
