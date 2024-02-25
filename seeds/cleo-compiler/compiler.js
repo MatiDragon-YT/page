@@ -297,8 +297,212 @@ SP.hexToDec = function(){
 	return parseInt(this, 16).toString()
 }
 
+const SYNTAX = {
+  FOR: /^FOR (.+)=(.+) (todown|to) (.+)STEP(.+)/im,
+  WHILE: /^WHILE (.+)/im,
+  REPEAT: /^UNTIL (.+)/im,
+  IF: /^IF (.+)/im
+};
+
+function convertNestedLoops(inputText) {
+    const lines = inputText.split('\n');
+    let outputText = '';
+    let labelCount = 1;
+    let labelCountQuit = 1;
+    let ignoreBlock = 0
+    const labelStack = [];
+    const labelLoop = [];
+    const labelQuitStack = [];
+    const until = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        const label = `begin_loop_${labelCount}`;
+        const labelQuit = `end_loop${labelCountQuit}`;
+
+        if (/^if(.+)?/im.test(line)){
+            if (SYNTAX.IF.test(line)){
+              const params = line.match(SYNTAX.IF)
+              outputText += `if ${
+                params[1].replace(/\d+/, '')
+              }\n`;
+            }else{
+              outputText += 'if\n'
+            }
+            labelStack.push(label);
+            labelLoop.push('if');
+            labelCount++;
+        } else if (/^repeat/im.test(line)){
+            outputText += `:${label}\n`;
+            labelStack.push(label);
+            labelLoop.push(line);
+            labelCount++;
+        } else if (/^while /im.test(line)) {
+          if (line == 'while true'){
+            outputText += `:${label}\n`;
+            labelStack.push(label);
+            labelLoop.push(line);
+            labelCount++;
+          } else if (line == 'while false'){
+            ignoreBlock++;
+            outputText += `goto @ignore_block_${ignoreBlock}\n`;
+            labelStack.push(label);
+            labelLoop.push(line);
+            labelCount++;
+            labelCountQuit++
+          } else {
+            const values = line.match(SYNTAX.WHILE)
+            outputText += `:${label}\nif\n${values[1]}\nelse_goto @${labelQuit}\n`;
+            labelStack.push(label);
+            labelQuitStack.push(labelQuit)
+            labelLoop.push('while custom');
+            labelCount++;
+            labelCountQuit++
+          }
+        } else if (/^for /im.test(line)) {
+            if (!SYNTAX.FOR.test(line)) {
+                outputText = [`ALERTA!!\nBucle mal definido.\n>>> linea ${i} : ${line}`];
+                break;
+            }
+            const values = line.match(SYNTAX.FOR);
+
+            outputText +=
+                `${values[1]} = ${values[2]}
+:${label}
+if
+${values[1]} ${/down/i.test(values[3]) ? '<=' : '>='} ${values[4]}
+else_goto @${labelQuit}
+${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
+`;
+
+            labelStack.push(label);
+            labelQuitStack.push(labelQuit)
+            labelLoop.push('for');
+            labelCount++;
+            labelCountQuit++
+        }
+        
+        else if (line === 'end') {
+            const prevLabel = labelStack.pop();
+            const prevLoop = labelLoop.pop();
+            const prevQuit = labelQuitStack.pop();
+            
+            if (!prevLoop) {
+                outputText = [`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : END`];
+                break;
+            }
+
+            if (prevLoop == 'if'){
+              outputText += `end\n`;
+            } else if (prevLoop == 'while true') {
+                outputText += `goto @${prevLabel}\n\n`;
+            } else if (prevLoop == 'while false') {
+                outputText += `:ignore_block_${ignoreBlock}\n\n`;
+            } else if (prevLoop == 'while custom') {
+                outputText += `goto @${prevLabel}\n:${prevQuit}\n\n`;
+                labelCountQuit++;
+            }else if (prevLoop === 'for') {
+                outputText += `goto @${prevLabel}\n:${prevQuit}\n\n`;
+                labelCountQuit++;
+            }
+        } else if (/^until.+/im.test(line)) {
+            const prevLabel = labelStack.pop();
+            const prevLoop = labelLoop.pop();
+            const prevQuit = labelQuitStack.pop();
+            
+            if (!prevLoop) {
+                outputText = [`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : UNTIL`];
+                break;
+            }
+
+            if (prevLoop == 'repeat'){
+              const condicion = line.match(SYNTAX.REPEAT)[1]
+              outputText += `if\n${condicion}\nelse_goto @${prevLabel}\n\n`
+            } else if (prevLoop == 'while true') {
+                outputText += `goto @${prevLabel}\n\n`;
+            }
+        } else {
+            outputText += `${line}\n`;
+        }
+    }
+    
+    if (labelStack.length > 0) {
+      outputText = [`ALERTA!!\nSe encontraron bucles sin cerrar.\n>>> pila [${labelLoop}]`];
+    }
+    return outputText;
+}
+
+function contarLineasEnIFs(texto) {
+    let lineas = texto.split('\n');
+    let real = 0
+    let contador = 0;
+    let iniciar = false
+    let multiCondicion = false
+    let numeros = [];
+
+    for (const linea of lineas) {
+        if (linea.startsWith('if')) {
+            iniciar = true
+            real = 0
+            contador = 0
+            if (linea.includes('or') || linea.includes('and')) {
+                multiCondicion = true
+                if (linea.includes('or')) {
+                    contador += 20;
+                } else {
+                    contador += 1;
+                }
+            }
+        } else if (linea.startsWith('then') || linea.startsWith('else_goto') || linea.startsWith('0n')) {
+            real--
+            if (real > 1 && multiCondicion == false)
+              console.log('¡Error! El "if" debe ir seguido de "and" o "or".');
+              
+            if (real > 8 && multiCondicion == true)
+              console.log('¡Este if tiene más de 7 líneas de texto!');
+            
+            contador += real
+            numeros.push(contador);
+            contador = 0;
+            real = 0;
+            iniciar = false
+        } else {
+          if(iniciar){
+            if (linea.trim() != '') {
+                real++;
+            }
+          }
+        }
+    }
+    
+    let number = 0
+    let counter = 0
+    for (const linea of lineas) {
+        if (linea.startsWith('if')) {
+          if (/^if .+/im.test(linea)){
+            const param = linea.match(/^if (.+)/im)
+            lineas[counter] = 
+              "if "
+              +numeros[number]
+              +"\n"
+              +(param[1].replace(/^(and|or)/im, ''))
+          }else{
+            lineas[counter] = linea +" "+numeros[number]
+          }
+          number++
+        }
+        counter++
+    }
+    log(lineas)
+    
+    return lineas.join('\n');
+}
+
 SP.PrePost = function(){
-	return this
+	let altoNivel = convertNestedLoops(this);
+	let altoNivel = contarLineasEnIFs(altoNivel);
+	return altoNivel
 		.r(/^(int )?(\$.+) = (\d+|#.+|0x.+|0b.+)$/gim, `0004: $2 $3`)									//0004: $CUSTOM_TOURNAMENT_FLAG = 0
 		.r(/^(float )?(\$.+) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0005: $2 $3`)							//0005: $166 = 292.33
 		.r(/^(int )?(\d+@([^\s]+)?) = (\d+|#.+|0x.+|0b.+)$/gim, `0006: $2 $4`)				//0006: 0@ = -1
