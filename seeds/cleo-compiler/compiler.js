@@ -677,6 +677,10 @@ SP.Translate = function(_SepareWithComes = false){
 		.PrePost()
 		.split('\n')
 
+LineComand = convertNestedLoops(LineComand);
+LineComand = contarLineasEnIFs(LineComand);
+  
+
 	let codeOfEnter = this.split('\n').clear();
 
 	LineComand.forEach((Line, numLine) => {
