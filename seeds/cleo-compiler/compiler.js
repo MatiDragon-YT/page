@@ -362,7 +362,7 @@ function convertNestedLoops(inputText) {
           }
         } else if (/^for /im.test(line)) {
             if (!SYNTAX.FOR.test(line)) {
-                outputText = [`ALERTA!!\nBucle mal definido.\n>>> linea ${i} : ${line}`];
+               throw new SyntaxError(`ALERTA!!\nBucle mal definido.\n>>> linea ${i} : ${line}`)
                 break;
             }
             const values = line.match(SYNTAX.FOR);
@@ -389,7 +389,7 @@ ${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
             const prevQuit = labelQuitStack.pop();
             
             if (!prevLoop) {
-                outputText = [`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : END`];
+                throw new SyntaxError(`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : END`)
                 break;
             }
 
@@ -412,7 +412,7 @@ ${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
             const prevQuit = labelQuitStack.pop();
             
             if (!prevLoop) {
-                outputText = [`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : UNTIL`];
+                throw new SyntaxError(`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : UNTIL`])
                 break;
             }
 
@@ -428,13 +428,13 @@ ${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
     }
     
     if (labelStack.length > 0) {
-      outputText = [`ALERTA!!\nSe encontraron bucles sin cerrar.\n>>> pila [${labelLoop}]`];
+      throw new SyntaxError(`ALERTA!!\nSe encontraron bucles sin cerrar.\n>>> pila [${labelLoop}]`)
     }
     return outputText;
 }
 
-function contarLineasEnIFs(texto) {
-    let lineas = texto.split('\n');
+function contarLineasEnIFs(inputText) {
+    let lineas = inputText.split('\n');
     let real = 0
     let contador = 0;
     let iniciar = false
@@ -457,10 +457,10 @@ function contarLineasEnIFs(texto) {
         } else if (linea.startsWith('then') || linea.startsWith('else_goto') || linea.startsWith('0n')) {
             real--
             if (real > 1 && multiCondicion == false)
-              console.log('¡Error! El "if" debe ir seguido de "and" o "or".');
+             throw new SyntaxError('¡Error! El "if" debe ir seguido de "and" o "or".')
               
             if (real > 8 && multiCondicion == true)
-              console.log('¡Este if tiene más de 7 líneas de texto!');
+              throw new SyntaxError('¡Este if tiene más de 7 líneas de texto!');
             
             contador += real
             numeros.push(contador);
