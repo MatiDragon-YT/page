@@ -304,8 +304,8 @@ const SYNTAX = {
   IF: /^IF (.+)/im
 };
 
-function convertNestedLoops(inputText) {
-    const lines = inputText.split('\n');
+SP.parseHigthLevelLoops = function (){
+    const lines = this.split('\n');
     let outputText = '';
     let labelCount = 1;
     let labelCountQuit = 1;
@@ -321,19 +321,7 @@ function convertNestedLoops(inputText) {
         const label = `begin_loop_${labelCount}`;
         const labelQuit = `end_loop${labelCountQuit}`;
 
-        if (/^if(.+)?/im.test(line)){
-            if (SYNTAX.IF.test(line)){
-              const params = line.match(SYNTAX.IF)
-              outputText += `if ${
-                params[1].replace(/\d+/, '')
-              }\n`;
-            }else{
-              outputText += 'if\n'
-            }
-            labelStack.push(label);
-            labelLoop.push('if');
-            labelCount++;
-        } else if (/^repeat/im.test(line)){
+        if (/^repeat/im.test(line)){
             outputText += `:${label}\n`;
             labelStack.push(label);
             labelLoop.push(line);
@@ -353,7 +341,7 @@ function convertNestedLoops(inputText) {
             labelCountQuit++
           } else {
             const values = line.match(SYNTAX.WHILE)
-            outputText += `:${label}\nif\n${values[1]}\nelse_goto @${labelQuit}\n`;
+            outputText += `:${label}\nif\n${values[1]}\ngoto_if_false @${labelQuit}\n`;
             labelStack.push(label);
             labelQuitStack.push(labelQuit)
             labelLoop.push('while custom');
@@ -372,7 +360,7 @@ function convertNestedLoops(inputText) {
 :${label}
 if
 ${values[1]} ${/down/i.test(values[3]) ? '<=' : '>='} ${values[4]}
-else_goto @${labelQuit}
+goto_if_false @${labelQuit}
 ${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
 `;
 
@@ -393,9 +381,7 @@ ${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
                 break;
             }
 
-            if (prevLoop == 'if'){
-              outputText += `end\n`;
-            } else if (prevLoop == 'while true') {
+            if (prevLoop == 'while true') {
                 outputText += `goto @${prevLabel}\n\n`;
             } else if (prevLoop == 'while false') {
                 outputText += `:ignore_block_${ignoreBlock}\n\n`;
@@ -406,21 +392,19 @@ ${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
                 outputText += `goto @${prevLabel}\n:${prevQuit}\n\n`;
                 labelCountQuit++;
             }
-        } else if (/^until.+/im.test(line)) {
+        } else if (SYNTAX.REPEAT.test(line)) {
             const prevLabel = labelStack.pop();
             const prevLoop = labelLoop.pop();
             const prevQuit = labelQuitStack.pop();
             
             if (!prevLoop) {
-                throw new SyntaxError(`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : UNTIL`])
+                throw new SyntaxError(`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : UNTIL`)
                 break;
             }
 
             if (prevLoop == 'repeat'){
               const condicion = line.match(SYNTAX.REPEAT)[1]
-              outputText += `if\n${condicion}\nelse_goto @${prevLabel}\n\n`
-            } else if (prevLoop == 'while true') {
-                outputText += `goto @${prevLabel}\n\n`;
+              outputText += `if\n${condicion}\ngoto_if_false @${prevLabel}\n`
             }
         } else {
             outputText += `${line}\n`;
@@ -433,8 +417,8 @@ ${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
     return outputText;
 }
 
-function contarLineasEnIFs(inputText) {
-    let lineas = inputText.split('\n');
+SP.addNumbersToIfs = function() {
+    let lineas = this.split('\n');
     let real = 0
     let contador = 0;
     let iniciar = false
@@ -454,7 +438,7 @@ function contarLineasEnIFs(inputText) {
                     contador += 1;
                 }
             }
-        } else if (linea.startsWith('then') || linea.startsWith('else_goto') || linea.startsWith('0n')) {
+        } else if (linea.startsWith('then') || linea.startsWith('goto_if_false') || linea.startsWith('0n')) {
             real--
             if (real > 1 && multiCondicion == false)
              throw new SyntaxError('¡Error! El "if" debe ir seguido de "and" o "or".')
@@ -494,7 +478,7 @@ function contarLineasEnIFs(inputText) {
         }
         counter++
     }
-    log(lineas)
+    //log(lineas)
     
     return lineas.join('\n');
 }
@@ -596,47 +580,6 @@ SP.PrePost = function(){
 		.r(/^(long )?(\d+@([^\s]+)?) == ("([^\n\"]+)?")$/gim, `06D1: $2 $3`)
 }
 
-SP.ValidateSyntax = function(){
-	function validate(text){
-		let keywords = ["if", "then", "end", "while", "repeat", "until", "for"]
-		let arr = text.split(/\s/)
-		text = arr.filter(word => keywords.includes(word)).join('')
-		console.log(text)
-
-		text = text
-			.replace(/if/gi,'(')
-			.replace(/then/gi,'){')
-			.replace(/end/gi,'}')
-			.replace(/while/gi,'(){')
-			.replace(/repeat/gi,'{')
-			.replace(/until/gi,'}()')
-		console.log(text)
-
-		function isOpen(character){
-			return ['(','{','['].includes(character)
-		}
-		function closes(characterA, characterB){
-			let pairs = { '<':'>', '{':'}', '[':']', '(':')'}
-			return pairs[characterA] === characterB
-		}
-
-		let stack = []
-
-		for(let character of text.split('')){
-			if (isOpen(character)){
-				stack.push(character)
-			}
-			else{
-				let topChar = stack.pop()
-				if(!closes(topChar, character)){
-					return false
-				}
-			}
-		}
-		return stack.length === 0
-	}
-}
-
 SP.Translate = function(_SepareWithComes = false){
 	let LineComand = this
 		.r(/(\s+)?\/\*([^\/]*)?\*\//gm, '')
@@ -661,6 +604,10 @@ SP.Translate = function(_SepareWithComes = false){
 	}
 	*/
 
+LineComand = LineComand
+	.parseHigthLevelLoops()
+	.addNumbersToIfs()
+
 	LineComand = LineComand
 		.r(/"([^\n"]+)?"/gm, fixString => fixString.r(/\x20/g, '\x00'))
 		.r(/^not /gm, '!')
@@ -674,10 +621,7 @@ SP.Translate = function(_SepareWithComes = false){
 		// remove jump lines innesesaries
 		.r(/^\n+/gm, '')
 		.r(/\n$/gm, '')
-		.PrePost()
-
-LineComand = convertNestedLoops(LineComand);
-LineComand = contarLineasEnIFs(LineComand).split('\n')
+		.PrePost().split('\n')
   
 
 	let codeOfEnter = this.split('\n').clear();

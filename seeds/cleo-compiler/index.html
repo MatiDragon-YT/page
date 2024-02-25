@@ -157,7 +157,6 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
     position: absolute;
     display: block;
     white-space: pre;
-    width: calc(100% - 2em);
     color: transparent;
     background: transparent;
     caret-color: white;
@@ -165,12 +164,11 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
     padding: 4px 4px 4px 4.2em !important;
     margin: 0.6rem 0px;
     overflow: auto;
-    max-height: 50vh;
     font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
     line-height: 1.5em;
     font-size: 1rem!important;
-    height: 50vh;
     text-wrap: wrap;
+    aspect-ratio: 16 / 9;
     ">nop // operations aritmetics suports: =, +=, -=, *=, /=, >, <, >=, <=
 0@ += 0      // int
 1@ -= 0x1C   // int
@@ -187,11 +185,11 @@ goto @main
 
 </textarea>
 	<pre id='PREVIEW' style="
-	height: 50vh;
 	font-size: 1rem!important;
 	filter: blur(2px);
 	transition: all 0.2s ease 0s;
     text-wrap: wrap;
+    aspect-ratio: 16 / 9;
 	" class="m-0"></pre>
 
 	<div id="error" placeholder="hex's output" name="cleaned_hex" class="w-100 p-1" style="
