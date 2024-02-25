@@ -675,10 +675,9 @@ SP.Translate = function(_SepareWithComes = false){
 		.r(/^\n+/gm, '')
 		.r(/\n$/gm, '')
 		.PrePost()
-		.split('\n')
 
 LineComand = convertNestedLoops(LineComand);
-LineComand = contarLineasEnIFs(LineComand);
+LineComand = contarLineasEnIFs(LineComand).split('\n')
   
 
 	let codeOfEnter = this.split('\n').clear();
