@@ -56,14 +56,14 @@ NP.toHex = function(){
 	const getHex = i => ('00' + i.toString(16)).slice(-2);
 
 	let view = new DataView(new ArrayBuffer(4)),
-	    result;
+		result;
 
 	view.setFloat32(0, this);
 
 	result = Array
-	    .apply(null, { length: 4 })
-	    .map((_, i) => getHex(view.getUint8(i)))
-	    .join('');
+		.apply(null, { length: 4 })
+		.map((_, i) => getHex(view.getUint8(i)))
+		.join('');
 
 	return result.toBigEndian()
 }
@@ -120,37 +120,37 @@ function fetchPercentece(response, background){
   let loaded = 0;
   // Will be used to track loading
   return new Response(
-    new ReadableStream({
-    // Creates new readable stream on the new response object
-      start(controller) {
-      // Controller has methods on that allow the new stream to be constructed
-        const reader = response.body.getReader();
-        // Creates a new reader to read the body of the fetched resources
-        read();
-        // Fires function below that starts reading
-        function read() {
-          reader.read()
-          .then((progressEvent) => {
-          // Starts reading, when there is progress this function will fire
-            if (progressEvent.done) {
-              controller.close();
-              return; 
-              // Will finish constructing new stream if reading fetched of resource is complete
-            }
-            loaded += progressEvent.value.byteLength;
-            // Increase value of 'loaded' by latest reading of fetched resource
-            const percentace = Math.round((loaded/contentLength)/120*1000)+'%'
-            $('#state.loading').style = `background: linear-gradient(90deg, ${background} ${percentace}, transparent ${percentace});`
-            //log(percentace)
-            // Displays progress via console log as %
-            controller.enqueue(progressEvent.value);
-            // Add newly read data to the new readable stream
-            read();
-            // Runs function again to continue reading and creating new stream
-          })
-        }
-      }
-    })
+	new ReadableStream({
+	// Creates new readable stream on the new response object
+	  start(controller) {
+	  // Controller has methods on that allow the new stream to be constructed
+		const reader = response.body.getReader();
+		// Creates a new reader to read the body of the fetched resources
+		read();
+		// Fires function below that starts reading
+		function read() {
+		  reader.read()
+		  .then((progressEvent) => {
+		  // Starts reading, when there is progress this function will fire
+			if (progressEvent.done) {
+			  controller.close();
+			  return; 
+			  // Will finish constructing new stream if reading fetched of resource is complete
+			}
+			loaded += progressEvent.value.byteLength;
+			// Increase value of 'loaded' by latest reading of fetched resource
+			const percentace = Math.round((loaded/contentLength)/120*1000)+'%'
+			$('#state.loading').style = `background: linear-gradient(90deg, ${background} ${percentace}, transparent ${percentace});`
+			//log(percentace)
+			// Displays progress via console log as %
+			controller.enqueue(progressEvent.value);
+			// Add newly read data to the new readable stream
+			read();
+			// Runs function again to continue reading and creating new stream
+		  })
+		}
+	  }
+	})
   );
 }
 
@@ -280,7 +280,7 @@ const REG = {
 
 SP.toUnicode = function() {
   return this.split("").map(s => {
-    return `${s.charCodeAt(0).toString(16).padStart(2, '0')}`;
+	return `${s.charCodeAt(0).toString(16).padStart(2, '0')}`;
   }).join("-");
 }
 
@@ -288,7 +288,7 @@ SP.binToDec = function() {
 	let input = this.r('0b','')
   let sum = 0
   for (let i = 0; i < input.length; i++) {
-    sum += +input[i] * 2 ** (input.length - 1 - i)
+	sum += +input[i] * 2 ** (input.length - 1 - i)
   }
   return sum
 }
@@ -305,58 +305,62 @@ const SYNTAX = {
 };
 
 SP.parseHigthLevelLoops = function (){
-    const lines = this.split('\n');
-    let outputText = '';
-    let labelCount = 1;
-    let labelCountQuit = 1;
-    let ignoreBlock = 0
-    const labelStack = [];
-    const labelLoop = [];
-    const labelQuitStack = [];
-    const until = [];
+	const lines = this.split('\n');
+	let outputText = '';
+	let labelCount = 1;
+	let labelCountQuit = 1;
+	let ignoreBlock = 0
+	const labelStack = [];
+	const labelLoop = [];
+	const labelQuitStack = [];
+	const until = [];
 
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
+	for (let i = 0; i < lines.length; i++) {
+		let line = lines[i].trim();
 
-        const label = `begin_loop_${labelCount}`;
-        const labelQuit = `end_loop${labelCountQuit}`;
+		const label = `begin_loop_${labelCount}`;
+		const labelQuit = `end_loop${labelCountQuit}`;
 
-        if (/^repeat/im.test(line)){
-            outputText += `:${label}\n`;
-            labelStack.push(label);
-            labelLoop.push(line);
-            labelCount++;
-        } else if (/^while /im.test(line)) {
-          if (line == 'while true'){
-            outputText += `:${label}\n`;
-            labelStack.push(label);
-            labelLoop.push(line);
-            labelCount++;
-          } else if (line == 'while false'){
-            ignoreBlock++;
-            outputText += `goto @ignore_block_${ignoreBlock}\n`;
-            labelStack.push(label);
-            labelLoop.push(line);
-            labelCount++;
-            labelCountQuit++
-          } else {
-            const values = line.match(SYNTAX.WHILE)
-            outputText += `:${label}\nif\n${values[1]}\ngoto_if_false @${labelQuit}\n`;
-            labelStack.push(label);
-            labelQuitStack.push(labelQuit)
-            labelLoop.push('while custom');
-            labelCount++;
-            labelCountQuit++
-          }
-        } else if (/^for /im.test(line)) {
-            if (!SYNTAX.FOR.test(line)) {
-               throw new SyntaxError(`ALERTA!!\nBucle mal definido.\n>>> linea ${i} : ${line}`)
-                break;
-            }
-            const values = line.match(SYNTAX.FOR);
+		if (/^break/im.test(line)){
+			line = `goto @begin_loop_${labelCount-1}\n`;
+		}
 
-            outputText +=
-                `${values[1]} = ${values[2]}
+		if (/^repeat/im.test(line)){
+			outputText += `:${label}\n`;
+			labelStack.push(label);
+			labelLoop.push(line);
+			labelCount++;
+		} else if (/^while /im.test(line)) {
+		  if (line == 'while true'){
+			outputText += `:${label}\n`;
+			labelStack.push(label);
+			labelLoop.push(line);
+			labelCount++;
+		  } else if (line == 'while false'){
+			ignoreBlock++;
+			outputText += `goto @ignore_block_${ignoreBlock}\n`;
+			labelStack.push(label);
+			labelLoop.push(line);
+			labelCount++;
+			labelCountQuit++
+		  } else {
+			const values = line.match(SYNTAX.WHILE)
+			outputText += `:${label}\nif\n${values[1]}\ngoto_if_false @${labelQuit}\n`;
+			labelStack.push(label);
+			labelQuitStack.push(labelQuit)
+			labelLoop.push('while custom');
+			labelCount++;
+			labelCountQuit++
+		  }
+		} else if (/^for /im.test(line)) {
+			if (!SYNTAX.FOR.test(line)) {
+			   throw new SyntaxError(`ALERTA!!\nBucle mal definido.\n>>> linea ${i} : ${line}`)
+				break;
+			}
+			const values = line.match(SYNTAX.FOR);
+
+			outputText +=
+				`${values[1]} = ${values[2]}
 :${label}
 if
 ${values[1]} ${/down/i.test(values[3]) ? '<=' : '>='} ${values[4]}
@@ -364,123 +368,123 @@ goto_if_false @${labelQuit}
 ${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
 `;
 
-            labelStack.push(label);
-            labelQuitStack.push(labelQuit)
-            labelLoop.push('for');
-            labelCount++;
-            labelCountQuit++
-        }
-        
-        else if (line === 'end') {
-            const prevLabel = labelStack.pop();
-            const prevLoop = labelLoop.pop();
-            const prevQuit = labelQuitStack.pop();
-            
-            if (!prevLoop) {
-                throw new SyntaxError(`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : END`)
-                break;
-            }
+			labelStack.push(label);
+			labelQuitStack.push(labelQuit)
+			labelLoop.push('for');
+			labelCount++;
+			labelCountQuit++
+		}
+		
+		else if (line === 'end') {
+			const prevLabel = labelStack.pop();
+			const prevLoop = labelLoop.pop();
+			const prevQuit = labelQuitStack.pop();
+			
+			if (!prevLoop) {
+				throw new SyntaxError(`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : END`)
+				break;
+			}
 
-            if (prevLoop == 'while true') {
-                outputText += `goto @${prevLabel}\n\n`;
-            } else if (prevLoop == 'while false') {
-                outputText += `:ignore_block_${ignoreBlock}\n\n`;
-            } else if (prevLoop == 'while custom') {
-                outputText += `goto @${prevLabel}\n:${prevQuit}\n\n`;
-                labelCountQuit++;
-            }else if (prevLoop === 'for') {
-                outputText += `goto @${prevLabel}\n:${prevQuit}\n\n`;
-                labelCountQuit++;
-            }
-        } else if (SYNTAX.REPEAT.test(line)) {
-            const prevLabel = labelStack.pop();
-            const prevLoop = labelLoop.pop();
-            const prevQuit = labelQuitStack.pop();
-            
-            if (!prevLoop) {
-                throw new SyntaxError(`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : UNTIL`)
-                break;
-            }
+			if (prevLoop == 'while true') {
+				outputText += `goto @${prevLabel}\n\n`;
+			} else if (prevLoop == 'while false') {
+				outputText += `:ignore_block_${ignoreBlock}\n\n`;
+			} else if (prevLoop == 'while custom') {
+				outputText += `goto @${prevLabel}\n:${prevQuit}\n\n`;
+				labelCountQuit++;
+			}else if (prevLoop === 'for') {
+				outputText += `goto @${prevLabel}\n:${prevQuit}\n\n`;
+				labelCountQuit++;
+			}
+		} else if (SYNTAX.REPEAT.test(line)) {
+			const prevLabel = labelStack.pop();
+			const prevLoop = labelLoop.pop();
+			const prevQuit = labelQuitStack.pop();
+			
+			if (!prevLoop) {
+				throw new SyntaxError(`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : UNTIL`)
+				break;
+			}
 
-            if (prevLoop == 'repeat'){
-              const condicion = line.match(SYNTAX.REPEAT)[1]
-              outputText += `if\n${condicion}\ngoto_if_false @${prevLabel}\n`
-            }
-        } else {
-            outputText += `${line}\n`;
-        }
-    }
-    
-    if (labelStack.length > 0) {
-      throw new SyntaxError(`ALERTA!!\nSe encontraron bucles sin cerrar.\n>>> pila [${labelLoop}]`)
-    }
-    return outputText;
+			if (prevLoop == 'repeat'){
+			  const condicion = line.match(SYNTAX.REPEAT)[1]
+			  outputText += `if\n${condicion}\ngoto_if_false @${prevLabel}\n`
+			}
+		} else {
+			outputText += `${line}\n`;
+		}
+	}
+	
+	if (labelStack.length > 0) {
+	  throw new SyntaxError(`ALERTA!!\nSe encontraron bucles sin cerrar.\n>>> pila [${labelLoop}]`)
+	}
+	return outputText;
 }
 
 SP.addNumbersToIfs = function() {
-    let lineas = this.split('\n');
-    let real = 0
-    let contador = 0;
-    let iniciar = false
-    let multiCondicion = false
-    let numeros = [];
+	let lineas = this.split('\n');
+	let real = 0
+	let contador = 0;
+	let iniciar = false
+	let multiCondicion = false
+	let numeros = [];
 
-    for (const linea of lineas) {
-        if (linea.startsWith('if')) {
-            iniciar = true
-            real = 0
-            contador = 0
-            if (linea.includes('or') || linea.includes('and')) {
-                multiCondicion = true
-                if (linea.includes('or')) {
-                    contador += 20;
-                } else {
-                    contador += 1;
-                }
-            }
-        } else if (linea.startsWith('then') || linea.startsWith('goto_if_false') || linea.startsWith('0n')) {
-            real--
-            if (real > 1 && multiCondicion == false)
-             throw new SyntaxError('¡Error! El "if" debe ir seguido de "and" o "or".')
-              
-            if (real > 8 && multiCondicion == true)
-              throw new SyntaxError('¡Este if tiene más de 7 líneas de texto!');
-            
-            contador += real
-            numeros.push(contador);
-            contador = 0;
-            real = 0;
-            iniciar = false
-        } else {
-          if(iniciar){
-            if (linea.trim() != '') {
-                real++;
-            }
-          }
-        }
-    }
-    
-    let number = 0
-    let counter = 0
-    for (const linea of lineas) {
-        if (linea.startsWith('if')) {
-          if (/^if .+/im.test(linea)){
-            const param = linea.match(/^if (.+)/im)
-            lineas[counter] = 
-              "if "
-              +numeros[number]
-              +"\n"
-              +(param[1].replace(/^(and|or)/im, ''))
-          }else{
-            lineas[counter] = linea +" "+numeros[number]
-          }
-          number++
-        }
-        counter++
-    }
-    //log(lineas)
-    
-    return lineas.join('\n');
+	for (const linea of lineas) {
+		if (linea.startsWith('if')) {
+			iniciar = true
+			real = 0
+			contador = 0
+			if (linea.includes('or') || linea.includes('and')) {
+				multiCondicion = true
+				if (linea.includes('or')) {
+					contador += 20;
+				} else {
+					contador += 1;
+				}
+			}
+		} else if (linea.startsWith('then') || linea.startsWith('goto_if_false') || linea.startsWith('0n')) {
+			real--
+			if (real > 1 && multiCondicion == false)
+			 throw new SyntaxError('¡Error! El "if" debe ir seguido de "and" o "or".')
+			  
+			if (real > 8 && multiCondicion == true)
+			  throw new SyntaxError('¡Este if tiene más de 7 líneas de texto!');
+			
+			contador += real
+			numeros.push(contador);
+			contador = 0;
+			real = 0;
+			iniciar = false
+		} else {
+		  if(iniciar){
+			if (linea.trim() != '') {
+				real++;
+			}
+		  }
+		}
+	}
+	
+	let number = 0
+	let counter = 0
+	for (const linea of lineas) {
+		if (linea.startsWith('if')) {
+		  if (/^if .+/im.test(linea)){
+			const param = linea.match(/^if (.+)/im)
+			lineas[counter] = 
+			  "if "
+			  +numeros[number]
+			  +"\n"
+			  +(param[1].replace(/^(and|or)/im, ''))
+		  }else{
+			lineas[counter] = linea +" "+numeros[number]
+		  }
+		  number++
+		}
+		counter++
+	}
+	//log(lineas)
+	
+	return lineas.join('\n');
 }
 
 SP.PrePost = function(){
@@ -681,8 +685,8 @@ LineComand = LineComand
 
 						Object.entries(SCM_DB).every(([key, value]) => {
 						  if (value.opcode == setOp) {
-						  	Argument = key
-						  	return false
+							Argument = key
+							return false
 						  }
 						  return true
 						})
@@ -1181,7 +1185,7 @@ nop // operations aritmetics suports: =, +=, -=, *=, /=, >, <, >=, <=
 6@ = 'string'
 7@ = 'longstring'
 :main
-    wait 0@
+	wait 0@
 goto @main
 terminate_this_script`.Translate())
 //*/
