@@ -500,9 +500,7 @@ function contarLineasEnIFs(texto) {
 }
 
 SP.PrePost = function(){
-	let altoNivel = convertNestedLoops(this);
-	let altoNivel = contarLineasEnIFs(altoNivel);
-	return altoNivel
+	return this
 		.r(/^(int )?(\$.+) = (\d+|#.+|0x.+|0b.+)$/gim, `0004: $2 $3`)									//0004: $CUSTOM_TOURNAMENT_FLAG = 0
 		.r(/^(float )?(\$.+) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0005: $2 $3`)							//0005: $166 = 292.33
 		.r(/^(int )?(\d+@([^\s]+)?) = (\d+|#.+|0x.+|0b.+)$/gim, `0006: $2 $4`)				//0006: 0@ = -1
