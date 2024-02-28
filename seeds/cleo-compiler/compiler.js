@@ -726,7 +726,7 @@ LineComand = LineComand
 					totalSizePerLine.push(1)
 
 					try {
-						typeData = SCM_DB[command].params[--numArgument]
+						typeData = SCM_DB[command] ? SCM_DB[command].params[--numArgument] : SCM_DB[command.r(/^8/m,'0'].params[--numArgument]
 					}catch{
 						throw new SyntaxError(`unknown parameter\n\tat line ${(1+numLine)} the value ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp}: ${Line}`);
 					}
