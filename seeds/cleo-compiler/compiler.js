@@ -487,6 +487,7 @@ SP.addNumbersToIfs = function() {
 	return lineas.join('\n');
 }
 
+
 SP.PrePost = function(){
 	return this
 		.r(/^(int )?(\$.+) = (\d+|#.+|0x.+|0b.+)$/gim, `0004: $2 $3`)									//0004: $CUSTOM_TOURNAMENT_FLAG = 0
@@ -671,10 +672,9 @@ LineComand = LineComand
 						&& Argument.length <= 6
 					){
 						// is opcode
-						setOp = Argument.r(':','').r('!', '8').padStart(4,'0')
-						if (setOp.length >= 5){
-							setOp = setOp.r(/^(.)/m,'')
-						}
+						Argument = Argument.r(':','').r('!', '8').padStart(4,'0')
+						Argument = Argument.length > 4 ? Argument.r(/^./m,'') : Argument
+						setOp = Argument
 
 						if(/^[8-9A-Fa-f]/.test(Argument)){
 							isNegative = true
@@ -682,6 +682,7 @@ LineComand = LineComand
 								parseInt(setOp, 16) - 0b1000000000000000
 							).toString(16).padStart(4,'0')
 						}
+
 
 						Object.entries(SCM_DB).every(([key, value]) => {
 						  if (value.opcode == setOp) {
@@ -696,6 +697,7 @@ LineComand = LineComand
 								parseInt(setOp, 16) + 0b1000000000000000
 							).toString(16)
 						}
+
 					}else{
 						// is keyword
 						if(Argument[0] == '!'){ // is negative
@@ -726,9 +728,9 @@ LineComand = LineComand
 					totalSizePerLine.push(1)
 
 					try {
-						typeData = SCM_DB[command] ? SCM_DB[command].params[--numArgument] : SCM_DB[command.r(/^8/m,'0'].params[--numArgument]
+						typeData = SCM_DB[command] ? SCM_DB[command].params[--numArgument] : SCM_DB[command.r(/^8/m,'0')].params[--numArgument];
 					}catch{
-						throw new SyntaxError(`unknown parameter\n\tat line ${(1+numLine)} the value ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp}: ${Line}`);
+						throw new SyntaxError(`unknown parameter\n\tat line ${(1+numLine)} the value ${Argument}\n\ttrigger: ${setOp == '0000' ? 'XXXX' : setOp}\n\t>>> ${Line}\n\t>>>${command}`);
 					}
 
 					let foundType = false
