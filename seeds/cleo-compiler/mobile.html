@@ -44,8 +44,8 @@ const $ = (element, _parent = D) => {
 	if (typeof callback == 'function'){
 		if(element){
 			if('' + element == '[object NodeList]'){ 
-				element.forEach(function(e){
-					callback(e)
+				element.forEach(function(e,i){
+					callback(e,i)
 				})
 			}else{  
 				callback(element)
@@ -180,14 +180,12 @@ const new$ = (element, parent = 'body') => {
 		}
 	}
 
-	EP.AddSystemTAB = function(event){
-	    if (event.key === 'Tab') {
-	        event.preventDefault(); // Evita que se mueva al siguiente campo
-	        var start = this.selectionStart;
-	        var end = this.selectionEnd;
-	        this.value = this.value.substring(0, start) + '\t' + this.value.substring(end);
-	        this.selectionStart = this.selectionEnd = start + 1; // Posiciona el cursor
-	    }
+	EP.AddAtSection = function(text){
+	  var start = this.selectionStart;
+	  var end = this.selectionEnd;
+	  this.value = this.value.substring(0, start) + text + this.value.substring(end);
+	  this.selectionStart = this.selectionEnd = start + 1; // Posiciona el cursor
+	  this.focus()
 	}
 
 	EP.obtenerUltimaPalabra = function() {
@@ -231,21 +229,21 @@ const new$ = (element, parent = 'body') => {
 	}
 </script>
 
-<nav class="bg-green py-1 d-flex between black">
+<nav class="bg-green py-1 d-flex between black h3">
 	<section>
 		<button title=Cargar>⬆️</button>
 		<button title=Descargar>⬇️</button>
 		<button title=Compilar>👍</button>
 	</section>
 	<section>
-		<b>MatiBuilder</b>
+		<b>MD's Compiler</b>
 	</section>
 	<section>
 	  <button title="Opcodes">🔍</button>
 		<button id="open-settings" title="Ajustes">⚙️</button>
 	</section>
 </nav>
-<main class="py-2">
+<main>
 
 <article>
 	<div class="d-flex w-100 between">
@@ -273,7 +271,7 @@ terminate_this_script</textarea>
 </main>
 
 <footer class="bg-green black d-flex between py-1 w-100">
-<section>[2:6] 0001 {1/1}</section>
+<section id="data-line">[2:6] 0001 {1/1}</section>
 <section><span>T:4</span> <span>F:14</span></section>
 <section><span>Okey</span> <span>SBL 0.564</span>
 <select id='mode' class="ml-1" style="border: none;">
@@ -287,17 +285,24 @@ terminate_this_script</textarea>
   <option value="vc_mobile">VC Mobile</option>
 </select></section>
 </footer>
-<footer class="bg-green black d-flex p-2 w-100 g-3">
+<footer class="bg-green black d-flex p-2 w-100 g-3" id="keys-mobile">
 <button>→|</button>
+<button>&</button>
 <button>@</button>
 <button>$</button>
 <button>#</button>
 <button>=</button>
-<button>""</button>
-<button>''</button>
+<button>_</button>
+<button>" "</button>
+<button>' '</button>
+<button>( )</button>
+<button>{ }</button>
+<button>[ ]</button>
 </footer>
 
-<dialog id="modal-settings" class="d-flex column w-100 h-100 py-2 bg-green black p-fixed r-top">
+
+
+<dialog id="modal-settings" class="d-flex column w-100 h-100 py-2 bg-green black p-fixed r-top d-none">
 <header class="w-100 d-flex between h1">
   <span class="">Settings</span>
   <span>
@@ -309,7 +314,7 @@ terminate_this_script</textarea>
 
 <h3>Font</h3>
 <content class="d-flex">
-  <div class="w-50 d-flex column">
+  <div class="w-50 d-flex column g-2">
     <label for="font-family">Family</label>
     <label for="font-size">Size</label>
     <label for="font-line-size">Line Size</label>
@@ -325,13 +330,16 @@ terminate_this_script</textarea>
 
 <h3>Scheme</h3>
 <content class="d-flex w-100 between">
+<div class="w-50 d-flex between">
 <span>Datatype</span>
 <span><b>B</b> <i>I</i> <u>U</u></span>
 <span>Value</span>
-<span>Preview</span>
+</div>
+<div class="w-50 right">Preview</div>
 </content>
 <content class="d-flex">
-  <div class="w-20 d-flex column" id="scheme-datatype">
+  <div class="d-flex w-60">
+  <div class="w-30 d-flex column g-1" id="scheme-datatype">
     <label for="code-text">Text</label>
     <label for="code-background">Background</label>
     <label for="code-comments">Comments</label>
@@ -348,18 +356,28 @@ terminate_this_script</textarea>
     <label for="code-Output">Output</label>
     <label for="code-error">Errors</label>
   </div>
-  <div class="w-20 d-flex py-1" id="scheme-ibu">
-    <div class="d-flex column i"></div>
-    <div class="d-flex column b"></div>
-    <div class="d-flex column u"></div>
+  <div class="w-30 d-flex p-1" id="scheme-ibu">
+    <div class="d-flex column i g-1"></div>
+    <div class="d-flex column b g-1"></div>
+    <div class="d-flex column u g-1"></div>
   </div>
-  <div class="w-20 d-flex column">
+  <div class="w-40 d-flex column">
     <input type="text" value="gray" id="font-family">
     <input type="text" value="green" id="font-size">
     <input type="text" value="red" id="font-line-size">
     <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
   </div>
-  <pre class="w-40 p-relative">
+  </div>
+  <pre class="w-40 p-relative m-0 py-2">
 nop { this is comment }
 0001: wait 0x0 || 0b0 || 0
 
@@ -377,6 +395,7 @@ end
 
 3@ = 7639
 error here
+/* xd */
   </pre>
 </content>
 
@@ -470,15 +489,15 @@ let tempCSS = ``
 			['r', 'border-radius']
 		].forEach(function(attribute){
 			[
-				'0',
-				'.25rem',
-				'.5rem',
-				'1rem',
-				'1.5rem',
-				'3rem'
+				0,
+				0.25,
+				0.5,
+				1,
+				1.5,
+				3
 			].forEach(function(value, index){
-				tempCSS += '.' + attribute[0] + prefix + index + '{' + attribute[1]+ ':' + value + '!important}'
-			})
+				tempCSS += '.' + attribute[0] + prefix + index + '{' + attribute[1]+ ':' + value + 'rem!important}';
+			});
 		});
 
 		[
@@ -553,12 +572,20 @@ const $textarea = $('#input')
 
 // Escuchamos el evento "input" para detectar cambios en el contenido del textarea
 $textarea.addEventListener("input", () => {
+  let dl = $textarea.getLine()
+  $("#data-line").innerHTML =
+    `[${
+      dl.inSelection ? dl.charsSelected : dl.lineaCursor+', '+dl.columnaCursor
+    }]`
 	console.log($textarea.obtenerUltimaPalabra())
-	console.log($textarea.getLine())
+	console.log(dl)
 });
 
 $textarea.addEventListener('keydown', function(e) {
-	$textarea.AddSystemTAB(e)
+  if (e.key === 'Tab') {
+	  e.preventDefault(); // Evita que se mueva al siguiente campo
+	  $textarea.AddAtSection('\t')
+  }
 });
 
 $("div [for]", e => {
@@ -584,6 +611,14 @@ $('#scheme-datatype label', e => {
   
   let $u = new$('input', '#scheme-ibu .u')
   $u.sAttr('type', 'checkbox')
+})
+
+const KEYS_MOBILE = ["\t","&","@","$","#","=","_",'""',"''",'()','{}','[]']
+$('#keys-mobile button', (e, i)=> {
+  e.onclick = ()=>{
+    $textarea.AddAtSection(KEYS_MOBILE[i])
+  }
+  log(i)
 })
 </script>
 </div>
