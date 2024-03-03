@@ -123,7 +123,17 @@ function getLine(){
 	else
 		$('#line').innerText = `Line ${lineaCursor}, Column ${posicionCursor-posicionLinea}`
 }
-
+function delay(callback, ms) {
+    let timer = 0;
+    return function() {
+        const context = this;
+        const args = arguments;
+        clearTimeout(timer);
+        timer = setTimeout(function() {
+            callback.apply(context, args);
+        }, ms || 0);
+    };
+}
 </script>
 
 <form id="FORMULARIO">
@@ -169,20 +179,13 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
     font-size: 1rem!important;
     text-wrap: wrap;
     aspect-ratio: 16 / 9;
-    ">nop // operations aritmetics suports: =, +=, -=, *=, /=, >, <, >=, <=
-0@ += 0      // int
-1@ -= 0x1C   // int
-2@ -= 0b1111 // int
-3@ = #jester // int
-4@ *= 2f     // float
-5@ /= 5.0    // float
-6@ > .75     // float
-7@ = 'string'     // string
-8@ = "longstring" // string
-:main
-    wait 0@
-goto @main
+    ">nop
 
+while true
+  wait 0
+end
+
+terminate_this_script
 </textarea>
 	<pre id='PREVIEW' style="
 	font-size: 1rem!important;
@@ -229,8 +232,15 @@ Syntax High-Level not implemented.<br>
 </blockquote>
 <blockquote>
 This editor use the data base of Library.SannyBuilder.com and files of edition MatiDragon.<br>
-You can use the name of a command how Keywords or Opcodes for create scripts.<br>
-The editor can invert Keywords with the prefix ! and NOT.<br>
+---<br>
+IDE supports:<br>
+- High-level syntax for loops (WHILE, REPEAT, FOR).<br>
+- Multi syntax for decimal numbers (5, 0x3, 0b01, #male01).<br>
+- Multi syntax for floating numbers (.25, 3.0, 7f).<br>
+- Multi syntax for opcodes (0000:, 1:, !EF:).<br>
+- Arithmetic operations.<br>
+- Autocomplete for IF AND and IF OR.<br>
+- Understanding keywords and when they are denied (!, NOT).<br>
 </blockquote>
 <br>
 <script type="module" src="compiler.js"></script>
