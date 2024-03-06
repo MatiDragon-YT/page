@@ -156,6 +156,27 @@ const new$ = (element, parent = 'body') => {
 	    this.setSelectionRange(atPosition, atPosition);
 	    this.focus();
 	}
+	
+	EP.setCursorFull = function (linea, columna) {
+	  linea<1?linea=1:linea
+    // Obtenemos el contenido del TextArea
+    const contenido = this.value;
+
+    // Calculamos la posición del cursor en función de la línea y columna
+    let posicionCursor = 0;
+    let lineas = contenido.split("\n");
+    for (let i = 0; i < Math.min(linea - 1, lineas.length); i++) {
+        posicionCursor += lineas[i].length + 1; // Sumamos 1 para el salto de línea
+    }
+    posicionCursor += Math.min(columna, lineas[linea - 1].length);
+
+    // Establecemos la posición del cursor
+    this.selectionStart = posicionCursor;
+    this.selectionEnd = posicionCursor;
+    
+    updateDataLine()
+}
+
 
 	EP.getCursor = function(){
 		return [this.selectionStart, this.selectionEnd]
@@ -219,6 +240,11 @@ const new$ = (element, parent = 'body') => {
     return ultimaPalabra;
 }
 
+EP.getTextSelected = function() {
+    let start = this.selectionStart;
+    let end = this.selectionEnd;
+    return this.value.substring(start, end);
+}
 
 	EP.CopyTextContent = function() {
 		let $temp = new$("textarea")
@@ -229,7 +255,7 @@ const new$ = (element, parent = 'body') => {
 	}
 </script>
 
-<nav class="bg-green py-1 d-flex between black h3">
+<nav class="bg-green py-1 d-flex between black h4">
 	<section>
 		<button title=Cargar>⬆️</button>
 		<button title=Descargar>⬇️</button>
@@ -262,7 +288,7 @@ const new$ = (element, parent = 'body') => {
 		<textarea class="editor w-100 d-block d-sm-block" id='input' placeholder="escribe tu codigo" autocomplete="off" spellcheck="false">nop
 wait 0
 terminate_this_script</textarea>
-		<textarea class="editor pink w-100 w-sm-30 d-none d-sm-block" id='output' disabled>0000
+		<textarea class="editor pink-1 w-100 w-sm-30 d-none d-sm-block" id='output' disabled>0000
 0100 04 00
 4E00</textarea>
 	</div>
@@ -271,7 +297,7 @@ terminate_this_script</textarea>
 </main>
 
 <footer class="bg-green black d-flex between py-1 w-100">
-<section id="data-line">[2:6] 0001 {1/1}</section>
+<section id="data-line">Ln 2, Col 6</section>
 <section><span>T:4</span> <span>F:14</span></section>
 <section><span>Okey</span> <span>SBL 0.564</span>
 <select id='mode' class="ml-1" style="border: none;">
@@ -285,7 +311,7 @@ terminate_this_script</textarea>
   <option value="vc_mobile">VC Mobile</option>
 </select></section>
 </footer>
-<footer class="bg-green black d-flex p-2 w-100 g-3" id="keys-mobile">
+<footer class="bg-green black d-flex h4* p-2 w-100 g-3 d-sm-none" id="keys-mobile">
 <button>→|</button>
 <button>&</button>
 <button>@</button>
@@ -299,8 +325,18 @@ terminate_this_script</textarea>
 <button>{ }</button>
 <button>[ ]</button>
 </footer>
-
-
+<footer class="bg-green black d-flex h1* p-2 w-100 g-3 d-sm-none" id="keys-actions">
+<button key="ctrl">⌬</button>
+<button key="up">⇡</button>
+<button key="down">⇣</button>
+<button key="left">⇠</button>
+<button key="right">⇢</button>
+<button cmd="undo">↶</button>
+<button cmd="redo">↷</button>
+<button cmd="copy">⎘</button>
+<button cmd="cut">✄</button>
+<button cmd="paste">⎗</button>
+</footer>
 
 <dialog id="modal-settings" class="d-flex column w-100 h-100 py-2 bg-green black p-fixed r-top d-none">
 <header class="w-100 d-flex between h1">
@@ -570,15 +606,23 @@ $('body').append($cssGenerated)
 
 const $textarea = $('#input')
 
-// Escuchamos el evento "input" para detectar cambios en el contenido del textarea
-$textarea.addEventListener("input", () => {
+function updateDataLine(){
   let dl = $textarea.getLine()
   $("#data-line").innerHTML =
-    `[${
-      dl.inSelection ? dl.charsSelected : dl.lineaCursor+', '+dl.columnaCursor
-    }]`
-	console.log($textarea.obtenerUltimaPalabra())
-	console.log(dl)
+    `${
+      dl.inSelection ? 'Chars '+dl.charsSelected : 'Ln '+dl.lineaCursor+', Col '+dl.columnaCursor
+    }`
+	//console.log($textarea.obtenerUltimaPalabra())
+	//console.log(dl)
+}
+
+// Escuchamos el evento "input" para detectar cambios en el contenido del textarea
+$textarea.addEventListener("input", () => {
+  updateDataLine()
+});
+
+$textarea.addEventListener("click", () => {
+  updateDataLine()
 });
 
 $textarea.addEventListener('keydown', function(e) {
@@ -616,10 +660,82 @@ $('#scheme-datatype label', e => {
 const KEYS_MOBILE = ["\t","&","@","$","#","=","_",'""',"''",'()','{}','[]']
 $('#keys-mobile button', (e, i)=> {
   e.onclick = ()=>{
-    $textarea.AddAtSection(KEYS_MOBILE[i])
+    $textarea.focus();
+      document.execCommand("insertText",false,KEYS_MOBILE[i])
+      if (i > 6) {
+        $textarea.selectionStart--
+        $textarea.selectionEnd--
+      }
   }
-  log(i)
+  //log(i)
 })
+
+let clipPaste = ""
+
+$("button[cmd]", e => {
+  let x = e.gAttr("cmd")
+  e.title=x
+  if (x == "paste") {
+    e.onclick = () =>{
+      $textarea.focus();
+      document.execCommand("insertText",false,clipPaste);
+    }
+  } else if (x == "copy" || x == "cut") {
+    e.onclick = (y,z)=>{
+      $textarea.focus();
+      clipPaste = $textarea.getTextSelected()
+      document.execCommand(x);
+    }
+  } else {
+    e.onclick = ()=>{
+      $textarea.focus();
+      document.execCommand(x);
+    }
+  }
+})
+
+let ctrlPressed = false
+$("button[key]", e => {
+  let x = e.gAttr("key")
+  e.title=x
+  if (x == "left") {
+    e.onclick = () =>{
+      $textarea.focus();
+      $textarea.selectionStart--
+      $textarea.selectionEnd--
+      updateDataLine()
+    }
+  }
+  if (x == "right") {
+    e.onclick = () =>{
+      $textarea.focus();
+      $textarea.selectionEnd++
+      $textarea.selectionStart++
+      updateDataLine()
+    }
+  }
+  if (x == "up") {
+    e.onclick = () =>{
+      $textarea.focus();
+      let {columnaCursor, lineaCursor} = $textarea.getLine()
+      $textarea.setCursorFull(lineaCursor-1,columnaCursor)
+    }
+  }
+  if (x == "down") {
+    e.onclick = () =>{
+      $textarea.focus();
+      let {columnaCursor, lineaCursor} = $textarea.getLine()
+      $textarea.setCursorFull(lineaCursor+1,columnaCursor)
+    }
+  }
+  if (x == "ctrl") {
+    e.onclick = () =>{
+      $textarea.focus();
+      ctrlPressed = !ctrlPressed
+    }
+  }
+})
+
 </script>
 </div>
 </body>
