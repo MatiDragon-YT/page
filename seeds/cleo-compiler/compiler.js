@@ -331,12 +331,12 @@ SP.parseHigthLevelLoops = function (){
 			labelLoop.push(line);
 			labelCount++;
 		} else if (/^while /im.test(line)) {
-		  if (line == 'while true'){
+		  if (/^while true/im.test(line)){
 			outputText += `:${label}\n`;
 			labelStack.push(label);
 			labelLoop.push(line);
 			labelCount++;
-		  } else if (line == 'while false'){
+		  } else if (/^while false/im.test(line)){
 			ignoreBlock++;
 			outputText += `goto @ignore_block_${ignoreBlock}\n`;
 			labelStack.push(label);
@@ -375,7 +375,7 @@ ${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
 			labelCountQuit++
 		}
 		
-		else if (line === 'end') {
+		else if (/^end/im.test(line)) {
 			const prevLabel = labelStack.pop();
 			const prevLoop = labelLoop.pop();
 			const prevQuit = labelQuitStack.pop();

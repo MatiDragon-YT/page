@@ -22,25 +22,49 @@
 
 	NodeList.prototype.forEach = Array.prototype.forEach
 
-	/** Smart selector for elements of the DOM
-	 * @param {DOMString}
-	 * @param {Element} optional
-	 * @return {Element}
-	*/
-	function $(element, _parent) {
-		_parent = _parent || D;
-
-		const xElements = _parent.querySelectorAll(element)
-		const length = xElements.length
-
-		if (element.charAt(0) === '#' && !/\s/.test(element) || length === 1) { 
-			return _parent.querySelector(element);
-		}
-		else {
-			if(length === 0){return null}
-			return xElements;
-		}
+/** Smart selector for elements of the DOM
+ * @param {DOMString}
+ * @param {Element} optional
+ * @return {Element}
+*/
+const $ = (element, _parent = D) => {
+	const callback = _parent
+	if (typeof _parent == 'function'){
+		_parent = D
 	}
+	const xElements = _parent.querySelectorAll(element)
+	const length = xElements.length
+
+	element = element.charAt(0) === '#' && !/\s/.test(element) || length === 1
+		? _parent.querySelector(element)
+		: length === 0
+			? undefined
+			: xElements
+
+	if (typeof callback == 'function'){
+		if(element){
+			if('' + element == '[object NodeList]'){ 
+				element.forEach(function(e,i){
+					callback(e,i)
+				})
+			}else{  
+				callback(element)
+			}
+		}
+	}else{
+		return element
+	}
+}
+
+/** Smart selector for elements of the DOM
+ * @param {DOMString}
+ * @return {Element}
+*/
+const new$ = (element, parent = 'body') => {
+	let $temp = D.createElement(element)
+	$(parent).appendChild($temp)
+	return $temp
+}
 
 	/** Shotcun of String.replace()
 	*/
@@ -88,6 +112,14 @@
 	EP.previous = function(){
 		return this.previousElementSibling
 	}
+	
+	EP.gAttr = function (attr){
+	  return this.getAttribute(attr)
+	}
+	
+  EP.sAttr = function(attr, val="") {
+    this.setAttribute(attr, val)
+  }
 
 	EP.show = function(){
 	    this.style.display = "block"
@@ -124,6 +156,27 @@
 	    this.setSelectionRange(atPosition, atPosition);
 	    this.focus();
 	}
+	
+	EP.setCursorFull = function (linea, columna) {
+	  linea<1?linea=1:linea
+    // Obtenemos el contenido del TextArea
+    const contenido = this.value;
+
+    // Calculamos la posición del cursor en función de la línea y columna
+    let posicionCursor = 0;
+    let lineas = contenido.split("\n");
+    for (let i = 0; i < Math.min(linea - 1, lineas.length); i++) {
+        posicionCursor += lineas[i].length + 1; // Sumamos 1 para el salto de línea
+    }
+    posicionCursor += Math.min(columna, lineas[linea - 1].length);
+
+    // Establecemos la posición del cursor
+    this.selectionStart = posicionCursor;
+    this.selectionEnd = posicionCursor;
+    
+    updateDataLine()
+}
+
 
 	EP.getCursor = function(){
 		return [this.selectionStart, this.selectionEnd]
@@ -148,14 +201,12 @@
 		}
 	}
 
-	EP.AddSystemTAB = function(event){
-	    if (event.key === 'Tab') {
-	        event.preventDefault(); // Evita que se mueva al siguiente campo
-	        var start = this.selectionStart;
-	        var end = this.selectionEnd;
-	        this.value = this.value.substring(0, start) + '\t' + this.value.substring(end);
-	        this.selectionStart = this.selectionEnd = start + 1; // Posiciona el cursor
-	    }
+	EP.AddAtSection = function(text){
+	  var start = this.selectionStart;
+	  var end = this.selectionEnd;
+	  this.value = this.value.substring(0, start) + text + this.value.substring(end);
+	  this.selectionStart = this.selectionEnd = start + 1; // Posiciona el cursor
+	  this.focus()
 	}
 
 	EP.obtenerUltimaPalabra = function() {
@@ -189,6 +240,11 @@
     return ultimaPalabra;
 }
 
+EP.getTextSelected = function() {
+    let start = this.selectionStart;
+    let end = this.selectionEnd;
+    return this.value.substring(start, end);
+}
 
 	EP.CopyTextContent = function() {
 		let $temp = new$("textarea")
@@ -199,21 +255,21 @@
 	}
 </script>
 
-<nav class="bg-green py-1 d-flex between black">
+<nav class="bg-green py-1 d-flex between black h4">
 	<section>
 		<button title=Cargar>⬆️</button>
 		<button title=Descargar>⬇️</button>
 		<button title=Compilar>👍</button>
 	</section>
 	<section>
-		<b>MatiBuilder</b>
+		<b>MD's Compiler</b>
 	</section>
 	<section>
-		<button title="Ajustes">⚙️</button>
-		<button title="Opcodes">🔍</button>
+	  <button title="Opcodes">🔍</button>
+		<button id="open-settings" title="Ajustes">⚙️</button>
 	</section>
 </nav>
-<main class="py-2">
+<main>
 
 <article>
 	<div class="d-flex w-100 between">
@@ -226,13 +282,13 @@
 		</div>
 	</div>
 	<div class="d-flex">
-		<textarea class="green h-80 w-4rem" disabled>01
+		<textarea class="editor green w-4rem" disabled>01
 02
 03</textarea>
-		<textarea class="w-100 h-80 d-block d-sm-block" id='input' placeholder="escribe tu codigo" autocomplete="off" spellcheck="false">nop
+		<textarea class="editor w-100 d-block d-sm-block" id='input' placeholder="escribe tu codigo" autocomplete="off" spellcheck="false">nop
 wait 0
 terminate_this_script</textarea>
-		<textarea class="pink w-100 w-sm-30 h-80 d-none d-sm-block" id='output' disabled>0000
+		<textarea class="editor pink-1 w-100 w-sm-30 d-none d-sm-block" id='output' disabled>0000
 0100 04 00
 4E00</textarea>
 	</div>
@@ -240,8 +296,8 @@ terminate_this_script</textarea>
 
 </main>
 
-<footer class="bg-green black d-flex between py-1 my-2">
-<section>[2:6] 0001 {1/1}</section>
+<footer class="bg-green black d-flex between py-1 w-100">
+<section id="data-line">Ln 2, Col 6</section>
 <section><span>T:4</span> <span>F:14</span></section>
 <section><span>Okey</span> <span>SBL 0.564</span>
 <select id='mode' class="ml-1" style="border: none;">
@@ -255,6 +311,132 @@ terminate_this_script</textarea>
   <option value="vc_mobile">VC Mobile</option>
 </select></section>
 </footer>
+<footer class="bg-green black d-flex h4* p-2 w-100 g-3 d-sm-none" id="keys-mobile">
+<button>→|</button>
+<button>&</button>
+<button>@</button>
+<button>$</button>
+<button>#</button>
+<button>=</button>
+<button>_</button>
+<button>" "</button>
+<button>' '</button>
+<button>( )</button>
+<button>{ }</button>
+<button>[ ]</button>
+</footer>
+<footer class="bg-green black d-flex h1* p-2 w-100 g-3 d-sm-none" id="keys-actions">
+<button key="ctrl">⌬</button>
+<button key="up">⇡</button>
+<button key="down">⇣</button>
+<button key="left">⇠</button>
+<button key="right">⇢</button>
+<button cmd="undo">↶</button>
+<button cmd="redo">↷</button>
+<button cmd="copy">⎘</button>
+<button cmd="cut">✄</button>
+<button cmd="paste">⎗</button>
+</footer>
+
+<dialog id="modal-settings" class="d-flex column w-100 h-100 py-2 bg-green black p-fixed r-top d-none">
+<header class="w-100 d-flex between h1">
+  <span class="">Settings</span>
+  <span>
+    <button id="acept-settings">✔️</button>
+    <button id="reset-settings">↩️</button>
+    <button id="close-settings">❌</button>
+  </span>
+</header>
+
+<h3>Font</h3>
+<content class="d-flex">
+  <div class="w-50 d-flex column g-2">
+    <label for="font-family">Family</label>
+    <label for="font-size">Size</label>
+    <label for="font-line-size">Line Size</label>
+    <label for="font-tab-size">Tab Size</label>
+  </div>
+  <div class="w-50">
+    <input type="text" value="ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace" id="font-family">
+    <input type="text" value="14px" id="font-size">
+    <input type="text" value="1.0" id="font-line-size">
+    <input type="number" value="4" id="font-tab-size">
+  </div>
+</content>
+
+<h3>Scheme</h3>
+<content class="d-flex w-100 between">
+<div class="w-50 d-flex between">
+<span>Datatype</span>
+<span><b>B</b> <i>I</i> <u>U</u></span>
+<span>Value</span>
+</div>
+<div class="w-50 right">Preview</div>
+</content>
+<content class="d-flex">
+  <div class="d-flex w-60">
+  <div class="w-30 d-flex column g-1" id="scheme-datatype">
+    <label for="code-text">Text</label>
+    <label for="code-background">Background</label>
+    <label for="code-comments">Comments</label>
+    <label for="code-opcodes">Opcodes</label>
+    <label for="code-operators">Operators</label>
+    <label for="code-variables">Variables</label>
+    <label for="code-numbers">Numbers</label>
+    <label for="code-strings">Strings</label>
+    <label for="code-classes">Classes</label>
+    <label for="code-miembers">Miembers</label>
+    <label for="code-keywords">Keywords</label>
+    <label for="code-caret">Caret</label>
+    <label for="code-line">Line</label>
+    <label for="code-Output">Output</label>
+    <label for="code-error">Errors</label>
+  </div>
+  <div class="w-30 d-flex p-1" id="scheme-ibu">
+    <div class="d-flex column i g-1"></div>
+    <div class="d-flex column b g-1"></div>
+    <div class="d-flex column u g-1"></div>
+  </div>
+  <div class="w-40 d-flex column">
+    <input type="text" value="gray" id="font-family">
+    <input type="text" value="green" id="font-size">
+    <input type="text" value="red" id="font-line-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+    <input type="text" value="blue" id="font-tab-size">
+  </div>
+  </div>
+  <pre class="w-40 p-relative m-0 py-2">
+nop { this is comment }
+0001: wait 0x0 || 0b0 || 0
+
+Model.Load(#JESTER)
+fade 1ms FADE.INOUT<caret></caret> // 1s = 1000
+Actor.Create(#FAM1, PedType.Cop, 0.0, 0.0, 0.0, 0@)
+
+reg "this is maked by matidragon"
+reg 'example'
+
+for $i = 0 to 10 step 1
+  if &104 == false
+  break
+end
+
+3@ = 7639
+error here
+/* xd */
+  </pre>
+</content>
+
+
+</dialog>
 
 <style>
 .f-2 {
@@ -275,6 +457,36 @@ textarea {
     caret-color: white;
     resize: none;
 }
+.editor {
+  aspect-ratio: 16 / 9;
+dialog {
+  overflow: auto
+}
+label {
+  padding: 0.3em 0.6em;
+}
+caret::before {
+  content: "";
+
+  position: absolute;
+  height: 1em;
+  width: 2px;
+  background: white;
+  animation: caret;
+  animation-duration: .55s;
+  animation-iteration-count: infinite;
+}
+@keyframes caret {
+  0%, 100% {
+    height: 0em;
+    margin-top: .5em;
+  }
+  50% {
+    height: 1em;
+    margin: 0em;
+  }
+}
+.i *,.u *,.b *{margin: .34em}
 </style>
 
 
@@ -313,15 +525,15 @@ let tempCSS = ``
 			['r', 'border-radius']
 		].forEach(function(attribute){
 			[
-				'0',
-				'.25rem',
-				'.5rem',
-				'1rem',
-				'1.5rem',
-				'3rem'
+				0,
+				0.25,
+				0.5,
+				1,
+				1.5,
+				3
 			].forEach(function(value, index){
-				tempCSS += '.' + attribute[0] + prefix + index + '{' + attribute[1]+ ':' + value + '!important}'
-			})
+				tempCSS += '.' + attribute[0] + prefix + index + '{' + attribute[1]+ ':' + value + 'rem!important}';
+			});
 		});
 
 		[
@@ -347,6 +559,7 @@ let tempCSS = ``
 			tempCSS += '.w' + prefix + i + '{width:' + i + '%!important}'
 			tempCSS += '.w' + prefix + i + 'rem{width:' + i + 'rem!important}'
 			tempCSS += '.h' + prefix + i + '{height:' + i + 'vh!important}'
+			tempCSS += '.opa' + prefix + i + '{opacity:' + i + '%!important}'
 		};
 
 		[
@@ -393,15 +606,135 @@ $('body').append($cssGenerated)
 
 const $textarea = $('#input')
 
+function updateDataLine(){
+  let dl = $textarea.getLine()
+  $("#data-line").innerHTML =
+    `${
+      dl.inSelection ? 'Chars '+dl.charsSelected : 'Ln '+dl.lineaCursor+', Col '+dl.columnaCursor
+    }`
+	//console.log($textarea.obtenerUltimaPalabra())
+	//console.log(dl)
+}
+
 // Escuchamos el evento "input" para detectar cambios en el contenido del textarea
 $textarea.addEventListener("input", () => {
-	console.log($textarea.obtenerUltimaPalabra())
-	console.log($textarea.getLine())
+  updateDataLine()
+});
+
+$textarea.addEventListener("click", () => {
+  updateDataLine()
 });
 
 $textarea.addEventListener('keydown', function(e) {
-	$textarea.AddSystemTAB(e)
+  if (e.key === 'Tab') {
+	  e.preventDefault(); // Evita que se mueva al siguiente campo
+	  $textarea.AddAtSection('\t')
+  }
 });
+
+$("div [for]", e => {
+  const eFor = e.gAttr("for")
+  e.onclick = () => {
+    $("#"+eFor).focus()
+  }
+})
+
+let $modal = $("#modal-settings")
+$("#close-settings").onclick = () =>{
+  $modal.classList.toggle("d-none")
+}
+$("#open-settings").onclick = () =>{
+  $modal.classList.toggle("d-none")
+}
+$('#scheme-datatype label', e => {
+  let $i = new$('input', '#scheme-ibu .i')
+  $i.sAttr('type', 'checkbox')
+  
+  let $b = new$('input', '#scheme-ibu .b')
+  $b.sAttr('type', 'checkbox')
+  
+  let $u = new$('input', '#scheme-ibu .u')
+  $u.sAttr('type', 'checkbox')
+})
+
+const KEYS_MOBILE = ["\t","&","@","$","#","=","_",'""',"''",'()','{}','[]']
+$('#keys-mobile button', (e, i)=> {
+  e.onclick = ()=>{
+    $textarea.focus();
+      document.execCommand("insertText",false,KEYS_MOBILE[i])
+      if (i > 6) {
+        $textarea.selectionStart--
+        $textarea.selectionEnd--
+      }
+  }
+  //log(i)
+})
+
+let clipPaste = ""
+
+$("button[cmd]", e => {
+  let x = e.gAttr("cmd")
+  e.title=x
+  if (x == "paste") {
+    e.onclick = () =>{
+      $textarea.focus();
+      document.execCommand("insertText",false,clipPaste);
+    }
+  } else if (x == "copy" || x == "cut") {
+    e.onclick = (y,z)=>{
+      $textarea.focus();
+      clipPaste = $textarea.getTextSelected()
+      document.execCommand(x);
+    }
+  } else {
+    e.onclick = ()=>{
+      $textarea.focus();
+      document.execCommand(x);
+    }
+  }
+})
+
+let ctrlPressed = false
+$("button[key]", e => {
+  let x = e.gAttr("key")
+  e.title=x
+  if (x == "left") {
+    e.onclick = () =>{
+      $textarea.focus();
+      $textarea.selectionStart--
+      $textarea.selectionEnd--
+      updateDataLine()
+    }
+  }
+  if (x == "right") {
+    e.onclick = () =>{
+      $textarea.focus();
+      $textarea.selectionEnd++
+      $textarea.selectionStart++
+      updateDataLine()
+    }
+  }
+  if (x == "up") {
+    e.onclick = () =>{
+      $textarea.focus();
+      let {columnaCursor, lineaCursor} = $textarea.getLine()
+      $textarea.setCursorFull(lineaCursor-1,columnaCursor)
+    }
+  }
+  if (x == "down") {
+    e.onclick = () =>{
+      $textarea.focus();
+      let {columnaCursor, lineaCursor} = $textarea.getLine()
+      $textarea.setCursorFull(lineaCursor+1,columnaCursor)
+    }
+  }
+  if (x == "ctrl") {
+    e.onclick = () =>{
+      $textarea.focus();
+      ctrlPressed = !ctrlPressed
+    }
+  }
+})
 
 </script>
 </div>

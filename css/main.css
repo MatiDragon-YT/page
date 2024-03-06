@@ -217,12 +217,12 @@ h4, h5, h6 {
 	padding: .5rem 0;
 }
 
-h1, .h1 { font-size: calc(1.375rem + 1.5vw) }
-h2, .h2 { font-size: calc(1.325rem + .9vw) }
-h3, .h3 { font-size: calc(1.3rem + .6vw) }
-h4, .h4 { font-size: calc(1.275rem + .3vw) }
-h5, .h5 { font-size: 1.25rem }
-h6, .h6 { font-size: 1rem }
+h1, .h1, .h1\* * { font-size: calc(1.375rem + 1.5vw) }
+h2, .h2, .h2\* * { font-size: calc(1.325rem + .9vw) }
+h3, .h3, .h3\* * { font-size: calc(1.3rem + .6vw) }
+h4, .h4, .h4\* * { font-size: calc(1.275rem + .3vw) }
+h5, .h5, .h5\* * { font-size: 1.25rem }
+h6, .h6, .h6\* * { font-size: 1rem }
 
 details {
 	display: block;
@@ -485,6 +485,7 @@ input[type='checkbox']{
 .blue, .blue  * { color:var(--c-blue); }
 .bg-blue, .bg-blue  * { background:var(--c-blue); }
 .pink, .pink  * { color:var(--c-pink); }
+.pink-1 {color: #ec407a!important;}
 .bg-pink, .bg-pink  * { background:var(--c-pink); }
 .purple, .purple  * { color:#e040fb }
 .bg-purple, .bg-purple  * { background:#e040fb }
