@@ -80,12 +80,16 @@ AP.clear = function(){
 	return result
 }
 
+// Para insertar cualquier dato, antes se coloca
+//   uno de estos codigos para saber como se debe
+//   leer, cada parametro siguiente. Sino se define
+//   el juego interpretara que es un OPCODE.
 const TYPE_CODE = {
 	TERMINAL_NULL		:'00',
 	INT32				:'01',
 	GVAR				:'02',
 	LVAR				:'03',
-	INT8				:'04',
+	INT8				:'04', // INT del -128 hasta el 127
 	INT16				:'05',
 	FLOAT32				:'06',
 	GVAR_ARRAY			:'07',
@@ -102,7 +106,13 @@ const TYPE_CODE = {
 	GVAR_ARRAY_STRING16	:'12',
 	LVAR_ARRAY_STRING16	:'13'
 }
+// Algo asi es como van:
+//   0001     04     00
+//   \__/     \/     \/
+//  opcode   type   value
 
+
+// Para crear la estructura del tipado de un Array
 const ELEMENT_TYPE = {
 	LINT      : '00',
 	LFLOAT    : '01',
@@ -525,19 +535,31 @@ SP.addNumbersToIfs = function() {
 	let nLineas = ''
 	let tReg = /^if .+/im
 	
+	// aca solo se arreglan los cuerpos para
+	// que se ajusten a un solo fomando por linea.
 	lineas.forEach(line =>{
 	  if (tReg.test(line)){
-	    let vars = line.match(/^if (.+)/)
+	    let vars = line.match(/^if (.+)/mi)
 	    let cond = vars[1].trim()
 	    if (!/^(and|or)$/im.test(cond)){
 	      nLineas += 'if\n'+cond+'\n'
 	    }else{
 	      nLineas += line+'\n'
 	    }
-	  }else{
-	    nLineas += line+'\n'
+	  }else if (/^(then|else) .+/im.test(line)){
+	    let vars = line.match(/^(then|else) (.+)/im)
+	    
+	    let cond = vars[2].trim()
+	    if (cond == ''){
+	      nLineas += vars[1]+'\n'
+	    }else{
+	      nLineas += vars[1]+'\n'+cond+'\n'
+	    }
+	  }else {
+	    nLineas += line + '\n'
 	  }
 	})
+	
 	//log(nLineas)
   lineas = nLineas.split('\n')
   
@@ -610,18 +632,47 @@ SP.addNumbersToIfs = function() {
 
 SP.preProcesar = function() {
   return this
-  	  //0@ = 0@ == 1 ? 0 : 1
-  	.r(/^(.+) \= (.+)\?(.+)\:(.+)$/gm, `if $2\nthen\n$1 = $3\nelse\n$1 = $4\nend`)
+    // LVAR++
+    .r(/(.+)(\+\+|--)$/gm, input=>{
+      input = input.match(/(.+)(\+\+|--)$/m)
+      if (input[2] == '++'){
+        if (/(@f|f\$)/.test(input[1]))
+          input = input[1]+' += 1.0'
+        else
+          input = input[1]+' += 1'
+      } else {
+        if (/(@f|f\$)/.test(input[1]))
+          input = input[1]+' -= 1.0'
+        else
+          input = input[1]+' -= 1'
+      }
+      return input
+    })
+    // function(...) | CLEO_CALL
+    .r(/([^\.\s\=]+)\((.+)\)/gm, input=>{
+      let vars = input.match(/([^\.]+)\((.+)\)/)
+      
+      let add = vars[2].rA(',', ' ')
+      let length = vars[2].split(',').length
+      
+      input = 'cleo_call @'+vars[1]+' '+length+' '+add+'\n'
+      return input
+    })
+    // subrutine() | GOSUB
+    .r(/^([^\.\s\=]+)\(\)$/gm, 'gosub @$1')
+  	// 0@ = 0@ == 1 ? 0 : 1
+  	.r(/^(.+) \= (.+)\?(.+)\:(.+)$/gm, `if $2\nthen $1 = $3\nelse $1 = $4\nend`)
+  	// 0@ == 1 ? 0 : 1
   	.r(/^(.+)\?(.+)\:(.+)$/gm, input=>{
   	  let vars = input.match(/^(.+)\?(.+)\:(.+)$/)
-  	  let operators = '=,!,<,>'
+  	  let operators = '==,!=,<=,>=,>,<,<>'
   	  
   	  operators.split(',').forEach(operador => {
-  	    if (RegExp(operador+"=").test(vars[1])){
+  	    if (RegExp(operador).test(vars[1])){
   	      input =
-  	        'if\n'+vars[1]+'\n'+
-  	        'then\n'+vars[2]+'\n'+
-  	        'else\n'+vars[3]+'\n'+
+  	        'if '+vars[1]+'\n'+
+  	        'then '+vars[2]+'\n'+
+  	        'else '+vars[3]+'\n'+
   	        'end'
   	    }
   	  })
@@ -1355,23 +1406,6 @@ LineComand = LineComand
 
 	return codeOfFinalDepurated
 }
-// 0001<@MAIN>0001<@MAIN>0001<@MAIN>
-/*log(`
-nop // operations aritmetics suports: =, +=, -=, *=, /=, >, <, >=, <=
-0@ += 0      // int
-1@ -= 0x1C   // int
-2@ = #jester // int
-3@ *= 2f     // float
-4@ /= 5.0    // float
-5@ > .75     // float
-6@ = 'string'
-7@ = 'longstring'
-:main
-	wait 0@
-goto @main
-terminate_this_script`.Translate())
-//*/
-
 
 /** Compile and save code SCM of GTA SA
  * @param: String - Source code.
