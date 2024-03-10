@@ -19,7 +19,6 @@
     border: 0;
 ">#JESTES = 345</div>
 -->
-<div style="margin: 1em;">
 <style>
 * {
 	font-size: 1rem;
@@ -33,9 +32,6 @@
 }
 .contador::before {
     content: counter(listing, decimal-leading-zero);
-}
-#state {
-    border: #00c853 solid 1px;
 }
 #state.loading {
     border: #ff5252 solid 1px !important;
@@ -119,9 +115,9 @@ function getLine(){
 	let posicionLinea = $node.value.substr(0, posicionCursor).lastIndexOf("\n") + 1;
 
 	if (posicionCursor < 0)
-		$('#line').innerText = `${posicionCursor*-1} characters selected`
+		$('#line').innerText = `${posicionCursor*-1} chars selected`
 	else
-		$('#line').innerText = `Line ${lineaCursor}, Column ${posicionCursor-posicionLinea}`
+		$('#line').innerText = `Ln ${lineaCursor}, Col ${posicionCursor-posicionLinea}`
 }
 function delay(callback, ms) {
     let timer = 0;
@@ -136,32 +132,38 @@ function delay(callback, ms) {
 }
 </script>
 
+<nav id="navFile" class="bg-green py-1 d-flex between black h4">
+	<section>
+		<label for="file" title=Cargar>⬆️</label>
+		<button onclick="saveSource()" title=Descargar>⬇️</button>
+		<button onclick="compilerSource()" title=Compilar>👍</button>
+	</section>
+	<section>
+		<b>MD's Compiler</b>
+	</section>
+	<section>
+	  <button title="Opcodes">🔍</button>
+		<button id="open-settings" title="Ajustes">⚙️</button>
+	</section>
+</nav>
+
+<style>
+.f-2 {
+	font-size: 1.2rem;
+}
+.bg-none {
+	background: none!important;
+}
+#navFile * {
+	border: none;
+	font-size: 1.2rem;
+}
+</style>
+
 <form id="FORMULARIO">
 
 <input id='file' type='file' accept='.txt,.ini' class="d-none">
-<label class="button" for="file">load</label>
 
-<a id="" class="button" onclick="
-	let a = window.document.createElement('a');
-
-	a.href = window.URL.createObjectURL(new Blob([$('#HEX').value], { type: 'text/plain' }));
-	a.download = $('#FILENAME').value.r(/\.[^\.]+$/m, '.txt');
-
-	// Append anchor to body.
-	document.body.appendChild(a)
-	a.click();
-
-	// Remove anchor from body
-	document.body.removeChild(a)
-	" style="
-    cursor: pointer;">save</a> <a id="" class="button" onclick="
-
-$('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME').value)
-
-	$('#HEX').click();
-
-	" style="
-    cursor: pointer;">compiler</a><br><br>
 	<input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="newScript.csi">
 	<textarea id="HEX" class="w-100 m-0" placeholder="write your hex" autocomplete="off" spellcheck="false" style="
     position: absolute;
@@ -180,16 +182,23 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
     text-wrap: wrap;
     aspect-ratio: 16 / 9;
     ">nop
-0@ == 0 ? wait 0@ : wait 1000
-
-1@ = 3@ == 5 ? 1 : 0
-
+$misc != 6.8 ? 0@++ : wait 84
+1@ = 3@ == 5 ? true : false
+subrutine()
+function(28,16)
 while true
 wait 2000
 break
 end
-terminate_this_script</textarea>
+terminate_this_script
+// funcs here ↓
+:subrutine
+return
+:function
+cleo_return 0
+</textarea>
 	<pre id='PREVIEW' style="
+	
 	font-size: 1rem!important;
 	filter: blur(2px);
 	transition: all 0.2s ease 0s;
@@ -204,14 +213,14 @@ terminate_this_script</textarea>
     display: none;"></div>
 	<input type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100">
 
-<div class="d-flex between">
+<div class="d-flex between bg-green black py-1 w-100">
 <div class="d-flex">
-<span id='line'>Line 1, Column 0</span>
+<span id='line'>Ln 0, Col 0</span>
 </div>
 <div class="d-flex">
 <span id='state' class="loading">Loading...</span>
 <span id='version_sbl' class="">SBL</span>
-<select id='mode' class="ml-1">
+<select id='mode' class="ml-1" style="border: none;">
   <option value="gta3">GTA III</option>
   <option value="lcs">GTA LCS</option>
   <option value="sa" selected>GTA SA</option>
@@ -241,7 +250,8 @@ IDE supports:<br>
 - Multi syntax for floating numbers (.25, 3.0, 7f).<br>
 - Multi syntax for opcodes (0000:, 1:, !EF:).<br>
 - Loop control (BREAK, CONTINUE).<br>
-- Arithmetic operations (@+=$, @==@, $>=@).<br>
+- Flow control (GOTO, GOSUB, CLEO_CALL).<br>
+- Arithmetic operations (@+=$, @==@, $>=@, $++).<br>
 - Autocomplete parameter of IF (AND and OR).<br>
 - Ternary operator (a ? b : c)<br>
 - Understanding keywords and when they are denied (!, NOT).<br>
@@ -250,8 +260,28 @@ IDE supports:<br>
 - Operations between variables will always be INT unless "FLOAT" is written before.<br>
 </blockquote>
 <br>
+<script src="css.min.js"></script>
 <script type="module" src="compiler.js"></script>
 <script>
+function saveSource(){
+  let a = window.document.createElement('a');
+  
+  a.href = window.URL.createObjectURL(new Blob([$('#HEX').value], { type: 'text/plain' }));
+  a.download = $('#FILENAME').value.r(/\.[^\.]+$/m, '.txt');
+  
+  // Append anchor to body.
+  document.body.appendChild(a)
+  a.click();
+  
+  // Remove anchor from body
+  document.body.removeChild(a)
+}
+function compilerSource(){
+  $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME').value)
+
+	$('#HEX').click();
+}
+
 
 // Función para leer un archivo INI y obtener un valor específico
 function IniFile_GET(iniContent, section, key) {
@@ -527,7 +557,7 @@ const openFile = event => {
 
 
     if(first.name.toLowerCase().endsWith('.ini')){
-		text = parseIniToCLEO(text)
+		  text = parseIniToCLEO(text)
     }
 
     $node.value = text
@@ -657,101 +687,5 @@ $('#HEX').onscroll = () =>{
 	if (hasScrollBar($('#PREVIEW')).horizontal) $('#PREVIEW').scrollLeft = $('#HEX').scrollLeft;
 }
 </script>
-
-<style id="CSS"></style>
-<script>
-let tempCSS = ``
-
-	const prefixes = ['-','-sm-','-md-','-lg-','-xl-','-xxl-']
-	const size = [0,576,768,992,1200,1400]
-
-	prefixes.forEach(function(prefix, resolucion){
-		if (resolucion != 0) {tempCSS += '@media(min-width:' + size[resolucion] + 'px){'}
-	
-		var vIndex = 0
-		while(vIndex < 13){
-			tempCSS += '.cols'+prefix+vIndex+'{columns:'+vIndex+' auto}'
-
-			vIndex++
-		}
-		
-		[
-			['m', 'margin'],
-			['mt', 'margin-top'],
-			['mb', 'margin-bottom'],
-			['ml', 'margin-left'],
-			['mr', 'margin-right'],
-			['mx', 'margin-block'],
-			['my', 'margin-inline'],
-			['p', 'padding'],
-			['pt', 'padding-top'],
-			['pb', 'padding-bottom'],
-			['pl', 'padding-left'],
-			['pr', 'padding-right'],
-			['px', 'padding-block'],
-			['py', 'padding-inline'],
-			['g', 'gap'],
-			['r', 'border-radius']
-		].forEach(function(attribute){
-			[
-				'0',
-				'.25rem',
-				'.5rem',
-				'1rem',
-				'1.5rem',
-				'3rem'
-			].forEach(function(value, index){
-				tempCSS += '.' + attribute[0] + prefix + index + '{' + attribute[1]+ ':' + value + '!important}'
-			})
-		});
-
-		[
-			'auto',
-			'8.33333333%',
-			'16.66666667%',
-			'25%',
-			'33.33333333%',
-			'41.66666667%',
-			'50%',
-			'58.33333333%',
-			'66.66666667%',
-			'75%',
-			'83.33333333%',
-			'91.66666667%',
-			'100%'
-		].forEach(function(value, index){
-			tempCSS += '.col' + prefix + (index == 0 ? 'auto' : ++index) + '{width:' + value + '!important}'
-			tempCSS += '.offset' + prefix + (index == 0 ? 'auto' : ++index) + '{margin-left:' + value + '!important}'
-		});
-
-		[
-			'flex',
-			'none',
-			'block',
-			'inline-block',
-			'grid'
-		].forEach((value, index) => {
-			tempCSS += `.d${prefix}${value} { display : ${value} !important}\n`
-		});
-
-		if (resolucion != 0) {tempCSS += '}\n\n'}
-	})
-$('#CSS').innerHTML = tempCSS
-
-/*
-window.onmousemove = (event) => {console.clear()
-    console.log(
-    	{
-    		clientX: event.clientX,
-    		clientY: event.clientY,
-    		pageX: event.pageX,
-    		pageY: event.pageY,
-    		offsetX: event.offsetX,
-    		offsetY: event.offsetY,
-    	}
-    )}
-*/
-</script>
-</div>
 </body>
-</html
+</html>
