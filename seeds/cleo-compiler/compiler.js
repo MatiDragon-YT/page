@@ -423,7 +423,7 @@ ${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
 			const prevLabel = labelStack.pop();
 			const prevLoop = labelLoop.pop();
 			const prevQuit = labelQuitStack.pop()
-			log({prevLabel, prevLoop, prevQuit});
+			//log({prevLabel, prevLoop, prevQuit});
 			
 			if (!prevLoop) {
 				throw new SyntaxError(`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : END`)
@@ -538,7 +538,7 @@ SP.addNumbersToIfs = function() {
 	    nLineas += line+'\n'
 	  }
 	})
-	log(nLineas)
+	//log(nLineas)
   lineas = nLineas.split('\n')
   
 	let real = 0
@@ -547,12 +547,13 @@ SP.addNumbersToIfs = function() {
 	let multiCondicion = false
 	let numeros = [];
 
-	for (const linea of lineas) {
-		if (/^if .+/im.test(linea)) {
+	for (let linea of lineas) {
+	  linea = linea.trim()
+		if (/^if/im.test(linea)) {
 			iniciar = true
 			real = 0
 			contador = 0
-			if (/(or|and)/i.test(linea)) {
+			if (/\s+(or|and)$/i.test(linea)) {
 				multiCondicion = true
 				if (/or/i.test(linea)) {
 					contador += 20;
@@ -560,10 +561,10 @@ SP.addNumbersToIfs = function() {
 					contador += 1;
 				}
 			}
-		} else if (/^(then|goto_if_false|else_jump)/im.test(linea)) {
+		} else if (/^(then|goto_if_false|else_jump|else_goto|004D)/im.test(linea)) {
 		  //real--;
 		  
-			if (real > 0 && multiCondicion == false)
+			if (real > 1 && multiCondicion == false)
 			 throw new Error('¡Error! El "if" debe ir seguido de "and" o "or".')
 			  
 			if (real > 8 && multiCondicion == true)
@@ -575,17 +576,17 @@ SP.addNumbersToIfs = function() {
 			real = 0;
 			iniciar = false
 		} else {
-		  if(iniciar){
-			if (linea.trim() != '') {
+		  if(linea != '') {
 				real++;
-			}
 		  }
+		  //log({real, multiCondicion})
 		}
 	}
 	
 	let number = 0
 	let counter = 0
-	for (const linea of lineas) {
+	for (let linea of lineas) {
+	  linea = linea.trim()
 		if (linea.startsWith('if')) {
 		  if (/^if .+/im.test(linea)){
 			const param = linea.match(/^if (.+)/im)
@@ -607,8 +608,29 @@ SP.addNumbersToIfs = function() {
 	return lineas.join('\n');
 }
 
+SP.preProcesar = function() {
+  return this
+  	  //0@ = 0@ == 1 ? 0 : 1
+  	.r(/^(.+) \= (.+)\?(.+)\:(.+)$/gm, `if $2\nthen\n$1 = $3\nelse\n$1 = $4\nend`)
+  	.r(/^(.+)\?(.+)\:(.+)$/gm, input=>{
+  	  let vars = input.match(/^(.+)\?(.+)\:(.+)$/)
+  	  let operators = '=,!,<,>'
+  	  
+  	  operators.split(',').forEach(operador => {
+  	    if (RegExp(operador+"=").test(vars[1])){
+  	      input =
+  	        'if\n'+vars[1]+'\n'+
+  	        'then\n'+vars[2]+'\n'+
+  	        'else\n'+vars[3]+'\n'+
+  	        'end'
+  	    }
+  	  })
+  	  //log(input)
+  	  return input
+  	})
+}
 
-SP.PrePost = function(){
+SP.postProcesar = function(){
 	return this
 		.r(/^(int )?(\$.+) = (\d+|#.+|0x.+|0b.+)$/gim, `0004: $2 $3`)									//0004: $CUSTOM_TOURNAMENT_FLAG = 0
 		.r(/^(float )?(\$.+) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0005: $2 $3`)							//0005: $166 = 292.33
@@ -766,6 +788,7 @@ SP.Translate = function(_SepareWithComes = false){
 	*/
 
 LineComand = LineComand
+  .preProcesar()
 	.parseHigthLevelLoops()
 	.addBreaksToLoops()
 	.addNumbersToIfs()
@@ -783,7 +806,7 @@ LineComand = LineComand
 		// remove jump lines innesesaries
 		.r(/^\n+/gm, '')
 		.r(/\n$/gm, '')
-		.PrePost().split('\n')
+		.postProcesar().split('\n')
   
 
 	let codeOfEnter = this.split('\n').clear();
