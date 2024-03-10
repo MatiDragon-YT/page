@@ -179,13 +179,9 @@ $('#FORMULARIO').cleaned_hex.value = $('#HEX').value.toCompileSCM($('#FILENAME')
     font-size: 1rem!important;
     text-wrap: wrap;
     aspect-ratio: 16 / 9;
-    ">nop
-
-while true
-  wait 0
+    ">if 0@ == 1
+then
 end
-
-terminate_this_script
 </textarea>
 	<pre id='PREVIEW' style="
 	font-size: 1rem!important;
@@ -228,19 +224,23 @@ terminate_this_script
 
 <blockquote class="warning">
 ARRAY not have support.<br>
-Syntax High-Level not implemented.<br>
 </blockquote>
 <blockquote>
 This editor use the data base of Library.SannyBuilder.com and files of edition MatiDragon.<br>
 ---<br>
 IDE supports:<br>
 - High-level syntax for loops (WHILE, REPEAT, FOR).<br>
-- Multi syntax for decimal numbers (5, 0x3, 0b01, #male01).<br>
+- High-level syntax for conditions (IF, THEN, ELSE, END).<br>
+- Multi syntax for decimal numbers (5, 0x3, 0b01, #fam1).<br>
 - Multi syntax for floating numbers (.25, 3.0, 7f).<br>
 - Multi syntax for opcodes (0000:, 1:, !EF:).<br>
 - Arithmetic operations.<br>
 - Autocomplete for IF AND and IF OR.<br>
 - Understanding keywords and when they are denied (!, NOT).<br>
+</blockquote>
+<blockquote class="info">
+- Operations between variables will always be INT unless "FLOAT" is written before.<br>
+- Partial support for loop control (BREAK, CONTINUE).
 </blockquote>
 <br>
 <script type="module" src="compiler.js"></script>
