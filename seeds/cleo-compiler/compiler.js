@@ -632,6 +632,8 @@ SP.addNumbersToIfs = function() {
 
 SP.preProcesar = function() {
   return this
+    // 7@ = !7@
+    .r(/(.+)= !(.+)/g, '$1 = $2 == 0?$2 = 1:$2 = 0')
     // LVAR++
     .r(/(.+)(\+\+|--)$/gm, input=>{
       input = input.match(/(.+)(\+\+|--)$/m)
