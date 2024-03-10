@@ -187,8 +187,11 @@ $misc != 6.8 ? 0@++ : wait 84
 subrutine()
 function(28,16)
 while true
-wait 2000
-break
+  wait 1000
+  if IS_KEY_PRESSED 0x35
+  then break
+  else 22@ = !22@
+  end
 end
 terminate_this_script
 // funcs here ↓
