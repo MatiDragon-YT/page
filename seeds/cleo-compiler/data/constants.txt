@@ -1,7 +1,8 @@
 const
-	undefined=-1
+	undefined=0x7fffffff
+	null=0x6fffffff
 	any=-1
-	skip = 'DUMMY'
+	skip='DUMMY'
 	ePara_PC=0
 	ePara_Android=1
 	ePara_Player=0
@@ -119,7 +120,6 @@ const
 	_Month=$Current_Month
 	_OnMission=$ONMISSION
 	_Selected=$Selected_Menu_Item
-
 	VEHICLE_UPGRADE_BONNET = 0
 	VEHICLE_UPGRADE_BONNET_LEFT_RIGHT = 1
 	VEHICLE_UPGRADE_SPOILER = 2
@@ -137,7 +137,6 @@ const
 	VEHICLE_REPLACEMENT_FRONT_BUMPER = 14
 	VEHICLE_REPLACEMENT_REAR_BUMPER = 15
 	VEHICLE_REPLACEMENT_MISC = 16
-
 	CVehicle_EngineState = 1064 
 	CVehicle_Siren = 1069
 	CVehicle_PrimaryColor = 1076
@@ -150,7 +149,6 @@ const
 	CVehicle_GasPedal = 1180
 	CVehicle_BrakePedal = 1184
 	CVehicle_CarBomb = 1192
-
 	CARPLATE_DESIGN_LA = 0
 	CARPLATE_DESIGN_SF = 1
 	CARPLATE_DESIGN_LV = 2
