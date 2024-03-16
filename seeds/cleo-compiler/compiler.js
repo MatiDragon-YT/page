@@ -189,6 +189,7 @@ CONSTANTS = await CONSTANTS.text()
 CONSTANTS = CONSTANTS
 	.r(/(^const|end$)/gm, '')
 	.r(/\r/g, '\n')
+	.r(/[\x20\t]+\n/g, '\n')
 	.r(/^[\x20\t]+/gm, '')
 	.r(/(\x20+)?=(\x20+)?/g, '=')
 	.toUpperCase()
@@ -198,12 +199,14 @@ CONSTANTS.forEach((e,i) => CONSTANTS[i] = e.split('='))
 CONSTANTS = Object.fromEntries(CONSTANTS)
 //log(CONSTANTS)
 
-let MODELS = await fetch('./data/models.ide')
+let MODELS = LS.get('MODELS') || await fetch('./data/models.ide')
 	.then(response => {
 		return fetchPercentece(response, 'yellow')
   })
-MODELS = await MODELS.text()
-LS.set('models', MODELS)
+if (typeof MODELS != 'string'){
+  MODELS = await MODELS.text()
+  LS.set('MODELS', MODELS)
+}
 MODELS = MODELS
 	.r(/\r/g,'')
 	.r(/(\d+) (.+)/g, '$2 $1')
@@ -215,12 +218,21 @@ MODELS = Object.fromEntries(MODELS)
 
 let SCM_DB = {}
 async function dbSBL(game){
-	let DATA_DB = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/${game}.json`)
+  let DATA_DB = LS.get("DB_"+game)
+  if (!DATA_DB){
+	  DATA_DB = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/${game}.json`)
 	.then(response => {
 		return fetchPercentece(response, '#10a122')
   })
 
 	DATA_DB = await DATA_DB.json()
+	LS.set("DB_"+game, JSON.stringify(DATA_DB))
+  }else{
+    DATA_DB = JSON.parse(DATA_DB)
+  }
+  
+  //log(JSON.stringify(DATA_DB))
+  
 	DATA_DB.extensions.forEach(extension =>{
 		//log(extension.name)
 		extension.commands.forEach((command, c) =>{
@@ -257,16 +269,19 @@ async function dbSBL(game){
 	return true
 }
 
-
 const $IDE_mode = $('#mode')
 if (LS.get('Compiler/IDE:mode') == null) LS.set('Compiler/IDE:mode', 'sa')
 $IDE_mode.value = LS.get('Compiler/IDE:mode')
 let game = LS.get('Compiler/IDE:mode')
-await dbSBL(game)
+
 
 let version = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/version.txt`)
 version = await version.text()
 $('#version_sbl').innerHTML = 'SBL ' + version
+
+
+await dbSBL(game)
+
 
 //await sleep(1000)
 //log(SCM_DB)
@@ -398,7 +413,7 @@ SP.parseHigthLevelLoops = function (){
 			labelLoop.push(line);
 		  } else {
 			const values = line.match(SYNTAX.WHILE)
-			labelQuitStack.push(labelQuit)
+			//labelQuitStack.push(labelQuit)
 			outputText += `:${label} // begin-loop\nif\n${values[1]}\ngoto_if_false @${labelQuit}\n`;
 			labelStack.push(label);
 			labelLoop.push('while custom');
@@ -631,42 +646,22 @@ SP.addNumbersToIfs = function() {
 }
 
 SP.preProcesar = function() {
-  return this
-    // 7@ = !7@
-    .r(/(.+)= !(.+)/g, '$1 = $2 == 0?$2 = 1:$2 = 0')
-    // LVAR++
-    .r(/(.+)(\+\+|--)$/gm, input=>{
-      input = input.match(/(.+)(\+\+|--)$/m)
-      if (input[2] == '++'){
-        if (/(@f|f\$)/.test(input[1]))
-          input = input[1]+' += 1.0'
-        else
-          input = input[1]+' += 1'
-      } else {
-        if (/(@f|f\$)/.test(input[1]))
-          input = input[1]+' -= 1.0'
-        else
-          input = input[1]+' -= 1'
-      }
-      return input
-    })
-    // function(...) | CLEO_CALL
-    .r(/([^\.\s\=]+)\((.+)\)/gm, input=>{
-      let vars = input.match(/([^\.]+)\((.+)\)/)
-      
-      let add = vars[2].rA(',', ' ')
-      let length = vars[2].split(',').length
-      
-      input = 'cleo_call @'+vars[1]+' '+length+' '+add+'\n'
-      return input
-    })
-    // subrutine() | GOSUB
-    .r(/^([^\.\s\=]+)\(\)$/gm, 'gosub @$1')
+  let lines = this.split('\n')
+  let nString = ''
+  
+  lines.forEach(line =>{
+    line = line.trim().r(/\/\/(.+)/, '')
+    nString += line.trim() + '\n'
+  })
+  
+  nString = nString
   	// 0@ = 0@ == 1 ? 0 : 1
-  	.r(/^(.+) \= (.+)\?(.+)\:(.+)$/gm, `if $2\nthen $1 = $3\nelse $1 = $4\nend`)
+  	.r(/^(.+)([\-\+\*\\ ]+=) (.+) \? (.+) \: (.+)$/gm, `if $3\nthen $1 $2 $4\nelse $1 $2 $5\nend`)
   	// 0@ == 1 ? 0 : 1
-  	.r(/^(.+)\?(.+)\:(.+)$/gm, input=>{
+  	.r(/^(.+) \? (.+) \: (.+)$/gm, input=>{
   	  let vars = input.match(/^(.+)\?(.+)\:(.+)$/)
+  	                  .map(e=> e.trim())
+  	                  
   	  let operators = '==,!=,<=,>=,>,<,<>'
   	  
   	  operators.split(',').forEach(operador => {
@@ -681,22 +676,111 @@ SP.preProcesar = function() {
   	  //log(input)
   	  return input
   	})
+    // 7@ = !7@
+    .r(/(then |else )?(.+)= !(.+)$/gim,
+`$1
+$2 = $3
+if $2 == 0
+then $2 = 1
+else $2 = 0
+end`)
+    // 7@ = 7@ || $8
+    .r(/(then |else )?(.+)= (.+) \|\| (.+)$/gim,
+`$1
+if or
+$3 == null
+$3 == undefined
+$3 == false
+then
+$2 = $4
+else
+$2 = $3
+end`)
+    // 7@ = 7@ || $8
+    .r(/(then |else )?(.+)= (.+) \?\? (.+)$/gim,
+`$1
+if or
+$3 == null
+$3 == undefined
+then
+$2 = $4
+else
+$2 = $3
+end`)
+    // VAR++
+    .r(/(.+)(\+\+|--)(.+)?$/gm, input=>{
+      input = input.match(/(.+)(\+\+|--)(.+)?$/m)
+      
+      if (input[2] == '++'){
+        if (/(float |@f|f\$)/i.test(input[1]))
+          input = input[1]+' += 1.0'
+        else
+          input = input[1]+' += 1'
+      } else {
+        if (/(float |@f|f\$)/i.test(input[1]))
+          input = input[1]+' -= 1.0'
+        else
+          input = input[1]+' -= 1'
+      }
+      return input.trim()
+    })
+    
+    // [] : variable con limites maximos
+    // () : variable con valor en bucle
+    // [min..max]:0@
+    // [min..]:0@
+    // [..max]:0@
+    
+    // function(...) | CLEO_CALL
+    .r(/([^\.\s\=]+)\((.+)\)/gm, input=>{
+      let vars = input.match(/([^\.]+)\((.+)\)/)
+      
+      let add = vars[2].rA(',', ' ')
+      let length = vars[2].split(',').length
+      
+      input = 'cleo_call @'+vars[1]+' '+length+' '+add+'\n'
+      return input
+    })
+    // subrutine() | GOSUB
+    .r(/^([^\.\s\=]+)\(\)$/gm, 'gosub @$1')
+    .r(/^(then|else) (.+)/img, '$1\n$2')
+  	
+  	log(nString)
+  	return nString
 }
 
 SP.postProcesar = function(){
-	return this
-		.r(/^(int )?(\$.+) = (\d+|#.+|0x.+|0b.+)$/gim, `0004: $2 $3`)									//0004: $CUSTOM_TOURNAMENT_FLAG = 0
-		.r(/^(float )?(\$.+) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0005: $2 $3`)							//0005: $166 = 292.33
-		.r(/^(int )?(\d+@([^\s]+)?) = (\d+|#.+|0x.+|0b.+)$/gim, `0006: $2 $4`)				//0006: 0@ = -1
-		.r(/^(float )?(\d+@([^\s]+)?) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0007: $2 $4`)		//0007: 7@ = 0.0
-		.r(/^(int )?(\$.+) \+= (\d+|#.+|0x.+|0b.+)$/gim, `0008: $2 $3`)								//0008: $89 += 1
-		.r(/^(float )?(\$.+) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `0009: $2 $3`)						//0009: $TEMPVAR_FLOAT_1 += 1.741
-		.r(/^(int )?(\d+@([^\s]+)?) \+= (\d+|#.+|0x.+|0b.+)$/gim, `000A: $2 $4`)			//000A: 3@ += 3000
-		.r(/^(float )?(\d+@([^\s]+)?) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `000B: $2 $4`)	//000B: 6@ += 0.1
-		.r(/^(int )?(\$.+) \-= (\d+|#.+|0x.+|0b.+)$/gim, `000C: $2 $3`)								//000C: $1020 -= 1
-		.r(/^(float )?(\$.+) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000D: $2 $3`)						//000D: $TEMPVAR_Z_COORD -= 0.5
-		.r(/^(int )?(\d+@([^\s]+)?) \-= (\d+|#.+|0x.+|0b.+)$/gim, `000E: $2 $4`)			//000E: 0@ -= 1
-		.r(/^(float )?(\d+@([^\s]+)?) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000F: $2 $4`)	//000F: 692@ -= 8.0
+  let nString = this.split('\n').map(line=>{
+    //log(CONSTANTS)
+    line = line.split(' ').map(param=>{
+      if (param.trim() != ''){
+        if (param.toUpperCase() in CONSTANTS)
+          return CONSTANTS[param.toUpperCase()]
+        else
+          return param
+      }else{
+        return param
+      }
+    }).join(' ')
+    
+    return line
+    
+    //log(line)
+  }).join('\n')
+	
+	nString = nString
+		.r(/^(int )?(\$.+) = ([\-\d]+|#.+|0x.+|0b.+)$/gim, `0004: $2 $3`)									//0004: $ = 0
+		.r(/^(float )?(\$.+) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0005: $2 $3`)							//0005: $ = 0.0
+		.r(/^(int )?(\d+@([^\s]+)?) = ([\-\d]+|#.+|0x.+|0b.+)$/gim, `0006: $2 $4`)				//0006: 0@ = 0
+		.r(/^(float )?(\d+@([^\s]+)?) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0007: $2 $4`)		//0007: @ = 0.0
+		.r(/^(int )?(\$.+) \+= (\d+|#.+|0x.+|0b.+)$/gim, `0008: $2 $3`)								//0008: $ += 0
+		.r(/^(float )?(\$.+) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `0009: $2 $3`)						//0009: $ += 0.0
+		.r(/^(int )?(\d+@([^\s]+)?) \+= (\d+|#.+|0x.+|0b.+)$/gim, `000A: $2 $4`)			//000A: @ += 0
+		.r(/^(float )?(\d+@([^\s]+)?) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `000B: $2 $4`)	//000B: @ += 0.0
+		.r(/^(int )?(\$.+) \-= (\d+|#.+|0x.+|0b.+)$/gim, `000C: $2 $3`)								//000C: $ -= 0
+		.r(/^(float )?(\$.+) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000D: $2 $3`)						//000D: $ -= 0.0
+		.r(/^(int )?(\d+@([^\s]+)?) \-= ([\-\d]+|#.+|0x.+|0b.+)$/gim, `000E: $2 $4`)			//000E: 0@ -= 0
+		.r(/^(float )?(\d+@([^\s]+)?) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000F: $2 $4`)	//000F: @ -= 0.0
 		.r(/^(int )?(\$.+) \*= (\d+|#.+|0x.+|0b.+)$/gim, `0010: $2 $3`)								//0010: $GS_GANG_CASH *= 100
 		.r(/^(float )?(\$.+) \*= (\d+\.\d+|\.\d+|\d+f)$/gim, `0011: $2 $3`)						//0011: $HJ_TEMP_FLOAT *= 100.0
 		.r(/^(int )?(\d+@([^\s]+)?) \*= (\d+|#.+|0x.+|0b.+)$/gim, `0012: $2 $4`)			//0012: 22@ *= -1
@@ -814,12 +898,15 @@ SP.postProcesar = function(){
 		.r(/^(long )?(\d+@([^\s]+)?) = ("([^\n\"]+)?")$/gim, `06D1: $2 $3`)
 		.r(/^(string )?(\d+@([^\s]+)?) == ('([^\n\']+)?')$/gim, `05AD: $2 $3`)
 		.r(/^(long )?(\d+@([^\s]+)?) == ("([^\n\"]+)?")$/gim, `05AE: $2 $3`)
+		
+		log(nString)
+		return nString
 }
 
 SP.Translate = function(_SepareWithComes = false){
 	let LineComand = this
 		.r(/(\s+)?\/\*([^\/]*)?\*\//gm, '')
-		.r(/(\s+)?\{([^\$][^\}]*)?\}/gm, '')
+		.r(/(\s+)?\{([^\$][^\}]*(\})?)?/gm, '')
 
 	const come = a => {
 		if (_SepareWithComes){
@@ -851,7 +938,7 @@ LineComand = LineComand
 		.r(/^not /gm, '!')
 		//.r(/^(\x20+)?:[\w\d]+/gm, '')
 		// remove commits of code
-		.r(/(\s+)?\/\/([^\n]+)?/gm, '') 
+		.r(/(\s+)?\/\/([^\n]+)?/gm, '')
 		// remove spaces innesesaries
 		.r(/[\x20\t]+$/gm,'')
 		.r(/(\t|\x20)(\t|\x20)+/gm,'$1')
@@ -880,9 +967,6 @@ LineComand = LineComand
 			
 			LineComand[numLine].forEach((Argument, numArgument) => {
 				if (numArgument >= 1) {
-					if (/^[a-z_]+$/mi.test(Argument)){
-						LineComand[numLine][numArgument] = CONSTANTS[Argument.toUpperCase()] || ''
-					}
 					if (/^[!=+\-/*%\^]+$/mi.test(Argument)) {
 						LineComand[numLine][numArgument] = ''
 					}
