@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" commit="45">
+<html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -97,7 +97,6 @@ const new$ = (element, parent = 'body') => {
 	$(parent).appendChild($temp)
 	return $temp
 }
-
 /** Shotcun of String.replace()
 */
 String.prototype.r = function(text, _text='', _flags=''){
@@ -174,6 +173,10 @@ function delay(callback, ms) {
     this.setAttribute(attr, val)
   }
 
+	EP.hidden = function(){
+	    return this.style.display == "none"
+	}
+
 	EP.show = function(){
 	    this.style.display = "block"
 	}
@@ -181,7 +184,7 @@ function delay(callback, ms) {
 	EP.hide = function(){
 	    this.style.display = "none"
 	}
-/*
+
 	EP.toggle = function(c){
 		if (c){
 			setTimeout(function(){
@@ -204,7 +207,7 @@ function delay(callback, ms) {
 			: this.show()
 		;
 	}
-*/
+
 	EP.setCursor = function(atPosition){
 	    this.setSelectionRange(atPosition, atPosition);
 	    this.focus();
@@ -344,22 +347,32 @@ button {
 <form id="FORMULARIO">
 
 <input id='file' type='file' accept='.txt,.ini' class="d-none">
-<input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="newScript.csi">
+<div class="d-flex between">
+ <div>
+  <input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="newScript.csi">
+ </div>
+ <div id="change-view" class="pr-2 green size-4">
+   <btn class="bg-none d-sm-none" style="font-size: 1.5rem" onclick="
+   $('#HEX').toggle();
+   $('#PREVIEW').toggle();
+   $('#OUTHEX').toggle();
+   $('#editor-counterLine').toggle();">μ</btn>
+   <btn class="bg-none d-sm-none" style="font-size: 1.5rem" onclick="
+   $('#HEX').toggle();
+   $('#PREVIEW').toggle();
+   $('#OUTHEX').toggle();
+   $('#editor-counterLine').toggle();">π</btn>
+ </div>
+</div>
 
 <div id="editor-body">
-  <pre id="editor-counterLine" class="m-0 p-1 green">
-1
-2
-3
-4
-5
-  </pre>
+  <pre id="editor-counterLine" class="m-0 p-1 green"></pre>
 	<textarea id="HEX" class="w-100 m-0 p-1 pl-5" placeholder="write your hex" autocomplete="off" spellcheck="false">nop // Compiler, maked by MatiDragon
-$misc != 6.8 ? 0@++ : A = B || C 
+$misc != 6.8 ? 0@++ : A = B || C
 X = 3@ == 5 ? false : undefined
 7@ = !7@
 subrutine()
-function(28, 'hello')
+function(2@(3@++,123), 'hello')
 while true
   wait 1000
   if IS_KEY_PRESSED 0x35
@@ -375,6 +388,8 @@ return
 :function
 cleo_return 0</textarea>
 <pre id='PREVIEW' style="filter: blur(2px);" class="w-100 m-0 p-1"></pre>
+
+	<pre type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100 m-0 pr-1 gray d-none"></pre>
 </div>
 
 <div id="error" placeholder="hex's output" name="cleaned_hex" class="w-100 p-1" style="
@@ -415,10 +430,8 @@ cleo_return 0</textarea>
   z-index: -99;
   aspect-ratio:16/9;
 }
+
 </style>
-
-	<input type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100">
-
 <footer class="d-flex between bg-green black py-1 w-100">
 <div class="d-flex">
 <span id='line'>Ln 0, Col 0</span>
@@ -472,8 +485,7 @@ cleo_return 0</textarea>
 
 <blockquote class="warning">
 Bugs found:<br>
-Loops with custom parameters break when having if_then_end.<br>
-ARRAY not have support.
+Array support is limited to Local variables.
 </blockquote>
 <blockquote>
 This editor use the data base of Library.SannyBuilder.com and files of edition MatiDragon.<br>
@@ -495,9 +507,10 @@ IDE supports:<br>
 </blockquote>
 <blockquote class="info">
 - Operations between variables will always be INT unless "FLOAT" is written before.<br>
+- Arrays without defined typing will expect an INT.
 </blockquote>
 <br>
-<script src="css.min.js"></script>
+<script src="js/css.min.js"></script>
 <script type="module" src="compiler.js"></script>
 <script>
 function saveSource(){
@@ -814,7 +827,7 @@ hl()
 getLine()
 $node.onclick = () => {
 	hl()
-    $('#OUTHEX').value = $node.value.Translate(true)
+    $('#OUTHEX').innerText = $node.value.Translate(true,true)
     getLine()
 }
 $node.oninput = hl
@@ -826,7 +839,7 @@ $node.onkeyup = (event) =>{
     //	|| event.code == 'Backspace'
     //	|| event.code == 'Space'){
         //let tempC = $node.value.Translate(true)
-        $('#OUTHEX').value = $node.value.Translate(true)
+        $('#OUTHEX').innerText = $node.value.Translate(true,true)
         getLine()
         $('#error').style.display = 'none'
     //}
