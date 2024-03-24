@@ -1,6 +1,7 @@
 const
 	undefined=0x7fffffff
 	null=0x6fffffff
+ NaN=0x5fffffff
 	any=-1
 	skip='DUMMY'
 	ePara_PC=0
