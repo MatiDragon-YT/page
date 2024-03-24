@@ -20,6 +20,12 @@ const LS = {
 
 /** Shotcun of String.replace()
 */
+String.prototype.i = function(text, _number){
+	return this.includes(text, _number)
+}
+
+/** Shotcun of String.replace()
+*/
 SP.r = function(text, _text, _flags){
 	_text = _text || ''
 	_flags = _flags || ''
@@ -106,10 +112,30 @@ const TYPE_CODE = {
 	GVAR_ARRAY_STRING16	:'12',
 	LVAR_ARRAY_STRING16	:'13'
 }
-// Algo asi es como van:
-//   0001     04     00
-//   \__/     \/     \/
-//  opcode   type   value
+// Algo asi es como se traduce:
+//
+//               0001: wait 0
+//              /            \
+//            0100     04     00
+//            \__/     \/     \/
+//           opcode   type   value
+//
+// Todos los numeros se tienen que escribir en
+//   big-endian, esto significa que el orden del los
+//   hexadecimales van de izquierda a derecha.
+//
+//           X 00-01   -->   V 01-00
+//
+// Si el opcode tiene mas de un parametro, se pone
+//   de nuevo el type y despues el value.
+//
+//               0004: 7@ = 15
+//              /      |      \
+//            0400 03 0700  04 0F
+//            \__/  | \__/  |  \/
+//           opcode | lvar  |  int
+//                type     type
+
 
 
 // Para crear la estructura del tipado de un Array
@@ -123,6 +149,50 @@ const ELEMENT_TYPE = {
 	GSTRING8  : '82',
 	GSTRING16 : '83'
 }
+
+/*
+         0006: 1@(2@, 123i) = 1
+    ____/   ___/  \__  | \     \
+    0600 08 0100 0200 7B 00 04 01
+    \__/  | \__/ \__/  |  |  \   \
+   opcode |  id   id   | lint \   \
+     lvar_array      lenght  int8  num
+
+
+         0007: 1@(2@, 123f) = 1.0
+    ____/   ___/  \__  | \     \__________
+    0700 08 0100 0200 7B 01 06 00 00 80 3F
+    \__/  | \__/ \__/  |  |  \         |
+   opcode |  id   id   |lfloat\        |
+     lvar_array      lenght  float32  num
+
+
+         05AA: 1@s(2@, 123s) = 'test'
+    ____/   ___/  \__  | \     \______________________
+    AA05 0D 0100 0200 7B 02 09 74 65 73 74 00 00 00 00
+    \__/  | \__/ \__/  |  |  \            |
+   opcode |  id   id   |lstr8 \           |
+lvar_array_string8  lenght  string8     string
+
+
+   op  @            l  $  values
+  D206 13 0100 0200 7B 03 0E 04 74 65 73 74
+  0600 08 0100 2803 7B 80 04 01
+  0700 08 0100 2803 7B 81 06 00 00 80 3F
+  AA05 0D 0100 2803 7B 82 09 74 65 73 74 00 00 00 00
+  D206 13 0100 2803 7B 83 0E 04 74 65 73 74
+       $               $
+  0400 07 2C03 0200 7B 00 04 01
+  0500 07 2C03 0200 7B 01 06 00 00 80 3F
+  A905 0C 2C03 0200 7B 02 09 74 65 73 74 00 00 00 00
+  D106 12 2C03 0200 7B 03 0E 04 74 65 73 74
+       $               @
+  0400 07 2C03 2803 7B 80 04 01
+  0500 07 2C03 2803 7B 81 06 00 00 80 3F
+  A905 0C 2C03 2803 7B 82 09 74 65 73 74 00 00 00 00
+  D106 12 2C03 2803 7B 83 0E 04 74 65 73 74 
+*/
+
 
 function fetchPercentece(response, background){
   const contentLength = response.headers.get('Content-Length');
@@ -358,140 +428,196 @@ SP.parseHigthLevelIfs = function() {
     return codigoTransformado;
 }
 
-SP.parseHigthLevelLoops = function (){
-	const lines = this.split('\n');
-	let outputText = '';
-	let labelCount = 1;
-	let labelCountQuit = 1;
-	let ignoreBlock = 0
-	const labelStack = [];
-	const labelLoop = [];
-	const labelQuitStack = [];
-	const until = [];
-
-	for (let i = 0; i < lines.length; i++) {
-		let line = lines[i].trim();
-
-		const label = `begin_loop_${labelCount}`;
-		const labelQuit = `end_loop${labelCountQuit}`;
-
-/*
-		if (/^break/im.test(line)){
-		  if (labelStack.length < 1) {
-		    throw Error("no hay break")
-		  }
-			outputText += `goto @exit_${labelStack[labelStack.length > 0 ? labelStack.length-2: 0]}\n`;
-		} else if (/^continue/im.test(line)){
-		  outputText += 'goto @'+labelStack[labelStack.length-1]+'\n';
-		}*/
-		  
-		if (/^then/im.test(line)) {
-      labelStack.push(label);
-      labelCount++;
-      labelLoop.push('then');
-      outputText += 'goto_if_false @' + labelStack[labelStack.length - 1]+'\n';
-    } else if (/^else/im.test(line)) {
-      const etiqueta = labelStack.pop();
-      const etiquetaElse = `label_${labelCount}`;
-      labelCount++;
-      labelStack.push(etiquetaElse);
-      outputText += `goto @${etiquetaElse}\n:${etiqueta}\n`;
-    } else if (/^repeat/im.test(line)){
-			outputText += `:${label} // begin-loop\n`;
-			labelStack.push(label);
-			labelLoop.push(line);
-			labelCount++;
-		} else if (/^while /im.test(line)) {
-		  if (/^while true/im.test(line)){
-			outputText += `:${label} // begin-loop\n`;
-			labelStack.push(label);
-			labelLoop.push(line);
-		  } else if (/^while false/im.test(line)){
-			ignoreBlock++;
-			outputText += `goto @ignore_block_${ignoreBlock} // begin-loop\n`;
-			labelStack.push(label);
-			labelLoop.push(line);
-		  } else {
-			const values = line.match(SYNTAX.WHILE)
-			//labelQuitStack.push(labelQuit)
-			outputText += `:${label} // begin-loop\nif\n${values[1]}\ngoto_if_false @${labelQuit}\n`;
-			labelStack.push(label);
-			labelLoop.push('while custom');
-		  }
-		  labelQuitStack.push(labelQuit)
-		  labelCountQuit++
-		  labelCount++;
-		} else if (/^for /im.test(line)) {
-			if (!SYNTAX.FOR.test(line)) {
-			   throw new SyntaxError(`ALERTA!!\nBucle mal definido.\n>>> linea ${i} : ${line}`)
-				break;
-			}
-			const values = line.match(SYNTAX.FOR);
-
-			outputText +=
-				`${values[1]} = ${values[2]}
-:${label} // BEGIN loop(${label})
-if
-${values[1]} ${/down/i.test(values[3]) ? '<=' : '>='} ${values[4]}
-goto_if_false @${labelQuit}
-${values[1]} ${/down/i.test(values[3]) ? '-=' : '+='} ${values[5]}
-`;
-
-			labelStack.push(label);
-			labelQuitStack.push(labelQuit)
-			labelLoop.push('for');
-			labelCount++;
-			labelCountQuit++
-		}
-		
-		else if (/^end/im.test(line)) {
-			const prevLabel = labelStack.pop();
-			const prevLoop = labelLoop.pop();
-			const prevQuit = labelQuitStack.pop()
-			//log({prevLabel, prevLoop, prevQuit});
-			
-			if (!prevLoop) {
-				throw new SyntaxError(`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : END`)
-				break;
-			}
-
-			if (prevLoop == 'while true') {
-				outputText += `goto @${prevLabel}\n:exit_${prevLabel} // end-loop\n`;
-			} else if (prevLoop == 'while false') {
-				outputText += `:ignore_block_${ignoreBlock}\n:exit_${prevLabel} // end-loop\n`;
-			} else if (prevLoop == 'while custom') {
-				outputText += `goto @${prevLabel}\n:${prevQuit}\n:exit_${prevLabel} // end-loop\n`;
-				labelCountQuit++;
-			}else if (prevLoop === 'for') {
-				outputText += `goto @${prevLabel}\n:${prevQuit}\n:exit_${prevLabel} // end-loop\n`;
-				labelCountQuit++;
-			}else if (prevLoop == 'then'){
-        outputText += `:${prevLabel}\n`;
-			}
-		} else if (SYNTAX.REPEAT.test(line)) {
-			const prevLabel = labelStack.pop();
-			const prevLoop = labelLoop.pop();
-			const prevQuit = labelQuitStack.pop();
-			
-			if (!prevLoop) {
-				throw new SyntaxError(`ALERTA!!\nNo se encontro punto de redireccion.\n>>> linea ${i} : UNTIL`)
-				break;
-			}
-
-			if (prevLoop == 'repeat'){
-			  const condicion = line.match(SYNTAX.REPEAT)[1]
-			  outputText += `if\n${condicion}\ngoto_if_false @${prevLabel}\n`
-			}
-		} else {
-			outputText += `${line}\n`;
-		}
-	}
-	
-	if (labelStack.length > 0) {
-	  throw new SyntaxError(`ALERTA!!\nSe encontraron bucles sin cerrar.\n>>> pila [${labelLoop}]`)
-	}
-	//log(outputText)
-	return outputText;
+SP.parseHigthLevelLoops = function(){
+    const lines = this.split('\n');
+    let outputText = ''
+    let stacks = {
+      general: [],
+      reverse: [],
+      custom: [],
+      for : [],
+      repeat : [],
+      until : [],
+      while : [],
+      if : []
+    }
+    let counts = {
+      reverse:0,for:0,repeat:0,while:0,if:0,custom:0
+    }
+    let label = ''
+    
+    lines.forEach(line => {
+      line = line.trim()
+      
+      if (/^then/im.test(line)) {
+        stacks.general.push('then');
+        
+        label = `if_${++counts.if}`
+        line = [
+          'goto_if_false @'+label+''
+        ].join('\n')
+        
+        stacks.if.push(label);
+      }
+      else if (/^else/im.test(line)) {
+        if (stacks.general.slice(-1) != 'then'){
+          log('cierre de pila inconclusa :'+stacks.general)
+        }
+        
+        label = stacks.if.slice(-1);
+        let labelElse = `if_${++counts.if}`
+        line = [
+          'goto @'+labelElse,
+          ':'+label
+        ].join('\n')
+        
+        stacks.if[stacks.if.length - 1] = labelElse
+      }
+      else if (/^while /im.test(line)){
+        if (/^while true$/im.test(line)){
+          stacks.general.push('true')
+          
+          label = `while_true_${++counts.while}`
+          line = ':'+label+'_return // begin-loop'
+          
+          stacks.while.push(label)
+        }
+        else if (/^while false$/im.test(line)){
+          stacks.general.push('false')
+          
+          label = `while_false_${++counts.reverse}`
+          line = `goto @`+label
+          
+          stacks.reverse.push(label)
+        }
+        else {
+          stacks.general.push('custom')
+          
+          const values = line.match(SYNTAX.WHILE)
+          
+          label = `while_custom_${++counts.custom}`
+          line = [
+            ':'+label+'_return // begin-loop',
+            'if',
+            values[1],
+            'goto_if_false @' + label
+          ].join('\n')
+          
+          stacks.custom.push(label)
+        }
+      }
+      else if(/^for .+/im.test(line)) {
+        stacks.general.push('for')
+        
+        const values = line.match(SYNTAX.FOR)
+        const variable = values[1].trim()
+        const start = values[2].trim()
+        const forUp = /down/i.test(values[3])
+        const end = values[4]
+        const step = values[6] || 1
+        
+        label = `loop_for_${++counts.for}`
+        
+  			line =[
+  			  variable+' = '+start,
+  			  variable+' '+(forUp?'+=':'-=')+' '+step,
+          ':'+label+'_return // begin-loop',
+          variable+' '+(forUp?'-=':'+=')+' '+step,
+          'if',
+          variable+' '+(forUp?'<=':'>=')+' '+end,
+          'goto_if_false @'+label
+        ].join('\n')
+        
+        stacks.for.push(label)
+      }
+      else if (/^repeat$/im.test(line)){
+        stacks.until.push('repeat')
+          
+        label = `repeat_${++counts.repeat}`
+        line = `:`+label+'_return // begin-loop'
+          
+        stacks.repeat.push(label)
+      }
+      else if(/^until.+$/im.test(line)){
+        if (stacks.until.length == 0){
+          log(`pila sintactica: vacia`)
+        }
+        else{
+          if (/^until true$/im.test(line)) {
+            label = stacks.repeat.pop()
+            stacks.until.pop()
+            
+            line = [
+              'goto @'+label+'_return',
+              ':'+label +' // end-loop'
+            ].join('\n')
+          }
+          else if (/^until false$/im.test(line)) {
+            stacks.repeat.pop()
+            stacks.until.pop()
+            
+            line = ':'+label +' // end-loop'
+          }
+          else {
+            label = stacks.repeat.pop()
+            stacks.until.pop()
+            
+            const condition = line.match(SYNTAX.REPEAT)[1]
+            
+            line = [
+              'if',
+              condition,
+              'goto_if_false @'+label,
+                'goto @'+label+'_return',
+              ':'+label +' // end-loop'
+            ].join('\n')
+          }
+        }
+      }
+      else if(/^end$/im.test(line)) {
+        if (stacks.general.length == 0) {
+          log(`pila sintactica: vacia`)
+        }
+        else {
+          let closed = stacks.general.pop()
+          
+          if (closed == 'true') {
+            label = stacks.while.pop()
+            line = [
+              'goto @'+label+'_return',
+              ':'+label +' // end-loop'
+            ].join('\n')
+          }
+          else if (closed == 'false') {
+            line = ':' + stacks.reverse.pop()
+          }
+          else if (closed == 'custom') {
+            label = stacks.custom.pop()
+            line = [
+              'goto @'+label+'_return',
+              ':' + label +' // end-loop'
+            ].join('\n')
+          }
+          else if(closed == 'for'){
+            label = stacks.for.pop()
+            line = [
+              'goto @'+label+'_return',
+              ':' + label +' // end-loop'
+            ].join('\n')
+          }
+          else if (closed == 'then'){
+            label = stacks.if.pop()
+            line = ':' + label +' // end-condition'
+          }
+        }
+      }
+      
+      outputText += line + '\n'
+    })
+    if (stacks.general.length > 0)
+      log(`pila sintactica: `+stacks.general);
+      
+    return outputText;
 }
 
 SP.addBreaksToLoops = function(){
@@ -640,7 +766,7 @@ SP.addNumbersToIfs = function() {
 		counter++
 	}
 	
-	//log(lineas.join('\n'))
+	log(lineas.join('\n'))
 	
 	return lineas.join('\n');
 }
@@ -650,7 +776,31 @@ SP.preProcesar = function() {
   let nString = ''
   
   lines.forEach(line =>{
-    line = line.trim().r(/\/\/(.+)/, '')
+    
+    // Remove coment
+    //   0@//(1@++,123i)
+    //   ↓
+    //   0@
+    line = line.r(/\/\/(.+)/, '').trim()
+      
+    // Prevent addition
+    //   0@(1@++,123i)
+    //   ↓
+    //   1@++
+    //   0@(1@,123i)
+    let c = 1
+    const mPreAdd =
+      /(\d+@(\w)?|(\&|\$)[\w\d_]+)([\+\-\*\=]+)[^\s,\)\(]+/
+    
+    while (mPreAdd.test(line) && line.includes('(')){
+      let v = line.match(mPreAdd)
+        
+      nString += v[0].r(/([\+\-\*\=]+)/, ' $1 ') +'\n'
+      line = line.r(/([\+\-\*\=]+)([^,\s\)]+)/, '')
+        
+      if (!/[=+\-]/.test(line)) break;
+    }
+    
     nString += line.trim() + '\n'
   })
   
@@ -684,6 +834,16 @@ if $2 == 0
 then $2 = 1
 else $2 = 0
 end`)
+    // 7@ ||= $8
+    .r(/(then |else )?(.+)\|\|= (.+)$/gim,
+`$1
+if or
+$2 == null
+$2 == undefined
+$2 == false
+then
+$2 = $3
+end`)
     // 7@ = 7@ || $8
     .r(/(then |else )?(.+)= (.+) \|\| (.+)$/gim,
 `$1
@@ -696,7 +856,7 @@ $2 = $4
 else
 $2 = $3
 end`)
-    // 7@ = 7@ || $8
+    // 7@ = 7@ ?? $8
     .r(/(then |else )?(.+)= (.+) \?\? (.+)$/gim,
 `$1
 if or
@@ -707,24 +867,6 @@ $2 = $4
 else
 $2 = $3
 end`)
-    // VAR++
-    .r(/(.+)(\+\+|--)(.+)?$/gm, input=>{
-      input = input.match(/(.+)(\+\+|--)(.+)?$/m)
-      
-      if (input[2] == '++'){
-        if (/(float |@f|f\$)/i.test(input[1]))
-          input = input[1]+' += 1.0'
-        else
-          input = input[1]+' += 1'
-      } else {
-        if (/(float |@f|f\$)/i.test(input[1]))
-          input = input[1]+' -= 1.0'
-        else
-          input = input[1]+' -= 1'
-      }
-      return input.trim()
-    })
-    
     // [] : variable con limites maximos
     // () : variable con valor en bucle
     // [min..max]:0@
@@ -732,20 +874,53 @@ end`)
     // [..max]:0@
     
     // function(...) | CLEO_CALL
-    .r(/([^\.\s\=]+)\((.+)\)/gm, input=>{
-      let vars = input.match(/([^\.]+)\((.+)\)/)
+    .r(/^([\w\d_]+)\((.+)\)$/gm, input=>{
+      let vars = input.match(/([^\.\s\W]+)\((.+)\)$/m)
+      //log(vars)
       
-      let add = vars[2].rA(',', ' ')
-      let length = vars[2].split(',').length
+      let line = vars[2]
+      let add = ''
+      let inArray = false
       
-      input = 'cleo_call @'+vars[1]+' '+length+' '+add+'\n'
+      for (let i = 0; i < line.length; i++){
+        if (line[i] == '(') inArray = true;
+        if (line[i] == ')') inArray = false;
+        
+        add += inArray ? line[i].r(',', '\x01') : line[i].r(',', ' ')
+        //log(line[i])
+      }
+      
+      let length = add.split(',').length
+      
+      input = 'cleo_call @'+vars[1]+' '+length+' '+add.rA('\x01', ',')+'\n'
       return input
     })
     // subrutine() | GOSUB
-    .r(/^([^\.\s\=]+)\(\)$/gm, 'gosub @$1')
-    .r(/^(then|else) (.+)/img, '$1\n$2')
-  	
-  	log(nString)
+    .r(/^([\w\d_]+)\(\)$/gm, 'gosub @$1')
+    .r(/^(then|else)\s+(.+)/img, '$1\n$2')
+    
+    nString = nString
+      // VAR++
+      .r(/^(\d+@(\w)?|(\w)?(\$|&)[\w\d_]+)(\s+)?(\+\+|--)(.+)?/gm,
+      input=>{
+        input = input.r(' ').match(/(.+)(\+\+|--)(.+)?$/m)
+        
+        if (input[2] == '++'){
+          if (/(float |@f|f\$)/i.test(input[1]))
+            input = input[1]+' += 1.0'
+          else
+            input = input[1]+' += 1'
+        } else {
+          if (/(float |@f|f\$)/i.test(input[1]))
+            input = input[1]+' -= 1.0'
+          else
+            input = input[1]+' -= 1'
+        }
+        return input.trim()
+      })
+  
+    //log(nString)
+  
   	return nString
 }
 
@@ -899,11 +1074,11 @@ SP.postProcesar = function(){
 		.r(/^(string )?(\d+@([^\s]+)?) == ('([^\n\']+)?')$/gim, `05AD: $2 $3`)
 		.r(/^(long )?(\d+@([^\s]+)?) == ("([^\n\"]+)?")$/gim, `05AE: $2 $3`)
 		
-		log(nString)
+		//log(nString)
 		return nString
 }
 
-SP.Translate = function(_SepareWithComes = false){
+SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 	let LineComand = this
 		.r(/(\s+)?\/\*([^\/]*)?\*\//gm, '')
 		.r(/(\s+)?\{([^\$][^\}]*(\})?)?/gm, '')
@@ -917,6 +1092,27 @@ SP.Translate = function(_SepareWithComes = false){
 
 	let codeDepurated = []
 	let totalSizePerLine = []
+	let varsDefined = {}
+	let globalVar = {}
+	
+	function translateLvar(dataInput){
+  	dataInput = 
+  		Number(dataInput.r(/@(\w)?/,''))
+  		.toString(16)
+  		.padStart(4,'0')
+  		.toBigEndian();
+  
+  	return dataInput
+  }
+  function translateAvar(dataInput){
+    dataInput = 
+      (Number(dataInput.r(/(\w)?&/,'')) * 4)
+      .toString(16)
+			.padStart(4,'0')
+			.toBigEndian()
+	
+		return dataInput
+  }
 	
 	/*
 	if (this.match(/[^\w\d]("([^"\n]+)?)(\x20)(([^"\n]+)?")[^\w\d]/)
@@ -1035,7 +1231,7 @@ LineComand = LineComand
 							).toString(16)
 						}
 					}
-					lineDepurated.push(setOp.toBigEndian())
+					lineDepurated.push((_addJumpLine ? '\n' : '') + setOp.toBigEndian())
 					
 					command = Argument
 					
@@ -1065,9 +1261,9 @@ LineComand = LineComand
 							typeData = /[.f]/.test(Argument) ? 'float' : 'int';
 						if (/^@/m.test(Argument))
 							typeData = 'label';
-						if (/^\d@([ifsv])?/m.test(Argument))
+						if (/^\d+@/m.test(Argument))
 							typeData = 'lvar';
-						if (/^([ifsv])?[$&]./m.test(Argument))
+						if (/^([ifsv])?(\$|&)./m.test(Argument))
 							typeData = 'gvar';
 						if (/^'/m.test(Argument))
 							typeData = 'short';
@@ -1076,7 +1272,7 @@ LineComand = LineComand
 						//log({typeData, Argument})
 					}
 					if (typeData == 'var_any'){
-						typeData = /^\d@([ifsv])?/m.test(Argument) ? 'lvar' : 'gvar';
+						typeData = /^\d@([ifsv])?/mi.test(Argument) ? 'lvar' : 'gvar';
 					}
 					if (typeData != 'short' && Argument[0] == "'") typeData = 'short';
 					if (typeData != 'long' && Argument[0] == '"' || Argument[0] == "`") typeData = 'long';
@@ -1235,25 +1431,111 @@ LineComand = LineComand
 						break;
 
 						case 'lvar':
-
-							function translateDate(dataInput){
-								dataInput = 
-									Number(dataInput.r(/@(i|f|s|v)?/,'')).toString(16)
-									.padStart(4,'0')
-									.toBigEndian();
-
-								return dataInput
+							if (/@.+(@|\$|\&)/.test(Argument)){
+/*  STRUCT ARRAY
+         0006: 1@(2@, 123i) = 1
+    ____/   ___/  \__  | \     \
+    0600 08 0100 0200 7B 00 04 01
+    \__/  | \__/ \__/  |  |  \   \
+   opcode |  id   id   | lint \   \
+     lvar_array      lenght  int8  num
+*/
+						  let LVAR = Argument.match(
+						    /(\d+)@(\w)?(\(.+\))?/i
+						  )
+						  let Slvar = {
+						    variable: LVAR[1],
+						    type: LVAR[2],
+						    extend: LVAR[3]
+						  }
+						  if (Slvar.extend){
+						    let ARRAY = LVAR[3].match(/\((.+),(\d+)(\w)?\)/i)
+						    Slvar.extend = {
+						      index : ARRAY[1],
+						      size : ARRAY[2],
+						      subtype : ARRAY[3]
+						    }
+						  }
+						  //log(Slvar)
+						  
+						  let typeArray = 
+						    (Slvar.type ?? Slvar.extend.subtype ?? 'i')
+						  
+						  let typeSet = typeArray
+						  
+						  //let var1 = 
+						  switch (typeArray){
+						    case 's':
+						      typeArray = TYPE_CODE.LVAR_ARRAY_STRING8
+						    break;
+						    case 'v':
+						      typeArray = TYPE_CODE.LVAR_ARRAY_STRING16
+						    break;
+						    default:
+						      typeArray = TYPE_CODE.LVAR_ARRAY
+						    break;
+						  }
+						  
+						  let index = Slvar.extend.index
+						  index = {
+						   id: index.includes('@')
+						    ? translateLvar(index.match(/(\d+)@/)[1])
+						    : index.match(/(\$|\&)([\w\d_]+)/)[2],
+						   action : (()=>{
+						   }),
+						   global: !index.includes('@')
+						  }
+						  
+						  if (index.global){
+						    switch (typeSet){
+  						    case 's': typeSet=ELEMENT_TYPE.GSTRING8
+  						    break;
+  						    case 'v': typeSet=ELEMENT_TYPE.GSTRING16
+  						    break;
+  						    case 'i': typeSet=ELEMENT_TYPE.GINT
+  						    break;
+  						    case 'f': typeSet=ELEMENT_TYPE.GFLOAT
+  						    break;
+  						  }
+						  }else{
+						    switch (typeSet){
+  						    case 's': typeSet=ELEMENT_TYPE.LSTRING8
+  						    break;
+  						    case 'v': typeSet=ELEMENT_TYPE.LSTRING16
+  						    break;
+  						    case 'i': typeSet=ELEMENT_TYPE.LINT
+  						    break;
+  						    case 'f': typeSet=ELEMENT_TYPE.LFLOAT
+  						    break;
+  						  }
+						  }
+						  
+						  
+						  totalSizePerLine.push(6)
+						  //log(typeSet)
+						  Argument = (
+						    typeArray + ','+
+						    translateLvar(Slvar.variable) + ','+
+						    index.id + ','+
+						    Number(Slvar.extend.size)
+									.toString(16)
+									.padStart(2,'0') + ','+
+						    typeSet + ','
+						  )
+						  //log(Argument)
 							}
+							/*
+						  //%%%%%%%%%%%%‰%%%%%%%%
 
 
-							if (/@(.+)@/.test(Argument)){
+							if (/@.+(@|\$)/.test(Argument)){
 								totalSizePerLine.push(6)
 
 								Argument = 
 									come(TYPE_CODE.LVAR_ARRAY)
 									+ Argument
-										.r(/\d+@(i|f|s|v)?/g, inputVar => {
-											return Number(inputVar.r(/@(i|f|s|v)?/,'')).toString(16)
+										.r(/\d+@(i|f|s|v)?/gi, inputVar => {
+											return Number(inputVar.r(/@(i|f|s|v)?/i,'')).toString(16)
 											.padStart(4,'0')
 											.toBigEndian() + ',';
 										})
@@ -1263,7 +1545,7 @@ LineComand = LineComand
 											return Number(inputSize.r(',').r(')')).toString(16)
 											.padStart(2,'0')
 										})
-										.r(/(i|f|s|v)\)/, inputType => {
+										.r(/(i|f|s|v)\)/i, inputType => {
 											inputType = inputType.r(')')
 
 											switch (inputType){
@@ -1291,13 +1573,14 @@ LineComand = LineComand
 
 											return inputSize
 										})
-							}
+										log(Argument)
+							}*/
 							else{
 								totalSizePerLine.push(2)
 
 								Argument = 
 									come(TYPE_CODE.LVAR) 
-									+ Number(Argument.r(/@(i|f|s|v)?/,'')).toString(16)
+									+ Number(Argument.r(/@(\w)?/,'')).toString(16)
 										.padStart(4,'0')
 										.toBigEndian();
 							}
@@ -1310,7 +1593,7 @@ LineComand = LineComand
 								Argument = 
 									come(TYPE_CODE.GVAR_ARRAY)
 									+ Argument
-										.r(/(i|f|s|v)?\$[\w\d_]+/g, inputVar => {
+										.r(/(i|f|s|v)?\$[\w\d_]+/gi, inputVar => {
 											if(/\$/.test(inputVar)){
 												inputVar = inputVar.r(/(i|f|s|v)?\$/,'')
 
@@ -1457,7 +1740,8 @@ LineComand = LineComand
 	let codeOfFinal = (_SepareWithComes
 						  ? codeDepurated.toString().r(/,,/g,',')
 						  : codeDepurated.toString().r(/,/g,'').r(/\-/g,'')
-					  ).r(/\./g,'').toUpperCase()
+					  )
+					  .r(/\./g,'').toUpperCase().trim()
 
 	let codeOfFinalDepurated = codeOfFinal.r(/<@([^<>]+)>/g, input => {
 		let found = false
@@ -1554,7 +1838,7 @@ if ($SBL_State){
 
 	$('#HEX').select()
 	getLine()
-	$('#OUTHEX').value = $('#HEX').value.Translate(true)
+	$('#OUTHEX').innerText = $('#HEX').value.Translate(true,true)
 
 	$IDE_mode.onchange = async function(){
 		$SBL_State.innerText = 'Loading...'
