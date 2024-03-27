@@ -1,5 +1,6 @@
 'use strict';
-// Tab Size: 4
+// Author: MatiDragon.
+// Helpers: Seemann, Miran.
 
 const 	log = x  => console.log(x),
 		sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
@@ -84,6 +85,12 @@ AP.clear = function(){
 	})
 
 	return result
+}
+
+/** Remove elements of a array what is same to ''.
+*/
+AP.last = function(pos = 0){
+	return this[this.length - 1 - pos]
 }
 
 // Para insertar cualquier dato, antes se coloca
@@ -233,6 +240,62 @@ function fetchPercentece(response, background){
 	})
   );
 }
+
+let classes = LS.get('./data/classes.db')
+if (!classes) {
+  //let CUSTOM_CLASSES = await fetch('./data/classes.db')
+  let CUSTOM_CLASSES = await fetch(`https://library.sannybuilder.com/assets/sa/classes.db`)
+ .then(response => {
+ 	  return fetchPercentece(response, 'gray')
+  })
+  
+  CUSTOM_CLASSES = await CUSTOM_CLASSES.text()
+  classes = {}
+  let addClass = false
+  let currentClass = ''
+  CUSTOM_CLASSES
+  .r(/;(.+)?$/m, '')
+  .split('\n')
+  .clear()
+  .forEach(line => {
+    line = line.trim()
+    if (line == '#CLASSESLIST'){
+      addClass = true
+    } else if (line == '#CLASSES') {
+      addClass = false
+    } else if (line == '#EOF'){
+      addClass = true
+    } else {
+      if (addClass == true) {
+        classes[line] = {
+          
+        }
+      } else {
+        if (/^\$.+/m.test(line)) {
+          if (line.toLowerCase() != '$begin'
+            && line.toLowerCase() != '$end'
+          ){
+            currentClass = line.match(/^\$(.+)/m)[1]
+          }
+        }else{
+          if (/([^,]+),([^,]+)/.test(line)){
+          let temp =
+            line.match(/([^,]+),([^,]+)/)
+            
+          let miember = {}
+          miember[temp[1]] = temp[2]
+          
+           // log(temp)
+          classes[currentClass] = { ...classes[currentClass],  ...miember}
+        }}
+      }
+    }
+  })
+  LS.set('./data/classes.db', JSON.stringify(classes))
+}else{
+  classes = JSON.parse(classes)
+}
+//log(classes)
 
 let CUSTOM_VARIABLES = await fetch('./data/CustomVariables.ini')
 	.then(response => {
@@ -429,10 +492,16 @@ SP.parseHigthLevelIfs = function() {
 }
 
 SP.parseHigthLevelLoops = function(){
-    const lines = this.split('\n');
-    let outputText = ''
+    // Para abrir y cerrar un bucle, necesitamos saber
+    // el nombre de la ultima etiqueta creada para este
+    // fin, y una forma de saber cual hay que poner,
+    // es con un Stack(pila). Cada etiqueda creada para
+    // indicar el comienzo del bucle, se guarda en una
+    // Stack. Para que cada cierre de bucle, solo valla
+    // al final del stack, tome la etiqueta que necesita.
+    
     let stacks = {
-      general: [],
+      general: [], // para saber que stack hay que revisar
       reverse: [],
       custom: [],
       for : [],
@@ -441,10 +510,17 @@ SP.parseHigthLevelLoops = function(){
       while : [],
       if : []
     }
+    
+    // Para evitar que las etiquetas se repitan, usamos
+    // contadores que solo sean para incrementar.
     let counts = {
       reverse:0,for:0,repeat:0,while:0,if:0,custom:0
     }
     let label = ''
+    
+    // dividimoa el codigo, para analizarlo por lineas.
+    const lines = this.split('\n');
+    let outputText = ''
     
     lines.forEach(line => {
       line = line.trim()
@@ -766,7 +842,7 @@ SP.addNumbersToIfs = function() {
 		counter++
 	}
 	
-	log(lineas.join('\n'))
+	//log(lineas.join('\n'))
 	
 	return lineas.join('\n');
 }
@@ -1078,6 +1154,39 @@ SP.postProcesar = function(){
 		return nString
 }
 
+SP.classesToOpcodes = function(){
+  const match = /^([\!\w\d_]+)\.([\w\d_]+)\((.+)\)$/mi
+  let ncode = ''
+  
+  this.split('\n').forEach(line =>{
+    line = line.trim()
+    let isNegative = false
+    let opcode = 0
+    
+    if (match.test(line)){
+      let vars = line.match(match)
+      if (vars[1].i('!')){
+        vars[1] = vars[1].r('!')
+        isNegative = true
+      }
+      
+      opcode = classes[vars[1]][vars[2]]
+      
+      if (isNegative) {
+        opcode = (Number(opcode.hexToDec()) + 0b1000000000000000)
+  		  .toString(16)
+  		  .padStart(4, '0')
+      }
+      
+      //log(opcode)
+      
+      line = opcode+': '+vars[3]
+    }
+    ncode += line + '\n'
+  })
+  return ncode
+}
+
 SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 	let LineComand = this
 		.r(/(\s+)?\/\*([^\/]*)?\*\//gm, '')
@@ -1142,7 +1251,9 @@ LineComand = LineComand
 		// remove jump lines innesesaries
 		.r(/^\n+/gm, '')
 		.r(/\n$/gm, '')
-		.postProcesar().split('\n')
+		.postProcesar()
+	  .classesToOpcodes()
+	  .split('\n')
   
 
 	let codeOfEnter = this.split('\n').clear();
@@ -1524,57 +1635,6 @@ LineComand = LineComand
 						  )
 						  //log(Argument)
 							}
-							/*
-						  //%%%%%%%%%%%%‰%%%%%%%%
-
-
-							if (/@.+(@|\$)/.test(Argument)){
-								totalSizePerLine.push(6)
-
-								Argument = 
-									come(TYPE_CODE.LVAR_ARRAY)
-									+ Argument
-										.r(/\d+@(i|f|s|v)?/gi, inputVar => {
-											return Number(inputVar.r(/@(i|f|s|v)?/i,'')).toString(16)
-											.padStart(4,'0')
-											.toBigEndian() + ',';
-										})
-										.r(/,,/,',')
-										.r(/\(/)
-										.r(/[^,]\d+$/m, inputSize => {
-											return Number(inputSize.r(',').r(')')).toString(16)
-											.padStart(2,'0')
-										})
-										.r(/(i|f|s|v)\)/i, inputType => {
-											inputType = inputType.r(')')
-
-											switch (inputType){
-												case 'i':
-													inputType = ELEMENT_TYPE.LINT
-												break;
-												case 'f':
-													inputType = ELEMENT_TYPE.LFLOAT
-												break;
-												case 's':
-													inputType = ELEMENT_TYPE.LSTRING8
-												break;
-												case 'v':
-													inputType = ELEMENT_TYPE.LSTRING16
-												break;
-											}
-
-											return ',' + inputType
-										})
-										.r(/\d+,\d+$/m, inputSize => {
-											inputSize = inputSize.split(',')
-
-											inputSize[0] = Number(inputSize[0]).toString(16).padStart(2,'0')
-											
-
-											return inputSize
-										})
-										log(Argument)
-							}*/
 							else{
 								totalSizePerLine.push(2)
 
