@@ -156,6 +156,20 @@ function delay(callback, ms) {
     };
 }
 
+EP.class = function(str){
+  if (!/^[\?\+\-\~\>]/m.test(str))
+    return alert("add action");
+  
+  let [init, action, classes] = str.match(/^([\?\+\-\~\>])(.+)/m)
+  
+  console.log(classes)
+  if (action == '+') this.classList.add(classes);
+  if (action == '-') this.classList.remove(classes);
+  if (action == '~') this.classList.toggle(classes);
+  if (action == '>') this.classList.replace(classes);
+  if (action == '?')
+    return this.classList.contains(classes)
+}
 
 	EP.next = function(){
 		return this.nextElementSibling
@@ -317,11 +331,11 @@ EP.getTextSelected = function() {
 		<button onclick="saveSource()" title=Descargar>⬇️</button>
 		<button onclick="compilerSource()" title=Compilar>👍</button>
 	</section>
-	<section>
-		<b>MD's Compiler</b>
+	<section class="center">
+		<b id="name-compiler">MD's Compiler</b>
 	</section>
 	<section class="opa-0">
-	  <button title="Opcodes">🔍</button>
+	  <button title="Opcodes" onclick="$('#search').focus()">🔍</button>
 		<button id="open-settings" title="Ajustes">⚙️</button>
 	</section>
 </nav>
@@ -336,6 +350,9 @@ EP.getTextSelected = function() {
 #navFile * {
 	border: none;
 	font-size: 1.2rem;
+	& button,& label{
+	  font-size: 1.73rem
+  }
 }
 button {
 	border: none;
@@ -356,28 +373,23 @@ button {
    $('#HEX').toggle();
    $('#PREVIEW').toggle();
    $('#OUTHEX').toggle();
-   $('#editor-counterLine').toggle();">μ</btn>
-   <btn class="bg-none d-sm-none" style="font-size: 1.5rem" onclick="
-   $('#HEX').toggle();
-   $('#PREVIEW').toggle();
-   $('#OUTHEX').toggle();
    $('#editor-counterLine').toggle();">π</btn>
  </div>
 </div>
 
 <div id="editor-body">
-  <pre id="editor-counterLine" class="m-0 p-1 green"></pre>
-	<textarea id="HEX" class="w-100 m-0 p-1 pl-5" placeholder="write your hex" autocomplete="off" spellcheck="false">nop // Compiler, maked by MatiDragon
-$misc != 6.8 ? 0@++ : A = B || C
+  <pre id="editor-counterLine" class="m-0 r-0 p-1 green"></pre>
+	<textarea id="HEX" class="w-100 m-0 r-0 p-1 pl-5" placeholder="write your hex" autocomplete="off" spellcheck="false">// Compiler, maked by MatiDragon
+0: this_is_a_NOP
+$misc != 6.8 ? 7@ = !7@ : A = B || C
 X = 3@ == 5 ? false : undefined
-7@ = !7@
 subrutine()
 function(2@(3@++,123), 'hello')
-while true
+while !Char.DoesExist($Player_Actor--)
   wait 1000
   if IS_KEY_PRESSED 0x35
   then break
-  else 22@ = !22@
+  else continue
   end
 end
 terminate_this_script
@@ -387,9 +399,9 @@ return
 
 :function
 cleo_return 0</textarea>
-<pre id='PREVIEW' style="filter: blur(2px);" class="w-100 m-0 p-1"></pre>
+<pre id='PREVIEW' style="filter: blur(2px);" class="w-100 m-0 r-0 p-1"></pre>
 
-	<pre type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100 m-0 pr-1 gray d-none"></pre>
+	<pre type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100 m-0 r-0 pr-1 gray d-none"></pre>
 </div>
 
 <div id="error" placeholder="hex's output" name="cleaned_hex" class="w-100 p-1" style="
@@ -430,7 +442,9 @@ cleo_return 0</textarea>
   z-index: -99;
   aspect-ratio:16/9;
 }
-
+#FILENAME {
+  border-bottom: #161b22 1px solid;
+}
 </style>
 <footer class="d-flex between bg-green black py-1 w-100">
 <div class="d-flex">
@@ -479,6 +493,13 @@ cleo_return 0</textarea>
 <key key="all">⌬</key>
 </footer>
 
+<div class="d-none">
+<input type="search" value="" placeholder="actor, car, object...." id="search" class="w-100">
+<pre id="result-search"class="m-0 r-0">
+Actor.create(655)
+</pre>
+</div>
+
 	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
 
 </form>
@@ -488,8 +509,6 @@ Bugs found:<br>
 Array support is limited to Local variables.
 </blockquote>
 <blockquote>
-This editor use the data base of Library.SannyBuilder.com and files of edition MatiDragon.<br>
----<br>
 IDE supports:<br>
 - High-level syntax for loops (WHILE, REPEAT, FOR).<br>
 - High-level syntax for conditions (IF, THEN, ELSE, END).<br>
@@ -503,6 +522,8 @@ IDE supports:<br>
 - Ternary operatons (a ? b : c, a = b ? c : d).<br>
 - Definitive operations (TRUE, FALSE, UNDEFINED, NULL).<br>
 - Autocomplete parameter of IF (AND and OR).<br>
+- Keywords and classes of <a href="https://library.sannybuilder.com/">Library.SannyBuilder.com</a><br>
+- Constants and variables of <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">CrossPlataform</a><br>
 - Command negation (!, NOT).<br>
 </blockquote>
 <blockquote class="info">
@@ -928,7 +949,7 @@ function hl(){
 	.r(/\.([0-9A-Z_a-z]+)\n/gm,"." + enter.commands +"\n")
 	//Variables  
 	.r(/\b(timer(a|b|x|z))\b/gmi, enter.variables)
-	.r(/(\d+\@([ifsv]|\B)([^\w\d]|$))/gmi, enter.variables)
+	.r(/(\d+\@([ifsv])?)/gmi, enter.variables)
 	// Operadores
 	.r(/(^|\s)(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=|\?\?|\|\||\!)(\s|$)/gmi,"$1<span class=labels>$2<\/span>$3")
 
