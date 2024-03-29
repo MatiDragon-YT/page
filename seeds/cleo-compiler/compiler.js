@@ -1,6 +1,6 @@
 'use strict';
 // Author: MatiDragon.
-// Helpers: Seemann, Miran.
+// Contributors: Seemann, OrionSR, Miran.
 
 const 	log = x  => console.log(x),
 		sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
@@ -240,6 +240,79 @@ function fetchPercentece(response, background){
 	})
   );
 }
+
+function enumsGenerator(str) {
+    // Eliminamos los saltos de línea y espacios innecesarios
+    str = str.replace(/\n\n/g, '').trim();
+
+    // Dividimos el string en las secciones "enum"
+    const enumSections = str.split('enum ');
+
+    // Creamos un objeto para almacenar los resultados
+    const resultado = {};
+
+    // Iteramos sobre cada sección "enum"
+    for (const section of enumSections) {
+        if (section) {
+            // Extraemos el nombre del enum y las opciones
+            const [enumName, ...options] = section.rA(',', '\n').split(/\s+/);
+
+            // Creamos un objeto para almacenar las opciones
+            const enumObj = {};
+            let nIndex = 0
+            
+            // Asignamos valores a las opciones
+            options.forEach((option, index) => {
+              if(option != 'end'){
+                if (option.includes('=')) {
+                    let [name, value] = option.split('=');
+                    if (!/("|')/.test(value)) {
+                      value = Number(value)
+                    }
+                    enumObj[name.toUpperCase()] = value
+                    nIndex = value
+                } else {
+                 if(typeof nIndex == "number"){
+                  enumObj[option.toUpperCase()] = ++nIndex
+                 }else{
+                  enumObj[option.toUpperCase()] = option
+                 }
+                }
+              }
+            });
+
+            // Agregamos el enum al resultado
+            resultado[enumName.toUpperCase()] = enumObj
+        }
+    }
+
+    return resultado;
+}
+
+let CUSTOM_ENUM = LS.get('./data/enums.txt')
+if (!CUSTOM_ENUM) {
+  CUSTOM_ENUM = await fetch(`https://library.sannybuilder.com/assets/sa/enums.txt`)
+ .then(response => {
+ 	  return fetchPercentece(response, 'pink')
+  })
+  CUSTOM_ENUM = await CUSTOM_ENUM.text()
+  CUSTOM_ENUM = enumsGenerator(CUSTOM_ENUM)
+
+  LS.set('./data/enums.txt', JSON.stringify(CUSTOM_ENUM))
+}else{
+  CUSTOM_ENUM = JSON.parse(CUSTOM_ENUM)
+}
+//log(CUSTOM_ENUM)
+
+
+
+
+
+
+
+
+
+
 
 let classes = LS.get('./data/classes.db')
 if (!classes) {
@@ -800,7 +873,7 @@ SP.addNumbersToIfs = function() {
 					contador += 1;
 				}
 			}
-		} else if (/^(then|goto_if_false|else_jump|else_goto|004D)/im.test(linea)) {
+		} else if (/^(then|goto_if_false|else_jump|else_goto|jf|004D)/im.test(linea)) {
 		  //real--;
 		  
 			if (real > 1 && multiCondicion == false)
@@ -1005,24 +1078,30 @@ SP.postProcesar = function(){
     //log(CONSTANTS)
     line = line.split(' ').map(param=>{
       if (param.trim() != ''){
-        if (param.toUpperCase() in CONSTANTS)
+        if (param.toUpperCase() in CONSTANTS){
           return CONSTANTS[param.toUpperCase()]
-        else
+        }
+        else if (/^\w[\w\d_]+\.[\w\d\_]+$/im.test(param)) {
+          let [head, extend] = param.split('.')
+          
+          if (extend.toUpperCase() in CUSTOM_ENUM[head.toUpperCase()] ){
+            return CUSTOM_ENUM[head.toUpperCase()][extend.toUpperCase()]
+          }
           return param
-      }else{
+        }
         return param
       }
+      return param
     }).join(' ')
-    
+    //log(line)
     return line
-    
     //log(line)
   }).join('\n')
 	
 	nString = nString
-		.r(/^(int )?(\$.+) = ([\-\d]+|#.+|0x.+|0b.+)$/gim, `0004: $2 $3`)									//0004: $ = 0
+		.r(/^(int )?(\$.+) = ([\-\d]+|#.+|0x.+|0b.+)$/gim, `0004: $2 $3`)							//0004: $ = 0
 		.r(/^(float )?(\$.+) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0005: $2 $3`)							//0005: $ = 0.0
-		.r(/^(int )?(\d+@([^\s]+)?) = ([\-\d]+|#.+|0x.+|0b.+)$/gim, `0006: $2 $4`)				//0006: 0@ = 0
+		.r(/^(int )?(\d+@([^\s]+)?) = ([\-\d]+|#.+|0x.+|0b.+)$/gim, `0006: $2 $4`)		//0006: 0@ = 0
 		.r(/^(float )?(\d+@([^\s]+)?) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0007: $2 $4`)		//0007: @ = 0.0
 		.r(/^(int )?(\$.+) \+= (\d+|#.+|0x.+|0b.+)$/gim, `0008: $2 $3`)								//0008: $ += 0
 		.r(/^(float )?(\$.+) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `0009: $2 $3`)						//0009: $ += 0.0
@@ -1030,7 +1109,7 @@ SP.postProcesar = function(){
 		.r(/^(float )?(\d+@([^\s]+)?) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `000B: $2 $4`)	//000B: @ += 0.0
 		.r(/^(int )?(\$.+) \-= (\d+|#.+|0x.+|0b.+)$/gim, `000C: $2 $3`)								//000C: $ -= 0
 		.r(/^(float )?(\$.+) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000D: $2 $3`)						//000D: $ -= 0.0
-		.r(/^(int )?(\d+@([^\s]+)?) \-= ([\-\d]+|#.+|0x.+|0b.+)$/gim, `000E: $2 $4`)			//000E: 0@ -= 0
+		.r(/^(int )?(\d+@([^\s]+)?) \-= ([\-\d]+|#.+|0x.+|0b.+)$/gim, `000E: $2 $4`)	//000E: 0@ -= 0
 		.r(/^(float )?(\d+@([^\s]+)?) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000F: $2 $4`)	//000F: @ -= 0.0
 		.r(/^(int )?(\$.+) \*= (\d+|#.+|0x.+|0b.+)$/gim, `0010: $2 $3`)								//0010: $GS_GANG_CASH *= 100
 		.r(/^(float )?(\$.+) \*= (\d+\.\d+|\.\d+|\d+f)$/gim, `0011: $2 $3`)						//0011: $HJ_TEMP_FLOAT *= 100.0
@@ -1136,13 +1215,13 @@ SP.postProcesar = function(){
 		.r(/^(float )?(\d+@([^\s]+)?) != (\$.+)$/gim, `87D7: $2 $4`)									//07D7:    17@ != $VAR24 // (float)
 
 
-		.r(/^(int )?(\$.+) = (\$.+)$/gim, `0084: $2 $3`)															//0084:    17@ = $VAR24 // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) = (\d+@([^\s]+)?)$/gim, `0085: $2 $4`)						//0085:    17@ = $VAR24 // (int)
-		.r(/^(float )?(\$.+) = (\$.+)$/gim, `0086: $2 $3`)														//0086:    17@ = $VAR24 // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) = (\d+@([^\s]+)?)$/gim, `0087: $2 $4`)					//0087:    17@ = $VAR24 // (float
-		.r(/^(float )?(\$.+) = (\d+@([^\s]+)?)$/gim, `0088: $2 $4`)										//0088:    17@ = $VAR24 // (float)
+		.r(/^(int )?(\$.+) = (\$.+)$/gim, `0084: $2 $3`)															//0084:    $ = $VAR24 // (int)
+		.r(/^(int )?(\d+@([^\s]+)?) = (\d+@([^\s]+)?)$/gim, `0085: $2 $4`)						//0085:    17@ = @ // (int)
+		.r(/^(float )?(\$.+) = (\$.+)$/gim, `0086: $2 $3`)														//0086:    1$ = $VAR24 // (float)
+		.r(/^(float )?(\d+@([^\s]+)?) = (\d+@([^\s]+)?)$/gim, `0087: $2 $4`)					//0087:    17@ = @ // (float)
+		.r(/^(float )?(\$.+) = (\d+@([^\s]+)?)$/gim, `0088: $2 $4`)										//0088:    $ = @ // (float)
 		.r(/^(float )?(\d+@([^\s]+)?) = (\$.+)$/gim, `0089: $2 $4`)										//0089:    17@ = $VAR24 // (float
-		.r(/^(int )?(\$.+) = (\d+@([^\s]+)?)$/gim, `008A: $2 $4`)											//008A:    17@ = $VAR24 // (int)
+		.r(/^(int )?(\$.+) = (\d+@([^\s]+)?)$/gim, `008A: $2 $4`)											//008A:    $ = @ // (int)
 		.r(/^(int )?(\d+@([^\s]+)?) = (\$.+)$/gim, `008B: $2 $4`)											//008B:    17@ = $VAR24 // (int)
 
 		.r(/^(string )?(\d+@([^\s]+)?) = ('([^\n\']+)?')$/gim, `05A9: $2 $3`)
@@ -1185,6 +1264,41 @@ SP.classesToOpcodes = function(){
     ncode += line + '\n'
   })
   return ncode
+}
+
+SP.dividirCadena = function() {
+    const resultado = [];
+    let dentroComillas = false;
+    let subcadenaActual = '';
+    let comilla = 0
+
+    for (let i = 0; i < this.length; i++) {
+        const caracter = this[i];
+        const caracterAnterior = this[i-1];
+
+        if (caracter === '"' || caracter === "'"){
+          if (caracterAnterior != '\\') {
+             dentroComillas = !dentroComillas;
+          }
+          
+          subcadenaActual += caracter;
+        } else if (caracter === ' ' && !dentroComillas) {
+            // Si encontramos un espacio fuera de las comillas, guardamos la subcadena actual
+            if (subcadenaActual.trim() !== '') {
+                resultado.push(subcadenaActual);
+            }
+            subcadenaActual = '';
+        } else {
+            subcadenaActual += caracter;
+        }
+    }
+
+    // Al final, si hay una subcadena no vacía, la agregamos al resultado
+    if (subcadenaActual.trim() !== '') {
+        resultado.push(subcadenaActual);
+    }
+
+    return resultado;
 }
 
 SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
@@ -1264,7 +1378,9 @@ LineComand = LineComand
 			//log(totalSizePerLine)
 		}
 		else {
-			LineComand[numLine] = Line.split(' ')
+			LineComand[numLine] = 
+			  Line.dividirCadena()
+			  //Line.split(' ')
 
 			let lineDepurated = []
 			let setOp = ''
@@ -1392,10 +1508,49 @@ LineComand = LineComand
 						if (/\@/.test(Argument)) typeData = 'lvar';
 						if (/[$&]/.test(Argument)) typeData = 'gvar';
 					}
-
+          
+          SP.parseCharScape = function(){
+            let nString = this
+					  .rA('\\n','\n')
+						.rA('\\t','\t')
+					  .rA('\\\\','\\')
+		  		  .rA("\\'","'")
+						.rA("\\`","`")
+					  .rA('\\"','"')
+            .r(/\\x([A-Fa-f\d]+)/gi,(match, content)=> {
+              log(content)
+             	return String.fromCharCode(content.hexToDec())
+             })
+            
+            for (let i = 0; i < nString.length; i++) {
+              const valorASCII = nString.charCodeAt(i);
+              if ( valorASCII > 255) {
+                throw Error("Scripts do not support characters outside the ACSII range 0-255 in Strings")
+              }
+            }
+            
+            return nString
+          }
+          
+          if (
+            !Argument.i('@')
+            && !Argument.i('$')
+            && !Argument.i('"')
+            && !Argument.i('`')
+            && !Argument.i('&')
+            && !Argument.i('#')
+            && !Argument.i('.')
+            && !/\d/.test(Argument)
+          ){
+            typeData = 'trash'
+          }
+          
 					switch (typeData) {
 						case 'short':
-							Argument = /'(.+)'/.test(Argument) ? Argument.r(/'(.+)'/, '$1') : '\x00'
+							Argument = Argument
+							.r(/^'(.+)'$/m, '$1')
+							.parseCharScape()
+							
 							Argument = Argument.substring(0,7)
 							totalSizePerLine.push(9)
 
@@ -1403,7 +1558,11 @@ LineComand = LineComand
 						break;
 
 						case 'long':
-							Argument = Argument.r(/("([^\"]+)?"|`(.+)?`)/, '$2$3').r(/\x00/g,'\x20')
+							Argument = Argument
+							.r(/("([^\"]+)?"|`(.+)?`)/, '$2$3')
+							.r(/\x00/g,'\x20')
+							.parseCharScape()
+							
 							Argument = Argument.substring(0,255)
 							//console.log(Argument)
 							if (Argument.length == 0) Argument = '\x00'
@@ -1784,7 +1943,6 @@ LineComand = LineComand
 						default:
 							Argument = ''
 						break;
-
 					}
 
 					lineDepurated.push(Argument)
