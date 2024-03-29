@@ -263,12 +263,17 @@ EP.class = function(str){
 		const columnaCursor = posicionCursor-posicionLinea
 		const inSelection = posicionCursor < 0
 		const charsSelected = inSelection ? posicionCursor*-1 : 0
-
-		return {
+		const textSelected = this.value.substr(
+		  this.getCursor()[0],
+		  this.getCursor()[1]
+		)
+		
+		const output = {
 			lineaCursor, columnaCursor,
 			inSelection, charsSelected,
-			primerPalabra
+			textSelected, primerPalabra
 		}
+		return output
 	}
 
 	EP.AddAtSection = function(text){
@@ -332,7 +337,7 @@ EP.getTextSelected = function() {
 		<button onclick="compilerSource()" title=Compilar>👍</button>
 	</section>
 	<section class="center">
-		<b id="name-compiler">MD's Compiler</b>
+		<b id="name-compiler">CLEO Compiler</b>
 	</section>
 	<section class="opa-0">
 	  <button title="Opcodes" onclick="$('#search').focus()">🔍</button>
@@ -379,15 +384,15 @@ button {
 
 <div id="editor-body">
   <pre id="editor-counterLine" class="m-0 r-0 p-1 green"></pre>
-	<textarea id="HEX" class="w-100 m-0 r-0 p-1 pl-5" placeholder="write your hex" autocomplete="off" spellcheck="false">// Compiler, maked by MatiDragon
-0: this_is_a_NOP
+	<textarea id="HEX" class="w-100 m-0 r-0 p-1 pl-5" placeholder="write your hex" autocomplete="off" spellcheck="false">// Based on SB3 syntax with extra JS
+0000: this_is_a_NOP
 $misc != 6.8 ? 7@ = !7@ : A = B || C
 X = 3@ == 5 ? false : undefined
 subrutine()
-function(2@(3@++,123), 'hello')
+function(2@(3@++,123), "test\t1")
 while !Char.DoesExist($Player_Actor--)
-  wait 1000
-  if IS_KEY_PRESSED 0x35
+  wait at_ms 1000
+  if IS_KEY_PRESSED KeyCode.A
   then break
   else continue
   end
@@ -522,15 +527,18 @@ IDE supports:<br>
 - Ternary operatons (a ? b : c, a = b ? c : d).<br>
 - Definitive operations (TRUE, FALSE, UNDEFINED, NULL).<br>
 - Autocomplete parameter of IF (AND and OR).<br>
-- Keywords and classes of <a href="https://library.sannybuilder.com/">Library.SannyBuilder.com</a><br>
-- Constants and variables of <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">CrossPlataform</a><br>
+- Keywords, classes and enumerations of <a href="https://library.sannybuilder.com/">Library::SannyBuilder</a><br>
+- Constants and variables of <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">data::CrossPlataform</a><br>
 - Command negation (!, NOT).<br>
+- Characters scape (\t, \n, \", \xff).<br>
 </blockquote>
 <blockquote class="info">
 - Operations between variables will always be INT unless "FLOAT" is written before.<br>
 - Arrays without defined typing will expect an INT.
 </blockquote>
-<br>
+<footer class="center gray">
+Author: MatiDragon ; Contributors: Seemann, OrionSR, Miran.
+</footer>
 <script src="js/css.min.js"></script>
 <script type="module" src="compiler.js"></script>
 <script>
@@ -915,13 +923,24 @@ function hl(){
 	//Directivas
 	.r(/(\{\$[^{}\n]+\})/gm, enter.directives)
 	//Cadenas de texto
-	.r(/\"([^\n"]+)?(\")?/gmi, '<span class=strings>"$1$2<\/span>')
+	.r(/"((?:\\.|[^"\\\n])+)(")?/gmi, match => {
+	  match = match.rA("'", "’")
+	  .r(/\\(x[\d\w]+|t|n|'|"|`)/g, "<span class=charScape>\\$1</span>")
+	  return '<span class=strings>'+match+'</span>'
+  })
 	.rA('\\"</span>', '\\"')
 	.rA('\\"<span>', '\\"')
-	.r(/\'([^\n']+)?(\')?/gmi, "<span class=strings>'$1$2<\/span>")
+	.r(/'((?:\\.|[^'\\\n])+)(')?/gmi, match => {
+	  match = match.rA('"', '”')
+	  .r(/\\(x[\d\w]+|t|n|'|"|`)/g, "<span class=charScape>\\$1</span>")
+	  return "<span class=strings>"+match+"</span>"
+  })
 	.rA("\\'</span>", "\\'")
 	.rA("\\'<span>", "\\'")
-	.r(/\`([^\n`]+)\`/gmi, "<span class=strings>`$1`<\/span>")
+	.r(/`((?:\\.|[^`\\])*)(`)?/gmi, match => {
+	  match = match.r(/\\(x[\d\w]+|t|n|'|"|`)/g, "<span class=charScape>\\$1</span>")
+	  return "<span class=strings>"+match+"</span>"
+  })
 	.rA("\\`</span>", "\\`")
 	.rA("\\`<span>", "\\`")
 	//Etiquetas
@@ -937,7 +956,7 @@ function hl(){
 	.r(/((\x{00}|[ifsv])\$([\d\w]+)?)/gm, enter.variables)
 	//Numeros
 	.r(/\b(\d+(b|x|\.)\w+)\b/gmi, enter.numbers)
-	.r(/\b(true|false|undefined|null)\b/gmi, enter.numbers)
+	.r(/\b(true|false|undefined|null|break|continue)\b/gmi, enter.numbers)
 	.r(/(?!\#)(\W)(?!\$)(\d+)(?!\:|\@)([ifsv]?)\b/gmi, '$1<span class=numbers>$2$3<\/span>')
 	//Modelos
 	.r(/(\#[^\"\'\#\s]+)\b/gm, "<span class='models'>$1<\/span>")
