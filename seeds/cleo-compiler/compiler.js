@@ -241,9 +241,9 @@ function fetchPercentece(response, background){
   );
 }
 
-function enumsGenerator(str) {
+SP.enumsGenerator = function() {
     // Eliminamos los saltos de línea y espacios innecesarios
-    str = str.replace(/\n\n/g, '').trim();
+    let str = this.replace(/\n\n/g, '').trim();
 
     // Dividimos el string en las secciones "enum"
     const enumSections = str.split('enum ');
@@ -285,97 +285,155 @@ function enumsGenerator(str) {
             resultado[enumName.toUpperCase()] = enumObj
         }
     }
-
     return resultado;
 }
 
-let CUSTOM_ENUM = LS.get('./data/enums.txt')
-if (!CUSTOM_ENUM) {
-  CUSTOM_ENUM = await fetch(`https://library.sannybuilder.com/assets/sa/enums.txt`)
- .then(response => {
- 	  return fetchPercentece(response, 'pink')
-  })
-  CUSTOM_ENUM = await CUSTOM_ENUM.text()
-  CUSTOM_ENUM = enumsGenerator(CUSTOM_ENUM)
-
-  LS.set('./data/enums.txt', JSON.stringify(CUSTOM_ENUM))
-}else{
-  CUSTOM_ENUM = JSON.parse(CUSTOM_ENUM)
-}
-//log(CUSTOM_ENUM)
-
-
-
-
-
-
-
-
-
-
-
-let classes = LS.get('./data/classes.db')
-if (!classes) {
-  //let CUSTOM_CLASSES = await fetch('./data/classes.db')
-  let CUSTOM_CLASSES = await fetch(`https://library.sannybuilder.com/assets/sa/classes.db`)
- .then(response => {
- 	  return fetchPercentece(response, 'gray')
-  })
+async function LSget(url, color, saveAt) {
+  saveAt = saveAt ?? url
   
-  CUSTOM_CLASSES = await CUSTOM_CLASSES.text()
-  classes = {}
-  let addClass = false
-  let currentClass = ''
-  CUSTOM_CLASSES
+  let text = LS.get(saveAt)
+  
+  if (text == undefined){
+    text = await fetch(url)
+    .then(response => {
+ 	    return fetchPercentece(response, color)
+    })
+    
+    text = await text.text()
+    LS.set(saveAt, text)
+  }
+
+  return text
+}
+
+let CUSTOM_ENUM = (await LSget(
+  'https://library.sannybuilder.com/assets/sa/enums.txt',
+  'pink',
+  './data/enums.txt'
+)).enumsGenerator()
+
+let SASCM = (await LSget(
+  'https://raw.githubusercontent.com/MatiDragon-YT/data/master/sa_cp/SASCM.INI',
+  'cyan',
+  './data/SASCM.INI'
+))
+
+// ----------------------------
+
+let addClass = false
+let currentClass = ''
+let classes = {}
+let CUSTOM_CLASSES = (await LSget(
+  'https://library.sannybuilder.com/assets/sa/classes.db',
+  'gray',
+  './data/classes.db'
+)) + (await LSget(
+  './data/classes.db',
+  '#373',
+  './data/classesCP.db'
+)) 
+
+/*
+CurrentWeapon(0@) = 23 // 01B9: 0@ 23
+0@ = CurrentWeapon(1@) // 0470: 0@ 1@
+CurrentWeapon(0@) == 34 //02D8: 0@ 34
+*/
+
+CUSTOM_CLASSES
+  // Aquí se utiliza para eliminar comentarios de una sola línea que comienzan con ';'.
   .r(/;(.+)?$/m, '')
   .split('\n')
-  .clear()
+  .clear()   // .clear elimina líneas vacias
   .forEach(line => {
     line = line.trim()
+    // Aquí se manejan las directivas que indican el comienzo y fin de la lista de clases y las definiciones de clases.
+    
     if (line == '#CLASSESLIST'){
-      addClass = true
-    } else if (line == '#CLASSES') {
-      addClass = false
-    } else if (line == '#EOF'){
-      addClass = true
-    } else {
+      addClass = true;
+    }
+    else if (line == '#CLASSES') {
+      addClass = false;
+    }
+    else if (line == '#EOF'){
+      addClass = true;
+    }
+    else {
+      // Si estamos en la sección de lista de clases, se crea un nuevo objeto para cada clase.
       if (addClass == true) {
-        classes[line] = {
-          
-        }
+        classes[line] = {}
       } else {
+        // Si la línea comienza con '$', indica el comienzo o fin de una definición de clase.
         if (/^\$.+/m.test(line)) {
           if (line.toLowerCase() != '$begin'
             && line.toLowerCase() != '$end'
           ){
+            // Extrae el nombre de la clase actual.
             currentClass = line.match(/^\$(.+)/m)[1]
           }
-        }else{
-          if (/([^,]+),([^,]+)/.test(line)){
-          let temp =
-            line.match(/([^,]+),([^,]+)/)
-            
-          let miember = {}
-          miember[temp[1]] = temp[2]
+        } else {
+          // Si la línea comienza con '^', se trata de una propiedad con operaciones y códigos asociados.
+          if (line.startsWith('^')) {
+            // Extrae el nombre de la propiedad.
+            let propertyName = line.match(/\^(.*?),\[/)[1];
+            // Extrae los datos asociados con la propiedad y los divide en un array.
+            let data = line.match(/\[(.*?)\]/g).map(e => e.replace(/[\[\]]/g, '').split(','));
           
-           // log(temp)
-          classes[currentClass] = { ...classes[currentClass],  ...miember}
-        }}
+            // Inicializa un objeto para la propiedad dentro de la clase actual.
+            classes[currentClass][propertyName] = {};
+          
+            // Itera sobre cada conjunto de operaciones y códigos para la propiedad.
+            data.forEach(prop => {
+              let [opCode, mathCode, pos, type, helpCode] = prop;
+              // Realiza acciones basadas en el código matemático.
+              switch (mathCode) {
+                case '==':
+                  classes[currentClass][propertyName].IS = opCode;
+                  break;
+                case '=':
+                  if (pos === '1') {
+                    classes[currentClass][propertyName].SET = opCode;
+                  } else if (pos === '2') {
+                    classes[currentClass][propertyName].GET = opCode;
+                  }
+                  break;
+                case '+=':
+                  classes[currentClass][propertyName].ADD = opCode;
+                  break;
+                case '>=':
+                  classes[currentClass][propertyName].UPPER = opCode;
+                  break;
+                  // Se pueden agregar más casos según sea necesario.
+              }
+            });
+          }
+          // Si la línea contiene comas, se trata de una propiedad simple con un valor asociado.
+          else if (/([^,]+),([^,]+)/.test(line)){
+            // Extrae la clave y el valor de la propiedad.
+            let temp =
+              line.match(/([^,]+),([^,]+)/)
+              
+            // Crea un objeto temporal para la propiedad.
+            let miember = {}
+            miember[temp[1]] = temp[2]
+            
+            // Combina la propiedad con la clase actual.
+            classes[currentClass] = { ...classes[currentClass],  ...miember}
+          }
+        }
       }
     }
   })
-  LS.set('./data/classes.db', JSON.stringify(classes))
-}else{
-  classes = JSON.parse(classes)
-}
-//log(classes)
 
-let CUSTOM_VARIABLES = await fetch('./data/CustomVariables.ini')
-	.then(response => {
-		return fetchPercentece(response, 'red')
-  })
+log(classes)
 
-CUSTOM_VARIABLES = await CUSTOM_VARIABLES.text()
+
+
+
+
+let CUSTOM_VARIABLES = (await LSget(
+  './data/CustomVariables.ini',
+  'red'
+))
 CUSTOM_VARIABLES = CUSTOM_VARIABLES
 	.r(/;.+/g,'')
 	.r(/\r/g,'\n')
@@ -385,13 +443,14 @@ CUSTOM_VARIABLES.forEach((l,i)=>{
 	CUSTOM_VARIABLES[i] = l.r(/(.+)=(.+)/,'$2=$1').toUpperCase().split('=')
 })
 CUSTOM_VARIABLES = Object.fromEntries(CUSTOM_VARIABLES)
-//log(CUSTOM_VARIABLES)
+//log(VARIABLE_ID_AVALIABLE)
 
-let CONSTANTS = await fetch('./data/constants.txt')
-	.then(response => {
-		return fetchPercentece(response, 'orange')
-  })
-CONSTANTS = await CONSTANTS.text()
+
+
+let CONSTANTS = (await LSget(
+  './data/constants.txt',
+  'orange'
+))
 CONSTANTS = CONSTANTS
 	.r(/(^const|end$)/gm, '')
 	.r(/\r/g, '\n')
@@ -405,14 +464,11 @@ CONSTANTS.forEach((e,i) => CONSTANTS[i] = e.split('='))
 CONSTANTS = Object.fromEntries(CONSTANTS)
 //log(CONSTANTS)
 
-let MODELS = LS.get('MODELS') || await fetch('./data/models.ide')
-	.then(response => {
-		return fetchPercentece(response, 'yellow')
-  })
-if (typeof MODELS != 'string'){
-  MODELS = await MODELS.text()
-  LS.set('MODELS', MODELS)
-}
+let MODELS = (await LSget(
+  './data/models.ide',
+  'yellow'
+))
+
 MODELS = MODELS
 	.r(/\r/g,'')
 	.r(/(\d+) (.+)/g, '$2 $1')
@@ -424,7 +480,7 @@ MODELS = Object.fromEntries(MODELS)
 
 let SCM_DB = {}
 async function dbSBL(game){
-  let DATA_DB = LS.get("DB_"+game)
+  let DATA_DB = LS.get("./data/"+game+".json")
   if (!DATA_DB){
 	  DATA_DB = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/${game}.json`)
 	.then(response => {
@@ -432,7 +488,7 @@ async function dbSBL(game){
   })
 
 	DATA_DB = await DATA_DB.json()
-	LS.set("DB_"+game, JSON.stringify(DATA_DB))
+	LS.set("./data/"+game+".json", JSON.stringify(DATA_DB))
   }else{
     DATA_DB = JSON.parse(DATA_DB)
   }
@@ -481,8 +537,11 @@ $IDE_mode.value = LS.get('Compiler/IDE:mode')
 let game = LS.get('Compiler/IDE:mode')
 
 
-let version = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/version.txt`)
-version = await version.text()
+let version = (await LSget(
+  `https://raw.githubusercontent.com/sannybuilder/library/master/${game}/version.txt`,
+  'purple',
+  'version_sbl'
+))
 $('#version_sbl').innerHTML = 'SBL ' + version
 
 
@@ -519,7 +578,7 @@ SP.binToDec = function() {
 	let input = this.r('0b','')
   let sum = 0
   for (let i = 0; i < input.length; i++) {
-	sum += +input[i] * 2 ** (input.length - 1 - i)
+	  sum += +input[i] * 2 ** (input.length - 1 - i)
   }
   return sum
 }
@@ -1075,19 +1134,29 @@ end`)
 
 SP.postProcesar = function(){
   let nString = this.split('\n').map(line=>{
-    //log(CONSTANTS)
     line = line.split(' ').map(param=>{
       if (param.trim() != ''){
         if (param.toUpperCase() in CONSTANTS){
           return CONSTANTS[param.toUpperCase()]
         }
-        else if (/^\w[\w\d_]+\.[\w\d\_]+$/im.test(param)) {
-          let [head, extend] = param.split('.')
+        else if (
+          /^[a-z][\w\d_]+\.[\w\d\_]+$/im.test(param)
+        ) {
+          let [head, extend] = param.split('.').map(a => {
+            return a.toUpperCase()
+          })
+          let ret = ''
           
-          if (extend.toUpperCase() in CUSTOM_ENUM[head.toUpperCase()] ){
-            return CUSTOM_ENUM[head.toUpperCase()][extend.toUpperCase()]
+          if (
+            head in CUSTOM_ENUM 
+            && extend in CUSTOM_ENUM[head]
+          ){
+            ret = CUSTOM_ENUM[head][extend]
+          }else{
+            ret = param
           }
-          return param
+          
+          return ret
         }
         return param
       }
@@ -1233,36 +1302,169 @@ SP.postProcesar = function(){
 		return nString
 }
 
+/*
+CurrentWeapon(0@) = 23 // 01B9: 0@ 23
+0@ = CurrentWeapon(1@) // 0470: 0@ 1@
+CurrentWeapon(0@) == 34 //02D8: 0@ 34
+CurrentWeapon(0@) > 34 //02D7: 0@ 34
+*/
+
+
 SP.classesToOpcodes = function(){
-  const match = /^([\!\w\d_]+)\.([\w\d_]+)\((.+)\)$/mi
+  //console.clear()
+  const MATCH = {
+    CLASSE_MEMBER: /([\!\w\d_][\w\d_]+)\.([\w\d_]+)\((.+)?\)/i,
+    OPERATION: /(==|\+=|=|>)/,
+    VARIABLE: "(\d+@(\w|(\([\(\)]+\)))?|(\w)?($|&)[\w\d_]+(\([\(\)]+\)))?)",
+    
+    SIMPLE: /([\!\w\d_]+)\.([\w\d_]+)\((.+)?\)/mi,
+    CONTINUE: /^\.([\w\d_]+)\((.+)?\)$/mi,
+    
+    
+    SET: /\.[^(]+\(.+=/,
+    GET: /=.+\.[^(]+\(/,
+    IS: /\.[^=]+==/,
+    UPPER: /\.[^>]+>/,
+  }
+  
   let ncode = ''
+  let lclass = ''
   
   this.split('\n').forEach(line =>{
-    line = line.trim()
-    let isNegative = false
-    let opcode = 0
+    line = line.trim();
+    let isNegative = line.startsWith('!');
+    if (isNegative) line = line.r('!');
+    let opcode = null;
     
-    if (match.test(line)){
-      let vars = line.match(match)
-      if (vars[1].i('!')){
-        vars[1] = vars[1].r('!')
-        isNegative = true
-      }
-      
-      opcode = classes[vars[1]][vars[2]]
-      
-      if (isNegative) {
-        opcode = (Number(opcode.hexToDec()) + 0b1000000000000000)
-  		  .toString(16)
-  		  .padStart(4, '0')
-      }
-      
-      //log(opcode)
-      
-      line = opcode+': '+vars[3]
+    let data = {}
+    let h
+    
+    if (MATCH.CONTINUE.test(line)){
+      line = lclass+line
     }
+    
+    if (MATCH.CLASSE_MEMBER.test(line)){
+      [h,data.clase, data.miembro, data.resto] = line.match(MATCH.CLASSE_MEMBER)
+      
+      if(MATCH.IS.test(line)) {
+        const iset = line.match(
+          /\((.+)\)(.+)?==(.+)/
+        )
+        
+        data.paramFront = iset[1]
+        data.paramRear = iset[3]
+        data.operador = "IS"
+      }
+      else if(MATCH.UPPER.test(line)) {
+        const iset = line.match(
+          /\((.+)\)(.+)?>(.+)/
+        )
+        
+        data.paramFront = iset[1]
+        data.paramRear = iset[3]
+        data.operador = "UPPER"
+      }
+      else if (MATCH.GET.test(line)) {
+        const iset = line.match(
+          /(.+)=(.+)\((.+)\)/
+        )
+        //log("get")
+        //log(iset)
+        
+        data.paramFront = iset[3]
+        data.paramRear = iset[1]
+        data.operador = "GET"
+      }
+      else if(MATCH.SET.test(line)) {
+        const iset = line.match(
+          /\((.+)\)(.+)?=(.+)/
+        )
+        
+        data.paramFront = iset[1]
+        data.paramRear = iset[3]
+        data.operador = "SET"
+      }else {
+        //log(line)
+        //log(data)
+        const iset = line.match(
+          /\((.+)\)(.+)?=(.+)/
+        )
+        
+        data.operador = "FUNC"
+      }
+      lclass = line.match(MATCH.SIMPLE)[1]
+      //log(lclass)
+      
+      
+      let queEs = classes[data.clase][data.miembro]
+        //log({queEs, data, line})
+        
+      if (data.operador != "FUNC"){
+        if (typeof queEs == "object") {
+          line = Object.values(queEs)[0]
+        } else {
+          line = queEs
+        }
+        line += ': ' + data.paramFront + " " + data.paramRear
+      }
+      else {
+        if (typeof queEs == "object") {
+          line = Object.values(queEs)[0]
+        } else {
+          line = queEs
+        }
+        line += ': '+data.resto
+      }
+      
+      //log(line)
+    
+      //log(data)
+    }
+    
+    let depureLine = ''
+    let inString = false
+    for (let i = 0; i < line.length; i++){
+      
+      if (
+        line[i] == '"'
+        || line[i] == "'"
+        || line[i] == '`'
+        || line[i] == '('
+        || line[i] == ')'
+      ){
+        inString = !inString
+      }
+      
+      if (line[i] == ','){
+        if (inString == true){
+          depureLine += line[i]
+        } else {
+          depureLine += ' '
+        }
+      }else{
+        depureLine += line[i]
+      }
+    }
+    line = depureLine
+    
+    
+    if (isNegative){
+      line = line
+      .r(/^([\w\d]+):/im, (input, mat)=>{
+        let op = (Number(mat.hexToDec()) + 0b1000000000000000)
+        .toString(16)
+        .padStart(4, '0')
+        return op+': '
+
+      })
+      //log(line)
+    }
+    
+    
     ncode += line + '\n'
   })
+  
+  log(ncode)
   return ncode
 }
 
@@ -1336,6 +1538,15 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 	
 		return dataInput
   }
+  function translateGvar(dataInput){
+    dataInput = 
+      (Number(dataInput.r(/(\w)?&/,'')) * 4)
+      .toString(16)
+			.padStart(4,'0')
+			.toBigEndian()
+	
+		return dataInput
+  }
 	
 	/*
 	if (this.match(/[^\w\d]("([^"\n]+)?)(\x20)(([^"\n]+)?")[^\w\d]/)
@@ -1365,8 +1576,8 @@ LineComand = LineComand
 		// remove jump lines innesesaries
 		.r(/^\n+/gm, '')
 		.r(/\n$/gm, '')
-		.postProcesar()
 	  .classesToOpcodes()
+		.postProcesar()
 	  .split('\n')
   
 
@@ -1696,6 +1907,9 @@ LineComand = LineComand
 
 						case 'float':
 							totalSizePerLine.push(4)
+
+
+
 
 							Argument = come(TYPE_CODE.FLOAT32) + Number(Argument.r('f','')).toHex()
 						break;
@@ -2072,7 +2286,6 @@ if ($SBL_State){
 		
 		$('#version_sbl').innerHTML = 'SBL ' + version
 		$SBL_State.innerText = 'Okey'
-		$SBL_State.style = ''
 		$('#PREVIEW').style.filter = ''
 		c.remove('loading')
 	}
