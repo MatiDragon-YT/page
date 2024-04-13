@@ -134,16 +134,21 @@ function apply(element, callback){
 }
 
 function getLine(){
-	let t = [$node.selectionStart, $node.selectionEnd]
-	let posicionCursor = t[0] != t[1] ? t[0] - t[1] : t[0];
-	let lineaCursor = $node.value.substr(0, posicionCursor).split("\n").length;
-	let posicionLinea = $node.value.substr(0, posicionCursor).lastIndexOf("\n") + 1;
+  textData = $node.getLine()
+  /* lineaCursor, columnaCursor,
+			inSelection, charsSelected,
+			textSelected, primerPalabra */
 
-	if (posicionCursor < 0)
-		$('#line').innerText = `${posicionCursor*-1} chars selected`
-	else
-		$('#line').innerText = `Ln ${lineaCursor}, Col ${posicionCursor-posicionLinea}`
+	if (textData.inSelection){
+		$('#line').innerText = textData.charsSelected
+		$('#opcode').innerText = ''
+	}else{
+		$('#line').innerText = textData.lineaCursor+':'+textData.columnaCursor
+		
+		$('#opcode').innerText = textData.primerPalabra+' | '+textData.mediaPalabra
+	}
 }
+
 function delay(callback, ms) {
     let timer = 0;
     return function() {
@@ -160,15 +165,12 @@ EP.class = function(str){
   if (!/^[\?\+\-\~\>]/m.test(str))
     return alert("add action");
   
-  let [init, action, classes] = str.match(/^([\?\+\-\~\>])(.+)/m)
-  
-  console.log(classes)
-  if (action == '+') this.classList.add(classes);
-  if (action == '-') this.classList.remove(classes);
-  if (action == '~') this.classList.toggle(classes);
-  if (action == '>') this.classList.replace(classes);
+  if (action == '+') this.classList.add(str);
+  if (action == '-') this.classList.remove(str);
+  if (action == '~') this.classList.toggle(str);
+  if (action == '>') this.classList.replace(str);
   if (action == '?')
-    return this.classList.contains(classes)
+    return this.classList.contains(str)
 }
 
 	EP.next = function(){
@@ -258,10 +260,30 @@ EP.class = function(str){
 		let stringRequerido = this.value.substr(0, posicionCursor)
 		let lineaCursor = stringRequerido.split("\n").length;
 		let posicionLinea = stringRequerido.lastIndexOf("\n") + 1;
-		let primerPalabra = stringRequerido.split("\n")[lineaCursor-1].split(/\s+/)[0]
-
+		let primerPalabra = this.value.split("\n")[lineaCursor-1].trim().split(' ')[0]
+		
 		const columnaCursor = posicionCursor-posicionLinea
+		
+		let tempA = (str) =>{
+		  let palabra = ''
+		  let corta = " .,<>{}()[]\t\n"
+		  for (let i = columnaCursor; i < str.length; i++){
+		    if (corta.includes(str[i])) break;
+		    palabra += str[i]
+		  }
+		  for (let i = columnaCursor-1; i >= 0; i--){
+		    if (corta.includes(str[i])) break;
+		    palabra = str[i] + palabra
+		  }
+		  return palabra
+		}
 		const inSelection = posicionCursor < 0
+		
+		let mediaPalabra = ''
+		if (!inSelection) {
+		  mediaPalabra = tempA(this.value.split("\n")[lineaCursor - 1])
+		}
+		
 		const charsSelected = inSelection ? posicionCursor*-1 : 0
 		const textSelected = this.value.substr(
 		  this.getCursor()[0],
@@ -271,7 +293,8 @@ EP.class = function(str){
 		const output = {
 			lineaCursor, columnaCursor,
 			inSelection, charsSelected,
-			textSelected, primerPalabra
+			textSelected, primerPalabra,
+			mediaPalabra
 		}
 		return output
 	}
@@ -384,14 +407,17 @@ button {
 
 <div id="editor-body">
   <pre id="editor-counterLine" class="m-0 r-0 p-1 green"></pre>
-	<textarea id="HEX" class="w-100 m-0 r-0 p-1 pl-5" placeholder="write your hex" autocomplete="off" spellcheck="false">// Based on SB3 syntax with extra JS
+	<textarea id="HEX" class="w-100 m-0 r-0 p-1 pl-5" placeholder="write your hex" autocomplete="off" spellcheck="false">{ Syntax based on SannyBuilder and JavaScript }
 0000: this_is_a_NOP
-$misc != 6.8 ? 7@ = !7@ : A = B || C
+$misc != 6.8 ? 7@ = !7@ : A = B || 0b1000
 X = 3@ == 5 ? false : undefined
-subrutine()
-function(2@(3@++,123), "test\t1")
-while !Char.DoesExist($Player_Actor--)
-  wait at_ms 1000
+function(2@(3@++,123), "test\t#1 <=")
+0@ = Char.Create(PedType.Gang1, #FAM1, .0, 0f, 0.0)
+// the var 0@ is moves to the end
+.SetHeading(0@, 90.0)
+subrutine() /* remember the last class used */
+while !.DoesExist($Player_Actor--)
+  wait at_ms 0xff
   if IS_KEY_PRESSED KeyCode.A
   then break
   else continue
@@ -435,27 +461,36 @@ cleo_return 0</textarea>
   overflow: auto;
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
   line-height: 1.5em;
-  font-size: 1rem!important;
   text-wrap: wrap;
   aspect-ratio:16/9;
 }
 #PREVIEW {
-	font-size: 1rem!important;
 	transition: all 0.2s ease 0s;
   white-space: pre;
   text-wrap: wrap;
   z-index: -99;
   aspect-ratio:16/9;
 }
-#FILENAME {
+#editor-counterLine,
+#data-line-config *,
+#error,
+#HEX,
+#PREVIEW,
+#PREVIEW *{
+  font-size: 0.8rem!important;
+  tab-size: 4;
+}
+#FILENAME, {
   border-bottom: #161b22 1px solid;
 }
 </style>
-<footer class="d-flex between bg-green black py-1 w-100">
-<div class="d-flex">
-<span id='line'>Ln 0, Col 0</span>
+<div class="bg-green black">
+<footer id="data-line-config" class="d-flex between py-1 w-100">
+<div class="d-flex between g-3">
+<span id='opcode'></span>
 </div>
 <div class="d-flex">
+<span id='line'>0:0</span>
 <span id='state' class="loading">Loading...</span>
 <span id='version_sbl' class="">SBL</span>
 <select id='mode' class="ml-1" style="border: none;">
@@ -471,7 +506,7 @@ cleo_return 0</textarea>
 </div>
 </footer>
 
-<footer class="bg-green black d-flex h4* p-2 pb-0 w-100 g-3 d-sm-none" id="keys-mobile">
+<footer class="d-flex h4* p-2 pb-0 w-100 g-3 d-sm-none" id="keys-mobile">
 <key>→|</key>
 <key>&</key>
 <key>@</key>
@@ -485,7 +520,7 @@ cleo_return 0</textarea>
 <key>{ }</key>
 <key>[ ]</key>
 </footer>
-<footer class="bg-green black d-flex h1* p-2 pt-0 w-100 g-3 d-sm-none" id="keys-actions">
+<footer class="d-flex h1* p-2 pt-0 w-100 g-3 d-sm-none" id="keys-actions">
 <key key="up">⇡</key>
 <key key="down">⇣</key>
 <key key="left">⇠</key>
@@ -504,6 +539,7 @@ cleo_return 0</textarea>
 Actor.create(655)
 </pre>
 </div>
+</div>
 
 	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
 
@@ -511,22 +547,126 @@ Actor.create(655)
 
 <blockquote class="warning">
 Bugs found:<br>
-Array support is limited to Local variables.
+Array support is limited to Local variables @(@,n).<br>
+Does not detect if a parameter has not been completed.
 </blockquote>
 <blockquote>
-IDE supports:<br>
-- High-level syntax for loops (WHILE, REPEAT, FOR).<br>
-- High-level syntax for conditions (IF, THEN, ELSE, END).<br>
-- Multi syntax for decimal numbers (5, 0x3, 0b01, #fam1).<br>
-- Multi syntax for floating numbers (.25, 3.0, 7f).<br>
+IDE supports:
+<details>
+<summary>High-level syntax for conditions</summary>
+Normally we would have to write the conditions like this, to control the reading flow of our script.
+<pre>
+IF 0
+  condition
+ELSE_GOTO @Label
+  body
+:Label
+</pre>
+But the compiler understands the SannyBuilder syntax and allows us to write as if we were there.
+<pre>
+IF
+  condition
+THEN
+  body
+END
+
+IF
+  condition
+THEN
+  body_1
+ELSE
+  body_2
+END
+
+IF (AND|OR)
+  condition_1
+  condition_2
+  condition_n+1
+THEN
+  body
+END
+</pre>
+</details>
+
+<details>
+<summary>High-level syntax for loops</summary>
+You can work with labels.
+<pre>
+:Loop
+  body
+GOTO @Loop
+</pre>
+Or use automated processes.
+<pre>
+WHILE condition
+  body
+END
+
+FOR var = start [TO|TODOWN] final [STEP (int|float)]
+  body
+END
+
+REPEAT
+  body
+UNTIL condition
+</pre>
+</details>
+
+<details>
+<summary>High-level syntax for classes</summary>
+The compiler does not know the order of the custom parameters, but instead interprets the orders, depending on how the classes are used.
+<pre>
+Normal:
+CLASS.MEMBER(PARAM, VAR)
+
+Conditional:
+CLASS.MEMBER(PARAM) == VAR
+
+Setter:
+CLASS.MEMBER(PARAM) = VAR
+
+Getter:
+VAR = CLASS.MEMBER(PARAM)
+</pre>
+Everything that is located before the class is relocated at the end of the class.
+<pre>
+Multi-Geting:
+VAR1, VAR2 = CLASS.MEMBER(PARAM)
+
+Last-Used:
+.MEMBER(PARAM)
+</pre>
+The compiler remembers which was the last class used, so if you use a dot (.) at the beginning of the line, you will access the member of that class.
+</details>
+
+<details>
+<summary>Multi syntax for decimal numbers</summary>
+The compiler not only has a translator for Hexadecimal and Binary numbers. It can also look up the numerical IDs of the model names.
+<pre>
+-627248 -2936 -42 0 5 972 9262 729003
+-0x7FFFFF -0x8AFF 0x0 0x03 0x700000
+-0b011110 -0b1110 0b0 0b01 0b1000000000000000
+-#JESTER #fam1 #FAM2 #mini_gun
+</pre>
+</details>
+
+<details>
+<summary>Multi syntax for floating numbers</summary>
+If you program in any programming language, you may be used to some of its syntax. Here you will be able to use it.
+<pre>
+-.0025 -.97 .0 .42 .736
+-42.8362 -3.5 1.0 142.8638
+-20f -13.7F 5f 17.869F
+</pre>
+</details>
+
 - Multi syntax for opcodes (0000:, 247:, !EF:, wait).<br>
 - Loop control (BREAK, CONTINUE).<br>
-- Flow control (GOTO, GOSUB, CLEO_CALL).<br>
+- Flow control (GOTO, GOSUB, RETURN, CLEO_CALL, RET).<br>
 - Arithmetic operations (@=0, @=!$, @+=@, $++).<br>
 - Logical operations (@==7, @!=$, $>@, $=@??@).<br>
 - Ternary operatons (a ? b : c, a = b ? c : d).<br>
 - Definitive operations (TRUE, FALSE, UNDEFINED, NULL).<br>
-- Autocomplete parameter of IF (AND and OR).<br>
 - Keywords, classes and enumerations of <a href="https://library.sannybuilder.com/">Library::SannyBuilder</a><br>
 - Constants and variables of <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">data::CrossPlataform</a><br>
 - Command negation (!, NOT).<br>
@@ -534,11 +674,13 @@ IDE supports:<br>
 </blockquote>
 <blockquote class="info">
 - Operations between variables will always be INT unless "FLOAT" is written before.<br>
-- Arrays without defined typing will expect an INT.
+- Arrays without defined typing will expect an INT.<br>
+- This IDE downloads files and stores them in the LocalStorage for faster uploads.<br>
 </blockquote>
 <footer class="center gray">
 Author: MatiDragon ; Contributors: Seemann, OrionSR, Miran.
 </footer>
+
 <script src="js/css.min.js"></script>
 <script type="module" src="compiler.js"></script>
 <script>
@@ -886,6 +1028,39 @@ function hasScrollBar(e) {
 }
 
 
+function resaltadorV2(){
+  let code = $('#HEX').value
+  let text = ''
+  
+  const ENTER = {
+    NONE: 0,
+    NUMBER: 1,
+    STRING: 2,
+    COMMIT: 3,
+    LABEL: 4,
+    VAR: 5,
+    CLASSE: 6,
+    MEMBER: 7
+  }
+  let enter = 0
+  let spacio 
+  
+  code.split('\n').forEach(line => {
+    for (let char of line){
+      if (enter = ENTER.NONE){
+        if (/\d/.test(enter)){
+          enter = ENTER.NUMBER
+          text += '<span class=number>'
+        }
+        text += char
+      }
+    }
+    text += '\n'
+  })
+  
+  $('#PREVIEW').innerHTML = text
+}
+
 function hl(){
 	getLine()
 	
@@ -894,6 +1069,8 @@ function hl(){
     $("#editor-counterLine").innerHTML += b+1 + '\n'
   })
 
+  //resaltadorV2()
+  
 	const span = {
 		start : "<span class=",
 		end : ">$1<\/span>"
@@ -944,12 +1121,12 @@ function hl(){
 	.rA("\\`</span>", "\\`")
 	.rA("\\`<span>", "\\`")
 	//Etiquetas
-	.r(/([^\w\d])([@:])([\w\d]+)?/gm, "$1<span class=labels>$2$3<\/span>")
-	.r(/([^\w\d])([A-Za-z0-9_]+\(\))/gm, "$1<span class=commands>$2<\/span>")
+	.r(/([^\w\d_])([@:])([\w\d_]+)?/gim, "$1<span class=labels>$2$3<\/span>")
+	.r(/([^\w\d])([\w\d_]+\(\))/gmi, "$1<span class=commands>$2<\/span>")
 	//Arreglos
 	.r(/(\[)([\d+]*)(\])/gmi, "$1<span class=numbers>$2<\/span>$3")
 	//Opcodes
-	.r(/([a-fA-F0-9]{4}\:)/gmi, enter.opcodes)
+	.r(/([a-fA-F0-9]+\:)/gmi, enter.opcodes)
 	//Variables ADMA
 	.r(/((\&)([\d\-a-fx]+)?)/gim, enter.variables)
 	//Variables globales
@@ -957,11 +1134,12 @@ function hl(){
 	//Numeros
 	.r(/\b(\d+(b|x|\.)\w+)\b/gmi, enter.numbers)
 	.r(/\b(true|false|undefined|null|break|continue)\b/gmi, enter.numbers)
-	.r(/(?!\#)(\W)(?!\$)(\d+)(?!\:|\@)([ifsv]?)\b/gmi, '$1<span class=numbers>$2$3<\/span>')
+	.r(/(?!\#)(\W)(?!\$)([\d_]+)(?!\:|\@)([ifsv]?)\b/gmi, '$1<span class=numbers>$2$3<\/span>')
 	//Modelos
 	.r(/(\#[^\"\'\#\s]+)\b/gm, "<span class='models'>$1<\/span>")
 	//Clases
 	.r(/\b([a-z0-9]+)\.([a-z0-9]+)/gmi, "<span class=classes>$1</span>.<span class=commands>$2</span>")
+	.r(/^\.([a-z0-9]+)/gmi, ".<span class=commands>$1</span>")
 	.r(/(\w+)(\(.+\)\.)(\w+)/gmi, "<span class=classes>$1</span>$2<span class=commands>$3</span>")
 	.r(/(\$\w+|\d+\@)\.([0-9A-Z_a-z]+)/gm, "$1.<span class=commands>$2</span>")
 	.r(/(:|of) (\w+)\n/gm, "$1 <span class=classes>$2</span>\n")
@@ -971,6 +1149,8 @@ function hl(){
 	.r(/(\d+\@([ifsv])?)/gmi, enter.variables)
 	// Operadores
 	.r(/(^|\s)(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=|\?\?|\|\||\!)(\s|$)/gmi,"$1<span class=labels>$2<\/span>$3")
+	
+	
 
 	if (hasScrollBar($('#PREVIEW')).vertical){
 	  $('#PREVIEW').scrollTop = $('#HEX').scrollTop
