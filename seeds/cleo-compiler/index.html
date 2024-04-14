@@ -397,7 +397,6 @@ button {
   <input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="newScript.csi">
  </div>
  <div id="change-view" class="pr-2 green size-4">
-   <btn onclick="localStorage.clear()" style="font-size:1.5rem">c</btn>
    <btn class="bg-none d-sm-none" style="font-size: 1.5rem" onclick="
    $('#HEX').toggle();
    $('#PREVIEW').toggle();
@@ -548,6 +547,10 @@ Actor.create(655)
 
 <blockquote class="warning">
 Bugs found:<br>
+IDE does not load, fix by <a onclick="
+  localStorage.clear()
+   window.location.href = window.location.href
+  ">clicking here</a>.<br>
 Array support is limited to Local variables @(@,n).<br>
 Does not detect if a parameter has not been completed.
 </blockquote>
