@@ -132,12 +132,74 @@ function apply(element, callback){
 		}
 	}
 }
+SP.dividirCadena = function() {
+    const resultado = [];
+    let dentroComillas = false;
+    let subcadenaActual = '';
+    let comilla = 0
+
+    for (let i = 0; i < this.length; i++) {
+        const caracter = this[i];
+        const caracterAnterior = this[i-1];
+
+        if (caracter === '"' || caracter === "'"){
+          if (caracterAnterior != '\\') {
+             dentroComillas = !dentroComillas;
+          }
+          
+          subcadenaActual += caracter;
+        } else if (caracter === ' ' && !dentroComillas) {
+            // Si encontramos un espacio fuera de las comillas, guardamos la subcadena actual
+            if (subcadenaActual.trim() !== '') {
+                resultado.push(subcadenaActual);
+            }
+            subcadenaActual = '';
+        } else {
+            subcadenaActual += caracter;
+        }
+    }
+
+    // Al final, si hay una subcadena no vacía, la agregamos al resultado
+    if (subcadenaActual.trim() !== '') {
+        resultado.push(subcadenaActual);
+    }
+
+    return resultado;
+}
+
+
+let shared_db = JSON.parse(localStorage.getItem("shared_db") || "")
+
+SP.fixOpcodes = function(){
+  let tm = this.split('\n').map(line => {
+    let negado = false
+    line = line.trim().dividirCadena()
+    
+    //log(line)
+    if (line.length >= 1){
+      if (line[0].length < 5 && line[0].endsWith(':')){
+        line[0] = line[0].r(/:$/m)
+        if (line[0].startsWith('!')){
+          line[0] = line[0].r(/^\!/m).hexToDec()
+          line[0] += 0b1000000000000000
+          line[0] = line[0].toString(16)
+        }
+        line[0] = (line[0]+'').padStart(4, '0') + ':'
+      }
+    }
+    
+    line = line.join(' ')
+    return line
+  }).join('\n')
+  
+  return tm
+}
 
 function getLine(){
   textData = $node.getLine()
   /* lineaCursor, columnaCursor,
 			inSelection, charsSelected,
-			textSelected, primerPalabra */
+			textSelected, primerPalabra, mediaPalabra */
 
 	if (textData.inSelection){
 		$('#line').innerText = textData.charsSelected
@@ -145,7 +207,44 @@ function getLine(){
 	}else{
 		$('#line').innerText = textData.lineaCursor+':'+textData.columnaCursor
 		
-		$('#opcode').innerText = textData.primerPalabra+' | '+textData.mediaPalabra
+		let $o = x => $('#opcode').innerText = x
+		let $d = x => $("#short_desc").innerHTML = x
+		
+		let p = textData.primerPalabra
+		let m = textData.mediaPalabra
+		let o = shared_db[shared_db[p]]
+		
+		$d('')
+		$o('')
+		
+		let opcode = shared_db[p.r(':')]
+		
+		if (/([a-z]\w+)?\.[a-z]\w+\(.+\)/i.test(textData.textLine)) {
+		  $o('class detected')
+		  
+		  //$d(shared_db[p.r(':')].short_desc)
+		}
+		else if (/^\!?\w{1,4}:$/m.test(p)) {
+		  $o(
+		    '▼ '+p
+		    +opcode.num_params
+		    +' ('+(m != p ? m : '')+')'
+		  )
+		  
+		  $d(opcode.short_desc)
+		}
+		else if (opcode){
+		  $o(
+		    '▼ OP '+opcode
+		   +':'+o.num_params
+		   +' ('+m+')'
+		 )
+		 
+		 $d(o.short_desc)
+		}
+		else if (/[\+\-\*\/=%<>!]?[=\-+][@#]?/.test(textData.textLine)) {
+		  $o('operation detected')
+		}
 	}
 }
 
@@ -260,13 +359,14 @@ EP.class = function(str){
 		let stringRequerido = this.value.substr(0, posicionCursor)
 		let lineaCursor = stringRequerido.split("\n").length;
 		let posicionLinea = stringRequerido.lastIndexOf("\n") + 1;
-		let primerPalabra = this.value.split("\n")[lineaCursor-1].trim().split(' ')[0]
+		const textLine = this.value.split("\n")[lineaCursor-1].trim()
+		let primerPalabra = textLine.split(' ')[0]
 		
 		const columnaCursor = posicionCursor-posicionLinea
 		
 		let tempA = (str) =>{
 		  let palabra = ''
-		  let corta = " .,<>{}()[]\t\n"
+		  let corta = " ,<>{}()[]\t\n"
 		  for (let i = columnaCursor; i < str.length; i++){
 		    if (corta.includes(str[i])) break;
 		    palabra += str[i]
@@ -294,7 +394,7 @@ EP.class = function(str){
 			lineaCursor, columnaCursor,
 			inSelection, charsSelected,
 			textSelected, primerPalabra,
-			mediaPalabra
+			mediaPalabra, textLine
 		}
 		return output
 	}
@@ -409,15 +509,15 @@ button {
   <pre id="editor-counterLine" class="m-0 r-0 p-1 green"></pre>
 	<textarea id="HEX" class="w-100 m-0 r-0 p-1 pl-5" placeholder="write your hex" autocomplete="off" spellcheck="false">{ Syntax based on SannyBuilder and JavaScript }
 0000: this_is_a_NOP
-$misc != 6.8 ? 7@ = !7@ : A = B || 0b1000
-X = 3@ == 5 ? false : undefined
+$misc != 0xff ? 7@ = !7@ : A = B || 0b1000
+X = 3@ == 5_5 ? false : undefined
 function(2@(3@++,123), "test\t#1 <=")
 0@ = Char.Create(PedType.Gang1, #FAM1, .0, 0f, 0.0)
 // the var 0@ is moves to the end
-.SetHeading(0@, 90.0)
+.SetHeading(0@, 1.2e-5)
 subrutine() /* remember the last class used */
 while !.DoesExist($Player_Actor--)
-  wait at_ms 0xff
+  wait .3s
   if IS_KEY_PRESSED KeyCode.A
   then break
   else continue
@@ -429,7 +529,7 @@ terminate_this_script
 return
 
 :function
-cleo_return 0</textarea>
+cleo_return 0 {}</textarea>
 <pre id='PREVIEW' style="filter: blur(2px);" class="w-100 m-0 r-0 p-1"></pre>
 
 	<pre type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100 m-0 r-0 pr-1 gray d-none"></pre>
@@ -476,18 +576,23 @@ cleo_return 0</textarea>
 #error,
 #HEX,
 #PREVIEW,
-#PREVIEW *{
+#PREVIEW *,
+#short_desc {
   font-size: 0.8rem!important;
-  tab-size: 4;
+  tab-size: 2;
 }
 #FILENAME, {
   border-bottom: #161b22 1px solid;
+}
+#short_desc {
+  overflow: auto;
+  max-height: 2rem;
 }
 </style>
 <div class="bg-green black">
 <footer id="data-line-config" class="d-flex between py-1 w-100">
 <div class="d-flex between g-3">
-<span id='opcode'></span>
+<span id='opcode' onclick="$('#short_desc').toggle()"></span>
 </div>
 <div class="d-flex">
 <span id='line'>0:0</span>
@@ -505,6 +610,7 @@ cleo_return 0</textarea>
 </select>
 </div>
 </footer>
+<footer id="short_desc" class="py-1 d-none"></footer>
 
 <footer class="d-flex h4* p-2 pb-0 w-100 g-3 d-sm-none" id="keys-mobile">
 <key>→|</key>
@@ -547,10 +653,10 @@ Actor.create(655)
 
 <blockquote class="warning">
 Bugs found:<br>
-IDE does not load, fix by <a onclick="
+IDE does not load <a onclick="
   localStorage.clear()
    window.location.href = window.location.href
-  ">clicking here</a>.<br>
+  ">clicking here</a>, wait 3s and refresh page.<br>
 Array support is limited to Local variables @(@,n).<br>
 Does not detect if a parameter has not been completed.
 </blockquote>
@@ -558,7 +664,7 @@ Does not detect if a parameter has not been completed.
 IDE supports:
 <details>
 <summary>High-level syntax for conditions</summary>
-Normally we would have to write the conditions like this, to control the reading flow of our script.
+Mode grandfather.
 <pre>
 IF 0
   condition
@@ -566,7 +672,7 @@ ELSE_GOTO @Label
   body
 :Label
 </pre>
-But the compiler understands the SannyBuilder syntax and allows us to write as if we were there.
+Mode master.
 <pre>
 IF
   condition
@@ -589,6 +695,14 @@ IF (AND|OR)
 THEN
   body
 END
+</pre>
+Mode unicorn.
+<pre>
+// condition ? is_true : is_false
+0@ == true ? SaveGame() : ShowText("sorry")
+
+// variable seter condition ? is_true : is_false
+0@ = 1@ == true ? #jester : #euro
 </pre>
 </details>
 
@@ -614,6 +728,33 @@ REPEAT
   body
 UNTIL condition
 </pre>
+loop controls are also here
+<pre>
+BREAK CONTINUE
+
+FOR 0@ = 0 TO 10
+  IF 0@ == 3
+  THEN CONTINUE // jump a loop
+  END
+  IF 0@ == 7
+  THEN BREAK // exit of loop
+  END
+END
+</pre>
+There is only one difference. The `WHILE FALSE` loops are not ignored by the compiler, and are compiled as a separate area of the main flow. Their contents are only accessed if you have jumps into their body.
+<pre>
+0@ = 0
+WHILE FALSE
+  :sum
+    0@++
+  return
+END
+printf "0@ = %i" 1s 0@ // 0
+sum()
+wait 1s
+printf "0@ = %i" 1s 0@ // 1
+</pre>
+
 </details>
 
 <details>
@@ -635,7 +776,7 @@ VAR = CLASS.MEMBER(PARAM)
 Everything that is located before the class is relocated at the end of the class.
 <pre>
 Multi-Geting:
-VAR1, VAR2 = CLASS.MEMBER(PARAM)
+VAR1 VAR2 = CLASS.MEMBER(PARAM)
 
 Last-Used:
 .MEMBER(PARAM)
@@ -647,25 +788,39 @@ The compiler remembers which was the last class used, so if you use a dot (.) at
 <summary>Multi syntax for decimal numbers</summary>
 The compiler not only has a translator for Hexadecimal and Binary numbers. It can also look up the numerical IDs of the model names.
 <pre>
--627248 -2936 -42 0 5 972 9262 729003
--0x7FFFFF -0x8AFF 0x0 0x03 0x700000
--0b011110 -0b1110 0b0 0b01 0b1000000000000000
--#JESTER #fam1 #FAM2 #mini_gun
+DEC  -6272_48 -2936 -42 0 5 972 729_0_03
+HEX  -0X7FFFFF -0x8AFF 0x0 0x03 0X700000
+BIN  -0B011110 -0b1110 0b0 0b01 0B10000000000
+TIME -2h -2m 1s 3.33S 10M 1H 60fps 30FPS
+NAME -#JESTER #fam1 #FAM2 #mini_gun
+NOTE -12E5 -3e2 1e9 10e+2 16E-3
 </pre>
 </details>
 
 <details>
 <summary>Multi syntax for floating numbers</summary>
-If you program in any programming language, you may be used to some of its syntax. Here you will be able to use it.
+If you program in any language, you may be used to some of its syntax. Here you will be able to use it.
 <pre>
--.0025 -.97 .0 .42 .736
--42.8362 -3.5 1.0 142.8638
--20f -13.7F 5f 17.869F
+CSS -.0025 -.97 .0 .42 .736
+JS  -2_823.2 0.6_608 48_386.93
+PY  -42.8362 -3.5 1.0 142.8638
+C#  -20F -13.7f 1f 27f 52.86F
+R   -1.2E7 5.1e8 7.1e+2 9.3E-2
+</pre>
+You can begin or end a number with a period (.) or end it with `f`. Scientific notation (e) and separators (_) are also available.
+</details>
+
+<details>
+<summary>Multi syntax for opcodes</summary>
+if you explore opcodes in documentations and forums, you don't need to memorize the 4 characters of the opcode or just copy it.
+<pre>
+0: nop          -->  0000: nop
+FE: actor[...]  -->  00FE: actor[...]
+!7F: car[...]   -->  807F: car[...]
+1234: wxyz      -->  1234: wxyz
 </pre>
 </details>
 
-- Multi syntax for opcodes (0000:, 247:, !EF:, wait).<br>
-- Loop control (BREAK, CONTINUE).<br>
 - Flow control (GOTO, GOSUB, RETURN, CLEO_CALL, RET).<br>
 - Arithmetic operations (@=0, @=!$, @+=@, $++).<br>
 - Logical operations (@==7, @!=$, $>@, $=@??@).<br>
@@ -1036,32 +1191,6 @@ function resaltadorV2(){
   let code = $('#HEX').value
   let text = ''
   
-  const ENTER = {
-    NONE: 0,
-    NUMBER: 1,
-    STRING: 2,
-    COMMIT: 3,
-    LABEL: 4,
-    VAR: 5,
-    CLASSE: 6,
-    MEMBER: 7
-  }
-  let enter = 0
-  let spacio 
-  
-  code.split('\n').forEach(line => {
-    for (let char of line){
-      if (enter = ENTER.NONE){
-        if (/\d/.test(enter)){
-          enter = ENTER.NUMBER
-          text += '<span class=number>'
-        }
-        text += char
-      }
-    }
-    text += '\n'
-  })
-  
   $('#PREVIEW').innerHTML = text
 }
 
@@ -1130,7 +1259,7 @@ function hl(){
 	//Arreglos
 	.r(/(\[)([\d+]*)(\])/gmi, "$1<span class=numbers>$2<\/span>$3")
 	//Opcodes
-	.r(/([a-fA-F0-9]+\:)/gmi, enter.opcodes)
+	.r(/([a-f0-9]+\:)/gmi, enter.opcodes)
 	//Variables ADMA
 	.r(/((\&)([\d\-a-fx]+)?)/gim, enter.variables)
 	//Variables globales
@@ -1153,8 +1282,6 @@ function hl(){
 	.r(/(\d+\@([ifsv])?)/gmi, enter.variables)
 	// Operadores
 	.r(/(^|\s)(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=|\?\?|\|\||\!)(\s|$)/gmi,"$1<span class=labels>$2<\/span>$3")
-	
-	
 
 	if (hasScrollBar($('#PREVIEW')).vertical){
 	  $('#PREVIEW').scrollTop = $('#HEX').scrollTop
@@ -1261,6 +1388,20 @@ $("key[key]", e => {
     }
   }
 })
+
+// Escuchar el evento 'click' en todos los elementos <details>
+$('details').forEach((elem) => {
+  elem.addEventListener('click', function() {
+    // Cerrar todos los elementos <details> excepto el que se acaba de hacer clic
+    $('details[open]').forEach((openElem) => {
+      if (openElem !== this) {
+        openElem.removeAttribute('open');
+      }
+    })
+  });
+});
+
 </script>
+,
 </body>
 </html>
