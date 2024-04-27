@@ -21,17 +21,13 @@ const LS = {
 
 /** Shotcun of String.replace()
 */
-String.prototype.i = function(text, _number){
-	return this.includes(text, _number)
-}
-
-/** Shotcun of String.replace()
-*/
 SP.r = function(text, _text, _flags){
 	_text = _text || ''
 	_flags = _flags || ''
 	return this.replace(text, _text, _flags)
 }
+SP.i = SP.includes
+AP.i = AP.includes
 
 /** Polifill and shotcun of String.replaceAll()
 */
@@ -56,6 +52,44 @@ SP.toBigEndian = function(){
 		.forEach(e => newResult = e + newResult)
 	return newResult
 }
+
+function noteToHex(num) {
+  // Primero, convertimos el número en notación científica a un número flotante
+  const floatNum = parseFloat(num);
+  
+  // Luego, convertimos ese número a su representación binaria de 32 bits
+  const binario32Bits = floatNum.toString(2);
+  
+  // Finalmente, convertimos el binario a hexadecimal
+  let hexadecimal = parseInt(binario32Bits, 2).toString(16);
+  
+  // Verificamos si la longitud del hexadecimal supera los 8 caracteres
+  if (hexadecimal.length > 8) {
+    throw new SyntaxError('El número es demasiado alto, supera la longitud máxima de 4 bytes.');
+  }
+  
+  // Aseguramos que la salida sea de 8 caracteres rellenando con ceros si es necesario
+  hexadecimal = hexadecimal.padStart(8, '0');
+  
+  // Devolvemos el string hexadecimal en mayúsculas
+  return hexadecimal.toUpperCase().toBigEndian()
+}
+
+/*
+// Ejemplo de uso:
+const numCientifico = "1.23e+5";
+const hex32Bits = cientificaAHexadecimal(numCientifico);
+console.log(hex32Bits); // Salida esperada para el ejemplo
+*/
+function isNoteCientific(str){
+  const regExp = /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)$/;
+  return regExp.test(str+"");
+};
+/*
+"2.3e4")); // true
+"123")); // false
+"-4.5E-10")); // true
+*/
 
 /** Convert any number to HEX with BIG-ENDIAN
 */
@@ -87,7 +121,8 @@ AP.clear = function(){
 	return result
 }
 
-/** Remove elements of a array what is same to ''.
+/** Return the last element of a array.
+ * @pos - Position [optional]
 */
 AP.last = function(pos = 0){
 	return this[this.length - 1 - pos]
@@ -263,7 +298,7 @@ SP.enumsGenerator = function() {
             
             // Asignamos valores a las opciones
             options.forEach((option, index) => {
-              if(option != 'end'){
+              if(option != 'end' && !(options.length-1==index)){
                 if (option.includes('=')) {
                     let [name, value] = option.split('=');
                     if (!/("|')/.test(value)) {
@@ -340,8 +375,9 @@ CurrentWeapon(0@) == 34 //02D8: 0@ 34
 */
 
 CUSTOM_CLASSES
+  .toUpperCase()
   // Aquí se utiliza para eliminar comentarios de una sola línea que comienzan con ';'.
-  .r(/;(.+)?$/m, '')
+  .r(/[\x20\t]*;(.+)?$/gm, '')
   .split('\n')
   .clear()   // .clear elimina líneas vacias
   .forEach(line => {
@@ -423,12 +459,7 @@ CUSTOM_CLASSES
       }
     }
   })
-
-log(classes)
-
-
-
-
+//log(classes)
 
 let CUSTOM_VARIABLES = (await LSget(
   './data/CustomVariables.ini',
@@ -444,8 +475,6 @@ CUSTOM_VARIABLES.forEach((l,i)=>{
 })
 CUSTOM_VARIABLES = Object.fromEntries(CUSTOM_VARIABLES)
 //log(VARIABLE_ID_AVALIABLE)
-
-
 
 let CONSTANTS = (await LSget(
   './data/constants.txt',
@@ -479,53 +508,81 @@ MODELS.forEach((e,i) => MODELS[i] = e.split(' '))
 MODELS = Object.fromEntries(MODELS)
 
 let SCM_DB = {}
-async function dbSBL(game){
-  let DATA_DB = LS.get("./data/"+game+".json")
-  if (!DATA_DB){
-	  DATA_DB = await fetch(`https://raw.githubusercontent.com/sannybuilder/library/master/${game}/${game}.json`)
-	.then(response => {
-		return fetchPercentece(response, '#10a122')
-  })
+let SCM_DB2 = {}
+let DATA_DB = ''
+let DATA_DB2 = ''
 
-	DATA_DB = await DATA_DB.json()
-	LS.set("./data/"+game+".json", JSON.stringify(DATA_DB))
-  }else{
-    DATA_DB = JSON.parse(DATA_DB)
-  }
+async function dbSBL2(game){
+  DATA_DB2 = (await LSget(
+    `https://raw.githubusercontent.com/sannybuilder/library/master/${game}/${game}.json`,
+    '#10a122',
+    './data/'+game+'.json'
+  ))
+
+  DATA_DB2 = JSON.parse(DATA_DB2)
+  
+	DATA_DB2.extensions.forEach(extension => {
+		extension.commands.forEach((command) => {
+		  let omitir = false
+		  if (command.attrs) {
+		    if ("is_unsupported" in command.attrs) {
+		      omitir = true
+		    } 
+		  }
+		  if (!omitir){
+  		  SCM_DB2[command.name.toLowerCase()] = 
+  			  command.id.toLowerCase();
+  			  
+  			SCM_DB2[command.id.toLowerCase()] = {
+  			  name: command.name,
+  			  class: command.class ?? '',
+  			  member: command.member ?? '',
+  			  short_desc: command.short_desc ?? '',
+  			  num_params: command.num_params ?? 0, 
+  			  input: command.input ?? {},
+  			  attrs: command.attrs ?? ''
+  			}
+		  }
+		})
+	})
+	
+	LS.set('shared_db', JSON.stringify(SCM_DB2))
+	return true
+}
+
+async function dbSBL(game){
+  DATA_DB = (await LSget(
+    `https://raw.githubusercontent.com/sannybuilder/library/master/${game}/${game}.json`,
+    '#10a122',
+    './data/'+game+'.json'
+  ))
+
+  DATA_DB = JSON.parse(DATA_DB)
   
   //log(JSON.stringify(DATA_DB))
   
 	DATA_DB.extensions.forEach(extension =>{
 		//log(extension.name)
 		extension.commands.forEach((command, c) =>{
-			//if (c < 2) {
-				if (command.attrs){
-					if (command.attrs.is_unsupported == undefined){
-						SCM_DB[command.name.toLowerCase()] = {
-							opcode : command.id.toLowerCase(),
-							params : []
-						}
-						//log(command.input)// is (array || undefined)
-
-						if (command.input) {
-							command.input.forEach(param =>{
-								SCM_DB[command.name.toLowerCase()].params.push(param.type.toLowerCase())
-							})
-						}
-					}
+		  let omitir = false
+			
+		  if (command.attrs) {
+				if ("is_unsupported" in command.attrs) {
+					omitir = true
 				}
-				else{
-					SCM_DB[command.name.toLowerCase()] = {
-						opcode : command.id.toLowerCase(),
-						params : []
-					}
-					if (command.input) {
-						command.input.forEach(param =>{
-							SCM_DB[command.name.toLowerCase()].params.push(param.type.toLowerCase())
-						})
-					}
+		  }
+		  
+		  if (!omitir){
+				SCM_DB[command.name.toLowerCase()] = {
+					opcode : command.id.toLowerCase(),
+					params : []
 				}
-			//}
+				if (command.input) {
+					command.input.forEach(param =>{
+						SCM_DB[command.name.toLowerCase()].params.push(param.type.toLowerCase())
+					})
+				}
+		  }
 		})
 	})
 	return true
@@ -546,7 +603,9 @@ $('#version_sbl').innerHTML = 'SBL ' + version
 
 
 await dbSBL(game)
+await dbSBL2(game)
 
+//log(SCM_DB2)
 
 //await sleep(1000)
 //log(SCM_DB)
@@ -979,18 +1038,39 @@ SP.addNumbersToIfs = function() {
 	return lineas.join('\n');
 }
 
+SP.eliminarComentarios = function() {
+  let result = this
+    .r(/\/\/.*$/gm, '')
+		.r(/(\s+)?\/\*([^\/]*)?\*\//gm, '')
+		.r(/(\s+)?\{([^\$][^\}]*(\})?)?/gm, '')
+	
+	return result
+    .split('\n')
+    .map(e => {return e.trim()})
+    .clear()
+    .join('\n')
+}
+
+SP.formatearScript = function() {
+  let code = this
+  
+  code = code.split('\n').map(line => {
+    line = line.trim()
+    .r(/^if (?!(\d+$))/mi, "if\n$1")
+    .r(/^then /mi, "then\n")
+    .r(/^else /mi, "else\n")
+    .r(/ end$/mi, "\nend\n")
+    .r(/^repeat /mi, "repeat\n")
+    return line
+  }).join('\n')
+  
+  return code
+}
+
 SP.preProcesar = function() {
-  let lines = this.split('\n')
   let nString = ''
   
-  lines.forEach(line =>{
-    
-    // Remove coment
-    //   0@//(1@++,123i)
-    //   ↓
-    //   0@
-    line = line.r(/\/\/(.+)/, '').trim()
-      
+  this.split('\n').forEach(line =>{
     // Prevent addition
     //   0@(1@++,123i)
     //   ↓
@@ -998,12 +1078,12 @@ SP.preProcesar = function() {
     //   0@(1@,123i)
     let c = 1
     const mPreAdd =
-      /(\d+@(\w)?|(\&|\$)[\w\d_]+)([\+\-\*\=]+)[^\s,\)\(]+/
+      /(\d+@\w?|\w?(\&|\$)\w+)([\+\-\*\=]+)[^\s,\)\(]+/
     
-    while (mPreAdd.test(line) && line.includes('(')){
+    while (mPreAdd.test(line) && line.i('(')){
       let v = line.match(mPreAdd)
         
-      nString += v[0].r(/([\+\-\*\=]+)/, ' $1 ') +'\n'
+      nString += v[0].r(/([\+\-\*\=]+)/, '$1') +'\n'
       line = line.r(/([\+\-\*\=]+)([^,\s\)]+)/, '')
         
       if (!/[=+\-]/.test(line)) break;
@@ -1013,10 +1093,22 @@ SP.preProcesar = function() {
   })
   
   nString = nString
-  	// 0@ = 0@ == 1 ? 0 : 1
-  	.r(/^(.+)([\-\+\*\\ ]+=) (.+) \? (.+) \: (.+)$/gm, `if $3\nthen $1 $2 $4\nelse $1 $2 $5\nend`)
+    // char VAR1 =& VAR2
+    .r(/^(char|actor) (.+) =& (.+)/gim, 'GET_PED_POINTER $3 $2')
+    .r(/^object (.+) =& (.+)/gim, 'GET_OBJECT_POINTER $2 $1')
+    .r(/^car (.+) =& (.+)/gim, 'GET_VEHICLE_POINTER $2 $1')
+    .r(/^pickup (.+) =& (.+)/gim, 'GET_PICKUP_POINTER $2 $1')
+    .r(/^task (.+) =& (.+)/gim, 'GET_CHAR_TASK_POINTER_BY_ID $2 $1')
+    .r(/^fx (.+) =& (.+)/gim, 'GET_FX_SYSTEM_POINTER $2 $1')
+    .r(/^model (.+) =& (.+)/gim, 'GET_MODEL_NAME_POINTER $2 $1')
+    .r(/^(.+) =& @(.+)/gim, 'GET_LABEL_POINTER $2 @$1')
+    .r(/^(.+) =& (.+)/gim, 'GET_VAR_POINTER $2 $1')
+  	// 0@ = 1@ == 1 ? 0 : 1
+  	.r(/^(.+) ([\-\+\*\/%]?=) (.+) \? (.+) \: (.+)$/gm,
+  	  `if\n$3\nthen\n$1 $2 $4\nelse\n$1 $2 $5\nend\n`)
+  	  
   	// 0@ == 1 ? 0 : 1
-  	.r(/^(.+) \? (.+) \: (.+)$/gm, input=>{
+  	.r(/^(.+) \? (.+) \: (.+)$/gm, input =>{
   	  let vars = input.match(/^(.+)\?(.+)\:(.+)$/)
   	                  .map(e=> e.trim())
   	                  
@@ -1025,56 +1117,82 @@ SP.preProcesar = function() {
   	  operators.split(',').forEach(operador => {
   	    if (RegExp(operador).test(vars[1])){
   	      input =
-  	        'if '+vars[1]+'\n'+
-  	        'then '+vars[2]+'\n'+
-  	        'else '+vars[3]+'\n'+
-  	        'end'
+  	        'if\n'+vars[1]+'\n'+
+  	        'then\n'+vars[2]+'\n'+
+  	        'else\n'+vars[3]+'\n'+
+  	        'end\n'
   	    }
   	  })
-  	  //log(input)
+  	  
   	  return input
   	})
+  	// bitExp
+  	// a = b & c
+  	.r(/^(.+) = (.+) (>>|<<|%|&|\^|\|)\x20?(.+)$/m, (input, ...match) => {
+  	  let [var1, var2, operador, var3] = match
+  	  
+  	  let op = ""
+  	  if (operador == "&") op = "0B10";
+  	  if (operador == "|") op = "0B11";
+  	  if (operador == "^") op = "0B12";
+  	  if (operador == "~") op = "0B13";
+  	  if (operador == "%") op = "0B14";
+  	  if (operador == ">>") op = "0B15";
+  	  if (operador == "<<") op = "0B16";
+  	  
+  	  let res = op+": "+var1+' '+var2+' '+var3
+  	  
+  	  return res
+  	})
+  	//0B1A: ~ 0@
+  	.r(/^~(.+)/m, '0B1A: $1')
     // 7@ = !7@
-    .r(/(then |else )?(.+)= !(.+)$/gim,
-`$1
-$2 = $3
-if $2 == 0
-then $2 = 1
-else $2 = 0
-end`)
+    .r(/(.+) = !(.+)$/gim,
+`if
+$2 == 1
+then
+$1 = 0
+else
+$1 = 1
+end
+`)
     // 7@ ||= $8
-    .r(/(then |else )?(.+)\|\|= (.+)$/gim,
-`$1
-if or
-$2 == null
-$2 == undefined
-$2 == false
+    .r(/(.+) \|\|= (.+)$/gim,
+`if or
+$1 == null
+$1 == undefined
+$1 == false
+$1 == 0.0
+$1 == NaN
 then
-$2 = $3
-end`)
+$1 = $2
+end
+`)
     // 7@ = 7@ || $8
-    .r(/(then |else )?(.+)= (.+) \|\| (.+)$/gim,
-`$1
-if or
-$3 == null
-$3 == undefined
-$3 == false
+    .r(/(.+) = (.+) \|\| (.+)$/gim,
+`if and
+$2 != null
+$2 != undefined
+$2 != false
+$2 != 0.0
+$2 != NaN
 then
-$2 = $4
+$1 = $2
 else
-$2 = $3
-end`)
+$1 = $3
+end
+`)
     // 7@ = 7@ ?? $8
-    .r(/(then |else )?(.+)= (.+) \?\? (.+)$/gim,
-`$1
-if or
-$3 == null
-$3 == undefined
+    .r(/(.+) = (.+) \?\? (.+)$/gim,
+`if and
+$2 != null
+$2 != undefined
 then
-$2 = $4
+$1 = $2
 else
-$2 = $3
-end`)
+$1 = $3
+end
+`)
     // [] : variable con limites maximos
     // () : variable con valor en bucle
     // [min..max]:0@
@@ -1082,9 +1200,8 @@ end`)
     // [..max]:0@
     
     // function(...) | CLEO_CALL
-    .r(/^([\w\d_]+)\((.+)\)$/gm, input=>{
+    .r(/^(\w+)\((.+)\)$/gm, input=>{
       let vars = input.match(/([^\.\s\W]+)\((.+)\)$/m)
-      //log(vars)
       
       let line = vars[2]
       let add = ''
@@ -1095,7 +1212,6 @@ end`)
         if (line[i] == ')') inArray = false;
         
         add += inArray ? line[i].r(',', '\x01') : line[i].r(',', ' ')
-        //log(line[i])
       }
       
       let length = add.split(',').length
@@ -1104,43 +1220,443 @@ end`)
       return input
     })
     // subrutine() | GOSUB
-    .r(/^([\w\d_]+)\(\)$/gm, 'gosub @$1')
-    .r(/^(then|else)\s+(.+)/img, '$1\n$2')
-    
-    nString = nString
-      // VAR++
-      .r(/^(\d+@(\w)?|(\w)?(\$|&)[\w\d_]+)(\s+)?(\+\+|--)(.+)?/gm,
-      input=>{
-        input = input.r(' ').match(/(.+)(\+\+|--)(.+)?$/m)
-        
-        if (input[2] == '++'){
-          if (/(float |@f|f\$)/i.test(input[1]))
-            input = input[1]+' += 1.0'
-          else
-            input = input[1]+' += 1'
-        } else {
-          if (/(float |@f|f\$)/i.test(input[1]))
-            input = input[1]+' -= 1.0'
-          else
-            input = input[1]+' -= 1'
-        }
-        return input.trim()
-      })
-  
-    //log(nString)
+    .r(/^(\w+)\(\)$/gm, 'gosub @$1\n')
   
   	return nString
 }
 
-SP.postProcesar = function(){
-  let nString = this.split('\n').map(line=>{
-    line = line.split(' ').map(param=>{
-      if (param.trim() != ''){
+const registroTipos = {};
+
+function registrarTipo(variable, tipo) {
+  if (/[@$&]/.test(variable)) {
+    // Solo registrar si es una variable global o local
+    variable = variable
+      .r(/@[a-z]/i, '@')
+      .r(/[a-z]$/i, '$')
+      .r(/[a-z]&/i, '&')
+      
+    registroTipos[variable] = tipo;
+  }
+}
+
+function obtenerTipo(variable) {
+  if (!isNaN(variable)) {
+    return variable.includes('.') ? 'FLOAT' : 'INT';
+  } else if (variable.startsWith('"')) {
+    return 'LONG'
+  } else if (variable.startsWith("'")) {
+    return 'SHORT'
+  }
+
+  // Verificar si el tipo de la variable ya está registrado
+  if (registroTipos[variable]) {
+    return registroTipos[variable];
+  }
+
+  const matchLocal = variable.match(/^(\d+@)([a-z])?/i);
+  if (matchLocal) {
+    const tipo = matchLocal[2];
+    switch (tipo) {
+      case 'i': return 'LVAR_INT';
+      case 'f': return 'LVAR_FLOAT';
+      case 's': return 'LVAR_SHORTSTRING';
+      case 'v': return 'LVAR_LONGSTRING';
+      default: return 'LVAR_INT'; // Tipo no especificado para variable local
+    }
+  }
+
+  const matchGlobal = variable.match(/^([a-z])?([&$]\w+)/i);
+  if (matchGlobal) {
+    const tipo = matchGlobal[1];
+    switch (tipo) {
+      case 'i': return 'GVAR_INT';
+      case 'f': return 'GVAR_FLOAT';
+      case 's': return 'GVAR_SHORTSTRING';
+      case 'v': return 'GVAR_LONGSTRING';
+      default: return 'GVAR_INT'; // Tipo no especificado para variable local
+    }
+  }
+}
+
+function detectarOpcode(operacion) {
+  const opcodes = {
+    '=': {
+      'GVAR_INT-INT': '4',
+      'GVAR_FLOAT-FLOAT': '5',
+      'LVAR_INT-INT': '6',
+      'LVAR_FLOAT-FLOAT': '7',
+      'GVAR_INT-GVAR_INT': '84',
+      'LVAR_INT-LVAR_INT': '85',
+      'GVAR_FLOAT-GVAR_FLOAT': '86',
+      'LVAR_FLOAT-LVAR_FLOAT': '87',
+      'GVAR_INT-LVAR_INT': '88',
+      'LVAR_INT-GVAR_INT': '89',
+      'GVAR_FLOAT-LVAR_FLOAT': '8A',
+      'LVAR_FLOAT-GVAR_FLOAT': '8B',
+    },
+    '=#': {
+      'GVAR_INT-GVAR_FLOAT': '8C',
+      'GVAR_FLOAT-GVAR_INT': '8D',
+      'LVAR_INT-GVAR_FLOAT': '8E',
+      'LVAR_FLOAT-GVAR_INT': '8F',
+      'GVAR_INT-LVAR_FLOAT': '90',
+      'GVAR_FLOAT-LVAR_INT': '91',
+      'LVAR_INT-LVAR_FLOAT': '92',
+      'LVAR_FLOAT-LVAR_INT': '93',
+    },
+    '+=@': {
+      'GVAR_FLOAT-FLOAT': '78',
+      'LVAR_FLOAT-FLOAT': '79',
+      'GVAR_FLOAT-GVAR_FLOAT': '7A',
+      'LVAR_FLOAT-LVAR_FLOAT': '7B',
+      'LVAR_FLOAT-GVAR_FLOAT': '7C',
+      'GVAR_FLOAT-LVAR_FLOAT': '7D',
+    },
+    '-=@': {
+      'GVAR_FLOAT-FLOAT': '7E',
+      'LVAR_FLOAT-FLOAT': '7F',
+      'GVAR_FLOAT-GVAR_FLOAT': '80',
+      'LVAR_FLOAT-LVAR_FLOAT': '81',
+      'LVAR_FLOAT-GVAR_FLOAT': '82',
+      'GVAR_FLOAT-LVAR_FLOAT': '83',
+    },
+    '+=': {
+      'GVAR_INT-INT': '8',
+      'GVAR_FLOAT-FLOAT': '9',
+      'LVAR_INT-INT': 'A',
+      'LVAR_FLOAT-FLOAT': 'B',
+      
+      'GVAR_INT-GVAR_INT': '58',
+      'GVAR_FLOAT-GVAR_FLOAT': '59',
+      'LVAR_INT-LVAR_INT': '5A',
+      'LVAR_FLOAT-LVAR_FLOAT': '5B',
+      'LVAR_INT-GVAR_INT': '5C',
+      'LVAR_FLOAT-GVAR_FLOAT': '5D',
+      'GVAR_INT-LVAR_INT': '5E',
+      'GVAR_FLOAT-LVAR_FLOAT': '5F',
+    },
+    '-=': {
+      'GVAR_INT-INT': 'C',
+      'GVAR_FLOAT-FLOAT': 'D',
+      'LVAR_INT-INT': 'E',
+      'LVAR_FLOAT-FLOAT': 'F',
+      
+      'GVAR_INT-GVAR_INT': '60',
+      'GVAR_FLOAT-GVAR_FLOAT': '61',
+      'LVAR_INT-LVAR_INT': '62',
+      'LVAR_FLOAT-LVAR_FLOAT': '63',
+      'LVAR_INT-GVAR_INT': '64',
+      'LVAR_FLOAT-GVAR_FLOAT': '65',
+      'GVAR_INT-LVAR_INT': '66',
+      'GVAR_FLOAT-LVAR_FLOAT': '67',
+    },
+    '*=': {
+      'GVAR_INT-INT': '10',
+      'GVAR_FLOAT-FLOAT': '11',
+      'LVAR_INT-INT': '12',
+      'LVAR_FLOAT-FLOAT': '13',
+      
+      'GVAR_INT-GVAR_INT': '68',
+      'GVAR_FLOAT-GVAR_FLOAT': '69',
+      'LVAR_INT-LVAR_INT': '6A',
+      'LVAR_FLOAT-LVAR_FLOAT': '6B',
+      'LVAR_INT-GVAR_INT': '6C',
+      'LVAR_FLOAT-GVAR_FLOAT': '6D',
+      'GVAR_INT-LVAR_INT': '6E',
+      'GVAR_FLOAT-LVAR_FLOAT': '6F',
+    },
+    '/=': {
+      'GVAR_INT-INT': '14',
+      'GVAR_FLOAT-FLOAT': '15',
+      'LVAR_INT-INT': '16',
+      'LVAR_FLOAT-FLOAT': '17',
+      
+      'GVAR_INT-GVAR_INT': '70',
+      'GVAR_FLOAT-GVAR_FLOAT': '71',
+      'LVAR_INT-LVAR_INT': '72',
+      'LVAR_FLOAT-LVAR_FLOAT': '73',
+      'LVAR_INT-GVAR_INT': '74',
+      'LVAR_FLOAT-GVAR_FLOAT': '75',
+      'GVAR_INT-LVAR_INT': '76',
+      'GVAR_FLOAT-LVAR_FLOAT': '77',
+    },
+    '>': {
+      'GVAR_INT-INT': '18',
+      'LVAR_INT-INT': '19',
+      'INT-GVAR_INT': '1A',
+      'INT-LVAR_INT': '1B',
+      'GVAR_INT-GVAR_INT': '1C',
+      'LVAR_INT-LVAR_INT': '1D',
+      'GVAR_INT-LVAR_INT': '1E',
+      'LVAR_INT-GVAR_INT': '1F',
+      'GVAR_FLOAT-FLOAT': '20',
+      'LVAR_FLOAT': '21',
+      'FLOAT-GVAR_FLOAT': '22',
+      'FLOAT-LVAR_FLOAT': '23',
+      'GVAR_FLOAT-GVAR_FLOAT': '24',
+      'LVAR_FLOAT-LVAR_FLOAT': '25',
+      'GVAR_FLOAT-LVAR_FLOAT': '26',
+      'LVAR_FLOAT-GVAR_FLOAT': '27',
+    },
+    '>=': {
+      'GVAR_INT-INT': '28',
+      'LVAR_INT-INT': '29',
+      'INT-GVAR_INT': '2A',
+      'INT-LVAR_INT': '2B',
+      'GVAR_INT-GVAR_INT': '2C',
+      'LVAR_INT-LVAR_INT': '2D',
+      'GVAR_INT-LVAR_INT': '2E',
+      'LVAR_INT-GVAR_INT': '2F',
+      'GVAR_FLOAT-FLOAT': '30',
+      'LVAR_FLOAT': '31',
+      'FLOAT-GVAR_FLOAT': '32',
+      'FLOAT-LVAR_FLOAT': '33',
+      'GVAR_FLOAT-GVAR_FLOAT': '34',
+      'LVAR_FLOAT-LVAR_FLOAT': '35',
+      'GVAR_FLOAT-LVAR_FLOAT': '36',
+      'LVAR_FLOAT-GVAR_FLOAT': '37',
+    },
+    '==': {
+      'GVAR_INT-INT': '38',
+      'LVAR_INT-INT': '39',
+      'GVAR_INT-GVAR_INT': '3A',
+      'LVAR_INT-LVAR_INT': '3B',
+      'GVAR_INT-LVAR_INT': '3C',
+      
+      'GVAR_FLOAT-FLOAT': '42',
+      'LVAR_FLOAT-FLOAT': '43',
+      'GVAR_FLOAT-GVAR_FLOAT': '44',
+      'LVAR_FLOAT-LVAR_FLOAT': '45',
+      'GVAR_FLOAT-LVAR_FLOAT': '46',
+
+      'GVAR_SHORTSTRING-SHORT': '5A9',
+      'LVAR_SHORTSTRING-SHORT': '5AA',
+      'GVAR_SHORTSTRING-LVAR_SHORTSTRING': '5AD',
+      'LVAR_SHORTSTRING-LVAR_SHORTSTRING': '5AE',
+      
+      'LVAR_INT-GVAR_INT': '7D6',
+      'LVAR_INT-GVAR_FLOAT': '7D7',
+    },
+    '&=':'B17',
+    '|=':'B18',
+    '^=':'B19',
+    '%=':'B1B',
+    '>>=':'B1C',
+    '<<=':'B1D',
+    // Agrega otros operadores y sus combinaciones de opcodes
+  };
+
+  const simple = /^([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)\s*(=(#|&)|[+\-]=@|[\/\*\+\-\=\!><]*=|>|<)\s*([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)$/im
+  
+  function dividirOperacion(operacion) {
+    const partes = operacion.match(simple)
+    
+    if (partes) {
+      return [partes[1], partes[3], partes[5]]
+    } else {
+      return new Error('La operación no es válida')
+    }
+  }
+
+
+  let [
+    variable1, operador, variable2
+  ] = dividirOperacion(operacion)
+  
+  let esNegado = /\<=|<|<>|\!=/.test(operador)
+  if (esNegado){
+    operador = operador
+    .replace('<=', '>')
+    .replace('<', '>=')
+    .replace(/\<>|\!=/, '==')
+  }
+  
+  //console.log({operador, esNegado, variable1, variable2})
+  
+  // Para saber el tipo de datos y prevenir que el tipo de dato cambie cuando se aplica a la misma variable.
+  let tipoVariable1 = obtenerTipo(variable1);
+  let tipoVariable2 = variable1 == variable2
+    ? tipoVariable1
+    : obtenerTipo(variable2)
+  
+  // Para establecer el tipo de variable, segun el tipo de dato primitivo INT o FLOAT.
+  if ( /INT/.test(tipoVariable1)
+    && /FLOAT/.test(tipoVariable2)
+  ){
+    tipoVariable2 == "FLOAT"
+    ? tipoVariable1 = tipoVariable1.replace("INT","FLOAT")
+    : tipoVariable2 = tipoVariable2.replace("FLOAT","INT")
+  }
+  else if (/FLOAT/.test(tipoVariable1)
+    && /INT/.test(tipoVariable2)
+  ){
+    tipoVariable2 == "INT"
+    ? tipoVariable1 = tipoVariable1.replace("FLOAT","INT")
+    : tipoVariable2 = tipoVariable2.replace("INT","FLOAT")
+  }
+  
+  if (operador == '=#'){
+    // Para convertir un tipo a otro, es necesacio que sean diferentes, y no queremos que se recambie el tipo de dato si usamos la misma variable. ¿Oh si?
+    if (tipoVariable1 == tipoVariable2){
+      if (/GVAR/.test(tipoVariable2)){
+        tipoVariable2 = tipoVariable2 == "GVAR_FLOAT"
+          ? "GVAR_INT"
+          : "GVAR_FLOAT"
+      } else {
+        tipoVariable2 = tipoVariable2 == "LVAR_FLOAT"
+          ? "LVAR_INT"
+          : "LVAR_FLOAT"
+      }
+    }
+  }
+  
+  if (operador.i('=@/')){
+    tipoVariable1 = tipoVariable1.replace('INT', 'FLOAT')
+    tipoVariable2 = tipoVariable2.replace('INT', 'FLOAT')
+  }
+  
+  const combinacionTipos = `${tipoVariable1}-${tipoVariable2}`
+  let opcode = opcodes[operador][combinacionTipos];
+
+  if (!opcode) {
+    throw new Error('Operación no válida');
+  }
+
+  // Registrar solo las variables, no los números literales
+  registrarTipo(variable1, tipoVariable1);
+  registrarTipo(variable2, tipoVariable2);
+  
+  if (variable1 != variable2){
+    if (tipoVariable1 == tipoVariable2)
+      registrarTipo(variable2, tipoVariable2);
+    else
+      registrarTipo(variable2, tipoVariable1);
+  }
+  
+  if (esNegado){
+    opcode = (parseInt(opcode, 16) | 1 << 15)
+      .toString(16)
+      .toUpperCase()
+  }
+  opcode = opcode.padStart(4,'0')
+  
+  //console.log({opcode, variable1, tipoVariable1, operador, variable2, tipoVariable2})
+  
+  return opcode;
+}
+
+SP.operationsToOpcodes = function () {
+  const simple = /^([a-z]?[&$]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)\s*(=(#|&)|[+\-]=@|[\/\*\+\-\=\!><]*=|>|<)\s*([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)$/im
+  
+  const addition = /^(\d+@\w?|\w?[$&]\w+|\w+)\s*(\+\+|--)$/
+
+  const resultado = this.split('\n').map(linea => {
+    linea = linea.trim()
+    if (simple.test(linea)) {
+      // Procesar la línea con la operación
+      const opcodeDetectado = detectarOpcode(linea)
+      return `${opcodeDetectado}: ${linea}`
+    }
+    else if (addition.test(linea)) {
+      const operation = linea.i('++') ? '+=' : '-='
+      linea = linea.r(/\-\-|\+\+/)
+      
+      if (linea.toUpperCase() in CONSTANTS){
+        linea = CONSTANTS[linea.toUpperCase()]
+      }
+      
+      const tipo = obtenerTipo(linea).i('FLOAT') ?
+        '1.0' :
+        '1'
+     
+      linea = `${linea} ${operation} ${tipo}`
+      const opcodeDetectado = detectarOpcode(linea)
+      
+      return `${opcodeDetectado}: ${linea}`
+    }
+    else {
+      // Mantener la línea original si no es una operación
+      return linea
+    }
+  }).join('\n')
+  
+  return resultado
+}
+
+SP.transformTypeData = function(){
+  const nString = this.split('\n').map(line=>{
+    return line.dividirCadena().map(param =>{
+      let isNumberNegative =
+        param.startsWith('-') ? '-' : ''
+      param = param.r(/^-/)
+      
+      if (isNoteCientific(param)){
+        return (+param)+""
+      }
+      
+      param = param
+      .r(/^\.?\d+(\.\d+)?(ms|[smh]|fps)$/mi, second => {
+        second = second.toLowerCase()
+        
+        if (second.i('fps'))
+          second = (~~(1000 / (+second.r('fps', ''))))+""
+        if (second.i('ms'))
+          second = second.r('ms')
+        if (second.i('s'))
+          second = (~~(+second.r('s', '') * 1_000))+""
+        if (second.i('m'))
+          second = (~~(+second.r('m', '') * 60_000))+""
+        if (second.i('h'))
+          second = (~~(+second.r('h', '') * 3_600_000))+""
+        
+        return isNumberNegative + second
+      })
+      .r(/^\.?\d([\._\df]+)?(\.[_\df]+)?/mi, num=>{
+        return isNumberNegative + num
+        .r(/_/g,'')
+        .r(/(\.|f)$/mi,'.0')
+        .r(/^\./m, '0.')
+      })
+      .r(/^0b\d+/im, bin => {
+        if (/[ac-z]/i.test(bin)){
+          return new SyntaxError("Secuencia BIN: Solo usar ceros y unos (0 y 1)")
+        }
+       	return isNumberNegative+bin.r(/-?0b/i,'').binToDec()
+      })
+      .r(/^0x\w+/im, hex => {
+        if (/[g-wyz]/i.test(hex)){
+          return new SyntaxError("Secuencia HEX: Solo usar caracteres del rango 0-9 y del A-F.")
+        }
+        return isNumberNegative+hex.r(/-?0x/i,'').hexToDec()
+      })
+      .r(/^#\w+/mi, model =>{
+      	model = model.r('#','').toUpperCase()
+      	
+      	if (model in MODELS) {
+      	  model = MODELS[model]
+      	} else {
+      		return new SyntaxError(`Model undefined: #${model}`);
+        }
+        return isNumberNegative + model
+      })
+      return param
+    }).join(' ')
+  }).join('\n')
+  //log(nString)
+  
+  return nString
+}
+
+SP.replaceConstantes = function(){
+  const nString = this.split('\n').map(line=>{
+    line = line.dividirCadena().map(param=>{
+      param = param.trim()
+      if (param != ''){
         if (param.toUpperCase() in CONSTANTS){
           return CONSTANTS[param.toUpperCase()]
         }
         else if (
-          /^[a-z][\w\d_]+\.[\w\d\_]+$/im.test(param)
+          /^[a-z]\w+\.\w+$/im.test(param)
         ) {
           let [head, extend] = param.split('.').map(a => {
             return a.toUpperCase()
@@ -1158,6 +1674,8 @@ SP.postProcesar = function(){
           
           return ret
         }
+        //else if (/^[+\-=^&$*]/)
+          
         return param
       }
       return param
@@ -1166,140 +1684,10 @@ SP.postProcesar = function(){
     return line
     //log(line)
   }).join('\n')
+
+  //log(nString)
 	
-	nString = nString
-		.r(/^(int )?(\$.+) = ([\-\d]+|#.+|0x.+|0b.+)$/gim, `0004: $2 $3`)							//0004: $ = 0
-		.r(/^(float )?(\$.+) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0005: $2 $3`)							//0005: $ = 0.0
-		.r(/^(int )?(\d+@([^\s]+)?) = ([\-\d]+|#.+|0x.+|0b.+)$/gim, `0006: $2 $4`)		//0006: 0@ = 0
-		.r(/^(float )?(\d+@([^\s]+)?) = (\d+\.\d+|\.\d+|\d+f)$/gim, `0007: $2 $4`)		//0007: @ = 0.0
-		.r(/^(int )?(\$.+) \+= (\d+|#.+|0x.+|0b.+)$/gim, `0008: $2 $3`)								//0008: $ += 0
-		.r(/^(float )?(\$.+) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `0009: $2 $3`)						//0009: $ += 0.0
-		.r(/^(int )?(\d+@([^\s]+)?) \+= (\d+|#.+|0x.+|0b.+)$/gim, `000A: $2 $4`)			//000A: @ += 0
-		.r(/^(float )?(\d+@([^\s]+)?) \+= (\d+\.\d+|\.\d+|\d+f)$/gim, `000B: $2 $4`)	//000B: @ += 0.0
-		.r(/^(int )?(\$.+) \-= (\d+|#.+|0x.+|0b.+)$/gim, `000C: $2 $3`)								//000C: $ -= 0
-		.r(/^(float )?(\$.+) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000D: $2 $3`)						//000D: $ -= 0.0
-		.r(/^(int )?(\d+@([^\s]+)?) \-= ([\-\d]+|#.+|0x.+|0b.+)$/gim, `000E: $2 $4`)	//000E: 0@ -= 0
-		.r(/^(float )?(\d+@([^\s]+)?) \-= (\d+\.\d+|\.\d+|\d+f)$/gim, `000F: $2 $4`)	//000F: @ -= 0.0
-		.r(/^(int )?(\$.+) \*= (\d+|#.+|0x.+|0b.+)$/gim, `0010: $2 $3`)								//0010: $GS_GANG_CASH *= 100
-		.r(/^(float )?(\$.+) \*= (\d+\.\d+|\.\d+|\d+f)$/gim, `0011: $2 $3`)						//0011: $HJ_TEMP_FLOAT *= 100.0
-		.r(/^(int )?(\d+@([^\s]+)?) \*= (\d+|#.+|0x.+|0b.+)$/gim, `0012: $2 $4`)			//0012: 22@ *= -1
-		.r(/^(float )?(\d+@([^\s]+)?) \*= (\d+\.\d+|\.\d+|\d+f)$/gim, `0013: $2 $4`)	//0013: 17@ *= 9.8
-		.r(/^(int )?(\$.+) \/= (\d+|#.+|0x.+|0b.+)$/gim, `0014: $2 $3`)								//0014: $HJ_TWOWHEELS_TIME /= 1000
-		.r(/^(float )?(\$.+) \/= (\d+\.\d+|\.\d+|\d+f)$/gim, `0015: $2 $3`)						//0015: $EXPORT_PRICE_HEALTH_MULTIPLIER /= 1000.0
-		.r(/^(int )?(\d+@([^\s]+)?) \/= (\d+|#.+|0x.+|0b.+)$/gim, `0016: $2 $4`)			//0016: 4@ /= 2
-		.r(/^(float )?(\d+@([^\s]+)?) \/= (\d+\.\d+|\.\d+|\d+f)$/gim, `0017: $2 $4`)	//0017: 14@ /= 1000.0
-
-		.r(/^(int )?(\$.+) > (\d+|#.+|0x.+|0b.+)$/gim, `0018: $2 $4`)									//0018:   $CATALINA_TOTAL_PASSED_MISSIONS > 2
-		.r(/^(int )?(\d+@([^\s]+)?) > (\d+|#.+|0x.+|0b.+)$/gim, `0019: $2 $4`)				//0019:   0@ > 0
-		.r(/^(int )?(\d+|#.+|0x.+|0b.+) > (\$.+)$/gim, `001A: $2 $4`)									//001A:   10 > $SYNDICATE_TOTAL_PASSED_MISSIONS
-		.r(/^(int )?(\d+|#.+|0x.+|0b.+) > (\d+@([^\s]+)?)$/gim, `001B: $2 $4`)				//001B:   3 > 20@
-		.r(/^(int )?(\$.+) > (\$.+)$/gim, `001C: $2 $4`)															//001C:   $CURRENT_MONTH_DAY > $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) > (\d+@([^\s]+)?)$/gim, `001D: $2 $4`)						//001D:   27@ > 33@  // (int)
-		.r(/^(int )?(\$.+) > (\d+@([^\s]+)?)$/gim, `001E: $2 $4`)											//001E:   $CURRENT_TIME_IN_MS2 > 3@ // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) > (\$.+)$/gim, `001F: $2 $4`)											//001F:   9@ > $GIRL_PROGRESS[0] // (int)
-		.r(/^(float )?(\$.+) > (\d+\.\d+|\.\d+|\d+f)$/gim, `0020: $2 $4`)							//0020:   $HJ_TWOWHEELS_DISTANCE_FLOAT > 0.0
-		.r(/^(float )?(\d+@([^\s]+)?) > (\d+\.\d+|\.\d+|\d+f)$/gim, `0021: $2 $4`)		//0021:   26@ > 64.0
-		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) > (\$.+)$/gim, `0022: $2 $4`)							//0022:   -180.0 > $1316
-		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) > (\d+@([^\s]+)?)$/gim, `0023: $2 $4`)		//0023:   0.0 > 7@
-		.r(/^(float )?(\$.+) > (\$.+)$/gim, `0024: $2 $4`)														//0024:   $HJ_CAR_Z > $HJ_CAR_Z_MAX // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) > (\d+@([^\s]+)?)$/gim, `0025: $2 $4`)					//0025:   3@ > 6@  // (float)
-		.r(/^(float )?(\$.+) > (\d+@([^\s]+)?)$/gim, `0026: $2 $4`)										//0026:   $TEMPVAR_FLOAT_1 > 513@(227@,10f)  // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) > (\$.+)$/gim, `0027: $2 $4`)										//0027:   513@(227@,10f) > $TEMPVAR_FLOAT_2 // (float)
-
-		.r(/^(int )?(\$.+) < (\d+|#.+|0x.+|0b.+)$/gim, `8018: $2 $4`)									//8018:   $CATALINA_TOTAL_PASSED_MISSIONS < 2
-		.r(/^(int )?(\d+@([^\s]+)?) < (\d+|#.+|0x.+|0b.+)$/gim, `8019: $2 $4`)				//8019:   0@ < 0
-		.r(/^(int )?(\d+|#.+|0x.+|0b.+) < (\$.+)$/gim, `801A: $2 $4`)									//801A:   10 < $SYNDICATE_TOTAL_PASSED_MISSIONS
-		.r(/^(int )?(\d+|#.+|0x.+|0b.+) < (\d+@([^\s]+)?)$/gim, `801B: $2 $4`)				//801B:   3 < 20@
-		.r(/^(int )?(\$.+) < (\$.+)$/gim, `801C: $2 $4`)															//801C:   $CURRENT_MONTH_DAY < $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) < (\d+@([^\s]+)?)$/gim, `801D: $2 $4`)						//801D:   27@ < 33@  // (int)
-		.r(/^(int )?(\$.+) < (\d+@([^\s]+)?)$/gim, `801E: $2 $4`)											//801E:   $CURRENT_TIME_IN_MS2 < 3@ // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) < (\$.+)$/gim, `801F: $2 $4`)											//801F:   9@ < $GIRL_PROGRESS[0] // (int)
-		.r(/^(float )?(\$.+) < (\d+\.\d+|\.\d+|\d+f)$/gim, `8020: $2 $4`)							//8020:   $HJ_TWOWHEELS_DISTANCE_FLOAT < 0.0
-		.r(/^(float )?(\d+@([^\s]+)?) < (\d+\.\d+|\.\d+|\d+f)$/gim, `8021: $2 $4`)		//8021:   26@ < 64.0
-		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) < (\$.+)$/gim, `8022: $2 $4`)							//8022:   -180.0 < $1316
-		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) < (\d+@([^\s]+)?)$/gim, `8023: $2 $4`)		//8023:   0.0 < 7@
-		.r(/^(float )?(\$.+) < (\$.+)$/gim, `8024: $2 $4`)														//8024:   $HJ_CAR_Z < $HJ_CAR_Z_MAX // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) < (\d+@([^\s]+)?)$/gim, `8025: $2 $4`)					//8025:   3@ < 6@  // (float)
-		.r(/^(float )?(\$.+) < (\d+@([^\s]+)?)$/gim, `8026: $2 $4`)										//8026:   $TEMPVAR_FLOAT_1 < 513@(227@,10f)  // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) < (\$.+)$/gim, `8027: $2 $4`)										//8027:   513@(227@,10f) < $TEMPVAR_FLOAT_2 // (float)
-
-		.r(/^(int )?(\$.+) >= (\d+|#.+|0x.+|0b.+)$/gim, `0028: $2 $4`)								//0028:   $CATALINA_TOTAL_PASSED_MISSIONS >= 2
-		.r(/^(int )?(\d+@([^\s]+)?) >= (\d+|#.+|0x.+|0b.+)$/gim, `0029: $2 $4`)				//0029:   0@ >= 0
-		.r(/^(int )?(\d+|#.+|0x.+|0b.+) >= (\$.+)$/gim, `002A: $2 $4`)								//002A:   10 >= $SYNDICATE_TOTAL_PASSED_MISSIONS
-		.r(/^(int )?(\d+|#.+|0x.+|0b.+) >= (\d+@([^\s]+)?)$/gim, `002B: $2 $4`)				//002B:   3 >= 20@
-		.r(/^(int )?(\$.+) >= (\$.+)$/gim, `002C: $2 $4`)															//002C:   $CURRENT_MONTH_DAY >= $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) >= (\d+@([^\s]+)?)$/gim, `002D: $2 $4`)						//002D:   27@ >= 33@  // (int)
-		.r(/^(int )?(\$.+) >= (\d+@([^\s]+)?)$/gim, `002E: $2 $4`)										//002E:   $CURRENT_TIME_IN_MS2 >= 3@ // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) >= (\$.+)$/gim, `002F: $2 $4`)										//002F:   9@ >= $GIRL_PROGRESS[0] // (int)
-		.r(/^(float )?(\$.+) >= (\d+\.\d+|\.\d+|\d+f)$/gim, `0030: $2 $4`)						//0030:   $HJ_TWOWHEELS_DISTANCE_FLOAT >= 0.0
-		.r(/^(float )?(\d+@([^\s]+)?) >= (\d+\.\d+|\.\d+|\d+f)$/gim, `0031: $2 $4`)		//0031:   26@ >= 64.0
-		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) >= (\$.+)$/gim, `0032: $2 $4`)						//0032:   -180.0 >= $1316
-		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) >= (\d+@([^\s]+)?)$/gim, `0033: $2 $4`)		//0033:   0.0 >= 7@
-		.r(/^(float )?(\$.+) >= (\$.+)$/gim, `0034: $2 $4`)														//0034:   $HJ_CAR_Z >= $HJ_CAR_Z_MAX // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) >= (\d+@([^\s]+)?)$/gim, `0035: $2 $4`)					//0035:   3@ >= 6@  // (float)
-		.r(/^(float )?(\$.+) >= (\d+@([^\s]+)?)$/gim, `0036: $2 $4`)									//0036:   $TEMPVAR_FLOAT_1 >= 513@(227@,10f)  // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) >= (\$.+)$/gim, `0037: $2 $4`)									//0037:   513@(227@,10f) >= $TEMPVAR_FLOAT_2 // (float)
-
-		.r(/^(int )?(\$.+) <= (\d+|#.+|0x.+|0b.+)$/gim, `8028: $2 $4`)								//8028:   $CATALINA_TOTAL_PASSED_MISSIONS <= 2
-		.r(/^(int )?(\d+@([^\s]+)?) <= (\d+|#.+|0x.+|0b.+)$/gim, `8029: $2 $4`)				//8029:   0@ <= 0
-		.r(/^(int )?(\d+|#.+|0x.+|0b.+) <= (\$.+)$/gim, `802A: $2 $4`)								//802A:   10 <= $SYNDICATE_TOTAL_PASSED_MISSIONS
-		.r(/^(int )?(\d+|#.+|0x.+|0b.+) <= (\d+@([^\s]+)?)$/gim, `802B: $2 $4`)				//802B:   3 <= 20@
-		.r(/^(int )?(\$.+) <= (\$.+)$/gim, `802C: $2 $4`)															//802C:   $CURRENT_MONTH_DAY <= $GYM_MONTH_DAY_WHEN_LIMIT_REACHED // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) <= (\d+@([^\s]+)?)$/gim, `802D: $2 $4`)						//802D:   27@ <= 33@  // (int)
-		.r(/^(int )?(\$.+) <= (\d+@([^\s]+)?)$/gim, `802E: $2 $4`)										//802E:   $CURRENT_TIME_IN_MS2 <= 3@ // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) <= (\$.+)$/gim, `802F: $2 $4`)										//802F:   9@ <= $GIRL_PROGRESS[0] // (int)
-		.r(/^(float )?(\$.+) <= (\d+\.\d+|\.\d+|\d+f)$/gim, `8030: $2 $4`)						//8030:   $HJ_TWOWHEELS_DISTANCE_FLOAT <= 0.0
-		.r(/^(float )?(\d+@([^\s]+)?) <= (\d+\.\d+|\.\d+|\d+f)$/gim, `8031: $2 $4`)		//8031:   26@ <= 64.0
-		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) <= (\$.+)$/gim, `8032: $2 $4`)						//8032:   -180.0 <= $1316
-		.r(/^(float )?(\d+\.\d+|\.\d+|\d+f) <= (\d+@([^\s]+)?)$/gim, `8033: $2 $4`)		//8033:   0.0 <= 7@
-		.r(/^(float )?(\$.+) <= (\$.+)$/gim, `8034: $2 $4`)														//8034:   $HJ_CAR_Z <= $HJ_CAR_Z_MAX // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) <= (\d+@([^\s]+)?)$/gim, `8035: $2 $4`)					//8035:   3@ <= 6@  // (float)
-		.r(/^(float )?(\$.+) <= (\d+@([^\s]+)?)$/gim, `8036: $2 $4`)									//8036:   $TEMPVAR_FLOAT_1 <= 513@(227@,10f)  // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) <= (\$.+)$/gim, `8037: $2 $4`)									//8037:   513@(227@,10f) <= $TEMPVAR_FLOAT_2 // (float)
-
-		.r(/^(int )?(\$.+) == (\d+|#.+|0x.+|0b.+)$/gim, `0038: $2 $3`)								//0038:   $VAR8 == 0
-		.r(/^(int )?(\d+@([^\s]+)?) == (\d+|#.+|0x.+|0b.+)$/gim, `0039: $2 $4`)				//0039:   26@ == 0
-		.r(/^(int )?(\$.+) == (\$.+)$/gim, `003A: $2 $3`)															//003A:   $VAR28 == $VAR12 // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) == (\d+@([^\s]+)?)$/gim, `003B: $2 $4`)						//003B:   20@ == 1@ // (int)
-		.r(/^(int )?(\$.+) == (\d+@([^\s]+)?)$/gim, `003C: $2 $3`)										//003C:   $VAR24 == 17@ // (int)
-		.r(/^(float )?(\$.+) == (\d+\.\d+|\.\d+|\d+f)$/gim, `0042: $2 $3`)						//0042:   $VAR8 == 0.0
-		.r(/^(float )?(\d+@([^\s]+)?) == (\d+\.\d+|\.\d+|\d+f)$/gim, `0043: $2 $4`)		//0043:   26@ == 0.0
-		.r(/^(float )?(\$.+) == (\$.+)$/gim, `0044: $2 $3`)														//0044:   $VAR28 == $VAR12 // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) == (\d+@([^\s]+)?)$/gim, `0045: $2 $4`)					//0045:   20@ == 1@ // (float)
-		.r(/^(float )?(\$.+) == (\d+@([^\s]+)?)$/gim, `0046: $2 $3`)									//0046:   $VAR24 == 17@ // (float)
-		.r(/^(int )?(\d+@([^\s]+)?) == (\$.+)$/gim, `07D6: $2 $4`)										//07D6:    17@ == $VAR24 // (int)
-		.r(/^(float )?(\d+@([^\s]+)?) == (\$.+)$/gim, `07D7: $2 $4`)									//07D7:    17@ == $VAR24 // (float
-
-		.r(/^(int )?(\$.+) != (\d+|#.+|0x.+|0b.+)$/gim, `8038: $2 $3`)								//0038:   $VAR8 != 0
-		.r(/^(int )?(\d+@([^\s]+)?) != (\d+|#.+|0x.+|0b.+)$/gim, `8039: $2 $4`)				//0039:   26@ != 0
-		.r(/^(int )?(\$.+) != (\$.+)$/gim, `803A: $2 $3`)															//003A:   $VAR28 != $VAR12 // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) != (\d+@([^\s]+)?)$/gim, `803B: $2 $4`)						//003B:   20@ != 1@ // (int)
-		.r(/^(int )?(\$.+) != (\d+@([^\s]+)?)$/gim, `803C: $2 $3`)										//003C:   $VAR24 != 17@ // (int)
-		.r(/^(float )?(\$.+) != (\d+\.\d+|\.\d+|\d+f)$/gim, `8042: $2 $3`)						//0042:   $VAR8 != 0.0
-		.r(/^(float )?(\d+@([^\s]+)?) != (\d+\.\d+|\.\d+|\d+f)$/gim, `8043: $2 $4`)		//0043:   26@ != 0.0
-		.r(/^(float )?(\$.+) != (\$.+)$/gim, `8044: $2 $3`)														//0044:   $VAR28 != $VAR12 // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) != (\d+@([^\s]+)?)$/gim, `8045: $2 $4`)					//0045:   20@ != 1@ // (float)
-		.r(/^(float )?(\$.+) != (\d+@([^\s]+)?)$/gim, `8046: $2 $3`)									//0046:   $VAR24 != 17@ // (float)
-		.r(/^(int )?(\d+@([^\s]+)?) != (\$.+)$/gim, `87D6: $2 $4`)										//07D6:    17@ != $VAR24 // (int)
-		.r(/^(float )?(\d+@([^\s]+)?) != (\$.+)$/gim, `87D7: $2 $4`)									//07D7:    17@ != $VAR24 // (float)
-
-
-		.r(/^(int )?(\$.+) = (\$.+)$/gim, `0084: $2 $3`)															//0084:    $ = $VAR24 // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) = (\d+@([^\s]+)?)$/gim, `0085: $2 $4`)						//0085:    17@ = @ // (int)
-		.r(/^(float )?(\$.+) = (\$.+)$/gim, `0086: $2 $3`)														//0086:    1$ = $VAR24 // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) = (\d+@([^\s]+)?)$/gim, `0087: $2 $4`)					//0087:    17@ = @ // (float)
-		.r(/^(float )?(\$.+) = (\d+@([^\s]+)?)$/gim, `0088: $2 $4`)										//0088:    $ = @ // (float)
-		.r(/^(float )?(\d+@([^\s]+)?) = (\$.+)$/gim, `0089: $2 $4`)										//0089:    17@ = $VAR24 // (float
-		.r(/^(int )?(\$.+) = (\d+@([^\s]+)?)$/gim, `008A: $2 $4`)											//008A:    $ = @ // (int)
-		.r(/^(int )?(\d+@([^\s]+)?) = (\$.+)$/gim, `008B: $2 $4`)											//008B:    17@ = $VAR24 // (int)
-
-		.r(/^(string )?(\d+@([^\s]+)?) = ('([^\n\']+)?')$/gim, `05A9: $2 $3`)
-		.r(/^(long )?(\d+@([^\s]+)?) = ("([^\n\"]+)?")$/gim, `06D1: $2 $3`)
-		.r(/^(string )?(\d+@([^\s]+)?) == ('([^\n\']+)?')$/gim, `05AD: $2 $3`)
-		.r(/^(long )?(\d+@([^\s]+)?) == ("([^\n\"]+)?")$/gim, `05AE: $2 $3`)
-		
-		//log(nString)
-		return nString
+  return nString
 }
 
 /*
@@ -1309,17 +1697,16 @@ CurrentWeapon(0@) == 34 //02D8: 0@ 34
 CurrentWeapon(0@) > 34 //02D7: 0@ 34
 */
 
-
 SP.classesToOpcodes = function(){
   //console.clear()
   const MATCH = {
-    CLASSE_MEMBER: /([\!\w\d_][\w\d_]+)\.([\w\d_]+)\((.+)?\)/i,
+    CLASSE_MEMBER: /(\w+)\.(\w+)\((.+)?\)/m,
     OPERATION: /(==|\+=|=|>)/,
-    VARIABLE: "(\d+@(\w|(\([\(\)]+\)))?|(\w)?($|&)[\w\d_]+(\([\(\)]+\)))?)",
+    VARIABLE: "(\d+@(\w|(\([\(\)]+\)))?|\w?($|&)\w+(\([\(\)]+\)))?)",
     
-    SIMPLE: /([\!\w\d_]+)\.([\w\d_]+)\((.+)?\)/mi,
-    CONTINUE: /^\.([\w\d_]+)\((.+)?\)$/mi,
-    
+    SIMPLE: /^(\w+)\.(\w+)\(([^\n]*)\)$/mi,
+    CONTINUE: /^\.(\w+)\((.+)?\)$/mi,
+    METHOD: /^(\w+)?\.(\w+)$/mi,
     
     SET: /\.[^(]+\(.+=/,
     GET: /=.+\.[^(]+\(/,
@@ -1328,84 +1715,122 @@ SP.classesToOpcodes = function(){
   }
   
   let ncode = ''
-  let lclass = ''
+  let lastClass = ''
   
   this.split('\n').forEach(line =>{
-    line = line.trim();
+    line = line.trim()
     let isNegative = line.startsWith('!');
     if (isNegative) line = line.r('!');
+    
     let opcode = null;
     
     let data = {}
     let h
     
+    if (MATCH.METHOD.test(line)){
+      let matching = [];
+      
+      [line, ...matching] = line.match(MATCH.METHOD)
+      
+      matching = matching.map(e=>{
+        return e ? e.toUpperCase() : ""
+      })
+      
+      if (matching[0] == ""){
+        matching[0] = lastClass
+      } else {
+        lastClass = matching[0]
+      }
+      
+      if (!(matching[0] in classes)) {
+        throw new Error("CLASS UNDEFINED:\n>> " + matching[0])
+      }
+      if (!(matching[1] in classes[matching[0]])) {
+        throw `MEMBER UNDEFINED:\n>> ${matching[0]}.${matching[1]}`
+      }
+      let opcode = classes[matching[0]][matching[1]]
+      
+      if (typeof opcode == "object") {
+        if (Object.keys(opcode).length >= 2) {
+          throw `METHOD NOT AVAILABLE:\nMethods must be written with their class.\n>> ${matching[1]}`
+        }
+        else {
+          opcode = Object.values(opcode)[0]
+        }
+      }
+      line = opcode+':'
+    }
+    
     if (MATCH.CONTINUE.test(line)){
-      line = lclass+line
+      line = lastClass+line
     }
     
     if (MATCH.CLASSE_MEMBER.test(line)){
       [h,data.clase, data.miembro, data.resto] = line.match(MATCH.CLASSE_MEMBER)
+      data.clase = data.clase.toUpperCase()
+      data.miembro = data.miembro.toUpperCase()
       
-      if(MATCH.IS.test(line)) {
-        const iset = line.match(
-          /\((.+)\)(.+)?==(.+)/
-        )
-        
-        data.paramFront = iset[1]
-        data.paramRear = iset[3]
-        data.operador = "IS"
-      }
-      else if(MATCH.UPPER.test(line)) {
-        const iset = line.match(
-          /\((.+)\)(.+)?>(.+)/
-        )
-        
-        data.paramFront = iset[1]
-        data.paramRear = iset[3]
-        data.operador = "UPPER"
-      }
-      else if (MATCH.GET.test(line)) {
-        const iset = line.match(
-          /(.+)=(.+)\((.+)\)/
-        )
-        //log("get")
-        //log(iset)
-        
-        data.paramFront = iset[3]
-        data.paramRear = iset[1]
-        data.operador = "GET"
-      }
-      else if(MATCH.SET.test(line)) {
-        const iset = line.match(
-          /\((.+)\)(.+)?=(.+)/
-        )
-        
-        data.paramFront = iset[1]
-        data.paramRear = iset[3]
-        data.operador = "SET"
-      }else {
-        //log(line)
-        //log(data)
-        const iset = line.match(
-          /\((.+)\)(.+)?=(.+)/
-        )
-        
-        data.operador = "FUNC"
-      }
-      lclass = line.match(MATCH.SIMPLE)[1]
-      //log(lclass)
       
+      data.operador = "FUNC"
+      
+        if(MATCH.IS.test(line)) {
+          const iset = line.match(
+            /\((.+)\)(.+)?==(.+)/
+          )
+          
+          data.paramFront = iset[1]
+          data.paramRear = iset[3]
+          data.operador = "IS"
+        }
+        else if(MATCH.UPPER.test(line)) {
+          const iset = line.match(
+            /\((.+)\)(.+)?>(.+)/
+          )
+          
+          data.paramFront = iset[1]
+          data.paramRear = iset[3]
+          data.operador = "UPPER"
+        }
+        else if (MATCH.GET.test(line)) {
+          const iset = line.match(
+            /(.+)=(.+)\((.+)\)/
+          )
+          
+          data.paramFront = iset[3]
+          data.paramRear = iset[1]
+          data.operador = "GET"
+        }
+        else if(MATCH.SET.test(line)) {
+          const iset = line.match(
+            /\((.+)\)(.+)?=(.+)/
+          )
+          
+          data.paramFront = iset[1]
+          data.paramRear = iset[3]
+          data.operador = "SET"
+        }
+      
+      
+      if (!(data.clase in classes)) {
+        throw new Error("CLASS UNDEFINED:\n>> " + matching[0])
+      }
+      lastClass = data.clase
+      if (!(data.miembro in classes[data.clase])) {
+        throw `MEMBER UNDEFINED:\n>> ${matching[0]}.${matching[1]}`
+      }
       
       let queEs = classes[data.clase][data.miembro]
-        //log({queEs, data, line})
-        
-      if (data.operador != "FUNC"){
+      
+      if (data.operador == "FUNC"){
         if (typeof queEs == "object") {
-          line = Object.values(queEs)[0]
-        } else {
-          line = queEs
+          if (Object.keys(queEs).length >= 2) {
+            throw `METHOD NOT AVAILABLE:\nMethods must be written with their class.\n>> ${data.miembro}`
+          }
+          else {
+            queEs = Object.values(queEs)[0]
+          }
         }
-        line += ': ' + data.paramFront + " " + data.paramRear
+        line = queEs + ': ' + data.resto
       }
       else {
         if (typeof queEs == "object") {
@@ -1413,18 +1838,13 @@ SP.classesToOpcodes = function(){
         } else {
           line = queEs
         }
-        line += ': '+data.resto
+        line += ': ' + data.paramFront + " " + data.paramRear
       }
-      
-      //log(line)
-    
-      //log(data)
     }
     
     let depureLine = ''
     let inString = false
     for (let i = 0; i < line.length; i++){
-      
       if (
         line[i] == '"'
         || line[i] == "'"
@@ -1457,14 +1877,12 @@ SP.classesToOpcodes = function(){
         return op+': '
 
       })
-      //log(line)
     }
     
     
     ncode += line + '\n'
   })
   
-  log(ncode)
   return ncode
 }
 
@@ -1499,14 +1917,60 @@ SP.dividirCadena = function() {
     if (subcadenaActual.trim() !== '') {
         resultado.push(subcadenaActual);
     }
-
     return resultado;
+}
+
+SP.fixOpcodes = function(){
+  let tm = this.split('\n').map(line => {
+    let negado = false
+    line = line.trim().dividirCadena()
+    
+    //log(line)
+    if (line.length >= 1){
+    if (line[0].length < 5 && line[0].endsWith(':')){
+      line[0] = line[0].r(/:$/m)
+      if (line[0].startsWith('!')){
+        line[0] = line[0].r(/^\!/m).hexToDec()
+        line[0] += 0b1000000000000000
+        line[0] = line[0].toString(16)
+      }
+      line[0] = (line[0]+'').padStart(4, '0') + ':'
+    }
+      
+    }
+    
+    line = line.join(' ')
+    return line
+  }).join('\n')
+  
+  return tm
+}
+
+SP.adaptarCodigo = function(){
+  let result = this
+    .eliminarComentarios()
+    .preProcesar()
+    .formatearScript()
+    .parseHigthLevelLoops()
+    .addBreaksToLoops()
+    .addNumbersToIfs()
+    .eliminarComentarios()
+    .r(/^not /gm, '!')
+    .classesToOpcodes()
+    .replaceConstantes()
+    .transformTypeData()
+    .operationsToOpcodes()
+    
+    
+// log(result)
+   result = result
+    .fixOpcodes()
+    log(result)
+   return result
 }
 
 SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 	let LineComand = this
-		.r(/(\s+)?\/\*([^\/]*)?\*\//gm, '')
-		.r(/(\s+)?\{([^\$][^\}]*(\})?)?/gm, '')
 
 	const come = a => {
 		if (_SepareWithComes){
@@ -1547,51 +2011,30 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 	
 		return dataInput
   }
+
+  LineComand = LineComand
+  .adaptarCodigo()
 	
-	/*
-	if (this.match(/[^\w\d]("([^"\n]+)?)(\x20)(([^"\n]+)?")[^\w\d]/)
-		|| this.match(/[^\w\d]('([^'\n]+)?)(\x20)(([^'\n]+)?')[^\w\d]/)
-		|| this.match(/[^\w\d](`([^`\n]+)?)(\x20)(([^`\n]+)?`)[^\w\d]/)) {
-		log('NO ADD SPACES IN STRINGS')
-		return
-	}
-	*/
-
-LineComand = LineComand
-  .preProcesar()
-	.parseHigthLevelLoops()
-	.addBreaksToLoops()
-	.addNumbersToIfs()
-
-	LineComand = LineComand
-		.r(/"([^\n"]+)?"/gm, fixString => fixString.r(/\x20/g, '\x00'))
-		.r(/^not /gm, '!')
-		//.r(/^(\x20+)?:[\w\d]+/gm, '')
-		// remove commits of code
-		.r(/(\s+)?\/\/([^\n]+)?/gm, '')
-		// remove spaces innesesaries
-		.r(/[\x20\t]+$/gm,'')
-		.r(/(\t|\x20)(\t|\x20)+/gm,'$1')
-		.r(/^[\x20\t]+/gm,'')
-		// remove jump lines innesesaries
-		.r(/^\n+/gm, '')
-		.r(/\n$/gm, '')
-	  .classesToOpcodes()
-		.postProcesar()
-	  .split('\n')
-  
-
+  LineComand = LineComand
+		.split('\n')
+		
 	let codeOfEnter = this.split('\n').clear();
 
 	LineComand.forEach((Line, numLine) => {
+	  Line = Line.trim()
 		if (Line.match(/^:/)) {
+		  // si es una etiqueta
 			totalSizePerLine.push(Line.r(':','').toUpperCase())
-			//log(totalSizePerLine)
 		}
 		else {
-			LineComand[numLine] = 
-			  Line.dividirCadena()
-			  //Line.split(' ')
+			LineComand[numLine] = Line.dividirCadena()
+			.map(data => {
+			  data = data.trim()
+			  if (/^[=!\-+*\/%\^#@<>&$]+$/mi.test(data)) {
+			       data = ''
+			  }
+			  return data
+			})
 
 			let lineDepurated = []
 			let setOp = ''
@@ -1600,8 +2043,9 @@ LineComand = LineComand
 			let typeData = ''
 			
 			LineComand[numLine].forEach((Argument, numArgument) => {
+			  
 				if (numArgument >= 1) {
-					if (/^[!=+\-/*%\^]+$/mi.test(Argument)) {
+					if (/^[=!\-+*\/%\^#@<>&$]+$/mi.test(Argument)) {
 						LineComand[numLine][numArgument] = ''
 					}
 				}
@@ -1619,7 +2063,7 @@ LineComand = LineComand
 					}
 
 					if (
-						/[A-Fa-f\d]+:$/m.test(Argument)
+						/[a-f\d]+:$/im.test(Argument)
 						&& Argument.length <= 6
 					){
 						// is opcode
@@ -1627,7 +2071,7 @@ LineComand = LineComand
 						Argument = Argument.length > 4 ? Argument.r(/^./m,'') : Argument
 						setOp = Argument
 
-						if(/^[8-9A-Fa-f]/.test(Argument)){
+						if(/^[8-9A-F]/i.test(Argument)){
 							isNegative = true
 							setOp = (
 								parseInt(setOp, 16) - 0b1000000000000000
@@ -1656,8 +2100,8 @@ LineComand = LineComand
 							isNegative = true
 						}
 
-						if (SCM_DB[Argument]){
-							setOp = SCM_DB[Argument].opcode
+						if (SCM_DB2[Argument]){
+							setOp = SCM_DB2[Argument]
 						}else{
 							//log(`KEYWORD UNDEFINED: ${Argument}\nCHANGED TO 0000: nop`)
 							throw new SyntaxError(`opcode undefined\n\tin line ${(1+numLine)} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`);
@@ -1694,8 +2138,7 @@ LineComand = LineComand
 					if (foundType == false) typeData = 'any';
 
 					if (typeData == 'any'){
-						//log({typeData, Argument})
-						if (/^[\d#\-]/m.test(Argument))
+						if (/^[\d#\-+\.]/m.test(Argument))
 							typeData = /[.f]/.test(Argument) ? 'float' : 'int';
 						if (/^@/m.test(Argument))
 							typeData = 'label';
@@ -1707,7 +2150,6 @@ LineComand = LineComand
 							typeData = 'short';
 						if (/^["`]/m.test(Argument))
 							typeData = 'long';
-						//log({typeData, Argument})
 					}
 					if (typeData == 'var_any'){
 						typeData = /^\d@([ifsv])?/mi.test(Argument) ? 'lvar' : 'gvar';
@@ -1729,7 +2171,7 @@ LineComand = LineComand
 						.rA("\\`","`")
 					  .rA('\\"','"')
             .r(/\\x([A-Fa-f\d]+)/gi,(match, content)=> {
-              log(content)
+              //log(content)
              	return String.fromCharCode(content.hexToDec())
              })
             
@@ -1809,26 +2251,8 @@ LineComand = LineComand
 						break;
 
 						case 'int':
-							let isNumberNegative = /-/.test(Argument)
-
-							Argument = Argument
-								.r(/^(-)?0b.+/mi, bin => {
-									return bin.r(/(-)?0b/,'').binToDec()
-								})
-								.r(/^(-)?0x.+/mi, hex => {
-									return hex.r(/(-)?0b/,'').hexToDec()
-								})
-								.r(/^#.+/m, model =>{
-									model = MODELS[model.r('#','').toUpperCase()]
-
-									if (!model) {
-										throw new SyntaxError(`Model undefined\n\tparameter ${Argument}\n\tat line ${(1+numLine)}\n\t\topcode ${setOp == '0000' ? 'autodefined' : setOp} ${command.toUpperCase()}`);
-									}
-
-									return model
-									//log(Argument)
-								})
-
+							let isNumberNegative = /^-/m.test(Argument)
+							
 							if (isNumberNegative && Argument > 0) Argument *= -1 
 							if (Argument > 0x7FFFFFFF) Argument = 0x7FFFFFFF;
 
@@ -1907,11 +2331,16 @@ LineComand = LineComand
 
 						case 'float':
 							totalSizePerLine.push(4)
-
-
-
-
-							Argument = come(TYPE_CODE.FLOAT32) + Number(Argument.r('f','')).toHex()
+							
+              if(isNoteCientific(Argument)){
+                Argument = (+Argument)
+              }
+              else {
+							  Argument = Argument.r('f','')
+              }
+              
+              Argument = come(TYPE_CODE.FLOAT32) + Number(Argument).toHex()
+              
 						break;
 
 						case 'lvar':
