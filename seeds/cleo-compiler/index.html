@@ -3,10 +3,91 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>MattyBuilder</title>
+	<title>Enchant IDE</title>
 	<link rel="stylesheet" href="./../../css/main.css">
 </head>
 <body style="display: block;">
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+}
+  
+
+  .header, .subheader, .navbar{
+    background-color: #360047;
+    /*text-align: center;*/
+  }
+  .header {border-bottom: 1px solid #4d004b;}
+
+  .navbar {
+    overflow: hidden;
+    border: 1px solid #4d004b;
+  }
+
+  .navbar a {
+    float: left;
+    display: block;
+    color: #dcb8ff;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+  }
+
+  .dropdown {
+    float: left;
+    overflow: hidden;
+  }
+
+  .dropdown .dropbtn {
+    font-size: 16px;    
+    border: none;
+    outline: none;
+    color: white;
+    padding: 14px 16px;
+    background-color: inherit;
+    font-family: inherit;
+    margin: 0;
+  }
+
+  .navbar a:hover, .dropdown:hover .dropbtn {
+    background-color: #4d004b;
+    color: #fff;
+  }
+  .navbar a[disabled], .dropdown dropbtn[disabled]{
+    color: #A5229E;
+    background-color: #3D003B;
+  }
+
+  .dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #360047;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+  }
+
+  .dropdown-content a {
+    float: none;
+    color: #dcb8ff;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    text-align: left;
+  }
+
+  .dropdown-content a:hover {
+    background-color: #4d004b;
+  }
+
+  .dropdown:hover .dropdown-content {
+    display: block;
+  }
+  ::-webkit-scrollbar-thumb { background: #00e676}
+</style>
 <!--
 <div id="autocomplete" style="
     background: #28313e;
@@ -34,7 +115,7 @@
     content: counter(listing, decimal-leading-zero);
 }
 #state.loading {
-    border: #ff5252 solid 1px !important;
+    outline: #ff5252 solid 1px !important;
 }
 #version_sbl, #state{
     width: 5rem;
@@ -210,14 +291,22 @@ function getLine(){
 		let $o = x => $('#opcode').innerText = x
 		let $d = x => $("#short_desc").innerHTML = x
 		
-		let p = textData.primerPalabra
+		let p = textData.primerPalabra.toLowerCase()
 		let m = textData.mediaPalabra
 		let o = shared_db[shared_db[p]]
 		
 		$d('')
 		$o('')
 		
-		let opcode = shared_db[p.r(':')]
+		p = p.r(/^\w+\(\)$/, '0050:')
+		
+		if (/[^@$&]/.test(p))
+		  p = p.r('!');
+		  
+		if (/^\w{1,4}:$/m.test(p))
+		  p = p.padStart(5, '0');
+		
+		let opcode = shared_db[p.r(':').toLowerCase()]
 		
 		if (/([a-z]\w+)?\.[a-z]\w+\(.+\)/i.test(textData.textLine)) {
 		  $o('class detected')
@@ -226,7 +315,7 @@ function getLine(){
 		}
 		else if (/^\!?\w{1,4}:$/m.test(p)) {
 		  $o(
-		    '▼ '+p
+		    '▼ '+p.toUpperCase()+':'
 		    +opcode.num_params
 		    +' ('+(m != p ? m : '')+')'
 		  )
@@ -235,8 +324,8 @@ function getLine(){
 		}
 		else if (opcode){
 		  $o(
-		    '▼ OP '+opcode
-		   +':'+o.num_params
+		    '▼ '+opcode.toUpperCase()+'::'+
+		   +o.num_params
 		   +' ('+m+')'
 		 )
 		 
@@ -453,20 +542,49 @@ EP.getTextSelected = function() {
 	}
 </script>
 
-<nav id="navFile" class="bg-green py-1 d-flex between black h4">
-	<section>
-		<label for="file" title=Cargar>⬆️</label>
-		<button onclick="saveSource()" title=Descargar>⬇️</button>
-		<button onclick="compilerSource()" title=Compilar>👍</button>
-	</section>
-	<section class="center">
-		<b id="name-compiler">CLEO Compiler</b>
-	</section>
-	<section class="opa-0">
-	  <button title="Opcodes" onclick="$('#search').focus()">🔍</button>
-		<button id="open-settings" title="Ajustes">⚙️</button>
-	</section>
-</nav>
+
+  <div class="navbar d-flex between">
+    <div>
+      
+    <div class="dropdown">
+      <button class="dropbtn">ᚪile 
+        <i class="fa fa-caret-down"></i>
+      </button>
+      <div class="dropdown-content">
+        <a href="#" title="script">New</a>
+        <a href="#" title="source">Open...</a>
+        <a href="#" title="within the browser">Save</a>
+        <a href="#" title="as any file">Save as...</a>
+        <a href="#" title="source">Compile</a>
+        <a href="#" title="code">Close</a>
+      </div>
+    </div> 
+    <div class="dropdown">
+      <button class="dropbtn">モditor 
+        <i class="fa fa-caret-down"></i>
+      </button>
+      <div class="dropdown-content">
+        <a href="#">Undo</a>
+        <a href="#">Redo</a>
+        <a href="#">Copy</a>
+        <a href="#">Cut</a>
+        <a href="#">Paste</a>
+      </div>
+    </div> 
+    <div class="dropdown">
+      <button class="dropbtn" disabled>ㄘettings
+        <i class="fa fa-caret-down"></i>
+      </button>
+      <div class="dropdown-content">
+        <a href="#" disabled>Preferences</a>
+        <a href="#" disabled>Theme</a>
+        <a href="#" disabled>Hotkeys</a>
+      </div>
+    </div>
+    </div>
+    <a>Σηςнαητ ✦</a>
+    <!--<a>ΣηςнαητιSςrιρτ ✦</a>-->
+  </div>
 
 <style>
 .f-2 {
@@ -475,49 +593,67 @@ EP.getTextSelected = function() {
 .bg-none {
 	background: none!important;
 }
-#navFile * {
+button, label {
 	border: none;
-	font-size: 1.2rem;
-	& button,& label{
-	  font-size: 1.73rem
-  }
+	font-size: 1.3rem;
+	background: none;
+	color: #fff;
 }
-button {
-	border: none;
-	font-size: 1.2rem;
+input[type=text]{
+  background: #200029;
+  border-bottom: 1px solid #200029;
 }
-
 </style>
 
 <form id="FORMULARIO">
 
-<input id='file' type='file' accept='.txt,.ini' class="d-none">
-<div class="d-flex between">
+
+<div class="d-flex between subheader">
  <div>
-  <input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="newScript.csi">
+  <input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="EnchantiScript.csi">
+		<label for="file" title=Cargar> ⇈️ </label>
+		<input id='file' type='file' accept='.txt,.ini' class="d-none">
+		<button onclick="saveSource()" title=Descargar> ⇊️ </button>
+		<button onclick="compilerSource()" title=Compilar> ⇶️ </button>
  </div>
  <div id="change-view" class="pr-2 green size-4">
    <btn class="bg-none d-sm-none" style="font-size: 1.5rem" onclick="
    $('#HEX').toggle();
    $('#PREVIEW').toggle();
    $('#OUTHEX').toggle();
-   $('#editor-counterLine').toggle();">π</btn>
+   $('#editor-counterLine').toggle();">ᛒ</btn>
  </div>
 </div>
 
 <div id="editor-body">
-  <pre id="editor-counterLine" class="m-0 r-0 p-1 green"></pre>
-	<textarea id="HEX" class="w-100 m-0 r-0 p-1 pl-5" placeholder="write your hex" autocomplete="off" spellcheck="false">{ Syntax based on SannyBuilder and JavaScript }
+  <pre id="editor-counterLine" class="m-0 r-0 p-1"></pre>
+	<textarea id="HEX" class="w-100 m-0 r-0 p-1 pl-5" placeholder="WIZARD, CAST THY SPELL!
+	ᚹᛁᛉᚨᚱᛞ, ᚲᚨᛊᛏ ᚦᚤ ᛊᛈᛖᛚᛚ!" autocomplete="off" spellcheck="false">
+nop
+while true
+wait 12fps
+x, y, z = actor.getposition(_player)
+
+if Widget.IsPressed(62)
+then crateActor()
+end
+
+end
+
+:crateActor
+h = Actor.CreateRandom(x, y, z)
+return
+
+{ Syntax based on SB4 and JS 
 0000: this_is_a_NOP
 $misc != 0xff ? 7@ = !7@ : A = B || 0b1000
 X = 3@ == 5_5 ? false : undefined
 function(2@(3@++,123), "test\t#1 <=")
 0@ = Char.Create(PedType.Gang1, #FAM1, .0, 0f, 0.0)
-// the var 0@ is moves to the end
-.SetHeading(0@, 1.2e-5)
-subrutine() /* remember the last class used */
+.SetHeading(0@ 1.2e-5)
+subrutine()
 while !.DoesExist($Player_Actor--)
-  wait .3s
+  wait .3s /* remember the last class */
   if IS_KEY_PRESSED KeyCode.A
   then break
   else continue
@@ -550,6 +686,8 @@ cleo_return 0 {}</textarea>
 #editor-counterLine {
   overflow: hidden;
   width: 3rem;
+  color:#7d5bbe;
+  background: #200029;
 }
 #HEX {
   position: absolute;
@@ -570,6 +708,8 @@ cleo_return 0 {}</textarea>
   text-wrap: wrap;
   z-index: -99;
   aspect-ratio:16/9;
+  color: #dcb8ff;
+  background: #200029;
 }
 #editor-counterLine,
 #data-line-config *,
@@ -588,20 +728,47 @@ cleo_return 0 {}</textarea>
   overflow: auto;
   max-height: 2rem;
 }
+#table-command {
+  background: #360047;
+}
+select {
+  background: none;
+  color: #fff;
+}
+footer, blockquote {
+  background: #2c003e;
+}
+pre {
+  color: #dcb8ff;
+  background: #200029;
+}
+details[open] div {
+  padding-left: 1rem;
+  padding-top: .5rem;
+}
+details[open]::after{
+  content: '';
+  border: 0;
+  display: block;
+	border-bottom: solid #30363d 1px;
+	width: 100%;
+	margin: 15px 0;
+}
 </style>
-<div class="bg-green black">
-<footer id="data-line-config" class="d-flex between py-1 w-100">
+<div style='background: #2c003e'>
+<div id="table-command" class="d-flex column header">
+<footer id="data-line-config" class="d-flex between py-1 w-100 header">
 <div class="d-flex between g-3">
 <span id='opcode' onclick="$('#short_desc').toggle()"></span>
 </div>
 <div class="d-flex">
 <span id='line'>0:0</span>
-<span id='state' class="loading">Loading...</span>
-<span id='version_sbl' class="">SBL</span>
-<select id='mode' class="ml-1" style="border: none;">
+<span id='state' class="loading">Wait...</span>
+<span id='version_sbl' class="d-none d-md-block">SBL</span>
+<select id='mode' class="ml-1" style="border: none;" disabled>
   <option value="gta3">GTA III</option>
   <option value="lcs">GTA LCS</option>
-  <option value="sa" selected>GTA SA</option>
+  <option value="sa" selected>SA Cross-Plataform</option>
   <option value="vc">GTA VC</option>
   <option value="vcs">GTA VCS</option>
   <option value="gta3_mobile">III Mobile</option>
@@ -612,7 +779,7 @@ cleo_return 0 {}</textarea>
 </footer>
 <footer id="short_desc" class="py-1 d-none"></footer>
 
-<footer class="d-flex h4* p-2 pb-0 w-100 g-3 d-sm-none" id="keys-mobile">
+<footer class="d-flex h4* p-2 pb-0 w-100 g-3 d-sm-none subheader" id="keys-mobile">
 <key>→|</key>
 <key>&</key>
 <key>@</key>
@@ -620,13 +787,13 @@ cleo_return 0 {}</textarea>
 <key>#</key>
 <key>=</key>
 <key>_</key>
-<key>" "</key>
-<key>' '</key>
-<key>( )</key>
-<key>{ }</key>
-<key>[ ]</key>
+<key>""</key>
+<key>''</key>
+<key>()</key>
+<key>{}</key>
+<key>[]</key>
 </footer>
-<footer class="d-flex h1* p-2 pt-0 w-100 g-3 d-sm-none" id="keys-actions">
+<footer class="d-flex h1* p-2 pt-0 w-100 g-3 d-sm-none subheader" id="keys-actions">
 <key key="up">⇡</key>
 <key key="down">⇣</key>
 <key key="left">⇠</key>
@@ -636,7 +803,7 @@ cleo_return 0 {}</textarea>
 <key cmd="copy">⎘</key>
 <key cmd="cut">✄</key>
 <key cmd="paste">⎗</key>
-<key key="all">⌬</key>
+<key key="all">☰</key>
 </footer>
 
 <div class="d-none">
@@ -661,18 +828,25 @@ Array support is limited to Local variables @(@,n).<br>
 Does not detect if a parameter has not been completed.
 </blockquote>
 <blockquote>
-IDE supports:
+IDE supports & features:
 <details>
-<summary>High-level syntax for conditions</summary>
-Mode grandfather.
+<summary>Syntax for conditions</summary>
+<h4>Primitive</h4>
+This is the most primitive way for the compiler to interpret code.
 <pre>
 IF 0
   condition
-ELSE_GOTO @Label
-  body
-:Label
+ELSE_GOTO @Label_false
+  body_is_true
+GOTO @End
+:Label_false
+  body_is_false
+:End
 </pre>
-Mode master.
+The entire read stream moves through the conditions and jump points(labels).
+
+<h4>Sugared</h4>
+The IDE has syntactic sugar to prevent us from getting too dizzy, although for now there are very few of these. You can nest them inside each other without any problem.
 <pre>
 IF
   condition
@@ -683,11 +857,13 @@ END
 IF
   condition
 THEN
-  body_1
+  is_true
 ELSE
-  body_2
+  is_false
 END
-
+</pre>
+You can also apply several conditions. You only have to indicate if you want to do an AND or OR check. You have a maximum of 8 conditions
+<pre>
 IF (AND|OR)
   condition_1
   condition_2
@@ -696,18 +872,22 @@ THEN
   body
 END
 </pre>
-Mode unicorn.
+<h4>Ternary</h4>
+The syntax comes from JS and since commands can only be typed 1 per line, the IDE allows you to allow the false ternary.
 <pre>
-// condition ? is_true : is_false
-0@ == true ? SaveGame() : ShowText("sorry")
+contition ? body
 
-// variable seter condition ? is_true : is_false
-0@ = 1@ == true ? #jester : #euro
+condition ? is_true : is_false
 </pre>
+Can also be used to assign a value to a variable
+<pre>
+var -= cond ? is_true : is_false
+</pre>
+For now only one condition, but support for more will be coming soon.
 </details>
 
 <details>
-<summary>High-level syntax for loops</summary>
+<summary>Syntax for loops</summary>
 You can work with labels.
 <pre>
 :Loop
@@ -745,24 +925,52 @@ There is only one difference. The `WHILE FALSE` loops are not ignored by the com
 <pre>
 0@ = 0
 WHILE FALSE
-  :sum
+  :Suma
     0@++
   return
 END
 printf "0@ = %i" 1s 0@ // 0
-sum()
+Suma()
 wait 1s
 printf "0@ = %i" 1s 0@ // 1
 </pre>
-
+If you make blocks that are too big and you get lost among many `END`, you can use these fasteners:
+<pre>
+ENDIF ENDWHILE ENDFOR
+</pre>
+All of these are interpreted as the same `END`, so you can use them as worshippers or visual highlighters.
 </details>
 
 <details>
-<summary>High-level syntax for classes</summary>
-The compiler does not know the order of the custom parameters, but instead interprets the orders, depending on how the classes are used.
+<summary>Opcodes and commands</summary>
+<h4>Opcodes</h4>
+if you explore opcodes in documentations and forums, you don't need to memorize the 4 characters of the opcode or just copy it.
+<pre>
+0: nop          -->  0000: nop
+FE: actor[...]  -->  00FE: actor[...]
+!7F: car[...]   -->  807F: car[...]
+1234: wxyz      -->  1234: wxyz
+</pre>
+<h4>Commands</h4>
+This is another way to write opcodes, you just write its name and then it is replaced by the opcode.
+<pre>
+nop           -->  XXXX: nop
+WAIT 0        -->  XXXX: wait 0 ms
+not xyz 0@    -->  XXXX: ! xyz 0@[...]
+</pre>
+These can be written in lowercase or uppercase, and can be negated or contradicted by placing at the beginning of the line one of these 2 executors `!, NOT`.
+</details>
+
+<details>
+<summary>Classes and keywords</summary>
+<h4>Classes</h4>
+The IDE is connected to 2 databases to be able to script with legacy or enchanted commands. So if we use aaa.bbb() and ccc.ddd() they will use the same opcode.
 <pre>
 Normal:
 CLASS.MEMBER(PARAM, VAR)
+
+Method:
+CLASS.MEMBER
 
 Conditional:
 CLASS.MEMBER(PARAM) == VAR
@@ -773,19 +981,33 @@ CLASS.MEMBER(PARAM) = VAR
 Getter:
 VAR = CLASS.MEMBER(PARAM)
 </pre>
+The compiler does not know the order of the custom parameters, but instead interprets the orders, depending on how the classes are used.<br>
+<br>
 Everything that is located before the class is relocated at the end of the class.
 <pre>
 Multi-Geting:
 VAR1 VAR2 = CLASS.MEMBER(PARAM)
-
+VAR1, VAR2 = CLASS.MEMBER(PARAM)
+</pre>
+You also do not need to use commas(,) to separate the data. The compiler can detect the change of the data type, using the spaces.<br>
+<br>
+The compiler remembers which was the last class used, so if you use a dot (.) at the beginning of the line, you will access the member of that class.
+<pre>
 Last-Used:
 .MEMBER(PARAM)
 </pre>
-The compiler remembers which was the last class used, so if you use a dot (.) at the beginning of the line, you will access the member of that class.
+<h4>Keywords</h4>
+keywords define the workflow and how it should behave on different occasions.
+Avoid naming things with these words, the order of how the text preprocessor is executed may break the script.
+<pre>
+IF, THEN, ELSE, END, WHILE, REPEAT,
+UNTIL, FOR, TRUE, FALSE, UNDEFINED,
+BREAK, CONTINUE, FOREACH, NOT, NULL
+</pre>
 </details>
 
 <details>
-<summary>Multi syntax for decimal numbers</summary>
+<summary>Decimal interpreter</summary>
 The compiler not only has a translator for Hexadecimal and Binary numbers. It can also look up the numerical IDs of the model names.
 <pre>
 DEC  -6272_48 -2936 -42 0 5 972 729_0_03
@@ -798,7 +1020,7 @@ NOTE -12E5 -3e2 1e9 10e+2 16E-3
 </details>
 
 <details>
-<summary>Multi syntax for floating numbers</summary>
+<summary>Floating interpreter</summary>
 If you program in any language, you may be used to some of its syntax. Here you will be able to use it.
 <pre>
 CSS -.0025 -.97 .0 .42 .736
@@ -811,25 +1033,45 @@ You can begin or end a number with a period (.) or end it with `f`. Scientific n
 </details>
 
 <details>
-<summary>Multi syntax for opcodes</summary>
-if you explore opcodes in documentations and forums, you don't need to memorize the 4 characters of the opcode or just copy it.
+<summary>Expressions operative</summary>
+You have all the SB expressions and one extra.
 <pre>
-0: nop          -->  0000: nop
-FE: actor[...]  -->  00FE: actor[...]
-!7F: car[...]   -->  807F: car[...]
-1234: wxyz      -->  1234: wxyz
+0@++         -->  000A: 0@ += 1
+0@ <> 1@     -->  803A: 0@ != 1@
+0@ = 1@      -->  0085: 0@ = 1@
+0@ = 1@ + 2@ -->  0A8E: 0@ = 1@ + 2@
+0@ =# 1@     -->  0092: 0@ = int_to_float 1@
+0@ =& 1@     -->  0AC7: 0@ = var 1@ pointer
+0@ +=@ 1@    -->  007B: 0@ += delta_time * 1@
+0@ &= 1@     -->  0B17: 0@ &= bit 1@
+</pre>
+if only one variable is written in a line, it is passed as a condition.
+<pre>
+0@           -->  0039: 0@ == true
+!0@          -->  0039: 0@ == false
+</pre>
+You can also assign a negated value to the variables, or see is truthy.
+<pre>
+0@ = !1@     -->  1@ ? 0@ = false : 0@ = true
+0@ = 1@b     -->  1@ ? 0@ = true : 0@ = false
+</pre>
+As long as you write an operation within a parenthesis, you will be able to save lines.
+<pre>
+Car.Exist(0@(++1@,10))
+// before
+1@ += 1
+Car.Exist(0@(1@,10))
+
+Actor.Angle = 1@f++
+// after
+Actor.Angle = 1@
+1@ += 1.0
 </pre>
 </details>
 
-- Flow control (GOTO, GOSUB, RETURN, CLEO_CALL, RET).<br>
-- Arithmetic operations (@=0, @=!$, @+=@, $++).<br>
-- Logical operations (@==7, @!=$, $>@, $=@??@).<br>
-- Ternary operatons (a ? b : c, a = b ? c : d).<br>
-- Definitive operations (TRUE, FALSE, UNDEFINED, NULL).<br>
-- Keywords, classes and enumerations of <a href="https://library.sannybuilder.com/">Library::SannyBuilder</a><br>
-- Constants and variables of <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">data::CrossPlataform</a><br>
-- Command negation (!, NOT).<br>
+- Constants and enumerations.<br>
 - Characters scape (\t, \n, \", \xff).<br>
+- Connection with <a href="https://library.sannybuilder.com/">Library::SannyBuilder</a> and <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">data::CrossPlataform</a><br>
 </blockquote>
 <blockquote class="info">
 - Operations between variables will always be INT unless "FLOAT" is written before.<br>
@@ -1255,7 +1497,7 @@ function hl(){
 	.rA("\\`<span>", "\\`")
 	//Etiquetas
 	.r(/([^\w\d_])([@:])([\w\d_]+)?/gim, "$1<span class=labels>$2$3<\/span>")
-	.r(/([^\w\d])([\w\d_]+\(\))/gmi, "$1<span class=commands>$2<\/span>")
+	.r(/([^\w\.])(\w+)(\([^\n]*\))/gmi, "$1<span class=commands>$2<\/span>$3")
 	//Arreglos
 	.r(/(\[)([\d+]*)(\])/gmi, "$1<span class=numbers>$2<\/span>$3")
 	//Opcodes
@@ -1266,13 +1508,14 @@ function hl(){
 	.r(/((\x{00}|[ifsv])\$([\d\w]+)?)/gm, enter.variables)
 	//Numeros
 	.r(/\b(\d+(b|x|\.)\w+)\b/gmi, enter.numbers)
+	.r(/\b(\-?\.?\d[e\+\-_\d\.]+(fps|[smh])?)\b/gmi, enter.numbers)
 	.r(/\b(true|false|undefined|null|break|continue)\b/gmi, enter.numbers)
 	.r(/(?!\#)(\W)(?!\$)([\d_]+)(?!\:|\@)([ifsv]?)\b/gmi, '$1<span class=numbers>$2$3<\/span>')
 	//Modelos
 	.r(/(\#[^\"\'\#\s]+)\b/gm, "<span class='models'>$1<\/span>")
 	//Clases
 	.r(/\b([a-z0-9]+)\.([a-z0-9]+)/gmi, "<span class=classes>$1</span>.<span class=commands>$2</span>")
-	.r(/^\.([a-z0-9]+)/gmi, ".<span class=commands>$1</span>")
+	.r(/(\!?)\.([\w]+)/gmi, "$1.<span class=commands>$2</span>")
 	.r(/(\w+)(\(.+\)\.)(\w+)/gmi, "<span class=classes>$1</span>$2<span class=commands>$3</span>")
 	.r(/(\$\w+|\d+\@)\.([0-9A-Z_a-z]+)/gm, "$1.<span class=commands>$2</span>")
 	.r(/(:|of) (\w+)\n/gm, "$1 <span class=classes>$2</span>\n")
@@ -1281,7 +1524,8 @@ function hl(){
 	.r(/\b(timer(a|b|x|z))\b/gmi, enter.variables)
 	.r(/(\d+\@([ifsv])?)/gmi, enter.variables)
 	// Operadores
-	.r(/(^|\s)(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=|\?\?|\|\||\!)(\s|$)/gmi,"$1<span class=labels>$2<\/span>$3")
+	.r(/(^|\s)(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\!=|\+\+|\-\-|\<|\>|\<\=|\>\=|\?\?|\|\||\!)(\s|$)/gmi,"$1<span class=labels>$2<\/span>$3")
+	.r(/(\!|\+\+|\-\-)/gmi,"<span class=labels>$1<\/span>")
 
 	if (hasScrollBar($('#PREVIEW')).vertical){
 	  $('#PREVIEW').scrollTop = $('#HEX').scrollTop
@@ -1393,7 +1637,7 @@ $("key[key]", e => {
 $('details').forEach((elem) => {
   elem.addEventListener('click', function() {
     // Cerrar todos los elementos <details> excepto el que se acaba de hacer clic
-    $('details[open]').forEach((openElem) => {
+    $('details').forEach((openElem) => {
       if (openElem !== this) {
         openElem.removeAttribute('open');
       }
