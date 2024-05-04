@@ -31,6 +31,7 @@
 	--hl-strings: #ffd54f;
 	--hl-comments: #919191;
 	--hl-directives: #ffd54f;
+	--hl-charScape: #8b58e4;
 
 	--c-red: #ff5252;
 	--c-blue: #2196f3;
@@ -62,10 +63,10 @@ body {
 	transition: opacity .48s;
 }
 
-::-webkit-scrollbar { width: 1rem;}
-::-webkit-scrollbar-track { background: #0a0d14 }
-::-webkit-scrollbar-thumb { background: #262b32; border: 1px #0a0d14 solid; }
-::-webkit-scrollbar-corner {background: #0a0d14}
+::-webkit-scrollbar { width: .27rem;}
+::-webkit-scrollbar-track { background: #0A0D14 }
+::-webkit-scrollbar-thumb { background: #262B32; border: 1px #0a0d14 solid; }
+::-webkit-scrollbar-corner {background: #0A0D14}
 
 ::placeholder {
   color: #8b949e;
@@ -223,24 +224,6 @@ h3, .h3, .h3\* * { font-size: calc(1.3rem + .6vw) }
 h4, .h4, .h4\* * { font-size: calc(1.275rem + .3vw) }
 h5, .h5, .h5\* * { font-size: 1.25rem }
 h6, .h6, .h6\* * { font-size: 1rem }
-
-details {
-	display: block;
-}
-
-details > summary:first-of-type {
-	display: list-item;
-	counter-increment: list-item 0;
-	list-style: inside disclosure-closed;
-}
-
-summary {
-	display: block;
-	padding: 0;
-	font-size: calc(1.275rem + .3vw);
-	font-weight: 700;
-	cursor: pointer;
-}
 
 hr {
 	border: 0;
@@ -400,12 +383,14 @@ input[type='checkbox']{
 .numbers * { color: var(--hl-numbers) }
 .variables,
 .variables * { color: var(--hl-variables) }
-.strings,
-.strings * { color: var(--hl-strings) }
-.comments,
-.comments * { color: var(--hl-comments) }
 .directives,
 .directives * { color: var(--hl-directives) }
+.strings,
+.strings * { color: var(--hl-strings) }
+.charScape,
+.charScape * { color: var(--hl-charScape) }
+.comments,
+.comments * { color: var(--hl-comments) }
 
 .d-none {display: none}
 .d-block {display: block}
@@ -427,6 +412,7 @@ input[type='checkbox']{
 	.markdown { max-width: 87.7% }
 }
 @media (min-width:768px) {
+	::-webkit-scrollbar { width: 1rem;}
 }
 @media (min-width:992px) {
 }
@@ -439,7 +425,7 @@ input[type='checkbox']{
 @media (min-width:1400px) {
 }
 @media (min-width:1600px) {
-	.markdown { max-width: 90% }
+	.markdown { max-width: 1500px }
 }
 
 .center, .c { text-align: center }
@@ -581,4 +567,14 @@ input[type='checkbox']{
 
 .\:pointer {
 	cursor: pointer;
+}
+
+.aspect-pano {
+  aspect-ratio: 16 / 9;
+}
+.aspect-cine {
+  aspect-ratio: 2.39 / 1;
+}
+.aspect-home {
+  aspect-ratio: 4 / 3;
 }
