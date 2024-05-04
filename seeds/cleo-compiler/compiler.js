@@ -728,7 +728,7 @@ SP.parseHigthLevelLoops = function(){
       }
       else if (/^else/im.test(line)) {
         if (stacks.general.slice(-1) != 'then'){
-          log('cierre de pila inconclusa :'+stacks.general)
+          throw new Error('cierre de pila inconclusa :'+stacks.general)
         }
         
         label = stacks.if.slice(-1);
@@ -807,7 +807,7 @@ SP.parseHigthLevelLoops = function(){
       }
       else if(/^until.+$/im.test(line)){
         if (stacks.until.length == 0){
-          log(`pila sintactica: vacia`)
+          throw new Error(`pila sintactica: vacia`)
         }
         else{
           if (/^until true$/im.test(line)) {
@@ -843,7 +843,7 @@ SP.parseHigthLevelLoops = function(){
       }
       else if(/^end$/im.test(line)) {
         if (stacks.general.length == 0) {
-          log(`pila sintactica: vacia`)
+          throw new Error(`pila sintactica: vacia`)
         }
         else {
           let closed = stacks.general.pop()
@@ -882,7 +882,7 @@ SP.parseHigthLevelLoops = function(){
       outputText += line + '\n'
     })
     if (stacks.general.length > 0)
-      log(`pila sintactica: `+stacks.general);
+      throw new Error(`pila sintactica: `+stacks.general);
       
     return outputText;
 }
@@ -908,13 +908,13 @@ SP.addBreaksToLoops = function(){
       
       if (/^continue$/im.test(line)) {
         if (!loopBehin) {
-          result += '>>> ERROR: continue - not found loop init\n'
+          throw new Error('>>> ERROR: continue - not found loop init')
         }else{
           result += 'goto @'+loopBehin+'\n'
         }
       } else if (/^break$/im.test(line)) {
         if (!loopBehin) {
-          result += '>>> ERROR: break -  not found loop init\n'
+          throw new Error('>>> ERROR: break -  not found loop init')
         }else {
           for (let s = i; s < lines.length; s++){
             const lineSearch = lines[s].trim()
@@ -925,7 +925,7 @@ SP.addBreaksToLoops = function(){
             }
           }
           if (!loopEnd) {
-            result += '>>> ERROR: break -  not found loop init\n'
+            throw new Error('>>> ERROR: break -  not found loop init')
           }else{
             result += 'goto @' + loopEnd + '\n'
           }
@@ -1055,44 +1055,97 @@ SP.formatearScript = function() {
   let code = this
   
   code = code.split('\n').map(line => {
-    line = line.trim()
-    .r(/^if (?!(\d+$))/mi, "if\n$1")
-    .r(/^then /mi, "then\n")
-    .r(/^else /mi, "else\n")
-    .r(/ end$/mi, "\nend\n")
-    .r(/^repeat /mi, "repeat\n")
-    return line
+    return line.trim()
   }).join('\n')
   
+  code = code
+    .r(/^if /mgi, "if\n")
+    .r(/^then /mgi, "then\n")
+    .r(/^else /gmi, "else\n")
+    .r(/ end$/mgi, "\nend\n")
+    .r(/^repeat /mgi, "repeat\n")
+  
   return code
+}
+
+function encontrarAdicines(texto) {
+  const patron1 = /(\d+@[if]?|[if]?(\$|&)\w+|\w+)/;
+  const patron2 = /(\+\+|--)/;
+  const resultados = [];
+  let textoModificado = texto;
+
+  // Función para buscar y procesar los patrones
+  function buscarYProcesar() {
+    const regex = new RegExp(`${patron1.source + patron2.source}|${patron2.source + patron1.source}`, 'gi');
+    
+    let match = regex.exec(textoModificado);
+    while (match) {
+      
+      const indicePatron1 = match.index;
+      const indicePatron2 = match[2] ? indicePatron1 + match[1].length : match.index;
+
+      // Determinar la posición relativa y agregar al resultado
+      if (match[3]) {
+        resultados.push([match[0], 'derecha', match[3]]);
+      } else {
+        resultados.push([match[0], 'izquierda', match[4]]);
+      }
+      
+      // Buscar el siguiente match
+      match = regex.exec(textoModificado);
+    }
+  }
+
+  // Iniciar la búsqueda y procesamiento
+  buscarYProcesar();
+
+  return resultados;
 }
 
 SP.preProcesar = function() {
   let nString = ''
   
-  this.split('\n').forEach(line =>{
-    // Prevent addition
-    //   0@(1@++,123i)
-    //   ↓
-    //   1@++
-    //   0@(1@,123i)
-    let c = 1
-    const mPreAdd =
-      /(\d+@\w?|\w?(\&|\$)\w+)([\+\-\*\=]+)[^\s,\)\(]+/
+  this.formatearScript().split('\n').forEach(linea =>{
+    let lineaAnterior = ""
+    let lineaSiguiente = ""
     
-    while (mPreAdd.test(line) && line.i('(')){
-      let v = line.match(mPreAdd)
+    const patron1 = /(\d+@[if]?|[if]?(\$|&)\w+|[a-z_]\w*)/;
+    const patron2 = /(\+\+|--)/;
+    
+    const patronEn = new RegExp(`^(${patron1.source + patron2.source}|${patron2.source + patron1.source})$`, 'mi')
+  
+    if (!/^\w+:/.test(linea) && !patronEn.test(linea)){
+      if (patron2.test(linea)){
+        let operadores = encontrarAdicines(linea)
+       
+        operadores.forEach(fix => {
+          if (fix[1] == "derecha"){
+            lineaSiguiente += fix[0] + '\n'
+          } else {
+            lineaAnterior += fix[0].r(fix[2])+fix[2] + '\n'
+          }
+          linea = linea.r(fix[2])
+        })
         
-      nString += v[0].r(/([\+\-\*\=]+)/, '$1') +'\n'
-      line = line.r(/([\+\-\*\=]+)([^,\s\)]+)/, '')
-        
-      if (!/[=+\-]/.test(line)) break;
+        linea = lineaAnterior + linea +'\n'+ lineaSiguiente +'\n'
+      }
     }
     
-    nString += line.trim() + '\n'
+    nString += linea.trim() + '\n'
   })
   
   nString = nString
+    .r(/^forEach (.+) => (.+)$/gim, input => {
+      input = input.r(/^forEach\s*/im,'')
+      
+      let n = input.match(/(([^\(]+)\((.+),(\d+[isfv]?)\)) => (.+)/i)
+      log(n)
+      return `for ${n[3]} = 0 to ${n[4]} step 1\n`+
+        n[5]+' = '+n[1]
+    })
+    .r(/^END(IF|WHILE|FOR)$/gim, 'END')
+    .r(/^(\+\+|--)(.*)$/gm, '$2$1')
+    .r(/(.+) = (\d+@b|b[\$&]\w+)/gim, '$2 == 0 ? $1 = 0 : $1 = 1')
     // char VAR1 =& VAR2
     .r(/^(char|actor) (.+) =& (.+)/gim, 'GET_PED_POINTER $3 $2')
     .r(/^object (.+) =& (.+)/gim, 'GET_OBJECT_POINTER $2 $1')
@@ -1111,21 +1164,36 @@ SP.preProcesar = function() {
   	.r(/^(.+) \? (.+) \: (.+)$/gm, input =>{
   	  let vars = input.match(/^(.+)\?(.+)\:(.+)$/)
   	                  .map(e=> e.trim())
-  	                  
+  	  
+  	  vars[1] = vars[1].determineOperations()
+  	  
   	  let operators = '==,!=,<=,>=,>,<,<>'
   	  
   	  operators.split(',').forEach(operador => {
   	    if (RegExp(operador).test(vars[1])){
   	      input =
   	        'if\n'+vars[1]+'\n'+
-  	        'then\n'+vars[2]+'\n'+
-  	        'else\n'+vars[3]+'\n'+
+  	        'then\n'+vars[2].determineOperations()+'\n'+
+  	        'else\n'+vars[3].determineOperations()+'\n'+
   	        'end\n'
   	    }
   	  })
   	  
   	  return input
   	})
+  	.r(/^([^\s]+) \? ([^\s]+)$/gm, (i, ...m) => {
+  	  
+  	  let r = 
+  	    'if\n'+
+  	    m[0].determineOperations()+
+  	    '\nthen\n'+
+  	    m[1].determineOperations()+
+  	    '\nend\n'
+  	    
+  	  //log(r)
+  	  return r
+  	})
+  	.r(/^@(\w+)$/gm, 'goto @$1')
   	// bitExp
   	// a = b & c
   	.r(/^(.+) = (.+) (>>|<<|%|&|\^|\|)\x20?(.+)$/m, (input, ...match) => {
@@ -1140,12 +1208,17 @@ SP.preProcesar = function() {
   	  if (operador == ">>") op = "0B15";
   	  if (operador == "<<") op = "0B16";
   	  
-  	  let res = op+": "+var1+' '+var2+' '+var3
+  	  let res = op+": "+var2+' '+var3+' '+var1
   	  
   	  return res
   	})
   	//0B1A: ~ 0@
   	.r(/^~(.+)/m, '0B1A: $1')
+  	// x = x / x
+  	.r(/^(.+) = (.+) \+ (.+)$/m, '0A8E: $2 $3 $1')
+  	.r(/^(.+) = (.+) \- (.+)$/m, '0A8F: $2 $3 $1')
+  	.r(/^(.+) = (.+) \* (.+)$/m, '0A90: $2 $3 $1')
+  	.r(/^(.+) = (.+) \/ (.+)$/m, '0A91: $2 $3 $1')
     // 7@ = !7@
     .r(/(.+) = !(.+)$/gim,
 `if
@@ -1220,7 +1293,7 @@ end
       return input
     })
     // subrutine() | GOSUB
-    .r(/^(\w+)\(\)$/gm, 'gosub @$1\n')
+    .r(/^(\w+)\(\)$/gm, '\ngosub @$1\n')
   
   	return nString
 }
@@ -1611,25 +1684,25 @@ SP.transformTypeData = function(){
         
         return isNumberNegative + second
       })
-      .r(/^\.?\d([\._\df]+)?(\.[_\df]+)?/mi, num=>{
+      .r(/^\.?\d([\._\df]+)?(\.[_\df]+)?$/mi, num=>{
         return isNumberNegative + num
         .r(/_/g,'')
         .r(/(\.|f)$/mi,'.0')
         .r(/^\./m, '0.')
       })
-      .r(/^0b\d+/im, bin => {
+      .r(/^0b\d+$/im, bin => {
         if (/[ac-z]/i.test(bin)){
           return new SyntaxError("Secuencia BIN: Solo usar ceros y unos (0 y 1)")
         }
        	return isNumberNegative+bin.r(/-?0b/i,'').binToDec()
       })
-      .r(/^0x\w+/im, hex => {
+      .r(/^0x\w+$/im, hex => {
         if (/[g-wyz]/i.test(hex)){
           return new SyntaxError("Secuencia HEX: Solo usar caracteres del rango 0-9 y del A-F.")
         }
         return isNumberNegative+hex.r(/-?0x/i,'').hexToDec()
       })
-      .r(/^#\w+/mi, model =>{
+      .r(/^#\w+$/mi, model =>{
       	model = model.r('#','').toUpperCase()
       	
       	if (model in MODELS) {
@@ -1647,7 +1720,7 @@ SP.transformTypeData = function(){
   return nString
 }
 
-SP.replaceConstantes = function(){
+SP.constantsToValue = function(){
   const nString = this.split('\n').map(line=>{
     line = line.dividirCadena().map(param=>{
       param = param.trim()
@@ -1886,6 +1959,43 @@ SP.classesToOpcodes = function(){
   return ncode
 }
 
+SP.keywordsToOpcodes = function() {
+  let code = this.split('\n')
+  let nCode = ''
+  
+  code.forEach(line => {
+    let isNegative = false
+    let nLine = ''
+    
+    let params = line.dividirCadena()
+    params.forEach((data, pos) => {
+      if (pos == 0){
+        if (/\!?$/m.test(data))
+        if (line[0] == '!') {
+          line = line.r('!', '')
+          isNegative = true
+        }
+      }
+      nLine += data +' '
+    })
+		
+    nCode += nLine + '\n'
+  })
+
+						if (SCM_DB2[line]){
+							setOp = SCM_DB2[line]
+						}else{
+							//log(`KEYWORD UNDEFINED: ${line}\nCHANGED TO 0000: nop`)
+							throw new SyntaxError(`opcode undefined\n\tin line ${(1+numLine)} the trigger ${line}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`);
+						}
+
+						if (isNegative){
+							setOp = (
+								parseInt(setOp, 16) + 0b1000000000000000
+							).toString(16)
+						}
+}
+
 SP.dividirCadena = function() {
     const resultado = [];
     let dentroComillas = false;
@@ -1946,6 +2056,140 @@ SP.fixOpcodes = function(){
   return tm
 }
 
+SP.determineOperations = function(){
+  let h = this.split('\n')
+  let n = ''
+  
+  h.forEach(s => {
+    s = s.trim()
+    if (/^(\!)?(\d+@[a-z]?|[a-z]?\$\w+|[a-z]?&\d+)$/mig.test(s)) {
+      if (s.i('!')){
+        s = s.r('!') +' == 0'
+      }else{
+        s = s + ' == 1'
+      }
+      log(s)
+    }
+    n += s + '\n'
+  })
+  
+  return n
+}
+
+let Input = {
+  isLong: x => /^".*"$/m.test(x),
+  isShort: x => /^'.*'$/m.test(x),
+  isFormat: x => /^`.*`$/m.test(x),
+  isString : x => {
+    return (Input.isLong(x)
+    || Input.isShort(x)
+    || Input.isFormat(x))
+  },
+  isInt : x => /^[+-]?\d[\d_]*$/m.test(x),
+  isFloat : x => /^[+-]?(\.\d[\d_]*|\d[\d_]*[f\.][\d_]*)$/mi.test(x),
+  isNote: x => /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)$/m.test(x),
+  isTime: x => /^[+-]?(\d+\.\d+|\.?\d+)(fps|[smh])$/.test(x),
+  isModel: x => /^#\w+$/m.test(x),
+  isNumber: x => {
+    return (Input.isTime(x)
+    || Input.isNote(x)
+    || Input.isFloat(x)
+    || Input.isInt(x))
+  },
+  isOpcode: x => /^[a-f\d]+:$/mi.test(x),
+  isKeyword: x => {
+    if (/^[a-z]\w*$/mi.test(x)){
+      let keys = `while,end,if,then,else,repeat,until,for,int,float,string,short,long`.split(',')
+      
+      if (keys.i(x)){
+        return true
+      }
+      
+      return SCM_DB2[x]
+    }
+    return false
+  },
+  isClass: x => {
+    x = x.toUpperCase()
+    let m =
+      x.match(/^([a-z]\w*)\.([a-z]\w*)\(([^\n]*)\)$/mi)
+      || x.match(/^([a-z]\w*)\.([a-z]\w*)$/mi)
+    if (m){
+      return (m[1] in classes && m[2] in classes[m[1]])
+    }
+    return false
+  },
+  isCommand: x => {
+    return (Input.isOpcode(x)
+    || Input.isKeyword(x)
+    || Input.isClass(x))
+  },
+  isConstant: x => {
+    if (/^\w+$/mi.test(x)){
+      x = x.toUpperCase()
+      
+      return x in CONSTANTS
+    }
+    return false
+  },
+  isEnum: x => {
+    x = x.toUpperCase()
+    let m = x.match(/^([a-z]\w*)\.(\w*)$/mi)
+    
+    if (m){
+      return (m[1] in CUSTOM_ENUM && m[2] in CUSTOM_ENUM[m[1]])
+    }
+    return false
+  },
+  isValueSimple: x => {
+    return (Input.isConstant(x)
+    || Input.isEnum(x))
+  },
+  isLocalVar: x => {
+    return /^\d+@[a-z]?/im.test(x)
+  },
+  isGlobalVar: x => {
+    return /^[a-z]?\$\w+/im.test(x)
+  },
+  isAdmaVar: x => {
+    return /^[a-z]?&\w+/im.test(x)
+  },
+  isLocalVarArray: x => /^\d+@[a-z]?(\(.+,\d+[a-z]?\))?/im.test(x),
+  isGlobalVarArray: x => /^[a-z]?\$\w+(\(.+,\d+[a-z]?\))?/im.test(x),
+  isAdmaVarArray: x => /^[a-z]?&\w+(\(.+,\d+[a-z]?\))?/im.test(x),
+  isVariable : x => {
+    return (Input.isLocalVar(x)
+    || Input.isGlobalVar(x)
+    || Input.isAdmaVar(x)
+    || Input.isLocalVarArray(x)
+    || Input.isGlobalVarArray(x)
+    || Input.isAdmaVarArray(x))
+  },
+  isLabel : x => /^[:@]\w+$/m.test(x),
+  isValid: x => {
+    return (Input.isCommand(x)
+    || Input.isNumber(x)
+    || Input.isString(x)
+    || Input.isVariable(x)
+    || Input.isValueSimple(x)
+    || Input.isLabel(x))
+  },
+  whatIs: x => {
+    if (Input.isValid(x)){
+      if (Input.isLabel(x)) return 'label';
+      if (Input.isCommand(x)) return 'command';
+      if (Input.isNumber(x)) return 'number';
+      if (Input.isString(x)) return 'string';
+      if (Input.isVariable(x)) return 'variable';
+      if (Input.isValueSimple(x)) return 'constant';
+    }else{
+      return undefined
+    }
+  }
+}
+
+//log(Input.whatIs('_Player'))
+
 SP.adaptarCodigo = function(){
   let result = this
     .eliminarComentarios()
@@ -1957,15 +2201,12 @@ SP.adaptarCodigo = function(){
     .eliminarComentarios()
     .r(/^not /gm, '!')
     .classesToOpcodes()
-    .replaceConstantes()
+    .constantsToValue()
+    //.keywordsToOpcodes()
     .transformTypeData()
+    .determineOperations()
     .operationsToOpcodes()
-    
-    
-// log(result)
-   result = result
     .fixOpcodes()
-    log(result)
    return result
 }
 
@@ -2071,7 +2312,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						Argument = Argument.length > 4 ? Argument.r(/^./m,'') : Argument
 						setOp = Argument
 
-						if(/^[8-9A-F]/i.test(Argument)){
+						if(/^[8-9A-F]/mi.test(Argument)){
 							isNegative = true
 							setOp = (
 								parseInt(setOp, 16) - 0b1000000000000000
@@ -2104,7 +2345,11 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 							setOp = SCM_DB2[Argument]
 						}else{
 							//log(`KEYWORD UNDEFINED: ${Argument}\nCHANGED TO 0000: nop`)
-							throw new SyntaxError(`opcode undefined\n\tin line ${(1+numLine)} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`);
+							if (Line.endsWith('=')){
+							  throw new SyntaxError(`missing parameter\n\tin line ${(1+numLine)} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`)
+							}else{
+							  throw new SyntaxError(`opcode undefined\n\tin line ${(1+numLine)} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`)
+							};
 						}
 
 						if (isNegative){
@@ -2123,9 +2368,18 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 					totalSizePerLine.push(1)
 
 					try {
-						typeData = SCM_DB[command] ? SCM_DB[command].params[--numArgument] : SCM_DB[command.r(/^8/m,'0')].params[--numArgument];
+					  if (SCM_DB[command] == undefined
+					    && command.length == 4
+					  ){
+					    typeData = 'any'
+  					} else {
+  					  typeData = SCM_DB[command]
+  						  ? SCM_DB[command].params[--numArgument]
+  						  : SCM_DB[command.r(/^8/m,'0')].params[--numArgument];
+					  }
+						
 					}catch{
-						throw new SyntaxError(`unknown parameter\n\tat line ${(1+numLine)} the value ${Argument}\n\ttrigger: ${setOp == '0000' ? 'XXXX' : setOp}\n\t>>> ${Line}\n\t>>>${command}`);
+						throw new SyntaxError(`unknown parameter\n\tat line ${(1+numLine)} the value ${Argument}\n\ttrigger: ${setOp == '0000' ? 'XXXX' : setOp}\n\t>>> ${Line}\n\t>>> ${command}`);
 					}
 
 					let foundType = false
@@ -2451,7 +2705,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						case 'gvar':
 							if (/(&|\$)(.+)(&|\$)/.test(Argument)){
 								totalSizePerLine.push(6)
-
+								
 								Argument = 
 									come(TYPE_CODE.GVAR_ARRAY)
 									+ Argument
@@ -2533,8 +2787,10 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 											return inputSize
 										})
 							}
-							else{
+							else{ // no es areay
 								totalSizePerLine.push(2)
+								
+								
 
 								if(/\$/.test(Argument)){
 									Argument = Argument.r(/(i|f|s|v)?\$/,'')
@@ -2579,6 +2835,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 
 						case 'label':
 							totalSizePerLine.push(4)
+							Argument = Argument.toUpperCase()
 
 							Argument = come(TYPE_CODE.INT32) + `<${Argument}>`
 						break;
