@@ -353,6 +353,26 @@ let SASCM = (await LSget(
   './data/SASCM.INI'
 ))
 
+let CUSTOM_KEYWORDS = (await LSget(
+  'https://raw.githubusercontent.com/MatiDragon-YT/data/master/sa_cp/keywords.txt',
+  'lime',
+  './data/keywords.txt'
+))
+
+CUSTOM_KEYWORDS = 
+CUSTOM_KEYWORDS.split('\n').map(keyword =>{
+  keyword = keyword.trim()
+  if (!keyword.startsWith(';')){
+    if (keyword != ''){
+      keyword = keyword.split('=')
+      return [
+        keyword[1]+"".toUpperCase(),
+        keyword[0]+"".toUpperCase()
+      ]
+    }
+  }
+}).clear()
+
 // ----------------------------
 
 let addClass = false
@@ -545,6 +565,12 @@ async function dbSBL2(game){
 		  }
 		})
 	})
+	log(CUSTOM_KEYWORDS)
+	CUSTOM_KEYWORDS.forEach(key => {
+    SCM_DB2[key[0]] = key[1]
+  })
+	
+	
 	
 	LS.set('shared_db', JSON.stringify(SCM_DB2))
 	return true
@@ -1986,7 +2012,7 @@ SP.keywordsToOpcodes = function() {
 							setOp = SCM_DB2[line]
 						}else{
 							//log(`KEYWORD UNDEFINED: ${line}\nCHANGED TO 0000: nop`)
-							throw new SyntaxError(`opcode undefined\n\tin line ${(1+numLine)} the trigger ${line}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`);
+							throw new SyntaxError(`keyword undefined\n\tin line ${(1+numLine)} the trigger ${line}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`);
 						}
 
 						if (isNegative){
