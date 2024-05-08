@@ -1,5 +1,5 @@
 const
-	undefined=0x7fffffff
+	undefined=-1
 	null=0x6fffffff
 	NaN=0x5fffffff
 	any=-1
