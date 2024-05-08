@@ -2,12 +2,16 @@
 // Author: MatiDragon.
 // Contributors: Seemann, OrionSR, Miran.
 
-const 	log = x  => console.log(x),
+const DEBUG = true
+
+const 	log = x => DEBUG ? console.log(x) : 0,
 		sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
 
 		NP = Number.prototype,
 		SP = String.prototype,
 		AP = Array.prototype;
+
+RegExp.prototype.s = RegExp.prototype.source
 
 function IsInRange(VAR, MIN, MAX){
 	return (VAR >= MIN && VAR <= MAX) ? 1 : 0;
@@ -51,6 +55,24 @@ SP.toBigEndian = function(){
 		.clear()
 		.forEach(e => newResult = e + newResult)
 	return newResult
+}
+
+SP.setOpcodeNegative = function() {
+  // Convierte el input en una cadena HEX entendible
+  //   para JS, para convertirlos en Number y
+  //   retornar la suma de ambos.
+  return (
+    +('0x' + (this + "")) + (+'0x8000')
+  ).toString(16)
+}
+
+SP.setOpcodePositive = function() {
+  // Convierte el input en una cadena HEX entendible
+  //   para JS, para convertirlos en Number y
+  //   retornar la resta de ambos.
+  return (
+    +('0x' + (this + "")) - (+'0x8000')
+  ).toString(16)
 }
 
 function noteToHex(num) {
@@ -360,15 +382,15 @@ let CUSTOM_KEYWORDS = (await LSget(
 ))
 
 CUSTOM_KEYWORDS = 
-CUSTOM_KEYWORDS.split('\n').map(keyword =>{
+CUSTOM_KEYWORDS.toLowerCase().split('\n').map(keyword =>{
   keyword = keyword.trim()
   if (!keyword.startsWith(';')){
     if (keyword != ''){
       keyword = keyword.split('=')
-      return [
-        keyword[1]+"".toUpperCase(),
-        keyword[0]+"".toUpperCase()
-      ]
+      return {
+        key: keyword[1],
+        opcode: keyword[0]
+      }
     }
   }
 }).clear()
@@ -544,16 +566,16 @@ async function dbSBL2(game){
 	DATA_DB2.extensions.forEach(extension => {
 		extension.commands.forEach((command) => {
 		  let omitir = false
-		  if (command.attrs) {
-		    if ("is_unsupported" in command.attrs) {
-		      omitir = true
-		    } 
+		  if (command?.attrs?.is_unsupported){
+		    omitir = true
 		  }
+		  
 		  if (!omitir){
   		  SCM_DB2[command.name.toLowerCase()] = 
   			  command.id.toLowerCase();
   			  
   			SCM_DB2[command.id.toLowerCase()] = {
+  			  id: command.id.toLowerCase(),
   			  name: command.name,
   			  class: command.class ?? '',
   			  member: command.member ?? '',
@@ -565,16 +587,16 @@ async function dbSBL2(game){
 		  }
 		})
 	})
-	log(CUSTOM_KEYWORDS)
-	CUSTOM_KEYWORDS.forEach(key => {
-    SCM_DB2[key[0]] = key[1]
-  })
 	
-	
+	CUSTOM_KEYWORDS.forEach(keyword => {
+	  //log(keyword)
+	  SCM_DB2[keyword.key] = SCM_DB2[keyword.opcode] 
+	})
 	
 	LS.set('shared_db', JSON.stringify(SCM_DB2))
 	return true
 }
+
 
 async function dbSBL(game){
   DATA_DB = (await LSget(
@@ -686,6 +708,7 @@ SP.parseHigthLevelIfs = function() {
 
     const codigoTransformado = lineas.map((linea) => {
         linea = linea.trim();
+        
         if (/IF/i.test(linea)) {
             return linea.replace(/IF/gi, 'if');
         } else if (/THEN/i.test(linea)) {
@@ -742,7 +765,7 @@ SP.parseHigthLevelLoops = function(){
     lines.forEach(line => {
       line = line.trim()
       
-      if (/^then/im.test(line)) {
+      if (/^then$/im.test(line)) {
         stacks.general.push('then');
         
         label = `if_${++counts.if}`
@@ -752,7 +775,7 @@ SP.parseHigthLevelLoops = function(){
         
         stacks.if.push(label);
       }
-      else if (/^else/im.test(line)) {
+      else if (/^else$/im.test(line)) {
         if (stacks.general.slice(-1) != 'then'){
           throw new Error('cierre de pila inconclusa :'+stacks.general)
         }
@@ -1094,7 +1117,7 @@ SP.formatearScript = function() {
   return code
 }
 
-function encontrarAdicines(texto) {
+function encontrarAdiciones(texto) {
   const patron1 = /(\d+@[if]?|[if]?(\$|&)\w+|\w+)/;
   const patron2 = /(\+\+|--)/;
   const resultados = [];
@@ -1128,6 +1151,11 @@ function encontrarAdicines(texto) {
   return resultados;
 }
 
+function encontrarTemporales(texto){
+    const patronTemp = /(\d+@[if]?|[if]?[\$&]\w+|[a-z_]\w*)([\-+*\/])([\w#$&@.]+)/
+    return texto.match(new RegExp(patronTemp.source, 'ig'))
+}
+
 SP.preProcesar = function() {
   let nString = ''
   
@@ -1136,13 +1164,16 @@ SP.preProcesar = function() {
     let lineaSiguiente = ""
     
     const patron1 = /(\d+@[if]?|[if]?(\$|&)\w+|[a-z_]\w*)/;
-    const patron2 = /(\+\+|--)/;
+    const patron2 = /([+-]{2})/;
+    const patron3 = /([\+\-\*\/])([\w#$&@.]+)/;
     
     const patronEn = new RegExp(`^(${patron1.source + patron2.source}|${patron2.source + patron1.source})$`, 'mi')
+    
+    const patronTemp = /(\d+@[if]?|[if]?[\$&]\w+|[a-z_]\w*)([\-+*\/])([\w#$&@.]+)/i
   
     if (!/^\w+:/.test(linea) && !patronEn.test(linea)){
       if (patron2.test(linea)){
-        let operadores = encontrarAdicines(linea)
+        let operadores = encontrarAdiciones(linea)
        
         operadores.forEach(fix => {
           if (fix[1] == "derecha"){
@@ -1155,6 +1186,29 @@ SP.preProcesar = function() {
         
         linea = lineaAnterior + linea +'\n'+ lineaSiguiente +'\n'
       }
+      else if(patron3.test(linea)){
+        let temporales = encontrarTemporales(linea)
+        
+        if (!temporales){
+          throw new Error("Temporary values do not support the VALUE-ANY syntax, only VARIABLE-ANY.")
+        }
+        temporales.forEach(temporal =>{
+          
+          let sec = linea.match(patronTemp)
+          let ant = '+'
+          if (sec[2] == '+') ant = '-';
+          if (sec[2] == '-') ant = '+';
+          if (sec[2] == '/') ant = '*';
+          if (sec[2] == '*') ant = '/';
+          
+          lineaAnterior += sec[1] + ' ' + sec[2] + '= ' + sec[3] + '\n'
+          linea = linea.r(sec[0], sec[1])
+          lineaSiguiente += sec[1] + ' ' + ant + '= ' + sec[3] + '\n'
+          
+          
+        })
+        linea = lineaAnterior + linea + '\n' + lineaSiguiente + '\n'
+      }
     }
     
     nString += linea.trim() + '\n'
@@ -1165,7 +1219,6 @@ SP.preProcesar = function() {
       input = input.r(/^forEach\s*/im,'')
       
       let n = input.match(/(([^\(]+)\((.+),(\d+[isfv]?)\)) => (.+)/i)
-      log(n)
       return `for ${n[3]} = 0 to ${n[4]} step 1\n`+
         n[5]+' = '+n[1]
     })
@@ -1750,9 +1803,15 @@ SP.constantsToValue = function(){
   const nString = this.split('\n').map(line=>{
     line = line.dividirCadena().map(param=>{
       param = param.trim()
+      let pref = ""
       if (param != ''){
+        if (/^[\!\-\+][a-z]\w*$/m.test(param)){
+          pref = param.match(/^\W/m)
+          param = param.r(/^\W/m)
+        }
+        
         if (param.toUpperCase() in CONSTANTS){
-          return CONSTANTS[param.toUpperCase()]
+          return pref + CONSTANTS[param.toUpperCase()]
         }
         else if (
           /^[a-z]\w+\.\w+$/im.test(param)
@@ -1818,6 +1877,28 @@ SP.classesToOpcodes = function(){
   
   this.split('\n').forEach(line =>{
     line = line.trim()
+    
+    let isClass = false
+    if (/([a-z]\w+)?\.([a-z]\w+)/i.test(line)){
+      line.match(/([a-z]\w+)?\.([a-z]\w+)/ig).forEach(c=>{
+        c = c.match(/([a-z]\w+)?\.([a-z]\w+)/i)
+        
+        if (!isClass){
+          if(c[1] == undefined){
+            if (lastClass){
+              c[1] = lastClass
+            } else {
+              throw new Error("CLASS UNDEFINED:\n>> "+line)
+            }
+          }else {
+            lastClass = c[1]
+          }
+          isClass = Input.isClass(c[1]+'.'+c[2])
+        }
+      })
+    }
+    
+    if (isClass){
     let isNegative = line.startsWith('!');
     if (isNegative) line = line.r('!');
     
@@ -1871,27 +1952,33 @@ SP.classesToOpcodes = function(){
       
       
       data.operador = "FUNC"
-      
+      let iset;
         if(MATCH.IS.test(line)) {
-          const iset = line.match(
-            /\((.+)\)(.+)?==(.+)/
+          iset = line.match(
+            /\((.+)\)(.+)?[=!]=(.+)/
           )
+          if (line.i('!=')){
+            isNegative = true
+          }
           
           data.paramFront = iset[1]
           data.paramRear = iset[3]
           data.operador = "IS"
         }
         else if(MATCH.UPPER.test(line)) {
-          const iset = line.match(
-            /\((.+)\)(.+)?>(.+)/
+          iset = line.match(
+            /\((.+)\)(.+)?[><](.+)/
           )
+          if (line.i('<')){
+            isNegative = true
+          }
           
           data.paramFront = iset[1]
           data.paramRear = iset[3]
           data.operador = "UPPER"
         }
         else if (MATCH.GET.test(line)) {
-          const iset = line.match(
+          iset = line.match(
             /(.+)=(.+)\((.+)\)/
           )
           
@@ -1900,7 +1987,7 @@ SP.classesToOpcodes = function(){
           data.operador = "GET"
         }
         else if(MATCH.SET.test(line)) {
-          const iset = line.match(
+          iset = line.match(
             /\((.+)\)(.+)?=(.+)/
           )
           
@@ -1977,7 +2064,7 @@ SP.classesToOpcodes = function(){
 
       })
     }
-    
+    }
     
     ncode += line + '\n'
   })
@@ -1985,41 +2072,47 @@ SP.classesToOpcodes = function(){
   return ncode
 }
 
-SP.keywordsToOpcodes = function() {
-  let code = this.split('\n')
-  let nCode = ''
+
+SP.keywordsToOpcodes = function(){
+  let nString = ''
   
-  code.forEach(line => {
+  this.split('\n').forEach(line => {
     let isNegative = false
     let nLine = ''
     
     let params = line.dividirCadena()
-    params.forEach((data, pos) => {
+    // SCM_DB
+    params.forEach((param, pos) => {
       if (pos == 0){
-        if (/\!?$/m.test(data))
-        if (line[0] == '!') {
-          line = line.r('!', '')
-          isNegative = true
+        if (/^\!?[a-z]\w+/mi.test(param)){
+          let isNegative = param[0] == '!'
+          let keyword = /^\!?(\w+)/m.exec(param)[1].toLowerCase()
+            
+          if (keyword in SCM_DB2){
+            
+            param = SCM_DB2[keyword].opcode ?? SCM_DB2[keyword].id ?? SCM_DB2[keyword]
+            
+            if (typeof SCM_DB2[keyword] == 'string'){
+              
+            }
+            
+            
+            if (isNegative){
+              param = param.setOpcodeNegative()
+            }
+            
+            param = param +': '
+          }
+          
         }
       }
-      nLine += data +' '
+      nLine += param +' '
     })
 		
-    nCode += nLine + '\n'
+    nString += nLine.trim() + '\n'
   })
-
-						if (SCM_DB2[line]){
-							setOp = SCM_DB2[line]
-						}else{
-							//log(`KEYWORD UNDEFINED: ${line}\nCHANGED TO 0000: nop`)
-							throw new SyntaxError(`keyword undefined\n\tin line ${(1+numLine)} the trigger ${line}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`);
-						}
-
-						if (isNegative){
-							setOp = (
-								parseInt(setOp, 16) + 0b1000000000000000
-							).toString(16)
-						}
+  
+  return nString
 }
 
 SP.dividirCadena = function() {
@@ -2088,13 +2181,12 @@ SP.determineOperations = function(){
   
   h.forEach(s => {
     s = s.trim()
-    if (/^(\!)?(\d+@[a-z]?|[a-z]?\$\w+|[a-z]?&\d+)$/mig.test(s)) {
+    if (/^\!?(\d+@[a-z]?|[a-z]?\$\w+|[a-z]?&\d+)$/mig.test(s)) {
       if (s.i('!')){
         s = s.r('!') +' == 0'
       }else{
         s = s + ' == 1'
       }
-      log(s)
     }
     n += s + '\n'
   })
@@ -2115,12 +2207,16 @@ let Input = {
   isFloat : x => /^[+-]?(\.\d[\d_]*|\d[\d_]*[f\.][\d_]*)$/mi.test(x),
   isNote: x => /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)$/m.test(x),
   isTime: x => /^[+-]?(\d+\.\d+|\.?\d+)(fps|[smh])$/.test(x),
+  isHexInt: x => /^0x[\da-f]+$/im.test(x),
+  isHexFloat: x => /^0x[\da-f]+(\.[\da-f]*)?p[+-]?\d+$/im.test(x),
+  isHex: x => isHexInt(x) ?? isHexFloat(x),
   isModel: x => /^#\w+$/m.test(x),
   isNumber: x => {
     return (Input.isTime(x)
     || Input.isNote(x)
     || Input.isFloat(x)
-    || Input.isInt(x))
+    || Input.isInt(x)
+    || Input.isHex(x))
   },
   isOpcode: x => /^[a-f\d]+:$/mi.test(x),
   isKeyword: x => {
@@ -2183,6 +2279,9 @@ let Input = {
   isLocalVarArray: x => /^\d+@[a-z]?(\(.+,\d+[a-z]?\))?/im.test(x),
   isGlobalVarArray: x => /^[a-z]?\$\w+(\(.+,\d+[a-z]?\))?/im.test(x),
   isAdmaVarArray: x => /^[a-z]?&\w+(\(.+,\d+[a-z]?\))?/im.test(x),
+  isNegate: x => /^\!.+/m.test(x),
+  isNegative: x => /^\-.+/m.test(x),
+  isPositive: x => /^\+.+/m.test(x),
   isVariable : x => {
     return (Input.isLocalVar(x)
     || Input.isGlobalVar(x)
@@ -2228,10 +2327,10 @@ SP.adaptarCodigo = function(){
     .r(/^not /gm, '!')
     .classesToOpcodes()
     .constantsToValue()
-    //.keywordsToOpcodes()
     .transformTypeData()
     .determineOperations()
     .operationsToOpcodes()
+    .keywordsToOpcodes()
     .fixOpcodes()
    return result
 }
@@ -2300,9 +2399,12 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 			  if (/^[=!\-+*\/%\^#@<>&$]+$/mi.test(data)) {
 			       data = ''
 			  }
+			  if (/^[a-z]\w+\.\w+$/mi.test(data)) {
+			       throw new ReferenceError(`is not defined\n>>> ${data}\nat ${Line}`)
+			  }
 			  return data
 			})
-
+			
 			let lineDepurated = []
 			let setOp = ''
 			let isNegative = false
@@ -2902,9 +3004,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 					case 'string':
 						if (element == label){
 							found = true
-							//log(jump)
 							jump = (0xFFFFFFFF - jump + 1).toString(16).padStart(4, 0).toUpperCase()
-							//log(jump)
 						}
 					break;
 				}
@@ -2945,7 +3045,6 @@ String.prototype.toCompileSCM = function(Name_File){
 	let code_hex = this.Translate();
 
 	if (code_hex.length % 2) {
-		log(this.Translate())
 		alert ("E-03: la longitud de la cadena hexadecimal es impar.");
 		return;
 	}
