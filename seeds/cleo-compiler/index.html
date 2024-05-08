@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Enchant IDE</title>
+	<title>Enchanti IDE</title>
 	<link rel="stylesheet" href="./../../css/main.css">
 </head>
 <body style="display: block;">
@@ -27,7 +27,8 @@
     border: 1px solid #4d004b;
   }
 
-  .navbar a {
+  .navbar a, .navbar label {
+    font-size: 1rem;
     float: left;
     display: block;
     color: #dcb8ff;
@@ -70,7 +71,7 @@
     z-index: 1;
   }
 
-  .dropdown-content a {
+  .dropdown-content a, .dropdown-content label {
     float: none;
     color: #dcb8ff;
     padding: 12px 16px;
@@ -79,7 +80,7 @@
     text-align: left;
   }
 
-  .dropdown-content a:hover {
+  .dropdown-content a:hover, .dropdown-content label:hover{
     background-color: #4d004b;
   }
 
@@ -293,7 +294,7 @@ function getLine(){
 		
 		let p = textData.primerPalabra.toLowerCase()
 		let m = textData.mediaPalabra
-		let o = shared_db[shared_db[p]]
+		let o = shared_db[shared_db[p]] ?? shared_db[p]
 		
 		$d('')
 		$o('')
@@ -313,27 +314,33 @@ function getLine(){
 		  
 		  //$d(shared_db[p.r(':')].short_desc)
 		}
-		else if (/^\!?\w{1,4}:$/m.test(p)) {
+		else if (/^\!?[a-f\d]{1,4}:$/mi.test(p)) {
 		  $o(
 		    '▼ '+p.toUpperCase()+':'
-		    +opcode.num_params
+		    +opcode.num_params 
 		    +' ('+(m != p ? m : '')+')'
 		  )
 		  
 		  $d(opcode.short_desc)
 		}
 		else if (opcode){
+		  if (typeof o != 'object'){
+		    o = shared_db[o.toLowerCase()]
+		  }
+		  
 		  $o(
-		    '▼ '+opcode.toUpperCase()+'::'+
-		   +o.num_params
+		    '▼ '+opcode.id+'::'+
+		   +(o.num_params)
 		   +' ('+m+')'
 		 )
 		 
 		 $d(o.short_desc)
+		 
 		}
 		else if (/[\+\-\*\/=%<>!]?[=\-+][@#]?/.test(textData.textLine)) {
 		  $o('operation detected')
 		}
+		
 	}
 }
 
@@ -551,12 +558,17 @@ EP.getTextSelected = function() {
         <i class="fa fa-caret-down"></i>
       </button>
       <div class="dropdown-content">
-        <a href="#" title="script">New</a>
-        <a href="#" title="source">Open...</a>
-        <a href="#" title="within the browser">Save</a>
-        <a href="#" title="as any file">Save as...</a>
-        <a href="#" title="source">Compile</a>
-        <a href="#" title="code">Close</a>
+        <a onclick="$('#HEX').value = `nop
+wait 0
+
+// you magic here
+
+terminate_this_script`;$('#HEX').focus();$('#PREVIEW').innerHTML = '';" title="script">New</a>
+        <label for="file" title="source">Open...</label>
+        <label onclick="let h = localStorage.getItem('code-cached')??'';$('#HEX').value=h;$('#HEX').focus();$('#PREVIEW').innerHTML=h" title="source">Load cache</label>
+        <a onclick="localStorage.setItem('code-cached',$('#HEX').value)" title="within the browser">Save cache</a>
+        <a onclick="saveSource()" title="as any file">Save as...</a>
+        <a onclick="compilerSource()" title="source">Compile</a>
       </div>
     </div> 
     <div class="dropdown">
@@ -564,11 +576,11 @@ EP.getTextSelected = function() {
         <i class="fa fa-caret-down"></i>
       </button>
       <div class="dropdown-content">
-        <a href="#">Undo</a>
-        <a href="#">Redo</a>
-        <a href="#">Copy</a>
-        <a href="#">Cut</a>
-        <a href="#">Paste</a>
+        <a cmd=undo href="#">Undo</a>
+        <a cmd=redo href="#">Redo</a>
+        <a cmd=copy href="#">Copy</a>
+        <a cmd=cut href="#">Cut</a>
+        <a cmd=paste href="#">Paste</a>
       </div>
     </div> 
     <div class="dropdown">
@@ -582,7 +594,7 @@ EP.getTextSelected = function() {
       </div>
     </div>
     </div>
-    <a>Σηςнαητ ✦</a>
+    <a>Σηςнαητι ✦</a>
     <!--<a>ΣηςнαητιSςrιρτ ✦</a>-->
   </div>
 
@@ -628,26 +640,10 @@ input[type=text]{
 <div id="editor-body">
   <pre id="editor-counterLine" class="m-0 r-0 p-1"></pre>
 	<textarea id="HEX" class="w-100 m-0 r-0 p-1 pl-5" placeholder="WIZARD, CAST THY SPELL!
-	ᚹᛁᛉᚨᚱᛞ, ᚲᚨᛊᛏ ᚦᚤ ᛊᛈᛖᛚᛚ!" autocomplete="off" spellcheck="false">
-nop
-while true
-wait 12fps
-x, y, z = actor.getposition(_player)
-
-if Widget.IsPressed(62)
-then crateActor()
-end
-
-end
-
-:crateActor
-h = Actor.CreateRandom(x, y, z)
-return
-
-{ Syntax based on SB4 and JS 
+	ᚹᛁᛉᚨᚱᛞ, ᚲᚨᛊᛏ ᚦᚤ ᛊᛈᛖᛚᛚ!" autocomplete="off" spellcheck="false">{ Syntax based on SB4 and JS }
 0000: this_is_a_NOP
 $misc != 0xff ? 7@ = !7@ : A = B || 0b1000
-X = 3@ == 5_5 ? false : undefined
+X = 3@+1 == 5_5 ? false : undefined
 function(2@(3@++,123), "test\t#1 <=")
 0@ = Char.Create(PedType.Gang1, #FAM1, .0, 0f, 0.0)
 .SetHeading(0@ 1.2e-5)
@@ -1039,11 +1035,20 @@ You have all the SB expressions and one extra.
 0@++         -->  000A: 0@ += 1
 0@ <> 1@     -->  803A: 0@ != 1@
 0@ = 1@      -->  0085: 0@ = 1@
-0@ = 1@ + 2@ -->  0A8E: 0@ = 1@ + 2@
+0@ = 1@ + 2@ -->  0A8E: 0@ = 1@ + 2@ // int
 0@ =# 1@     -->  0092: 0@ = int_to_float 1@
 0@ =& 1@     -->  0AC7: 0@ = var 1@ pointer
 0@ +=@ 1@    -->  007B: 0@ += delta_time * 1@
 0@ &= 1@     -->  0B17: 0@ &= bit 1@
+</pre>
+the compiler remembers the data type of each manually assigned variable, so you don't have to worry about the opcode used.<br>
+<br>
+you can also force a change of operation, adding a subfix (I or F) in the variable
+<pre>
+0@f++        -->  XXXX: 0@ += 1.0
+0@f <> 1@    -->  XXXX: 0@ != 1@
+0@ = 1@f     -->  XXXX: 0@ = 1@
+0@ =# 1@f    -->  XXXX: 0@ = float_to_int 1@
 </pre>
 if only one variable is written in a line, it is passed as a condition.
 <pre>
@@ -1055,18 +1060,25 @@ You can also assign a negated value to the variables, or see is truthy.
 0@ = !1@     -->  1@ ? 0@ = false : 0@ = true
 0@ = 1@b     -->  1@ ? 0@ = true : 0@ = false
 </pre>
-As long as you write an operation within a parenthesis, you will be able to save lines.
+Fixed and temporary assignment operators are also available anywhere in the code.
 <pre>
-Car.Exist(0@(++1@,10))
-// before
+Car.Exist(0@(++1@,10i))
+// is compiled before the line
 1@ += 1
-Car.Exist(0@(1@,10))
+Car.Exist(0@(1@,10i))
 
 Actor.Angle = 1@f++
-// after
+// is compiled after the line
 Actor.Angle = 1@
 1@ += 1.0
+
+wait 1@+30fps
+// is compiled before and after the line
+1@ += 30fps
+wait 1@
+1@ -= 30fps
 </pre>
+This syntax only discriminates spaces and commas.
 </details>
 
 - Constants and enumerations.<br>
@@ -1405,6 +1417,9 @@ $node.onclick = () => {
 $node.oninput = hl
 $node.onmousemove = getLine
 $node.onkeyup = (event) =>{
+  if (event.key === '(') {
+    document.execCommand("insertText",false,')')
+  }
 	try {
 	//console.log(event)
     //if (event.code == 'Enter' 
@@ -1560,7 +1575,7 @@ $('#keys-mobile key', (e, i)=> {
 
 let clipPaste = ""
 
-$("key[cmd]", e => {
+$("[cmd]", e => {
   let x = e.gAttr("cmd")
   e.title=x
   if (x == "paste") {
@@ -1646,6 +1661,48 @@ $('details').forEach((elem) => {
 });
 
 </script>
-,
+<script>
+  if (typeof navigator.serviceWorker !== 'undefined') {
+    navigator.serviceWorker.register('sw.js')
+  }
+  
+  const CACHE_NAME = 'cool-cache';
+
+// Add whichever assets you want to pre-cache here:
+const PRECACHE_ASSETS = [
+    '/assets/',
+    '/src/'
+]
+
+// Listener for the install event - pre-caches our assets list on service worker install.
+self.addEventListener('install', event => {
+    event.waitUntil((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        cache.addAll(PRECACHE_ASSETS);
+    })());
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(self.clients.claim());
+});
+self.addEventListener('fetch', event => {
+  event.respondWith(async () => {
+      const cache = await caches.open(CACHE_NAME);
+
+      // match the request to our cache
+      const cachedResponse = await cache.match(event.request);
+
+      // check if we got a valid response
+      if (cachedResponse !== undefined) {
+          // Cache hit, return the resource
+          return cachedResponse;
+      } else {
+        // Otherwise, go to the network
+          return fetch(event.request)
+      };
+  });
+});
+
+</script>
 </body>
 </html>
