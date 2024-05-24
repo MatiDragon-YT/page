@@ -5,8 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Enchanti IDE</title>
 	<link rel="stylesheet" href="./../../css/main.css">
- <link rel="manifest" href="/manifest.json">
-
+	<link rel="manifest" href="./manifest.json">
 </head>
 <body style="display: block;">
 <style>
@@ -30,7 +29,7 @@
   }
 
   .navbar a, .navbar label {
-    font-size: 1rem;
+    font-size: .7rem;
     float: left;
     display: block;
     color: #dcb8ff;
@@ -45,11 +44,11 @@
   }
 
   .dropdown .dropbtn {
-    font-size: 16px;    
+    font-size: .7rem;    
     border: none;
     outline: none;
     color: white;
-    padding: 14px 16px;
+    padding: .9rem 1rem;
     background-color: inherit;
     font-family: inherit;
     margin: 0;
@@ -68,8 +67,8 @@
     display: none;
     position: absolute;
     background-color: #360047;
-    min-width: 160px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    min-width: 10rem;
+    box-shadow: 0 .5rem 1rem 0 rgba(0,0,0,0.33);
     z-index: 1;
   }
 
@@ -90,6 +89,12 @@
     display: block;
   }
   ::-webkit-scrollbar-thumb { background: #00e676}
+  .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+        }
 </style>
 <!--
 <div id="autocomplete" style="
@@ -110,7 +115,7 @@
 .contador {
     counter-increment: listing;
     color: grey;
-    width: 3.5em;
+    width: 3em;
     position: relative;
     display: inline-block;
 }
@@ -118,7 +123,7 @@
     content: counter(listing, decimal-leading-zero);
 }
 #state.loading {
-    outline: #ff5252 solid 1px !important;
+    outline: #ffeb3b solid 1px !important;
 }
 #version_sbl, #state{
     width: 5rem;
@@ -286,7 +291,7 @@ function getLine(){
 			textSelected, primerPalabra, mediaPalabra */
 
 	if (textData.inSelection){
-		$('#line').innerText = textData.charsSelected
+		$('#line').innerText = '['+textData.charsSelected+']'
 		$('#opcode').innerText = ''
 	}else{
 		$('#line').innerText = textData.lineaCursor+':'+textData.columnaCursor
@@ -596,7 +601,7 @@ terminate_this_script`;$('#HEX').focus();$('#PREVIEW').innerHTML = '';" title="s
       </div>
     </div>
     </div>
-    <a>Σηςнαητι ✦</a>
+    <a id='name-app' href='index.html'>Σηςнαητι ✦</a>
     <!--<a>ΣηςнαητιSςrιρτ ✦</a>-->
   </div>
 
@@ -609,7 +614,7 @@ terminate_this_script`;$('#HEX').focus();$('#PREVIEW').innerHTML = '';" title="s
 }
 button, label {
 	border: none;
-	font-size: 1.3rem;
+	font-size: .7rem;
 	background: none;
 	color: #fff;
 }
@@ -625,13 +630,13 @@ input[type=text]{
 <div class="d-flex between subheader">
  <div>
   <input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="EnchantiScript.csi">
-		<label for="file" title=Cargar> ⇈️ </label>
 		<input id='file' type='file' accept='.txt,.ini' class="d-none">
 		<button onclick="saveSource()" title=Descargar> ⇊️ </button>
 		<button onclick="compilerSource()" title=Compilar> ⇶️ </button>
  </div>
- <div id="change-view" class="pr-2 green size-4">
-   <btn class="bg-none d-sm-none" style="font-size: 1.5rem" onclick="
+ <div id="change-view" class="pr-2 size-4">
+  <span onclick="localStorage.setItem('code-cached',$('#HEX').value)" tip='save code at cache' id='state' class="loading yellow" style="font-size: 1.5rem">ᛟ</span>
+   <btn tip='compiled preview' class="bg-none d-sm-none green" style="font-size: 1.5rem" onclick="
    $('#HEX').toggle();
    $('#PREVIEW').toggle();
    $('#OUTHEX').toggle();
@@ -669,15 +674,73 @@ cleo_return 0 {}</textarea>
 	<pre type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100 m-0 r-0 pr-1 gray d-none"></pre>
 </div>
 
-<div id="error" placeholder="hex's output" name="cleaned_hex" class="w-100 p-1" style="
-    background: #290000;
-    color: #ff8080;
-    white-space: pre-wrap;
-    display: none;"></div>
+<div style='background: #2c003e'>
+<div id="table-command" class="d-flex column header bottom-nav">
+   <div id="error" placeholder="hex's output" name="cleaned_hex" class="w-100 p-1" style="
+      background: #290000;
+      color: #ff8080;
+      white-space: pre-wrap;
+      display: none;"></div>
+<footer id="data-line-config" class="d-flex between py-1 w-100 header">
+<div class="d-flex between g-1">
+  <span id='line'>0:0</span>
+<span id='opcode' onclick="$('#short_desc').toggle()"></span>
+</div>
+<div class="d-flex">
+<span id='version_sbl' class="d-none d-md-block">SBL</span>
+<select id='mode' class="ml-1 d-none" style="border: none;" disabled>
+  <option value="gta3">GTA III</option>
+  <option value="lcs">GTA LCS</option>
+  <option value="sa" selected>SA Cross-Plataform</option>
+  <option value="vc">GTA VC</option>
+  <option value="vcs">GTA VCS</option>
+  <option value="gta3_mobile">III Mobile</option>
+  <option value="sa_mobile">SA Mobile</option>
+  <option value="vc_mobile">VC Mobile</option>
+</select>
+</div>
+</footer>
+<footer id="short_desc" class="py-1 d-none"></footer>
+
+<footer class="d-flex p-2 pb-0 w-100 g-3 d-sm-none subheader" id="keys-mobile">
+<key>→|</key>
+<key>&</key>
+<key>@</key>
+<key>$</key>
+<key>#</key>
+<key>=</key>
+<key>_</key>
+<key>"</key>
+<key>'</key>
+<key>(</key>
+<key>{</key>
+<key>[</key>
+</footer>
+<footer class="d-flex p-2 pt-0 w-100 g-3 d-sm-none subheader" id="keys-actions">
+<key key="up">⇡</key>
+<key key="down">⇣</key>
+<key key="left">⇠</key>
+<key key="right">⇢</key>
+<key cmd="undo">↶</key>
+<key cmd="redo">↷</key>
+<key cmd="copy">⎘</key>
+<key cmd="cut">✄</key>
+<key cmd="paste">⎗</key>
+<key key="all">☰</key>
+</footer>
+
+<div class="d-none">
+<input type="search" value="" placeholder="actor, car, object...." id="search" class="w-100">
+<pre id="result-search"class="m-0 r-0">
+Actor.create(655)
+</pre>
+</div>
+</div>
+
     
 <style>
 #editor-body {
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 9/13;
   overflow: auto;
   display: flex;
 }
@@ -698,14 +761,14 @@ cleo_return 0 {}</textarea>
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
   line-height: 1.5em;
   text-wrap: wrap;
-  aspect-ratio:16/9;
+  aspect-ratio:9/13;
 }
 #PREVIEW {
 	transition: all 0.2s ease 0s;
   white-space: pre;
   text-wrap: wrap;
   z-index: -99;
-  aspect-ratio:16/9;
+  aspect-ratio:9/13;
   color: #dcb8ff;
   background: #200029;
 }
@@ -716,7 +779,7 @@ cleo_return 0 {}</textarea>
 #PREVIEW,
 #PREVIEW *,
 #short_desc {
-  font-size: 0.8rem!important;
+  font-size: 0.7rem!important;
   tab-size: 2;
 }
 #FILENAME, {
@@ -753,64 +816,7 @@ details[open]::after{
 	margin: 15px 0;
 }
 </style>
-<div style='background: #2c003e'>
-<div id="table-command" class="d-flex column header">
-<footer id="data-line-config" class="d-flex between py-1 w-100 header">
-<div class="d-flex between g-3">
-<span id='opcode' onclick="$('#short_desc').toggle()"></span>
-</div>
-<div class="d-flex">
-<span id='line'>0:0</span>
-<span id='state' class="loading">Wait...</span>
-<span id='version_sbl' class="d-none d-md-block">SBL</span>
-<select id='mode' class="ml-1" style="border: none;" disabled>
-  <option value="gta3">GTA III</option>
-  <option value="lcs">GTA LCS</option>
-  <option value="sa" selected>SA Cross-Plataform</option>
-  <option value="vc">GTA VC</option>
-  <option value="vcs">GTA VCS</option>
-  <option value="gta3_mobile">III Mobile</option>
-  <option value="sa_mobile">SA Mobile</option>
-  <option value="vc_mobile">VC Mobile</option>
-</select>
-</div>
-</footer>
-<footer id="short_desc" class="py-1 d-none"></footer>
 
-<footer class="d-flex h4* p-2 pb-0 w-100 g-3 d-sm-none subheader" id="keys-mobile">
-<key>→|</key>
-<key>&</key>
-<key>@</key>
-<key>$</key>
-<key>#</key>
-<key>=</key>
-<key>_</key>
-<key>""</key>
-<key>''</key>
-<key>()</key>
-<key>{}</key>
-<key>[]</key>
-</footer>
-<footer class="d-flex h1* p-2 pt-0 w-100 g-3 d-sm-none subheader" id="keys-actions">
-<key key="up">⇡</key>
-<key key="down">⇣</key>
-<key key="left">⇠</key>
-<key key="right">⇢</key>
-<key cmd="undo">↶</key>
-<key cmd="redo">↷</key>
-<key cmd="copy">⎘</key>
-<key cmd="cut">✄</key>
-<key cmd="paste">⎗</key>
-<key key="all">☰</key>
-</footer>
-
-<div class="d-none">
-<input type="search" value="" placeholder="actor, car, object...." id="search" class="w-100">
-<pre id="result-search"class="m-0 r-0">
-Actor.create(655)
-</pre>
-</div>
-</div>
 
 	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
 
@@ -821,7 +827,7 @@ Bugs found:<br>
 IDE does not load <a onclick="
   localStorage.clear()
    window.location.href = window.location.href
-  ">clicking here</a>, wait 3s and refresh page.<br>
+  ">clicking here</a>, wait 3s and <a href=index.html>refresh page</a>.<br>
 Array support is limited to Local variables @(@,n).<br>
 Does not detect if a parameter has not been completed.
 </blockquote>
@@ -1032,12 +1038,14 @@ You can begin or end a number with a period (.) or end it with `f`. Scientific n
 
 <details>
 <summary>Expressions operative</summary>
+<h4>Sanny</h4>
 You have all the SB expressions and one extra.
 <pre>
 0@++         -->  000A: 0@ += 1
 0@ <> 1@     -->  803A: 0@ != 1@
 0@ = 1@      -->  0085: 0@ = 1@
 0@ = 1@ + 2@ -->  0A8E: 0@ = 1@ + 2@ // int
+0@f = 1@ + 2@-->  XXXX: 0@ = 1@ + 2@ // float
 0@ =# 1@     -->  0092: 0@ = int_to_float 1@
 0@ =& 1@     -->  0AC7: 0@ = var 1@ pointer
 0@ +=@ 1@    -->  007B: 0@ += delta_time * 1@
@@ -1052,6 +1060,7 @@ you can also force a change of operation, adding a subfix (I or F) in the variab
 0@ = 1@f     -->  XXXX: 0@ = 1@
 0@ =# 1@f    -->  XXXX: 0@ = float_to_int 1@
 </pre>
+<h4>Enchanti</h4>
 if only one variable is written in a line, it is passed as a condition.
 <pre>
 0@           -->  0039: 0@ == true
@@ -1059,8 +1068,9 @@ if only one variable is written in a line, it is passed as a condition.
 </pre>
 You can also assign a negated value to the variables, or see is truthy.
 <pre>
-0@ = !1@     -->  1@ ? 0@ = false : 0@ = true
-0@ = 1@b     -->  1@ ? 0@ = true : 0@ = false
+0@ = !1@     -->  1@ == 1 ? 0@ = 0 : 0@ = 1
+0@ = !!1@    -->  1@ == 0 ? 0@ = 1 : 0@ = 0
+0@ = 1@t     -->  1@ != 0 ? 0@ = 1 : 0@ = 0
 </pre>
 Fixed and temporary assignment operators are also available anywhere in the code.
 <pre>
@@ -1069,10 +1079,14 @@ Car.Exist(0@(++1@,10i))
 1@ += 1
 Car.Exist(0@(1@,10i))
 
+---
+
 Actor.Angle = 1@f++
 // is compiled after the line
 Actor.Angle = 1@
 1@ += 1.0
+
+---
 
 wait 1@+30fps
 // is compiled before and after the line
@@ -1080,7 +1094,16 @@ wait 1@+30fps
 wait 1@
 1@ -= 30fps
 </pre>
-This syntax only discriminates spaces and commas.
+This syntax only discriminates spaces and commas.<br>
+<br>
+And cascading operations can also be performed in this manner
+<pre>
+1@ = 3 * 5 + 6
+// is compiled at cascade in the line
+1@ = 3
+1@ *= 5
+1@ += 6
+</pre>
 </details>
 
 - Constants and enumerations.<br>
@@ -1099,8 +1122,14 @@ Author: MatiDragon ; Contributors: Seemann, OrionSR, Miran.
 <script src="js/css.min.js"></script>
 <script type="module" src="compiler.js"></script>
 <script>
+let h = localStorage.getItem('code-cached')??''
+$('#HEX').value=h
+$('#HEX').focus()
+$('#PREVIEW').innerHTML=h
+h=void(0)
+
 function saveSource(){
-  let a = window.document.createElement('a');
+  let a = document.createElement('a');
   
   a.href = window.URL.createObjectURL(new Blob([$('#HEX').value], { type: 'text/plain' }));
   a.download = $('#FILENAME').value.r(/\.[^\.]+$/m, '.txt');
@@ -1492,22 +1521,22 @@ function hl(){
 	//Directivas
 	.r(/(\{\$[^{}\n]+\})/gm, enter.directives)
 	//Cadenas de texto
-	.r(/"((?:\\.|[^"\\\n])+)(")?/gmi, match => {
+	.r(/"((?:\\|[^"\\\n])+)(")?/gmi, match => {
 	  match = match.rA("'", "’")
-	  .r(/\\(x[\d\w]+|t|n|'|"|`)/g, "<span class=charScape>\\$1</span>")
+	  .r(/\\(x[a-f\d]{1,2}|t|n|'|"|`)/gi, "<span class=charScape>\\$1</span>")
 	  return '<span class=strings>'+match+'</span>'
   })
 	.rA('\\"</span>', '\\"')
 	.rA('\\"<span>', '\\"')
-	.r(/'((?:\\.|[^'\\\n])+)(')?/gmi, match => {
+	.r(/'((?:\\|[^'\\\n])+)(')?/gmi, match => {
 	  match = match.rA('"', '”')
-	  .r(/\\(x[\d\w]+|t|n|'|"|`)/g, "<span class=charScape>\\$1</span>")
+	  .r(/\\(x[\da-f]{1,2}|t|n|'|"|`)/gi, "<span class=charScape>\\$1</span>")
 	  return "<span class=strings>"+match+"</span>"
   })
 	.rA("\\'</span>", "\\'")
 	.rA("\\'<span>", "\\'")
-	.r(/`((?:\\.|[^`\\])*)(`)?/gmi, match => {
-	  match = match.r(/\\(x[\d\w]+|t|n|'|"|`)/g, "<span class=charScape>\\$1</span>")
+	.r(/`((?:\\|[^`\\])*)(`)?/gmi, match => {
+	  match = match.r(/\\(x[\da-f]{1,2}|t|n|'|"|`)/g, "<span class=charScape>\\$1</span>")
 	  return "<span class=strings>"+match+"</span>"
   })
 	.rA("\\`</span>", "\\`")
@@ -1661,19 +1690,20 @@ $('details').forEach((elem) => {
     })
   });
 });
-
 </script>
 <script>
   if (typeof navigator.serviceWorker !== 'undefined') {
     navigator.serviceWorker.register('sw.js')
+    .then(() => { console.log('Service Worker Registered'); });
   }
   
   const CACHE_NAME = 'cool-cache';
 
 // Add whichever assets you want to pre-cache here:
 const PRECACHE_ASSETS = [
-    '/assets/',
-    '/src/'
+    '/js/',
+    '/data/',
+    '../../css/'
 ]
 
 // Listener for the install event - pre-caches our assets list on service worker install.
@@ -1705,6 +1735,35 @@ self.addEventListener('fetch', event => {
   });
 });
 
+
+
+let deferredPrompt;
+const addBtn = document.querySelector('#name-app');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent Chrome 67 and earlier from automatically showing the prompt
+  e.preventDefault();
+  // Stash the event so it can be triggered later.
+  deferredPrompt = e;
+  // Update UI to notify the user they can add to home screen
+  addBtn.style.display = 'block';
+
+  addBtn.addEventListener('click', () => {
+    // hide our user interface that shows our A2HS button
+    addBtn.style.display = 'none';
+    // Show the prompt
+    deferredPrompt.prompt();
+    // Wait for the user to respond to the prompt
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('User accepted the A2HS prompt');
+      } else {
+        console.log('User dismissed the A2HS prompt');
+      }
+      deferredPrompt = null;
+    });
+  });
+});
 </script>
 </body>
 </html>
