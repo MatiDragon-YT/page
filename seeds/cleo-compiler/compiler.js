@@ -1,12 +1,13 @@
 'use strict';
+import { log, sleep, LS } from './js/utils.js'
+import { fetchPercentece } from './js/dom.js'
+import { STRING } from './js/string.js'
+//import TRANSPILE from './js/translateData.js'
 // Author: MatiDragon.
 // Contributors: Seemann, OrionSR, Miran.
 
-const DEBUG = true
 
-const 	log = x => DEBUG ? console.log(x) : 0,
-		sleep = ms => new Promise(resolve => setTimeout(resolve, ms)),
-
+const
 		NP = Number.prototype,
 		SP = String.prototype,
 		AP = Array.prototype;
@@ -17,45 +18,13 @@ function IsInRange(VAR, MIN, MAX){
 	return (VAR >= MIN && VAR <= MAX) ? 1 : 0;
 }
 
-const LS = {
-	t : localStorage,
-	get : (x) => LS.t.getItem(x),
-	set : (x,y) => LS.t.setItem(x, y)
-}
+SP.r = STRING.r
+SP.rA = STRING.rA
+SP.toHex = STRING.toHex
+SP.toBigEndian = STRING.toBigEndian
 
-/** Shotcun of String.replace()
-*/
-SP.r = function(text, _text, _flags){
-	_text = _text || ''
-	_flags = _flags || ''
-	return this.replace(text, _text, _flags)
-}
 SP.i = SP.includes
 AP.i = AP.includes
-
-/** Polifill and shotcun of String.replaceAll()
-*/
-SP.rA = function(text, _text){
-	var temp = this
-	_text = _text || ''
-
-	if(temp.indexOf(text, 0) !== -1){
-		temp = temp
-		.r(text, _text)
-		.rA(text, _text)
-	}
-	
-	return temp
-}
-
-SP.toBigEndian = function(){
-	let newResult = ''
-	let result = this
-		.split(/([a-f0-9]{2})/i)
-		.clear()
-		.forEach(e => newResult = e + newResult)
-	return newResult
-}
 
 SP.setOpcodeNegative = function() {
   // Convierte el input en una cadena HEX entendible
@@ -74,44 +43,6 @@ SP.setOpcodePositive = function() {
     +('0x' + (this + "")) - (+'0x8000')
   ).toString(16)
 }
-
-function noteToHex(num) {
-  // Primero, convertimos el número en notación científica a un número flotante
-  const floatNum = parseFloat(num);
-  
-  // Luego, convertimos ese número a su representación binaria de 32 bits
-  const binario32Bits = floatNum.toString(2);
-  
-  // Finalmente, convertimos el binario a hexadecimal
-  let hexadecimal = parseInt(binario32Bits, 2).toString(16);
-  
-  // Verificamos si la longitud del hexadecimal supera los 8 caracteres
-  if (hexadecimal.length > 8) {
-    throw new SyntaxError('El número es demasiado alto, supera la longitud máxima de 4 bytes.');
-  }
-  
-  // Aseguramos que la salida sea de 8 caracteres rellenando con ceros si es necesario
-  hexadecimal = hexadecimal.padStart(8, '0');
-  
-  // Devolvemos el string hexadecimal en mayúsculas
-  return hexadecimal.toUpperCase().toBigEndian()
-}
-
-/*
-// Ejemplo de uso:
-const numCientifico = "1.23e+5";
-const hex32Bits = cientificaAHexadecimal(numCientifico);
-console.log(hex32Bits); // Salida esperada para el ejemplo
-*/
-function isNoteCientific(str){
-  const regExp = /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)$/;
-  return regExp.test(str+"");
-};
-/*
-"2.3e4")); // true
-"123")); // false
-"-4.5E-10")); // true
-*/
 
 /** Convert any number to HEX with BIG-ENDIAN
 */
@@ -180,9 +111,9 @@ const TYPE_CODE = {
 //
 //               0001: wait 0
 //              /            \
-//            0100     04     00
-//            \__/     \/     \/
-//           opcode   type   value
+//           0100     04      00
+//           \__/     \/      \/
+//         opcode  type_code  value
 //
 // Todos los numeros se tienen que escribir en
 //   big-endian, esto significa que el orden del los
@@ -239,64 +170,30 @@ const ELEMENT_TYPE = {
 lvar_array_string8  lenght  string8     string
 
 
-   op  @            l  $  values
-  D206 13 0100 0200 7B 03 0E 04 74 65 73 74
-  0600 08 0100 2803 7B 80 04 01
-  0700 08 0100 2803 7B 81 06 00 00 80 3F
-  AA05 0D 0100 2803 7B 82 09 74 65 73 74 00 00 00 00
-  D206 13 0100 2803 7B 83 0E 04 74 65 73 74
-       $               $
-  0400 07 2C03 0200 7B 00 04 01
-  0500 07 2C03 0200 7B 01 06 00 00 80 3F
-  A905 0C 2C03 0200 7B 02 09 74 65 73 74 00 00 00 00
-  D106 12 2C03 0200 7B 03 0E 04 74 65 73 74
-       $               @
-  0400 07 2C03 2803 7B 80 04 01
-  0500 07 2C03 2803 7B 81 06 00 00 80 3F
-  A905 0C 2C03 2803 7B 82 09 74 65 73 74 00 00 00 00
-  D106 12 2C03 2803 7B 83 0E 04 74 65 73 74 
+         06D2: 1@s(2@, 123s) = "test"
+    ____/   ___/  \__  | \     \_____________
+    D206 13 0100 0200 7B 03 0E 04 74 65 73 74
+    \__/  | \__/ \__/  |  |  \            |
+   opcode |  id   id   |lstr16\           |
+lvar_array_string16 lenght  string16    string
+
+
+     op  @            l  $  values
+    0600 08 0100 2803 7B 80 04 01
+    0700 08 0100 2803 7B 81 06 00 00 80 3F
+    AA05 0D 0100 2803 7B 82 09 74 65 73 74 00 00 00 00
+    D206 13 0100 2803 7B 83 0E 04 74 65 73 74
+         $               $
+    0400 07 2C03 0200 7B 00 04 01
+    0500 07 2C03 0200 7B 01 06 00 00 80 3F
+    A905 0C 2C03 0200 7B 02 09 74 65 73 74 00 00 00 00
+    D106 12 2C03 0200 7B 03 0E 04 74 65 73 74
+         $               @
+    0400 07 2C03 2803 7B 80 04 01
+    0500 07 2C03 2803 7B 81 06 00 00 80 3F
+    A905 0C 2C03 2803 7B 82 09 74 65 73 74 00 00 00 00
+    D106 12 2C03 2803 7B 83 0E 04 74 65 73 74 
 */
-
-
-function fetchPercentece(response, background){
-  const contentLength = response.headers.get('Content-Length');
-  // Gets length in bytes (must be provided by server)
-  let loaded = 0;
-  // Will be used to track loading
-  return new Response(
-	new ReadableStream({
-	// Creates new readable stream on the new response object
-	  start(controller) {
-	  // Controller has methods on that allow the new stream to be constructed
-		const reader = response.body.getReader();
-		// Creates a new reader to read the body of the fetched resources
-		read();
-		// Fires function below that starts reading
-		function read() {
-		  reader.read()
-		  .then((progressEvent) => {
-		  // Starts reading, when there is progress this function will fire
-			if (progressEvent.done) {
-			  controller.close();
-			  return; 
-			  // Will finish constructing new stream if reading fetched of resource is complete
-			}
-			loaded += progressEvent.value.byteLength;
-			// Increase value of 'loaded' by latest reading of fetched resource
-			const percentace = Math.round((loaded/contentLength)/120*1000)+'%'
-			$('#state.loading').style = `background: linear-gradient(90deg, ${background} ${percentace}, transparent ${percentace});`
-			//log(percentace)
-			// Displays progress via console log as %
-			controller.enqueue(progressEvent.value);
-			// Add newly read data to the new readable stream
-			read();
-			// Runs function again to continue reading and creating new stream
-		  })
-		}
-	  }
-	})
-  );
-}
 
 SP.enumsGenerator = function() {
     // Eliminamos los saltos de línea y espacios innecesarios
@@ -501,7 +398,6 @@ CUSTOM_CLASSES
       }
     }
   })
-//log(classes)
 
 let CUSTOM_VARIABLES = (await LSget(
   './data/CustomVariables.ini',
@@ -516,7 +412,6 @@ CUSTOM_VARIABLES.forEach((l,i)=>{
 	CUSTOM_VARIABLES[i] = l.r(/(.+)=(.+)/,'$2=$1').toUpperCase().split('=')
 })
 CUSTOM_VARIABLES = Object.fromEntries(CUSTOM_VARIABLES)
-//log(VARIABLE_ID_AVALIABLE)
 
 let CONSTANTS = (await LSget(
   './data/constants.txt',
@@ -533,7 +428,6 @@ CONSTANTS = CONSTANTS
 	.clear()
 CONSTANTS.forEach((e,i) => CONSTANTS[i] = e.split('='))
 CONSTANTS = Object.fromEntries(CONSTANTS)
-//log(CONSTANTS)
 
 let MODELS = (await LSget(
   './data/models.ide',
@@ -589,7 +483,7 @@ async function dbSBL2(game){
 	})
 	
 	CUSTOM_KEYWORDS.forEach(keyword => {
-	  //log(keyword)
+	  
 	  SCM_DB2[keyword.key] = SCM_DB2[keyword.opcode] 
 	})
 	
@@ -607,10 +501,10 @@ async function dbSBL(game){
 
   DATA_DB = JSON.parse(DATA_DB)
   
-  //log(JSON.stringify(DATA_DB))
+  
   
 	DATA_DB.extensions.forEach(extension =>{
-		//log(extension.name)
+		
 		extension.commands.forEach((command, c) =>{
 		  let omitir = false
 			
@@ -653,10 +547,10 @@ $('#version_sbl').innerHTML = 'SBL ' + version
 await dbSBL(game)
 await dbSBL2(game)
 
-//log(SCM_DB2)
+
 
 //await sleep(1000)
-//log(SCM_DB)
+
 
 /*
 const REG = {
@@ -681,25 +575,9 @@ SP.toUnicode = function() {
   }).join("-");
 }
 
-SP.binToDec = function() {
-	let input = this.r('0b','')
-  let sum = 0
-  for (let i = 0; i < input.length; i++) {
-	  sum += +input[i] * 2 ** (input.length - 1 - i)
-  }
-  return sum
-}
-
 SP.hexToDec = function(){
-	return parseInt(this, 16).toString()
+	return +('0x'+this)
 }
-
-const SYNTAX = {
-  FOR: /^FOR (.+)=(.+) (todown|to) (.+)STEP(.+)/im,
-  WHILE: /^WHILE (.+)/im,
-  REPEAT: /^UNTIL (.+)/im,
-  IF: /^IF (.+)/im
-};
 
 SP.parseHigthLevelIfs = function() {
     const lineas = this.split('\n');
@@ -761,6 +639,13 @@ SP.parseHigthLevelLoops = function(){
     // dividimoa el codigo, para analizarlo por lineas.
     const lines = this.split('\n');
     let outputText = ''
+    
+    const SYNTAX = {
+      FOR: /^FOR (.+)=(.+) (todown|to) (.+)STEP(.+)/im,
+      WHILE: /^WHILE (.+)/im,
+      REPEAT: /^UNTIL (.+)/im,
+      IF: /^IF (.+)/im
+    };
     
     lines.forEach(line => {
       line = line.trim()
@@ -983,7 +868,7 @@ SP.addBreaksToLoops = function(){
         result += line+'\n'
       }
     }
-    //log(result)
+    
     return result
 }
 
@@ -1017,7 +902,7 @@ SP.addNumbersToIfs = function() {
 	  }
 	})
 	
-	//log(nLineas)
+	
   lineas = nLineas.split('\n')
   
 	let real = 0
@@ -1058,7 +943,7 @@ SP.addNumbersToIfs = function() {
 		  if(linea != '') {
 				real++;
 		  }
-		  //log({real, multiCondicion})
+		  
 		}
 	}
 	
@@ -1082,7 +967,7 @@ SP.addNumbersToIfs = function() {
 		counter++
 	}
 	
-	//log(lineas.join('\n'))
+	
 	
 	return lineas.join('\n');
 }
@@ -1156,10 +1041,21 @@ function encontrarTemporales(texto){
     return texto.match(new RegExp(patronTemp.source, 'ig'))
 }
 
+let CLEO_FUNCTIONS
+
 SP.preProcesar = function() {
+  CLEO_FUNCTIONS = {
+    MATH : {
+      INT_INT : false,
+      FLOAT_FLOAT : false,
+      INVERT_BOOL : false,
+      TO_BOOL : false,
+    }
+  }
   let nString = ''
   
   this.formatearScript().split('\n').forEach(linea =>{
+    linea = linea.trim()
     let lineaAnterior = ""
     let lineaSiguiente = ""
     
@@ -1186,7 +1082,10 @@ SP.preProcesar = function() {
         
         linea = lineaAnterior + linea +'\n'+ lineaSiguiente +'\n'
       }
-      else if(patron3.test(linea)){
+      else if(patron3.test(linea)
+        && !/["'`]/.test(linea)
+        && /\(|\)/.test(linea)
+      ){
         let temporales = encontrarTemporales(linea)
         
         if (!temporales){
@@ -1211,10 +1110,31 @@ SP.preProcesar = function() {
       }
     }
     
+    if (/^\d+ == \d+$/im.test(linea)){
+      CLEO_FUNCTIONS.MATH.INT_INT = true
+    }
+    if (/^\d+\.\d+ == \d+\.\d+$/mi.test(linea)){
+      CLEO_FUNCTIONS.MATH.FLOAT_FLOAT = true
+    }
+    
     nString += linea.trim() + '\n'
   })
   
   nString = nString
+    .r(/\btoHex\(([^)(]+)\)(\.offset\((\d+)\))?/gi, (...input) => {
+      let str = input[1] || ''
+      let offset = +input[3] ?? 0
+      
+      if (str.length > 4){
+        throw new RangeError('Max 4 Characters')
+      }
+      if (str.length + offset > 4){
+        throw new RangeError('string + offset, must NOT add up to more than 4 characters.')
+      }
+      
+      return +('0x'+str.toHex(offset))
+    })
+    
     .r(/^forEach (.+) => (.+)$/gim, input => {
       input = input.r(/^forEach\s*/im,'')
       
@@ -1269,23 +1189,52 @@ SP.preProcesar = function() {
   	    m[1].determineOperations()+
   	    '\nend\n'
   	    
-  	  //log(r)
+  	  
   	  return r
   	})
   	.r(/^@(\w+)$/gm, 'goto @$1')
+  	
+  	
+    .r(/^\w+ = \d+ [\*\/\+\-] \d+( [\*\/\+\-] \d+)+$/gim,  input =>{
+      let i = input.split(' ')
+      let code = i[0]+' '+i[1]+' '+i[2]
+      let n = 0
+      
+      i.forEach((e, c) => {
+        if (c > 2){
+          n = !n
+        }
+        if (n){
+          code+='\n'+i[0]+' '+i[c]+'= '+i[c+1]
+        }
+      })
+      return code
+    })
   	// bitExp
   	// a = b & c
-  	.r(/^(.+) = (.+) (>>|<<|%|&|\^|\|)\x20?(.+)$/m, (input, ...match) => {
+  	.r(/^(.+) = (.+) (>>|<<|%|&|\^|\|\*|\/|\+|\-)\x20?(.+)$/m, (input, ...match) => {
   	  let [var1, var2, operador, var3] = match
   	  
-  	  let op = ""
-  	  if (operador == "&") op = "0B10";
-  	  if (operador == "|") op = "0B11";
-  	  if (operador == "^") op = "0B12";
-  	  if (operador == "~") op = "0B13";
-  	  if (operador == "%") op = "0B14";
-  	  if (operador == ">>") op = "0B15";
-  	  if (operador == "<<") op = "0B16";
+  	  if ((var1.startsWith('f@') || var1.endsWith('@f'))
+  	  || (var2.i('.') || var3.i('.'))){
+  	    let res = `${var1} ${operador}= ${var2}\n`
+  	      + `${var1} ${operador}= ${var3}`
+  	      return res
+  	  }
+  	  
+  	  let op = {
+  	   "&": "0B10",
+  	   "|": "0B11",
+  	   "^":"0B12",
+  	   "~":"0B13",
+  	   "%":"0B14",
+  	   ">>":"0B15",
+  	   "<<":"0B16",
+  	   "+":"0A8E",
+  	   "-":"0A8F",
+  	   "*":"0A90",
+  	   "/":"0A91",
+  	  }[operador];
   	  
   	  let res = op+": "+var2+' '+var3+' '+var1
   	  
@@ -1293,11 +1242,16 @@ SP.preProcesar = function() {
   	})
   	//0B1A: ~ 0@
   	.r(/^~(.+)/m, '0B1A: $1')
-  	// x = x / x
-  	.r(/^(.+) = (.+) \+ (.+)$/m, '0A8E: $2 $3 $1')
-  	.r(/^(.+) = (.+) \- (.+)$/m, '0A8F: $2 $3 $1')
-  	.r(/^(.+) = (.+) \* (.+)$/m, '0A90: $2 $3 $1')
-  	.r(/^(.+) = (.+) \/ (.+)$/m, '0A91: $2 $3 $1')
+    // 7@ = !!7@
+    .r(/(.+) = !!(.+)$/gim,
+`if
+$2 == 0
+then
+$1 = 1
+else
+$1 = 0
+end
+`)
     // 7@ = !7@
     .r(/(.+) = !(.+)$/gim,
 `if
@@ -1432,20 +1386,6 @@ function obtenerTipo(variable) {
 
 function detectarOpcode(operacion) {
   const opcodes = {
-    '=': {
-      'GVAR_INT-INT': '4',
-      'GVAR_FLOAT-FLOAT': '5',
-      'LVAR_INT-INT': '6',
-      'LVAR_FLOAT-FLOAT': '7',
-      'GVAR_INT-GVAR_INT': '84',
-      'LVAR_INT-LVAR_INT': '85',
-      'GVAR_FLOAT-GVAR_FLOAT': '86',
-      'LVAR_FLOAT-LVAR_FLOAT': '87',
-      'GVAR_INT-LVAR_INT': '88',
-      'LVAR_INT-GVAR_INT': '89',
-      'GVAR_FLOAT-LVAR_FLOAT': '8A',
-      'LVAR_FLOAT-GVAR_FLOAT': '8B',
-    },
     '=#': {
       'GVAR_INT-GVAR_FLOAT': '8C',
       'GVAR_FLOAT-GVAR_INT': '8D',
@@ -1532,24 +1472,6 @@ function detectarOpcode(operacion) {
       'GVAR_INT-LVAR_INT': '76',
       'GVAR_FLOAT-LVAR_FLOAT': '77',
     },
-    '>': {
-      'GVAR_INT-INT': '18',
-      'LVAR_INT-INT': '19',
-      'INT-GVAR_INT': '1A',
-      'INT-LVAR_INT': '1B',
-      'GVAR_INT-GVAR_INT': '1C',
-      'LVAR_INT-LVAR_INT': '1D',
-      'GVAR_INT-LVAR_INT': '1E',
-      'LVAR_INT-GVAR_INT': '1F',
-      'GVAR_FLOAT-FLOAT': '20',
-      'LVAR_FLOAT': '21',
-      'FLOAT-GVAR_FLOAT': '22',
-      'FLOAT-LVAR_FLOAT': '23',
-      'GVAR_FLOAT-GVAR_FLOAT': '24',
-      'LVAR_FLOAT-LVAR_FLOAT': '25',
-      'GVAR_FLOAT-LVAR_FLOAT': '26',
-      'LVAR_FLOAT-GVAR_FLOAT': '27',
-    },
     '>=': {
       'GVAR_INT-INT': '28',
       'LVAR_INT-INT': '29',
@@ -1569,6 +1491,8 @@ function detectarOpcode(operacion) {
       'LVAR_FLOAT-GVAR_FLOAT': '37',
     },
     '==': {
+      'INT-INT': 'XXX0',
+      'FLOAT-FLOAT': 'XXX1',
       'GVAR_INT-INT': '38',
       'LVAR_INT-INT': '39',
       'GVAR_INT-GVAR_INT': '3A',
@@ -1589,6 +1513,38 @@ function detectarOpcode(operacion) {
       'LVAR_INT-GVAR_INT': '7D6',
       'LVAR_INT-GVAR_FLOAT': '7D7',
     },
+    '=': {
+      'GVAR_INT-INT': '4',
+      'GVAR_FLOAT-FLOAT': '5',
+      'LVAR_INT-INT': '6',
+      'LVAR_FLOAT-FLOAT': '7',
+      'GVAR_INT-GVAR_INT': '84',
+      'LVAR_INT-LVAR_INT': '85',
+      'GVAR_FLOAT-GVAR_FLOAT': '86',
+      'LVAR_FLOAT-LVAR_FLOAT': '87',
+      'GVAR_INT-LVAR_INT': '88',
+      'LVAR_INT-GVAR_INT': '89',
+      'GVAR_FLOAT-LVAR_FLOAT': '8A',
+      'LVAR_FLOAT-GVAR_FLOAT': '8B',
+    },
+    '>': {
+      'GVAR_INT-INT': '18',
+      'LVAR_INT-INT': '19',
+      'INT-GVAR_INT': '1A',
+      'INT-LVAR_INT': '1B',
+      'GVAR_INT-GVAR_INT': '1C',
+      'LVAR_INT-LVAR_INT': '1D',
+      'GVAR_INT-LVAR_INT': '1E',
+      'LVAR_INT-GVAR_INT': '1F',
+      'GVAR_FLOAT-FLOAT': '20',
+      'LVAR_FLOAT': '21',
+      'FLOAT-GVAR_FLOAT': '22',
+      'FLOAT-LVAR_FLOAT': '23',
+      'GVAR_FLOAT-GVAR_FLOAT': '24',
+      'LVAR_FLOAT-LVAR_FLOAT': '25',
+      'GVAR_FLOAT-LVAR_FLOAT': '26',
+      'LVAR_FLOAT-GVAR_FLOAT': '27',
+    },
     '&=':'B17',
     '|=':'B18',
     '^=':'B19',
@@ -1601,10 +1557,10 @@ function detectarOpcode(operacion) {
   const simple = /^([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)\s*(=(#|&)|[+\-]=@|[\/\*\+\-\=\!><]*=|>|<)\s*([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)$/im
   
   function dividirOperacion(operacion) {
-    const partes = operacion.match(simple)
+    const partes = operacion.dividirCadena()
     
     if (partes) {
-      return [partes[1], partes[3], partes[5]]
+      return partes
     } else {
       return new Error('La operación no es válida')
     }
@@ -1622,8 +1578,6 @@ function detectarOpcode(operacion) {
     .replace('<', '>=')
     .replace(/\<>|\!=/, '==')
   }
-  
-  //console.log({operador, esNegado, variable1, variable2})
   
   // Para saber el tipo de datos y prevenir que el tipo de dato cambie cuando se aplica a la misma variable.
   let tipoVariable1 = obtenerTipo(variable1);
@@ -1668,6 +1622,7 @@ function detectarOpcode(operacion) {
   }
   
   const combinacionTipos = `${tipoVariable1}-${tipoVariable2}`
+  
   let opcode = opcodes[operador][combinacionTipos];
 
   if (!opcode) {
@@ -1701,7 +1656,7 @@ SP.operationsToOpcodes = function () {
   const simple = /^([a-z]?[&$]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)\s*(=(#|&)|[+\-]=@|[\/\*\+\-\=\!><]*=|>|<)\s*([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)$/im
   
   const addition = /^(\d+@\w?|\w?[$&]\w+|\w+)\s*(\+\+|--)$/
-
+  
   const resultado = this.split('\n').map(linea => {
     linea = linea.trim()
     if (simple.test(linea)) {
@@ -1734,21 +1689,18 @@ SP.operationsToOpcodes = function () {
   
   return resultado
 }
-
 SP.transformTypeData = function(){
   const nString = this.split('\n').map(line=>{
     return line.dividirCadena().map(param =>{
-      let isNumberNegative =
-        param.startsWith('-') ? '-' : ''
-      param = param.r(/^-/)
+      let isN = param.i('-') ? '-' : ''
       
-      if (isNoteCientific(param)){
+      if (Input.isNote(param)){
         return (+param)+""
       }
       
       param = param
-      .r(/^\.?\d+(\.\d+)?(ms|[smh]|fps)$/mi, second => {
-        second = second.toLowerCase()
+      .r(/^-?\.?\d+(\.\d+)?(ms|[smh]|fps)$/mi, second => {
+        second = second.toLowerCase().r('-')
         
         if (second.i('fps'))
           second = (~~(1000 / (+second.r('fps', ''))))+""
@@ -1761,25 +1713,31 @@ SP.transformTypeData = function(){
         if (second.i('h'))
           second = (~~(+second.r('h', '') * 3_600_000))+""
         
-        return isNumberNegative + second
+        return isN+second
       })
-      .r(/^\.?\d([\._\df]+)?(\.[_\df]+)?$/mi, num=>{
-        return isNumberNegative + num
+      .r(/^-?\.?\d([\._\df]+)?(\.[_\df]+)?$/mi, num=>{
+        return num
         .r(/_/g,'')
         .r(/(\.|f)$/mi,'.0')
         .r(/^\./m, '0.')
       })
-      .r(/^0b\d+$/im, bin => {
-        if (/[ac-z]/i.test(bin)){
-          return new SyntaxError("Secuencia BIN: Solo usar ceros y unos (0 y 1)")
+      .r(/^-?0b\d+$/im, bin => {
+        if (/[^01b\-]/i.test(bin)){
+          return new SyntaxError("Secuencia BIN: Solo usar caracteres del rango 0-1")
         }
-       	return isNumberNegative+bin.r(/-?0b/i,'').binToDec()
+       	return isN+(+bin.r('-'))
       })
-      .r(/^0x\w+$/im, hex => {
-        if (/[g-wyz]/i.test(hex)){
+      .r(/^-?0o\d+$/im, oct => {
+        if (!/[0-7o\-]/i.test(oct)){
+          return new SyntaxError("Secuencia OCT: Solo usar caracteres del rango 0-7")
+        }
+       	return isN+(+oct.r('-'))
+      })
+      .r(/^(-?0x\w+)$/im, hex => {
+        if (/[^0-9a-fx\-]/i.test(hex)){
           return new SyntaxError("Secuencia HEX: Solo usar caracteres del rango 0-9 y del A-F.")
         }
-        return isNumberNegative+hex.r(/-?0x/i,'').hexToDec()
+        return isN+(+hex.r('-'))
       })
       .r(/^#\w+$/mi, model =>{
       	model = model.r('#','').toUpperCase()
@@ -1789,12 +1747,12 @@ SP.transformTypeData = function(){
       	} else {
       		return new SyntaxError(`Model undefined: #${model}`);
         }
-        return isNumberNegative + model
+        return model
       })
       return param
     }).join(' ')
   }).join('\n')
-  //log(nString)
+  
   
   return nString
 }
@@ -1838,12 +1796,12 @@ SP.constantsToValue = function(){
       }
       return param
     }).join(' ')
-    //log(line)
+    
     return line
-    //log(line)
+    
   }).join('\n')
 
-  //log(nString)
+  
 	
   return nString
 }
@@ -2149,27 +2107,58 @@ SP.dividirCadena = function() {
     return resultado;
 }
 
+SP.autoAddCleoFunction = function(){
+  let code = this
+  if (CLEO_FUNCTIONS.MATH.INT_INT){
+    code += `\n:MATH_INT_INT
+    if 0@i == 1@i
+    then ret 1 true
+    else ret 1 false
+    end
+    ret 0\n`
+  }
+  if (CLEO_FUNCTIONS.MATH.FLOAT_FLOAT){
+    code += `\n:MATH_FLOAT_FLOAT
+    if 0@i == 1@i
+    then ret 1 true
+    else ret 1 false
+    end
+    ret 0\n`
+  }
+  return code.formatearScript()
+}
 SP.fixOpcodes = function(){
   let tm = this.split('\n').map(line => {
-    let negado = false
-    line = line.trim().dividirCadena()
-    
-    //log(line)
-    if (line.length >= 1){
-    if (line[0].length < 5 && line[0].endsWith(':')){
-      line[0] = line[0].r(/:$/m)
-      if (line[0].startsWith('!')){
-        line[0] = line[0].r(/^\!/m).hexToDec()
-        line[0] += 0b1000000000000000
-        line[0] = line[0].toString(16)
-      }
-      line[0] = (line[0]+'').padStart(4, '0') + ':'
+    if (/^X\w+: /mi.test(line)){
+     line = line.r(/^(X\w+):(.+)/, (...i ) => {
+      if (i[1] == 'XXX0')i[1]= '0AB1: @MATH_INT_INT 2';
+      if (i[1] == 'XXX1')i[1]= '0AB1: @MATH_FLOAT_FLOAT 2';
+     
+      return i[1] + i[2]
+     })
+     return line
     }
+    else {
+      let negado = false
+      line = line.trim().dividirCadena()
       
+      
+      if (line.length >= 1){
+        if (line[0].length < 5 && line[0].endsWith(':')){
+          line[0] = line[0].r(/:$/m)
+          if (line[0].startsWith('!')){
+            line[0] = line[0].r(/^\!/m).hexToDec()
+            line[0] += 0b1000000000000000
+            line[0] = line[0].toString(16)
+          }
+          line[0] = (line[0]+'').padStart(4, '0') + ':'
+        }
+        
+      }
+      
+      line = line.join(' ')
+      return line
     }
-    
-    line = line.join(' ')
-    return line
   }).join('\n')
   
   return tm
@@ -2210,12 +2199,16 @@ let Input = {
   isHexInt: x => /^0x[\da-f]+$/im.test(x),
   isHexFloat: x => /^0x[\da-f]+(\.[\da-f]*)?p[+-]?\d+$/im.test(x),
   isHex: x => isHexInt(x) ?? isHexFloat(x),
+  isBin: x => /^0b[01]+$/im.test(x),
+  isOct: x => /^0o[0-7]+$/im.test(x),
   isModel: x => /^#\w+$/m.test(x),
   isNumber: x => {
     return (Input.isTime(x)
     || Input.isNote(x)
     || Input.isFloat(x)
     || Input.isInt(x)
+    || Input.isBin(x)
+    || Input.isOct(x)
     || Input.isHex(x))
   },
   isOpcode: x => /^[a-f\d]+:$/mi.test(x),
@@ -2282,6 +2275,7 @@ let Input = {
   isNegate: x => /^\!.+/m.test(x),
   isNegative: x => /^\-.+/m.test(x),
   isPositive: x => /^\+.+/m.test(x),
+  isOperation: x => /^[=^~<>%+*/-]+$/.test(x),
   isVariable : x => {
     return (Input.isLocalVar(x)
     || Input.isGlobalVar(x)
@@ -2307,19 +2301,21 @@ let Input = {
       if (Input.isString(x)) return 'string';
       if (Input.isVariable(x)) return 'variable';
       if (Input.isValueSimple(x)) return 'constant';
+      if (Input.isOperation(x)) return 'operation';
     }else{
       return undefined
     }
   }
 }
 
-//log(Input.whatIs('_Player'))
+
 
 SP.adaptarCodigo = function(){
   let result = this
     .eliminarComentarios()
     .preProcesar()
     .formatearScript()
+    .autoAddCleoFunction()
     .parseHigthLevelLoops()
     .addBreaksToLoops()
     .addNumbersToIfs()
@@ -2420,9 +2416,9 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 				}
 			})
 			LineComand[numLine] = LineComand[numLine].clear()
-			//log(LineComand)
+			
 
-			//log(LineComand[numLine])
+			
 
 			LineComand[numLine].forEach((Argument, numArgument) => {
 				if (numArgument == 0) { // command
@@ -2472,7 +2468,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						if (SCM_DB2[Argument]){
 							setOp = SCM_DB2[Argument]
 						}else{
-							//log(`KEYWORD UNDEFINED: ${Argument}\nCHANGED TO 0000: nop`)
+							
 							if (Line.endsWith('=')){
 							  throw new SyntaxError(`missing parameter\n\tin line ${(1+numLine)} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`)
 							}else{
@@ -2544,28 +2540,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						if (/[$&]/.test(Argument)) typeData = 'gvar';
 					}
           
-          SP.parseCharScape = function(){
-            let nString = this
-					  .rA('\\n','\n')
-						.rA('\\t','\t')
-					  .rA('\\\\','\\')
-		  		  .rA("\\'","'")
-						.rA("\\`","`")
-					  .rA('\\"','"')
-            .r(/\\x([A-Fa-f\d]+)/gi,(match, content)=> {
-              //log(content)
-             	return String.fromCharCode(content.hexToDec())
-             })
-            
-            for (let i = 0; i < nString.length; i++) {
-              const valorASCII = nString.charCodeAt(i);
-              if ( valorASCII > 255) {
-                throw Error("Scripts do not support characters outside the ACSII range 0-255 in Strings")
-              }
-            }
-            
-            return nString
-          }
+          SP.parseCharScape = STRING.parseCharScape
           
           if (
             !Argument.i('@')
@@ -2594,18 +2569,16 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 
 						case 'long':
 							Argument = Argument
-							.r(/("([^\"]+)?"|`(.+)?`)/, '$2$3')
-							.r(/\x00/g,'\x20')
+							.r(/^"(.*)"$/m, '$1')
 							.parseCharScape()
 							
 							Argument = Argument.substring(0,255)
-							//console.log(Argument)
 							if (Argument.length == 0) Argument = '\x00'
 
 							totalSizePerLine.push(Argument.length + (SCM_DB[command].opcode[1] == '0' ? 2 : 1))
 							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode())// + (SCM_DB[command].opcode[1] == '0' ? '00' : '')
 							
-							//log(SCM_DB[command].opcode)
+							
 							switch (SCM_DB[command].opcode){
 								case '05b6' : 
 									totalSizePerLine[totalSizePerLine.length - 1] = 128
@@ -2714,7 +2687,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						case 'float':
 							totalSizePerLine.push(4)
 							
-              if(isNoteCientific(Argument)){
+              if(Input.isNote(Argument)){
                 Argument = (+Argument)
               }
               else {
@@ -2751,7 +2724,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						      subtype : ARRAY[3]
 						    }
 						  }
-						  //log(Slvar)
+						  
 						  
 						  let typeArray = 
 						    (Slvar.type ?? Slvar.extend.subtype ?? 'i')
@@ -2807,7 +2780,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						  
 						  
 						  totalSizePerLine.push(6)
-						  //log(typeSet)
+						  
 						  Argument = (
 						    typeArray + ','+
 						    translateLvar(Slvar.variable) + ','+
@@ -2817,7 +2790,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 									.padStart(2,'0') + ','+
 						    typeSet + ','
 						  )
-						  //log(Argument)
+						  
 							}
 							else{
 								totalSizePerLine.push(2)
@@ -2864,7 +2837,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 											}
 
 											else {
-												//console.log(inputVar)
+												
 												inputVar = Number(inputVar.r('&',''))
 
 											}
@@ -2981,10 +2954,10 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 		}
 	})
 	
-	//log(codeDepurated)
+	
 
 	let codeOfFinal = (_SepareWithComes
-						  ? codeDepurated.toString().r(/,,/g,',')
+						  ? codeDepurated.toString().r(/,,+/g,',')
 						  : codeDepurated.toString().r(/,/g,'').r(/\-/g,'')
 					  )
 					  .r(/\./g,'').toUpperCase().trim()
@@ -2993,7 +2966,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 		let found = false
 		let jump = 0
 		let label = input.substring(2, input.length-1)
-		//log(input)
+		
 
 		totalSizePerLine.forEach(element => {
 			if (!found){
@@ -3017,7 +2990,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 
 		return jump.toBigEndian()
 	})
-
+	
 	return codeOfFinalDepurated
 }
 
@@ -3038,7 +3011,7 @@ String.prototype.toCompileSCM = function(Name_File){
 	}
 
 	if (this.length == 0){
-		alert ("E-02: Añada comandos al archivo.");
+		alert ("E-02: Añada instrucciones al archivo.");
 		return
 	}
 
@@ -3047,6 +3020,9 @@ String.prototype.toCompileSCM = function(Name_File){
 	if (code_hex.length % 2) {
 		alert ("E-03: la longitud de la cadena hexadecimal es impar.");
 		return;
+	}
+	if (/[^0-9A-F]/i.test(code_hex)){
+	  alert ("E-04: se hayo un caracter no hexadecimal.")
 	}
 
 	let binary = new Array();
@@ -3074,8 +3050,9 @@ String.prototype.toCompileSCM = function(Name_File){
 const $SBL_State = $('#state')
 if ($SBL_State){
 	const c = $SBL_State.classList
-	$SBL_State.innerText = 'Okey'
-	$SBL_State.style = ''
+	$SBL_State.innerText = 'ᛟ'
+  $SBL_State.style.background = ''
+  $SBL_State.style['font-size'] = '1.5rem'
 	$('#PREVIEW').style.filter = ''
 	c.remove('loading')
 
@@ -3096,7 +3073,7 @@ if ($SBL_State){
 		version = await version.text()
 		
 		$('#version_sbl').innerHTML = 'SBL ' + version
-		$SBL_State.innerText = 'Okey'
+		$SBL_State.innerText = 'ᛟ'
 		$('#PREVIEW').style.filter = ''
 		c.remove('loading')
 	}
