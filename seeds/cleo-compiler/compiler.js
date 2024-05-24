@@ -993,7 +993,7 @@ SP.formatearScript = function() {
   }).join('\n')
   
   code = code
-    .r(/^if /mgi, "if\n")
+    .r(/^(if and|if or|if )?/mgi, "$1\n")
     .r(/^then /mgi, "then\n")
     .r(/^else /gmi, "else\n")
     .r(/ end$/mgi, "\nend\n")
