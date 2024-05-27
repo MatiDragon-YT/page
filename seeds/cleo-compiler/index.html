@@ -601,7 +601,7 @@ terminate_this_script`;$('#HEX').focus();$('#PREVIEW').innerHTML = '';" title="s
       </div>
     </div>
     </div>
-    <a id='name-app' href='index.html'>Σηςнαητι ✦</a>
+    <a id='name-app'>Σηςнαητι ✦</a>
     <!--<a>ΣηςнαητιSςrιρτ ✦</a>-->
   </div>
 
@@ -1697,43 +1697,56 @@ $('details').forEach((elem) => {
     .then(() => { console.log('Service Worker Registered'); });
   }
   
-  const CACHE_NAME = 'cool-cache';
+const CACHE_NAME = "mi-cache-v1";
+const OFFLINE_URL = "index.html";
+const ASSETS = [
+  OFFLINE_URL,
+  "./../../",
+  './compiler.js',
+  'images/logo.png'
+  // Agrega aquí otros recursos que quieras precachear
+];
 
-// Add whichever assets you want to pre-cache here:
-const PRECACHE_ASSETS = [
-    '/js/',
-    '/data/',
-    '../../css/'
-]
-
-// Listener for the install event - pre-caches our assets list on service worker install.
-self.addEventListener('install', event => {
-    event.waitUntil((async () => {
-        const cache = await caches.open(CACHE_NAME);
-        cache.addAll(PRECACHE_ASSETS);
-    })());
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(self.clients.claim());
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting())
+  );
 });
-self.addEventListener('fetch', event => {
-  event.respondWith(async () => {
-      const cache = await caches.open(CACHE_NAME);
 
-      // match the request to our cache
-      const cachedResponse = await cache.match(event.request);
-
-      // check if we got a valid response
-      if (cachedResponse !== undefined) {
-          // Cache hit, return the resource
-          return cachedResponse;
-      } else {
-        // Otherwise, go to the network
-          return fetch(event.request)
-      };
-  });
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
 });
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.mode === 'navigate' || (event.request.method === 'GET' && event.request.headers.get('accept').includes('text/html'))) {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.open(CACHE_NAME).then((cache) => {
+          return cache.match(OFFLINE_URL);
+        });
+      })
+    );
+  }
+});
+
 
 
 
