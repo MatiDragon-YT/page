@@ -1,8 +1,7 @@
 const
 	undefined=-1
-	null=0x6fffffff
-	NaN=0x5fffffff
-	any=-1
+	null=0x7fffffff
+	NaN=0x6fffffff
 	skip='DUMMY'
 	ePara_PC=0
 	ePara_Android=1
