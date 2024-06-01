@@ -2,14 +2,32 @@
   "background_color": "#59025c",
   "dir": "ltr",
   "display": "fullscreen",
-  "name": "Enchanti IDE - MatiDragon",
+  "name": "Enchanti IDE",
   "orientation": "any",
   "scope": "../../",
-  "short_name": "Enchanti IDE",
+  "short_name": "EIDE",
   "start_url": "index.html",
   "theme_color": "#facbf1",
   "id": "enchantiide_matidragon",
   "description": "Enchanti IDE, a cleo compiler for Android",
+  "shortcuts": [
+    {
+      "name": "New script",
+      "url": "index.html"
+    },
+    {
+      "name": "Load script",
+      "url": "index.html"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "text/plain": [".txt", ".md", ".text", ".cs", ".csa", ".csi"]
+      }
+    }
+  ],
   "lang": "en",
     "icons": [
     {
