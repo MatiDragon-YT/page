@@ -8,7 +8,7 @@ const CACHE_NAME = "mi-cache-v1";
 const OFFLINE_URL = "index.html";
 const ASSETS = [
   OFFLINE_URL,
-  "./../../css/main.css",
+  "./../../",
   './compiler.js',
   'images/logo.png'
   // Agrega aquí otros recursos que quieras precachear
