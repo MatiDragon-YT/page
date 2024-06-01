@@ -1,11 +1,13 @@
 {
-  "dir": "auto",
+  "dir": "ltr",
   "display": "minimal-ui",
-  "name": "Website: MatiDragon",
-  "short_name": "MatiDragon",
+  "orientation": "any",
+  "name": "MatiDragon",
+  "short_name": "MD",
   "scope": "/",
+  "start_url": "index.html",
   "lang": "es",
-  "description": "Un sitio para compartir mis herramientas y modificaciones para la saga de Grand Theft Auto 3D. Deseando mayor entretenimiento y diverción a todos los fans.",
+  "description": "Herramientas, tutoriales y mods para tu San Andreas, traidos a ustedes en bandejas de plata, por su anfitrion MatiDragon.",
   "theme_color": "#46af50",
   "background_color": "#263238",
   "icons": [
