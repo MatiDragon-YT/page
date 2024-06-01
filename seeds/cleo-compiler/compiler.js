@@ -22,11 +22,15 @@ SP.r = STRING.r
 SP.rA = STRING.rA
 SP.toHex = STRING.toHex
 SP.toBigEndian = STRING.toBigEndian
+SP.parseCharScape = STRING.parseCharScape
 
 SP.i = SP.includes
 AP.i = AP.includes
 
 SP.setOpcodeNegative = function() {
+  if (+this > 0x7FFF){
+    return new Error('El opcode ya es negativo')
+  }
   // Convierte el input en una cadena HEX entendible
   //   para JS, para convertirlos en Number y
   //   retornar la suma de ambos.
@@ -36,6 +40,9 @@ SP.setOpcodeNegative = function() {
 }
 
 SP.setOpcodePositive = function() {
+  if (+this < 0x8000) {
+    return new Error('El opcode ya es positivo')
+  }
   // Convierte el input en una cadena HEX entendible
   //   para JS, para convertirlos en Number y
   //   retornar la resta de ambos.
@@ -148,7 +155,7 @@ const ELEMENT_TYPE = {
 /*
          0006: 1@(2@, 123i) = 1
     ____/   ___/  \__  | \     \
-    0600 08 0100 0200 7B 00 04 01
+  [0600][08 0100 0200 7B 00][04 01]
     \__/  | \__/ \__/  |  |  \   \
    opcode |  id   id   | lint \   \
      lvar_array      lenght  int8  num
@@ -972,7 +979,7 @@ SP.addNumbersToIfs = function() {
 	return lineas.join('\n');
 }
 
-SP.eliminarComentarios = function() {
+SP.removeComments = function() {
   let result = this
     .r(/\/\/.*$/gm, '')
 		.r(/(\s+)?\/\*([^\/]*)?\*\//gm, '')
@@ -985,7 +992,7 @@ SP.eliminarComentarios = function() {
     .join('\n')
 }
 
-SP.formatearScript = function() {
+SP.formatScript = function() {
   let code = this
   
   code = code.split('\n').map(line => {
@@ -1054,7 +1061,7 @@ SP.preProcesar = function() {
   }
   let nString = ''
   
-  this.formatearScript().split('\n').forEach(linea =>{
+  this.formatScript().split('\n').forEach(linea =>{
     linea = linea.trim()
     let lineaAnterior = ""
     let lineaSiguiente = ""
@@ -1761,9 +1768,10 @@ SP.constantsToValue = function(){
   const nString = this.split('\n').map(line=>{
     line = line.dividirCadena().map(param=>{
       param = param.trim()
+      
       let pref = ""
       if (param != ''){
-        if (/^[\!\-\+][a-z]\w*$/m.test(param)){
+        if (/^[\!\-\+]\w+$/m.test(param)){
           pref = param.match(/^\W/m)
           param = param.r(/^\W/m)
         }
@@ -2125,7 +2133,7 @@ SP.autoAddCleoFunction = function(){
     end
     ret 0\n`
   }
-  return code.formatearScript()
+  return code.formatScript()
 }
 SP.fixOpcodes = function(){
   let tm = this.split('\n').map(line => {
@@ -2198,7 +2206,7 @@ let Input = {
   isTime: x => /^[+-]?(\d+\.\d+|\.?\d+)(fps|[smh])$/.test(x),
   isHexInt: x => /^0x[\da-f]+$/im.test(x),
   isHexFloat: x => /^0x[\da-f]+(\.[\da-f]*)?p[+-]?\d+$/im.test(x),
-  isHex: x => isHexInt(x) ?? isHexFloat(x),
+  isHex: x => Input.isHexInt(x) ?? Input.isHexFloat(x),
   isBin: x => /^0b[01]+$/im.test(x),
   isOct: x => /^0o[0-7]+$/im.test(x),
   isModel: x => /^#\w+$/m.test(x),
@@ -2267,11 +2275,11 @@ let Input = {
     return /^[a-z]?\$\w+/im.test(x)
   },
   isAdmaVar: x => {
-    return /^[a-z]?&\w+/im.test(x)
+    return /^[a-z]?&\d+/im.test(x)
   },
   isLocalVarArray: x => /^\d+@[a-z]?(\(.+,\d+[a-z]?\))?/im.test(x),
   isGlobalVarArray: x => /^[a-z]?\$\w+(\(.+,\d+[a-z]?\))?/im.test(x),
-  isAdmaVarArray: x => /^[a-z]?&\w+(\(.+,\d+[a-z]?\))?/im.test(x),
+  isAdmaVarArray: x => /^[a-z]?&\d+(\(.+,\d+[a-z]?\))?/im.test(x),
   isNegate: x => /^\!.+/m.test(x),
   isNegative: x => /^\-.+/m.test(x),
   isPositive: x => /^\+.+/m.test(x),
@@ -2293,33 +2301,69 @@ let Input = {
     || Input.isValueSimple(x)
     || Input.isLabel(x))
   },
-  whatIs: x => {
-    if (Input.isValid(x)){
-      if (Input.isLabel(x)) return 'label';
-      if (Input.isCommand(x)) return 'command';
-      if (Input.isNumber(x)) return 'number';
-      if (Input.isString(x)) return 'string';
-      if (Input.isVariable(x)) return 'variable';
-      if (Input.isValueSimple(x)) return 'constant';
-      if (Input.isOperation(x)) return 'operation';
-    }else{
-      return undefined
-    }
+  getTypeData: x => {
+    if (Input.isLabel(x)) return 'label';
+    if (Input.isCommand(x)) return 'command';
+    if (Input.isNumber(x)) return 'number';
+    if (Input.isString(x)) return 'string';
+    if (Input.isVariable(x)) return 'variable';
+    if (Input.isValueSimple(x)) return 'constant';
+    if (Input.isOperation(x)) return 'operation';
+    else return undefined
+  },
+  getTypeCompile: x => {
+    if (Input.isLabel(x)) return 'label';
+    if (Input.isInt(x)) return 'int';
+    if (Input.isFloat(x)) return 'float';
+    if (Input.isShort(x)) return 'short';
+    if (Input.isLong(x)) return 'long';
+    if (Input.isLocalVar(x)) return 'lvar';
+    if (Input.isGlobalVar(x)) return 'gvar';
+    if (Input.isAdmaVar(x)) return 'avar';
+    if (Input.isLocalVarArray(x)) return 'lvararray';
+    if (Input.isGlobalVarArray(x)) return 'gvararray';
+    if (Input.isAdmaVarArray(x)) return 'avararray';
+    else return undefined
   }
 }
 
-
+SP.removeTrash = function(){
+  let nCode = ''
+  let code = this.split('\n')
+  code.forEach((line, ln) => {
+    
+    let nLine = ''
+    let params = line.dividirCadena()
+    
+    params.forEach((param, pr) =>{
+      if (/^[=\/\+\-~^*!?%&|]+$/mi.test(param)) {
+			  param = ''
+		  }
+		  else if (/^[a-z]\w+$/mi.test(param)) {
+			  if (!Input.isConstant(param)){
+			    param = ''
+			  }
+			}
+			
+			nLine += param + ' '
+    })
+    
+    nCode += nLine.r(/\x20+/g, ' ').trim() + '\n'
+  })
+  
+  return nCode
+}
 
 SP.adaptarCodigo = function(){
   let result = this
-    .eliminarComentarios()
+    .removeComments()
     .preProcesar()
-    .formatearScript()
+    .formatScript()
     .autoAddCleoFunction()
     .parseHigthLevelLoops()
     .addBreaksToLoops()
     .addNumbersToIfs()
-    .eliminarComentarios()
+    .removeComments()
     .r(/^not /gm, '!')
     .classesToOpcodes()
     .constantsToValue()
@@ -2328,6 +2372,8 @@ SP.adaptarCodigo = function(){
     .operationsToOpcodes()
     .keywordsToOpcodes()
     .fixOpcodes()
+    .removeTrash()
+
    return result
 }
 
@@ -2342,9 +2388,16 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 	}
 
 	let codeDepurated = []
-	let totalSizePerLine = []
-	let varsDefined = {}
-	let globalVar = {}
+	
+	// Para registrar los bites que se escribieron y
+	//   para guardar las etiquetas para los controles
+	//   de saltos.
+	let registeredBites = []
+	// Si se escribe 0xFF00 entonces va el 2
+	//   registeredBites.push(2)
+	// Si es una etiqueta, solo se le quitan los 2 puntos
+	//   y se manda push() a lo que sea.
+	
 	
 	function translateLvar(dataInput){
   	dataInput = 
@@ -2376,27 +2429,23 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 
   LineComand = LineComand
   .adaptarCodigo()
-	
-  LineComand = LineComand
-		.split('\n')
-		
-	let codeOfEnter = this.split('\n').clear();
+	.split('\n')
+	.clear()
 
 	LineComand.forEach((Line, numLine) => {
 	  Line = Line.trim()
+	  
+	  let charsCounter = 0
 		if (Line.match(/^:/)) {
 		  // si es una etiqueta
-			totalSizePerLine.push(Line.r(':','').toUpperCase())
+			registeredBites.push(Line.r(':','').toUpperCase())
 		}
 		else {
 			LineComand[numLine] = Line.dividirCadena()
 			.map(data => {
 			  data = data.trim()
-			  if (/^[=!\-+*\/%\^#@<>&$]+$/mi.test(data)) {
+			  if (/^[=!\-+*\/%\^#@<>&$\\]+$/mi.test(data)) {
 			       data = ''
-			  }
-			  if (/^[a-z]\w+\.\w+$/mi.test(data)) {
-			       throw new ReferenceError(`is not defined\n>>> ${data}\nat ${Line}`)
 			  }
 			  return data
 			})
@@ -2417,16 +2466,15 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 			})
 			LineComand[numLine] = LineComand[numLine].clear()
 			
-
-			
-
 			LineComand[numLine].forEach((Argument, numArgument) => {
+			  charsCounter += Argument.length
+			  
 				if (numArgument == 0) { // command
 					Argument = Argument.toLowerCase()
 					if (/:/.test(Argument)){
 						Argument = Argument.padStart(6,'0')
 					}
-
+					
 					if (
 						/[a-f\d]+:$/im.test(Argument)
 						&& Argument.length <= 6
@@ -2472,7 +2520,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 							if (Line.endsWith('=')){
 							  throw new SyntaxError(`missing parameter\n\tin line ${(1+numLine)} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`)
 							}else{
-							  throw new SyntaxError(`opcode undefined\n\tin line ${(1+numLine)} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`)
+							  throw new SyntaxError(`opcode undefined\n>>> ${Argument}\n${numLine+1}:${charsCounter} | ${setOp == '0000' ? 'XXXX' : setOp}>> ${Line}`)
 							};
 						}
 
@@ -2486,83 +2534,28 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 					
 					command = Argument
 					
-					totalSizePerLine.push(2)
+					registeredBites.push(2)
 				}
 				else { // is Argument
-					totalSizePerLine.push(1)
+					registeredBites.push(1)
 
-					try {
-					  if (SCM_DB[command] == undefined
-					    && command.length == 4
-					  ){
-					    typeData = 'any'
-  					} else {
-  					  typeData = SCM_DB[command]
-  						  ? SCM_DB[command].params[--numArgument]
-  						  : SCM_DB[command.r(/^8/m,'0')].params[--numArgument];
-					  }
-						
-					}catch{
-						throw new SyntaxError(`unknown parameter\n\tat line ${(1+numLine)} the value ${Argument}\n\ttrigger: ${setOp == '0000' ? 'XXXX' : setOp}\n\t>>> ${Line}\n\t>>> ${command}`);
-					}
-
-					let foundType = false
-					const TYPES = ['any','int','float','lvar','gvar','var_any','short','long','label','bool']
-					TYPES.forEach(a => {
-						if (foundType == false && a == typeData){
-							foundType = true
-						}
-					})
-					if (foundType == false) typeData = 'any';
-
-					if (typeData == 'any'){
-						if (/^[\d#\-+\.]/m.test(Argument))
-							typeData = /[.f]/.test(Argument) ? 'float' : 'int';
-						if (/^@/m.test(Argument))
-							typeData = 'label';
-						if (/^\d+@/m.test(Argument))
-							typeData = 'lvar';
-						if (/^([ifsv])?(\$|&)./m.test(Argument))
-							typeData = 'gvar';
-						if (/^'/m.test(Argument))
-							typeData = 'short';
-						if (/^["`]/m.test(Argument))
-							typeData = 'long';
-					}
-					if (typeData == 'var_any'){
-						typeData = /^\d@([ifsv])?/mi.test(Argument) ? 'lvar' : 'gvar';
-					}
-					if (typeData != 'short' && Argument[0] == "'") typeData = 'short';
-					if (typeData != 'long' && Argument[0] == '"' || Argument[0] == "`") typeData = 'long';
-					if (typeData != 'int' && Argument[0] == '#' || typeData == 'bool') typeData = 'int';
-					if (typeData == 'int' || typeData == 'float'){
-						if (/\@/.test(Argument)) typeData = 'lvar';
-						if (/[$&]/.test(Argument)) typeData = 'gvar';
-					}
-          
-          SP.parseCharScape = STRING.parseCharScape
-          
-          if (
-            !Argument.i('@')
-            && !Argument.i('$')
-            && !Argument.i('"')
-            && !Argument.i('`')
-            && !Argument.i('&')
-            && !Argument.i('#')
-            && !Argument.i('.')
-            && !/\d/.test(Argument)
-          ){
-            typeData = 'trash'
+          if (Input.isValid(Argument)){
+            typeData = Input.getTypeCompile(Argument)
+          }
+          else {
+            throw new SyntaxError(`directive undefined\n>>> ${Argument}\n${numLine+1}:${charsCounter} | ${Line}`)
           }
           
 					switch (typeData) {
 						case 'short':
 							Argument = Argument
-							.r(/^'(.+)'$/m, '$1')
+							.r(/^'(.*)'$/m, '$1')
 							.parseCharScape()
 							
+							if (Argument.length == 0) Argument = '\x00'
+							
 							Argument = Argument.substring(0,7)
-							totalSizePerLine.push(9)
+							registeredBites.push(8)
 
 							Argument = (come(TYPE_CODE.STRING8) + Argument.toUnicode() + '-00').padEnd(26,'-00')
 						break;
@@ -2575,13 +2568,14 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 							Argument = Argument.substring(0,255)
 							if (Argument.length == 0) Argument = '\x00'
 
-							totalSizePerLine.push(Argument.length + (SCM_DB[command].opcode[1] == '0' ? 2 : 1))
-							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode())// + (SCM_DB[command].opcode[1] == '0' ? '00' : '')
+							registeredBites.push(Argument.length + 1)
 							
+							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode())
 							
 							switch (SCM_DB[command].opcode){
-								case '05b6' : 
-									totalSizePerLine[totalSizePerLine.length - 1] = 128
+								case '05b6' :
+									registeredBites[registeredBites.length - 1] = 128
+									Argument = Argument.substring(0,128)
 									Argument = Argument.padEnd(260,'0')
 								break;
 								//case '0660':
@@ -2589,20 +2583,6 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 								//case '0662':
 								//break;
 							}
-							/*
-							Argument = Argument.r(/('(.+)'|"(.+)")/, '$2$3')
-							Argument = Argument.substring(0,255)
-
-							let ArgumentLength = Argument.length
-							let ArgumentTranslate = Argument.toUnicode()
-							let ArgumentLengthTranslate = ArgumentTranslate.length
-
-							log({Argument, ArgumentLength, ArgumentTranslate, ArgumentLengthTranslate})
-							
-							totalSizePerLine.push(Argument.length + 2)
-							Argument = (come(TYPE_CODE.STRING_VARIABLE) + come(Argument.length.toString(16).padStart(2, '0')) + Argument.toUnicode()) + '00'
-							//}
-						*/
 						break;
 
 						case 'int':
@@ -2663,17 +2643,17 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 								switch (dataType){
 									case come(TYPE_CODE.INT8) :
 										temp = 2
-										totalSizePerLine.push(1)
+										registeredBites.push(1)
 										break;
 
 									case come(TYPE_CODE.INT16) :
 										temp = 4
-										totalSizePerLine.push(2)
+										registeredBites.push(2)
 										break;
 
 									case come(TYPE_CODE.INT32) :
 										temp = 8
-										totalSizePerLine.push(4)
+										registeredBites.push(4)
 										break;
 
 									default: break;
@@ -2685,7 +2665,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						break;
 
 						case 'float':
-							totalSizePerLine.push(4)
+							registeredBites.push(4)
 							
               if(Input.isNote(Argument)){
                 Argument = (+Argument)
@@ -2779,7 +2759,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						  }
 						  
 						  
-						  totalSizePerLine.push(6)
+						  registeredBites.push(6)
 						  
 						  Argument = (
 						    typeArray + ','+
@@ -2793,7 +2773,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						  
 							}
 							else{
-								totalSizePerLine.push(2)
+								registeredBites.push(2)
 
 								Argument = 
 									come(TYPE_CODE.LVAR) 
@@ -2805,7 +2785,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 
 						case 'gvar':
 							if (/(&|\$)(.+)(&|\$)/.test(Argument)){
-								totalSizePerLine.push(6)
+								registeredBites.push(6)
 								
 								Argument = 
 									come(TYPE_CODE.GVAR_ARRAY)
@@ -2889,7 +2869,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 										})
 							}
 							else{ // no es areay
-								totalSizePerLine.push(2)
+								registeredBites.push(2)
 								
 								
 
@@ -2935,7 +2915,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						break;
 
 						case 'label':
-							totalSizePerLine.push(4)
+							registeredBites.push(4)
 							Argument = Argument.toUpperCase()
 
 							Argument = come(TYPE_CODE.INT32) + `<${Argument}>`
@@ -2953,8 +2933,6 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 			codeDepurated.push(lineDepurated)
 		}
 	})
-	
-	
 
 	let codeOfFinal = (_SepareWithComes
 						  ? codeDepurated.toString().r(/,,+/g,',')
@@ -2968,7 +2946,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 		let label = input.substring(2, input.length-1)
 		
 
-		totalSizePerLine.forEach(element => {
+		registeredBites.forEach(element => {
 			if (!found){
 				switch (typeof element){
 					case 'number':
