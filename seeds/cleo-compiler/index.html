@@ -322,13 +322,24 @@ function getLine(){
 		  //$d(shared_db[p.r(':')].short_desc)
 		}
 		else if (/^\!?[a-f\d]{1,4}:$/mi.test(p)) {
-		  $o(
-		    '▼ '+p.toUpperCase()+':'
-		    +opcode.num_params 
-		    +' ('+(m != p ? m : '')+')'
-		  )
-		  
-		  $d(opcode.short_desc)
+		  if (opcode){
+  		  $o(
+  		    '▼ '+p.toUpperCase()+':'
+  		    +opcode.num_params 
+  		    +' ('+(m != p ? m : '')+')'
+  		  )
+  		  
+  		  $d(opcode.short_desc + '<br><a href="https://library.sannybuilder.com/#/sa/default/'+p.replace(':','')+'">read more</a>') 
+		  }
+		  else {
+		    $o(
+  		    '▼ '+p.toUpperCase()+':'
+  		    +'?'
+  		    +' ('+(m != p ? m : '')+')'
+  		  )
+  		  
+  		  $d("opcode not found at the data_base") 
+		  }
 		}
 		else if (opcode){
 		  if (typeof o != 'object'){
@@ -341,7 +352,7 @@ function getLine(){
 		   +' ('+m+')'
 		 )
 		 
-		 $d(o.short_desc)
+		 $d(o.short_desc + '<br><a href="https://library.sannybuilder.com/#/sa/default/'+opcode.id+'">read more</a>') 
 		 
 		}
 		else if (/[\+\-\*\/=%<>!]?[=\-+][@#]?/.test(textData.textLine)) {
@@ -631,12 +642,12 @@ input[type=text]{
  <div>
   <input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="EnchantiScript.csi">
 		<input id='file' type='file' accept='.txt,.ini' class="d-none">
-		<button onclick="saveSource()" title=Descargar> ⇊️ </button>
-		<button onclick="compilerSource()" title=Compilar> ⇶️ </button>
+		<button action onclick="saveSource()" title=Descargar> ⇊️ </button>
+		<button action onclick="compilerSource()" title=Compilar> ⇶️ </button>
  </div>
  <div id="change-view" class="pr-2 size-4">
-  <span onclick="localStorage.setItem('code-cached',$('#HEX').value)" tip='save code at cache' id='state' class="loading yellow" style="font-size: 1.5rem">ᛟ</span>
-   <btn tip='compiled preview' class="bg-none d-sm-none green" style="font-size: 1.5rem" onclick="
+  <span onclick="localStorage.setItem('code-cached',$('#HEX').value)" tip='save code at cache' id='state' class="loading yellow" action >ᛟ</span>
+   <btn action tip='compiled preview' class="bg-none d-sm-none green"  onclick="
    $('#HEX').toggle();
    $('#PREVIEW').toggle();
    $('#OUTHEX').toggle();
@@ -739,6 +750,9 @@ Actor.create(655)
 
     
 <style>
+[action]{
+  font-size: 1.5rem
+}
 #editor-body {
   aspect-ratio: 9/13;
   overflow: auto;
@@ -778,6 +792,7 @@ Actor.create(655)
 #HEX,
 #PREVIEW,
 #PREVIEW *,
+#OUTHEX,
 #short_desc {
   font-size: 0.7rem!important;
   tab-size: 2;
@@ -917,10 +932,10 @@ loop controls are also here
 BREAK CONTINUE
 
 FOR 0@ = 0 TO 10
-  IF 0@ == 3
+  IF 0@ > 3
   THEN CONTINUE // jump a loop
   END
-  IF 0@ == 7
+  IF 0@ > 7
   THEN BREAK // exit of loop
   END
 END
@@ -946,7 +961,7 @@ All of these are interpreted as the same `END`, so you can use them as worshippe
 </details>
 
 <details>
-<summary>Opcodes and commands</summary>
+<summary>Opcodes and Keywords</summary>
 <h4>Opcodes</h4>
 if you explore opcodes in documentations and forums, you don't need to memorize the 4 characters of the opcode or just copy it.
 <pre>
@@ -955,7 +970,7 @@ FE: actor[...]  -->  00FE: actor[...]
 !7F: car[...]   -->  807F: car[...]
 1234: wxyz      -->  1234: wxyz
 </pre>
-<h4>Commands</h4>
+<h4>Keywords</h4>
 This is another way to write opcodes, you just write its name and then it is replaced by the opcode.
 <pre>
 nop           -->  XXXX: nop
@@ -966,7 +981,7 @@ These can be written in lowercase or uppercase, and can be negated or contradict
 </details>
 
 <details>
-<summary>Classes and keywords</summary>
+<summary>Classes and Flows</summary>
 <h4>Classes</h4>
 The IDE is connected to 2 databases to be able to script with legacy or enchanted commands. So if we use aaa.bbb() and ccc.ddd() they will use the same opcode.
 <pre>
@@ -1000,14 +1015,14 @@ The compiler remembers which was the last class used, so if you use a dot (.) at
 Last-Used:
 .MEMBER(PARAM)
 </pre>
-<h4>Keywords</h4>
-keywords define the workflow and how it should behave on different occasions.
-Avoid naming things with these words, the order of how the text preprocessor is executed may break the script.
+<h4>Flows</h4>
+Keywords that define the workflow and how it should behave on different occasions.
 <pre>
 IF, THEN, ELSE, END, WHILE, REPEAT,
 UNTIL, FOR, TRUE, FALSE, UNDEFINED,
 BREAK, CONTINUE, FOREACH, NOT, NULL
 </pre>
+Avoid naming things with these words, the order of how the text preprocessor is executed may break the script.
 </details>
 
 <details>
@@ -1462,7 +1477,7 @@ $node.onkeyup = (event) =>{
         $('#error').style.display = 'none'
     //}
     } catch(error) {
-        $('#error').style.display = 'flex'
+       $('#error').style.display = 'flex'
 		$('#error').innerText = error
 	}
 }
