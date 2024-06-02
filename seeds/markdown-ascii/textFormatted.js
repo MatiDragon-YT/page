@@ -1,15 +1,3 @@
-// Markdown(Text Formatted) per YouTube
-let sms = `
-# YouTube
-## YouTube
-### YouTube
-
-> Hola
-Este es un video para youtube
-
----`
-
-
 const SP = String.prototype
 
 SP.r = SP.replace
@@ -29,6 +17,12 @@ SP.textFormatted = function(){
 		'a,á,ä,b,c,d,e,é,ë,f,g,h,i,í,ï,j,k,l,m,n,ñ,o,ó,ö,p,q,r,s,t,u,ú,ü,v,w,x,y,z,'+
 		'A,Á,Ä,B,C,D,E,É,Ë,F,G,H,I,Í,Ï,J,K,L,M,N,Ñ,O,Ó,Ö,P,Q,R,S,T,U,Ú,Ü,V,W,X,Y,Z'
 	).split(',')
+	
+	let abcSimple = (
+	  'abcdefghijklmnopqrstuvwxyz'+
+	  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'+
+	  '0123456789'
+	).split('')
 
 	let GOTHIC_H1 = (
 		'𝖆,𝖆́,𝖆̈,𝖇,𝖈,𝖉,𝖊,𝖊́,𝖊̈,𝖋,𝖌,𝖍,𝖎,𝖎́,𝖎̈,𝖏,𝖐,𝖑,𝖒,𝖓,𝖓,𝖔,𝖔́,𝖔̈,𝖕,𝖖,𝖗,𝖘,𝖙,𝖚,𝖚́,𝖚̈,𝖛,𝖜,𝖝,𝖞,𝖟,'+
@@ -65,6 +59,20 @@ SP.textFormatted = function(){
 		'𝙰,Á,Ä,𝙱,𝙲,𝙳,𝙴,É,Ë,𝙵,𝙶,𝙷,𝙸,Í,Ï,𝙹,𝙺,𝙻,𝙼,𝙽,Ñ,𝙾,Ó,Ö,𝙿,𝚀,𝚁,𝚂,𝚃,𝚄,Ú,Ü,𝚅,𝚆,𝚇,𝚈,𝚉'
 	).split(',')
 
+	let FULLSPACE = (
+		'ａ,ｂ,ｃ,ｄ,ｅ,ｆ,ｇ,ｈ,ｉ,ｊ,ｋ,ｌ,ｍ,ｎ,ｏ,ｐ,ｑ,ｒ,ｓ,ｔ,ｕ,ｖ,ｗ,ｘ,ｙ,ｚ,'+
+		'Ａ,Ｂ,Ｃ,Ｄ,Ｅ,Ｆ,Ｇ,Ｈ,Ｉ,Ｊ,Ｋ,Ｌ,Ｍ,Ｎ,Ｏ,Ｐ,Ｑ,Ｒ,Ｓ,Ｔ,Ｕ,Ｖ,Ｗ,Ｘ,Ｙ,Ｚ,'+
+		'０,１,２,３,４,５,６,７,８,９'
+	).split(',')
+	
+	let TITLE = (
+   '𝐚,𝐛,𝐜,𝐝,𝐞,𝐟,𝐠,𝐡,𝐢,𝐣,𝐤,𝐥,𝐦,𝐧,𝐨,𝐩,𝐪,𝐫,𝐬,𝐭,𝐮,𝐯,𝐰,𝐱,𝐲,𝐳,'+
+   '𝐀,𝐁,𝐂,𝐃,𝐄,𝐅,𝐆,𝐇,𝐈,𝐉,𝐊,𝐋,𝐌,𝐍,𝐎,𝐏,𝐐,𝐑,𝐒,𝐓,𝐔,𝐕,𝐖,𝐗,𝐘,𝐙,'+
+   '𝟎,𝟏,𝟐,𝟑,𝟒,𝟓,𝟔,𝟕,𝟖,𝟗'
+	).split(',')
+	
+	log(FULLSPACE)
+
 	//Array.from("Hello, World!").forEach((e, i) => console.log(e, i));
 
 	let inputString = this
@@ -96,7 +104,7 @@ SP.textFormatted = function(){
 			return input
 		})
 
-		.r(/`([^\n`]+)`/g, input => {
+		.r(/`([^\n`]*)`/g, input => {
 			input = input.r(/`([^\n`]+)`/, '[ $1 ]')
 
 			MONOSPACE.forEach((x, p) => {
@@ -105,34 +113,64 @@ SP.textFormatted = function(){
 			return input
 		})
 
-		.r(/^> /gm, '▌ ')
+		.r(/=([^\n=]*)=/g, input => {
+			input = input.r(/=([^\n=]+)=/, '$1')
 
-		.r(/^--+$/gm,'▔▔▔▔▔▔▔▔▔▔')
+			HIGHTLIGHT.forEach((x, p) => {
+				input = input.r(new RegExp(abc[p], 'g'), x)
+			})
+			return input
+		})
+
+		.r(/\{u(.+)u\}/g, input => {
+			input = input.r(/\{u(.+)u\}/, '$1').trim()
+
+			FULLSPACE.forEach((x, p) => {
+				input = input.r(new RegExp(abcSimple[p], 'g'), x)
+			})
+			return input
+		})
+		
+		.r(/"([^"]*)"/g, '“$1”')
+		.r(/'([^']*)'/g, '‘$1’')
+
+		.r(/^> /gm, '▌ ')
+		.rA('<-', '←')
+		.rA('->', '→')
+		.rA('<', '≺')
+		.rA('>', '≻')
+
+		.r(/^---+$/gm,'▔▔▔▔▔▔▔▔▔▔')
+		.r(/^===+$/gm,'▬▬▬▬▬▬▬▬▬▬')
 
 		/*** TITLE ***/
 		.r(/^# (.+)$/gmi, input => {
 			BOLD.forEach((x, p) => {
 				input = input.r(new RegExp(abc[p], 'g'), x)
 			})
-			return input.r('#','▶') // ▶ ▓
+			return input.r('#','▶')
 		})
 		.r(/^## (.+)$/gmi, input => {
-			ITATIC.forEach((x, p) => {
+			BOLD.forEach((x, p) => {
 				input = input.r(new RegExp(abc[p], 'g'), x)
 			})
-			return input.r('##','▷') // ▷ ▒
+			return input.r('##','▷')
 		})
-		.r(/^###+ (.+)$/gmi, input => {
-			HIGHTLIGHT.forEach((x, p) => {
-				input = input.r(new RegExp(abc[p], 'g'), x)
+		.r(/^### (.+)$/gmi, input => {
+			TITLE.forEach((x, p) => {
+				input = input.r(new RegExp(abcSimple[p], 'g'), x)
 			})
-			return input.r('###','▓') // ▷ ▒
+			return input.r('###','▓')
+		})
+		.r(/^####+ (.+)$/gmi, input => {
+			TITLE.forEach((x, p) => {
+			  input = input.r(new RegExp(abcSimple[p], 'g'), x)
+			})
+			return input.r(/####+/,'▒')
 		})
 
 	return inputString
 }
-
-log(sms.textFormatted())
 
 //log(0b10)
 function Lerp(start_value, end_value, pct) {
