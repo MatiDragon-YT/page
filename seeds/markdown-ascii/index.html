@@ -3,9 +3,13 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Markdown for YouTube</title>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<link rel="stylesheet" type="text/css" href="../../css/main.css">
+	<meta author="MatiDragon">
+	<title>Markdown en ASCII</title>
+  <meta name="description" content="Una simple herramienta para tener texto formateado en sitios como YouTube, Twitter, Discord y otras paginas de forma sencilla.">
 </head>
-<body>
+<body class='d-block'>
 
 	<script src="textFormatted.js"></script>
 	<script>
@@ -26,18 +30,34 @@
 	}
 	</script>
 
+<div class="d-flex between bg-red py-3" style='font-size: 2rem'>
+  <span>Input</span>
+  <span>Output</span>
+</div>
+<div class="d-flex">
+	<textarea class='w-50 h-100' id="inputTxt" oninput="
+	$('#outputTxt').value = this.value.textFormatted()
+	"># Header 1
+## Header 2
+### Header 3
+#### Header 4
 
-	<textarea id="inputTxt"># YouTube
-## YouTube
-### YouTube
+> Cool 😎 
+< jsjs ->
+  
+===
 
-> Hola
-Este es un video para youtube
+Parrafe normal, *itatic*, **bold**, ***itatic bold***, =lighter=
+Or `at line code` ;)
 
----</textarea>
-	<textarea id="outputTxt"></textarea>
-	<button onclick="
-	$('#outputTxt').value = $('#inputTxt').value.textFormatted()
-	">Format text</button>
+"this is 'very' crazy?"
+
+---
+
+{u TITAN9 u} or TITAN9</textarea>
+	<textarea class='w-50 h-100' id="outputTxt"></textarea>
+</div>
 </body>
+<script>$('#outputTxt').value = $('#inputTxt').value.textFormatted()</script>
+<script src="../../js/css.js"></script>
 </html>
