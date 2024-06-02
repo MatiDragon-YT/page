@@ -122,8 +122,8 @@ SP.textFormatted = function(){
 			return input
 		})
 
-		.r(/\{u(.+)u\}/g, input => {
-			input = input.r(/\{u(.+)u\}/, '$1').trim()
+		.r(/\^([^\^\n]+)\^/g, input => {
+			input = input.r(/\^([^\^\n]+)\^/, '$1').trim()
 
 			FULLSPACE.forEach((x, p) => {
 				input = input.r(new RegExp(abcSimple[p], 'g'), x)
