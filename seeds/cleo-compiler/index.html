@@ -352,7 +352,7 @@ function getLine(){
 		   +' ('+m+')'
 		 )
 		 
-		 $d(o.short_desc + '<br><a href="https://library.sannybuilder.com/#/sa/default/'+opcode.id+'">read more</a>') 
+		 $d(o.short_desc + '<br><a href="https://library.sannybuilder.com/#/sa?q='+opcode.id.toUpperCase()+'">read more</a>') 
 		 
 		}
 		else if (/[\+\-\*\/=%<>!]?[=\-+][@#]?/.test(textData.textLine)) {
@@ -682,7 +682,7 @@ return
 cleo_return 0 {}</textarea>
 <pre id='PREVIEW' style="filter: blur(2px);" class="w-100 m-0 r-0 p-1"></pre>
 
-	<pre type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100 m-0 r-0 pr-1 gray d-none"></pre>
+	<pre type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100 m-0 r-0 pr-1 green d-none"></pre>
 </div>
 
 <div style='background: #2c003e'>
@@ -754,9 +754,9 @@ Actor.create(655)
   font-size: 1.5rem
 }
 #editor-body {
-  aspect-ratio: 9/13;
   overflow: auto;
   display: flex;
+  height: 20dvh;
 }
 #editor-counterLine {
   overflow: hidden;
@@ -775,16 +775,18 @@ Actor.create(655)
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
   line-height: 1.5em;
   text-wrap: wrap;
-  aspect-ratio:9/13;
+  
+  height: 20dvh;
 }
 #PREVIEW {
 	transition: all 0.2s ease 0s;
   white-space: pre;
   text-wrap: wrap;
   z-index: -99;
-  aspect-ratio:9/13;
   color: #dcb8ff;
   background: #200029;
+  
+  height: 20dvh;
 }
 #editor-counterLine,
 #data-line-config *,
@@ -843,7 +845,7 @@ IDE does not load <a onclick="
   localStorage.clear()
    window.location.href = window.location.href
   ">clicking here</a>, wait 3s and <a href=index.html>refresh page</a>.<br>
-Array support is limited to Local variables @(@,n).<br>
+Array support is limited to LVAR_LVAR @(@,n).<br>
 Does not detect if a parameter has not been completed.
 </blockquote>
 <blockquote>
@@ -1712,13 +1714,17 @@ $('details').forEach((elem) => {
     .then(() => { console.log('Service Worker Registered'); });
   }
   
-const CACHE_NAME = "mi-cache-v1";
+  const CACHE_NAME = "v1";
 const OFFLINE_URL = "index.html";
 const ASSETS = [
   OFFLINE_URL,
-  "./../../",
-  './compiler.js',
-  'images/logo.png'
+  "/../../css/main.css",
+  "/../../js/css.js",
+  '/compiler.js',
+  '/js/css.min.js',
+  '/js/*',
+  "/data/*",
+  "/"
   // Agrega aquí otros recursos que quieras precachear
 ];
 
@@ -1731,7 +1737,13 @@ self.addEventListener("message", (event) => {
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(ASSETS))
+      .then((cache) => {
+        cache.addAll(ASSETS)
+        console.log(ASSETS)
+      })
+      .catch((error) => {
+        console.error(`onRejected function called: ${error.message}`);
+      })
       .then(() => self.skipWaiting())
   );
 });
@@ -1761,6 +1773,7 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
 
 
 
