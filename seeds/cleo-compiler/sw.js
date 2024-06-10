@@ -4,13 +4,17 @@ importScripts('https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox
 
 // Versión actualizada del Service Worker para manejar la página offline
 
-const CACHE_NAME = "mi-cache-v1";
+const CACHE_NAME = "v1";
 const OFFLINE_URL = "index.html";
 const ASSETS = [
   OFFLINE_URL,
-  "./../../",
-  './compiler.js',
-  'images/logo.png'
+  "/../../css/main.css",
+  "/../../js/css.js",
+  '/compiler.js',
+  '/js/css.min.js',
+  '/js/*',
+  "/data/*",
+  "/"
   // Agrega aquí otros recursos que quieras precachear
 ];
 
@@ -23,7 +27,13 @@ self.addEventListener("message", (event) => {
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(ASSETS))
+      .then((cache) => {
+        cache.addAll(ASSETS)
+        console.log(ASSETS)
+      })
+      .catch((error) => {
+        console.error(`onRejected function called: ${error.message}`);
+      })
       .then(() => self.skipWaiting())
   );
 });
@@ -53,3 +63,6 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+
+
