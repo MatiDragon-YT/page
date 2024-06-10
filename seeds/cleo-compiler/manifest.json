@@ -1,7 +1,7 @@
 {
   "background_color": "#59025c",
   "dir": "ltr",
-  "display": "fullscreen",
+  "display": "standalone",
   "name": "Enchanti IDE",
   "orientation": "any",
   "scope": "../../",
