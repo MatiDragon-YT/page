@@ -5,7 +5,17 @@ import { STRING } from './js/string.js'
 // Author: MatiDragon.
 // Contributors: Seemann, OrionSR, Miran.
 
-
+/*
+  Cada dia entiendo menos el código,
+    hay noches que me duermo pensando
+    en ¿por que lo hago? sera que solo
+    quiero sufrir o me volvi masoquista??
+    
+  En fin. Si alguien vé esto, le mando
+    fuerzas desde el más allá.
+    
+                              - MatiDragon
+*/
 const
 		NP = Number.prototype,
 		SP = String.prototype,
@@ -1413,7 +1423,7 @@ function obtenerTipo(variable) {
   }
 }
 
-function detectarOpcode(operacion) {
+function detectarOpcode(operacion, _lineaInvocada = 0) {
   const opcodes = {
     '=#': {
       'GVAR_INT-GVAR_FLOAT': '8C',
@@ -1607,6 +1617,15 @@ function detectarOpcode(operacion) {
     .replace(/\<>|\!=/, '==')
   }
   
+  if (!(operador in opcodes)){
+    throw new SyntaxError(
+      'Operador undefined\n>>> '
+      +operador+ '\n'
+      +_lineaInvocada+':'
+      +((variable1.length + operador.length + 1)+'')
+      +' | >> '+operacion)
+  }
+  
   // Para saber el tipo de datos y prevenir que el tipo de dato cambie cuando se aplica a la misma variable.
   let tipoVariable1 = obtenerTipo(variable1);
   let tipoVariable2 = variable1 == variable2
@@ -1796,6 +1815,7 @@ SP.transformTypeData = function(){
 SP.constantsToValue = function(){
   const nString = this.split('\n').map(line=>{
     line = line.dividirCadena().map(param=>{
+      let paramOriginal = param
       param = param.trim()
       
       let pref = ""
@@ -1825,7 +1845,9 @@ SP.constantsToValue = function(){
             ret = param
           }
           
-          return ret
+          return pref + ret
+        }else {
+          return paramOriginal
         }
         //else if (/^[+\-=^&$*]/)
           
@@ -2378,7 +2400,7 @@ SP.removeTrash = function(){
     
     params.forEach((param, pr) =>{
       if (params.length > 1){
-      if (/^[=\/\+\-~^*!?%&|]+$/mi.test(param)) {
+      if (/^[=\-\+\/~^*!?%&|]+$/mi.test(param)) {
 			  param = ''
 		  }
 		  else if (/^[a-z]\w+$/mi.test(param)) {
@@ -2640,10 +2662,8 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						break;
 
 						case 'int':
-							let isNumberNegative = /^-/m.test(Argument)
-							
-							if (isNumberNegative && Argument > 0) Argument *= -1 
-							if (Argument > 0x7FFFFFFF) Argument = 0x7FFFFFFF;
+							if (Math.abs(Argument) > 0x7FFFFFFF)
+							  throw new Error('Numero fuera de rango')
 
 							let byte1   = 0x7F       // 127
 							let byte1R  = 0xFF
@@ -2653,15 +2673,16 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 							let byte4R  = 0xFFFFFFFF
 
 							let dataType;
-
+              
 							if (0 <= Argument) {
-								if (Argument <= byte4) dataType = come(TYPE_CODE.INT32);
-								if (Argument <= byte2) dataType = come(TYPE_CODE.INT16);
-								if (Argument <= byte1) dataType = come(TYPE_CODE.INT8);
+								if (Argument <= byte4)
+								  dataType = come(TYPE_CODE.INT32);
+								if (Argument <= byte2)
+								  dataType = come(TYPE_CODE.INT16);
+								if (Argument <= byte1)
+								  dataType = come(TYPE_CODE.INT8);
 							}
 							else {
-								//Argument *= -1
-
 								if (IsInRange(Argument, -(byte1+=2), 0)) {
 									dataType = come(TYPE_CODE.INT8);
 								}
@@ -2691,7 +2712,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 								Argument *= -1
 								Argument++;
 							}
-
+							
 							Argument = Number(Argument).toString(16).padStart((()=>{
 								let temp
 								switch (dataType){
