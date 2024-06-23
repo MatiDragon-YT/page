@@ -90,7 +90,7 @@
     display: block;
   }
   ::-webkit-scrollbar-thumb { background: #00e676}
-  .bottom-nav {
+  .bottom-nav- {
             position: fixed;
             bottom: 0;
             left: 0;
@@ -665,7 +665,7 @@ $misc != 0xff ? 7@ = !7@ : A = B || 0b1000
 X = 3@+1 == 5_5 ? false : undefined
 function(2@(3@++,123), "test\t#1 <=")
 0@ = Char.Create(PedType.Gang1, #FAM1, .0, 0f, 0.0)
-.SetHeading(0@ 1.2e-5)
+.SetHeading(0@ 1)
 subrutine()
 while !.DoesExist($Player_Actor--)
   wait .3s /* remember the last class */
@@ -779,6 +779,9 @@ Actor.create(655)
   
   height: 20dvh;
 }
+html {
+  background: #2c003e;
+}
 #PREVIEW {
 	transition: all 0.2s ease 0s;
   white-space: pre;
@@ -814,9 +817,6 @@ select {
   background: none;
   color: #fff;
 }
-footer, blockquote {
-  background: #2c003e;
-}
 pre {
   color: #dcb8ff;
   background: #200029;
@@ -847,7 +847,6 @@ IDE does not load <a onclick="
    window.location.href = window.location.href
   ">clicking here</a>, wait 3s and <a href=index.html>refresh page</a>.<br>
 Array support is limited to LVAR_LVAR @(@,n).<br>
-Does not detect if a parameter has not been completed.
 </blockquote>
 <blockquote>
 IDE supports & features:
@@ -976,11 +975,18 @@ FE: actor[...]  -->  00FE: actor[...]
 <h4>Keywords</h4>
 This is another way to write opcodes, you just write its name and then it is replaced by the opcode.
 <pre>
-nop           -->  XXXX: nop
-WAIT 0        -->  XXXX: wait 0 ms
-not xyz 0@    -->  XXXX: ! xyz 0@[...]
+nop           -->  0000: nop
+WAIT 0        -->  0001: wait 0 ms
+not xyz 0@    -->  8ABC: !xyz 0@[...]
 </pre>
-These can be written in lowercase or uppercase, and can be negated or contradicted by placing at the beginning of the line one of these 2 executors `!, NOT`.
+These can be written in lowercase or uppercase, and can be negated or contradicted by placing at the beginning of the line one of these 2 executors `!, NOT`.<br>
+<br>
+The IDE also detects if a keyword was written from right to left and corrects it so that it is compileable.
+<pre>
+0@ = get_current_time
+// is equivalent to
+get_current_time = 0@
+</pre>
 </details>
 
 <details>
@@ -1055,6 +1061,17 @@ You can begin or end a number with a period (.) or end it with `f`. Scientific n
 </details>
 
 <details>
+<summary>Literal interpreter</summary>
+The editor supports the classic LONG and SHORT formats of SB, and the JS BACKSTICK.
+<pre>
+SHORT  'Abc'    09,41-62-63-00-00-00-00-00
+LONG   "Abc"    0E,03,41-62-63
+BACKS  `"Abc"`  0E,05,22-41-62-63-22
+</pre>
+Character escapes can also be made with the slash (\t, \n, \", \xff).
+</details>
+
+<details>
 <summary>Expressions operative</summary>
 <h4>Sanny</h4>
 You have all the SB expressions and one extra.
@@ -1125,13 +1142,10 @@ And cascading operations can also be performed in this manner
 </details>
 
 - Constants and enumerations.<br>
-- Characters scape (\t, \n, \", \xff).<br>
 - Preview of errors and compiled in real time.<br>
 - Connection with <a href="https://library.sannybuilder.com/">Library::SannyBuilder</a> and <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">data::CrossPlataform</a><br>
 </blockquote>
 <blockquote class="info">
-- Operations between variables will always be INT unless "FLOAT" is written before.<br>
-- Arrays without defined typing will expect an INT.<br>
 - This IDE downloads files and stores them in the LocalStorage for faster uploads.<br>
 </blockquote>
 <footer class="center gray">
