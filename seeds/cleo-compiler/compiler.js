@@ -264,10 +264,17 @@ SP.enumsGenerator = function() {
     return resultado;
 }
 
-async function LSget(url, color, saveAt) {
-  saveAt = saveAt ?? url
+/**
+ * Almacena archivo de texto en el localStore, y las recupera para impedir descargas innecesarias.
+ * @param {string} url - direccion de descarga.
+ * @param {string} color - representar el nivel de carga.
+ * @param {string} _saveAt - direccion de almacenaje (opcional).
+ * @returns {string} - texto recuperado
+*/
+async function LSget(url, color, _saveAt) {
+  _saveAt = _saveAt ?? url
   
-  let text = LS.get(saveAt)
+  let text = LS.get(_saveAt)
   
   if (text == undefined){
     text = await fetch(url)
@@ -276,7 +283,7 @@ async function LSget(url, color, saveAt) {
     })
     
     text = await text.text()
-    LS.set(saveAt, text)
+    LS.set(_saveAt, text)
   }
 
   return text
@@ -318,27 +325,59 @@ CUSTOM_KEYWORDS.toLowerCase().split('\n').map(keyword =>{
 
 let addClass = false
 let currentClass = ''
-let classes = {}
-let CUSTOM_CLASSES = (await LSget(
-  'https://library.sannybuilder.com/assets/sa/classes.db',
-  'gray',
-  './data/classes.db'
-)) + (await LSget(
+
+let classes = deepMerge(
+ deepMerge({}, 
+  txtToClass((await LSget(
+   'https://library.sannybuilder.com/assets/sa/classes.db',
+   'gray',
+   './data/classes.db'
+  )))
+ ),
+ txtToClass((await LSget(
   './data/classes.db',
   '#373',
   './data/classesCP.db'
-)) 
+  )))
+)
 
-/*
-CurrentWeapon(0@) = 23 // 01B9: 0@ 23
-0@ = CurrentWeapon(1@) // 0470: 0@ 1@
-CurrentWeapon(0@) == 34 //02D8: 0@ 34
-*/
+function isObject(obj) {
+    return obj && typeof obj === 'object' && !Array.isArray(obj);
+}
 
-CUSTOM_CLASSES
-  .toUpperCase()
-  // Aquí se utiliza para eliminar comentarios de una sola línea que comienzan con ';'.
-  .r(/[\x20\t]*;(.+)?$/gm, '')
+// Combina objetos a profundidad. solo si un elemento
+//   no es un objeto, no le aplica una combinacion,
+//   sino un remplazo.
+function deepMerge(target, source) {
+    const stack = [{ target, source }];
+
+    while (stack.length > 0) {
+        const { target, source } = stack.pop();
+
+        for (const key in source) {
+            if (source.hasOwnProperty(key)) {
+                if (isObject(source[key])) {
+                    if (!target[key] || !isObject(target[key])) {
+                        target[key] = {};
+                    }
+                    stack.push({ target: target[key], source: source[key] });
+                } else {
+                    target[key] = source[key];
+                }
+            }
+        }
+    }
+
+    return target;
+}
+
+function txtToClass(txt){
+  let classesTemp = {}
+  
+  txt = txt
+  .toUpperCase() // Aquí se utiliza para eliminar comentarios de una sola línea que comienzan con ';'.
+  .r(/;(.+)?$/gm, '')
+  .r(/^\s*$/gm, '')
   .split('\n')
   .clear()   // .clear elimina líneas vacias
   .forEach(line => {
@@ -352,17 +391,17 @@ CUSTOM_CLASSES
       addClass = false;
     }
     else if (line == '#EOF'){
-      addClass = true;
+      addClass = false;
     }
     else {
       // Si estamos en la sección de lista de clases, se crea un nuevo objeto para cada clase.
       if (addClass == true) {
-        classes[line] = {}
+        classesTemp[line] = {}
       } else {
         // Si la línea comienza con '$', indica el comienzo o fin de una definición de clase.
         if (/^\$.+/m.test(line)) {
-          if (line.toLowerCase() != '$begin'
-            && line.toLowerCase() != '$end'
+          if (line != '$BEGIN'
+            && line != '$END'
           ){
             // Extrae el nombre de la clase actual.
             currentClass = line.match(/^\$(.+)/m)[1]
@@ -376,7 +415,8 @@ CUSTOM_CLASSES
             let data = line.match(/\[(.*?)\]/g).map(e => e.replace(/[\[\]]/g, '').split(','));
           
             // Inicializa un objeto para la propiedad dentro de la clase actual.
-            classes[currentClass][propertyName] = {};
+            if (!(propertyName in classesTemp[currentClass]))
+            classesTemp[currentClass][propertyName] = {};
           
             // Itera sobre cada conjunto de operaciones y códigos para la propiedad.
             data.forEach(prop => {
@@ -384,20 +424,20 @@ CUSTOM_CLASSES
               // Realiza acciones basadas en el código matemático.
               switch (mathCode) {
                 case '==':
-                  classes[currentClass][propertyName].IS = opCode;
+                  classesTemp[currentClass][propertyName].IS = opCode;
                   break;
                 case '=':
                   if (pos === '1') {
-                    classes[currentClass][propertyName].SET = opCode;
+                    classesTemp[currentClass][propertyName].SET = opCode;
                   } else if (pos === '2') {
-                    classes[currentClass][propertyName].GET = opCode;
+                    classesTemp[currentClass][propertyName].GET = opCode;
                   }
                   break;
                 case '+=':
-                  classes[currentClass][propertyName].ADD = opCode;
+                  classesTemp[currentClass][propertyName].ADD = opCode;
                   break;
                 case '>=':
-                  classes[currentClass][propertyName].UPPER = opCode;
+                  classesTemp[currentClass][propertyName].UPPER = opCode;
                   break;
                   // Se pueden agregar más casos según sea necesario.
               }
@@ -408,18 +448,20 @@ CUSTOM_CLASSES
             // Extrae la clave y el valor de la propiedad.
             let temp =
               line.match(/([^,]+),([^,]+)/)
-              
+
             // Crea un objeto temporal para la propiedad.
             let miember = {}
             miember[temp[1]] = temp[2]
-            
+
             // Combina la propiedad con la clase actual.
-            classes[currentClass] = { ...classes[currentClass],  ...miember}
+            classesTemp[currentClass] = { ...classesTemp[currentClass],  ...miember}
           }
         }
       }
     }
   })
+  return classesTemp
+}
 
 let CUSTOM_VARIABLES = (await LSget(
   './data/CustomVariables.ini',
@@ -827,9 +869,10 @@ SP.parseHigthLevelLoops = function(){
       
       outputText += line + '\n'
     })
-    if (stacks.general.length > 0)
-      throw new Error(`pila sintactica: `+stacks.general);
+    if (stacks.general.length > 0){
       
+      throw new Error(`pila sintactica: `+stacks.general)
+    }
     return outputText;
 }
 
@@ -1000,10 +1043,17 @@ SP.formatScript = function() {
   
   code = code.split('\n').map(line => {
     return line.trim()
-  }).join('\n')
+  }).clear()
+  
+  if (/while true/i.test(code[0])
+  || /repeat/i.test(code[0]))
+    code.unshift('nop');
+  
+  code = code.join('\n')
   
   code = code
     .r(/^(if and|if or|if )?/mgi, "$1\n")
+    .r(/^hex /mgi, "hex\n")
     .r(/^then /mgi, "then\n")
     .r(/^else /gmi, "else\n")
     .r(/ end$/mgi, "\nend\n")
@@ -1124,7 +1174,6 @@ SP.preProcesar = function() {
     if (/^\d+\.\d+ == \d+\.\d+$/mi.test(linea)){
       CLEO_FUNCTIONS.MATH.FLOAT_FLOAT = true
     }
-    
     nString += linea.trim() + '\n'
   })
   
@@ -1166,6 +1215,7 @@ SP.preProcesar = function() {
   	// 0@ = 1@ == 1 ? 0 : 1
   	.r(/^(.+) ([\-\+\*\/%]?=) (.+) \? (.+) \: (.+)$/gm,
   	  `if\n$3\nthen\n$1 $2 $4\nelse\n$1 $2 $5\nend\n`)
+    .r(/^(.+) => (.+);/gim, 'if $1\nthen $1 end')
   	  
   	// 0@ == 1 ? 0 : 1
   	.r(/^(.+) \? (.+) \: (.+)$/gm, input =>{
@@ -1188,6 +1238,27 @@ SP.preProcesar = function() {
   	  
   	  return input
   	})
+  	// 0@ == 1 ? 0
+  	.r(/^(.+) \? (.+)$/gm, input =>{
+  	  let vars = input.match(/^(.+)\?(.+)$/)
+  	                  .map(e=> e.trim())
+  	  
+  	  vars[1] = vars[1].determineOperations()
+  	  
+  	  let operators = '==,!=,<=,>=,>,<,<>'
+  	  
+  	  operators.split(',').forEach(operador => {
+  	    if (RegExp(operador).test(vars[1])){
+  	      input =
+  	        'if\n'+vars[1]+'\n'+
+  	        'then\n'+vars[2].determineOperations()+'\n'+
+  	        'end\n'
+  	    }
+  	  })
+  	  
+  	  return input
+  	})
+  	
   	.r(/^([^\s]+) \? ([^\s]+)$/gm, (i, ...m) => {
   	  
   	  let r = 
@@ -2139,7 +2210,11 @@ SP.dividirCadena = function() {
           }
           
           subcadenaActual += caracter;
-        } else if (caracter === ' ' && !dentroComillas) {
+        } else if (
+          ( caracter === ' '
+          || caracter === '\n'
+          || caracter === '\t'
+          ) && !dentroComillas) {
             // Si encontramos un espacio fuera de las comillas, guardamos la subcadena actual
             if (subcadenaActual.trim() !== '') {
                 resultado.push(subcadenaActual);
@@ -2413,10 +2488,82 @@ SP.removeTrash = function(){
   return nCode
 }
 
+SP.parseHexEnd = function(){
+  let inHex = false
+  let inStart = false
+  
+  let resultv2 = this.split('\n').map((line, lineNumber)=>{
+    line = line.trim()
+    if (/hex/i.test(line)){
+      if (inHex) {
+        throw new HexError('Re-declared hexadecimal sequence\n\t>>> '+lineNumber)
+      }
+      else {
+        inHex = true
+        line = ''
+      }
+    }
+    if (/end/i.test(line)){
+      if (inHex){
+        inHex = false
+        inStart=false
+        line = ''
+      }
+      
+    }
+    if (inHex){
+      inStart = true
+      line = line.dividirCadena().map(e => {
+        let multiplicado = 1
+        let addNull
+        if (/\(.+\)/.test(e)){
+          multiplicado = e.match(/\((.+)\)/)[1]
+          
+          function evaluaAritmetica(expresion) {
+            return new Function('return ' + expresion)();
+          }
+          
+          multiplicado = Math.round(evaluaAritmetica(multiplicado))
+          
+          e = e.r(/\(.+\)/, '')
+        }
+        else if (/^['"`].+['"`]$/m.test(e)){
+          addNull = e.i("'") ? true : false;
+          
+          e = e.r(/^['"`](.+)['"`]$/m, '$1')
+          .parseCharScape()
+          .toUnicode()
+          .r(/-/g)
+        }
+        
+        if (e.length % 2 != 0) {
+          e = '0' + e
+        }
+        
+        if (multiplicado > 1){
+          e = e.repeat(+multiplicado)
+        }
+        
+        if (addNull) e += '00';
+        
+        return e
+      }).join('')
+    }
+    if (inStart && line != ''){
+      line = '['+line+']'
+      inStart = false
+    }
+    return line
+  }).clear().join('\n')
+  
+  return resultv2
+}
+
 SP.adaptarCodigo = function(){
   let result = this
     .removeComments()
     .transformTypeData()
+    .parseHexEnd()
     .preProcesar()
     .formatScript()
     .autoAddCleoFunction()
@@ -2507,6 +2654,18 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 		  // si es una etiqueta
 			registeredBites.push(Line.r(':','').toUpperCase())
 		}
+		else if(Line.match(/^\[.*\]$/)){
+		  // si es un hexadecimal
+		  Line = Line.r(/^\[(.*)\]$/, '$1')
+		  
+		  if (/([g-z]|\W)/i.test(Line)){
+        throw new SyntaxError(`Just input hexadecimal\n\tPosible line: ${1+numLine}`)
+      }
+		  if (Line.length != 0){
+		    registeredBites.push(Line.length / 2)
+		    codeDepurated.push(',\n'+Line)
+		  }
+		}
 		else {
 			LineComand[numLine] = Line.dividirCadena()
 			.map(data => {
@@ -2577,7 +2736,11 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 							
 							if (Line.endsWith('=')){
 							  throw new SyntaxError(`missing parameter\n\tin line ${(1+numLine)} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
-							}else{
+							}
+							else if (Line === 'hex'){
+							  throw new SyntaxError(`missing closure\n\t>>> hex[...]end\n${charsCounter} | ${1+numLine}`)
+						  }
+						  else {
 							  throw new SyntaxError(`opcode undefined\n>>> ${Argument}\n${numLine+1}:${charsCounter} | ${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
 							};
 						}
@@ -3104,7 +3267,7 @@ String.prototype.toCompileSCM = function(Name_File){
 
 	let code_hex = this.Translate();
 
-	if (code_hex.length % 2) {
+	if (code_hex.length % 2 != 0) {
 		alert ("E-03: la longitud de la cadena hexadecimal es impar.");
 		return;
 	}
