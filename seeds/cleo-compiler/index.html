@@ -16,7 +16,6 @@
   box-sizing: border-box;
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
 }
-  
 
   .header, .subheader, .navbar{
     background-color: #360047;
@@ -58,6 +57,7 @@
   .navbar a:hover, .dropdown:hover .dropbtn {
     background-color: #4d004b;
     color: #fff;
+    cursor: pointer;
   }
   .navbar a[disabled], .dropdown dropbtn[disabled]{
     color: #A5229E;
@@ -84,10 +84,12 @@
 
   .dropdown-content a:hover, .dropdown-content label:hover{
     background-color: #4d004b;
+    cursor: pointer;
   }
 
   .dropdown:hover .dropdown-content {
     display: block;
+    cursor: pointer;
   }
   ::-webkit-scrollbar-thumb { background: #00e676}
   .bottom-nav- {
@@ -265,7 +267,6 @@ SP.fixOpcodes = function(){
     let negado = false
     line = line.trim().dividirCadena()
     
-    //log(line)
     if (line.length >= 1){
       if (line[0].length < 5 && line[0].endsWith(':')){
         line[0] = line[0].r(/:$/m)
@@ -634,6 +635,31 @@ input[type=text]{
   background: #200029;
   border-bottom: 1px solid #200029;
 }
+:root {
+  counter-reset: section;
+}
+
+[tip]{
+  position: relative;
+}
+[tip]:hover{
+  background: #7704;
+  &::before{
+    content: attr(tip);
+    background: #404b;
+    color: #f22;
+    position: absolute;
+    font-size: .75rem;
+    text-align: right;
+    display: flex;
+    min-width: 5rem;
+    max-width: 7rem;
+    right: 1rem;
+    top: 1rem;
+    padding: .3rem;
+    font-weight: bold;
+  }
+}
 </style>
 
 <form id="FORMULARIO">
@@ -643,12 +669,12 @@ input[type=text]{
  <div>
   <input type="text" id="FILENAME" placeholder="File name" autocomplete="off" spellcheck="false" value="EnchantiScript.csi">
 		<input id='file' type='file' accept='.txt,.ini' class="d-none">
-		<button action onclick="saveSource()" title=Descargar> ⇊️ </button>
-		<button action onclick="compilerSource()" title=Compilar> ⇶️ </button>
+		<a action onclick="saveSource()" tip=Download>⇊️</a> 
+		<a action onclick="compilerSource()" tip=Compile>⇶️</a>
  </div>
  <div id="change-view" class="pr-2 size-4">
-  <span onclick="localStorage.setItem('code-cached',$('#HEX').value)" tip='save code at cache' id='state' class="loading yellow" action >ᛟ</span>
-   <btn action tip='compiled preview' class="bg-none d-sm-none green"  onclick="
+  <span onclick="localStorage.setItem('code-cached',$('#HEX').value)" tip='Save' id='state' class="loading yellow" action >ᛟ</span>
+   <btn action tip='compiled preview' class="bg-none d-sm-none green d-none"  onclick="
    $('#HEX').toggle();
    $('#PREVIEW').toggle();
    $('#OUTHEX').toggle();
@@ -658,7 +684,8 @@ input[type=text]{
 
 <div id="editor-body">
   <pre id="editor-counterLine" class="m-0 r-0 p-1"></pre>
-	<textarea id="HEX" class="w-100 m-0 r-0 p-1 pl-5" placeholder="WIZARD, CAST THY SPELL!
+  
+	<textarea id="HEX" class="w-70 m-0 r-0 p-1 pl-5" placeholder="WIZARD, CAST THY SPELL!
 	ᚹᛁᛉᚨᚱᛞ, ᚲᚨᛊᛏ ᚦᚤ ᛊᛈᛖᛚᛚ!" autocomplete="off" spellcheck="false">{ Syntax based on SB4 and JS }
 0000: this_is_a_NOP
 $misc != 0xff ? 7@ = !7@ : A = B || 0b1000
@@ -681,9 +708,9 @@ return
 
 :function
 cleo_return 0 {}</textarea>
-<pre id='PREVIEW' style="filter: blur(2px);" class="w-100 m-0 r-0 p-1"></pre>
+<pre id='PREVIEW' style="filter: blur(2px);" class="w-70 m-0 r-0 p-1"></pre>
 
-	<pre type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100 m-0 r-0 pr-1 green d-none"></pre>
+	<pre type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-30 m-0 r-0 pr-1 green"></pre>
 </div>
 
 <div style='background: #2c003e'>
@@ -710,12 +737,13 @@ cleo_return 0 {}</textarea>
   <option value="sa_mobile">SA Mobile</option>
   <option value="vc_mobile">VC Mobile</option>
 </select>
+<span>v 1.0.0</span>
 </div>
 </footer>
 <footer id="short_desc" class="py-1 d-none"></footer>
 
 <footer class="d-flex p-2 pb-0 w-100 g-3 d-sm-none subheader" id="keys-mobile">
-<key>→|</key>
+<key>↹</key>
 <key>&</key>
 <key>@</key>
 <key>$</key>
@@ -754,10 +782,16 @@ Actor.create(655)
 [action]{
   font-size: 1.5rem
 }
+a[action]{
+  color:yellow;
+  &:hover{
+    text-decoration: none
+  }
+}
 #editor-body {
   overflow: auto;
   display: flex;
-  height: 20dvh;
+  height: 50dvh;
 }
 #editor-counterLine {
   overflow: hidden;
@@ -767,7 +801,7 @@ Actor.create(655)
 }
 #HEX {
   position: absolute;
-  white-space: pre;
+  white-space: pre!important;
   color: transparent;
   background: transparent;
   caret-color: white;
@@ -775,22 +809,22 @@ Actor.create(655)
   overflow: auto;
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
   line-height: 1.5em;
-  text-wrap: wrap;
-  
-  height: 20dvh;
+  text-wrap: wrap!important;
+  overflow-wrap: break-word;
+  height: 50dvh;
 }
 html {
   background: #2c003e;
+  margin-bottom: 5rem;
 }
 #PREVIEW {
-	transition: all 0.2s ease 0s;
-  white-space: pre;
-  text-wrap: wrap;
+  white-space: pre!important;
+  text-wrap: wrap!important;
   z-index: -99;
   color: #dcb8ff;
   background: #200029;
-  
-  height: 20dvh;
+  overflow-wrap: break-word;
+  height: 50dvh;
 }
 #editor-counterLine,
 #data-line-config *,
@@ -812,6 +846,9 @@ html {
 }
 #table-command {
   background: #360047;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
 }
 select {
   background: none;
@@ -1072,6 +1109,27 @@ Character escapes can also be made with the slash (\t, \n, \", \xff).
 </details>
 
 <details>
+<summary>Hexadecimal interpreter</summary>
+The IDE works with the same syntax as SB, with some limitations. You cannot insert variables yet, but you can use the hex multiplication operators :)
+<pre>
+HEX
+ 0 00 0(2)   --->  00 00 00 00
+ "hello"     --->  68 65 6C 6C 6F
+ 'hello'     --->  68 65 6C 6C 6F 00
+END
+</pre>
+The multiplication function, accepts arithmetic operations and rounds them to the nearest number.
+<pre>
+hex
+ 0(4)   --->  00 00 00 00
+ 0(4*2) --->  00 00 00 00 00 00 00 00
+ 0(4.6) --->  00 00 00 00 00
+ 0(4.3) --->  00 00 00 00
+end
+</pre>
+</details>
+
+<details>
 <summary>Expressions operative</summary>
 <h4>Sanny</h4>
 You have all the SB expressions and one extra.
@@ -1196,7 +1254,7 @@ function IniFile_GET(iniContent, section, key) {
 
 			const value = {};
 			let currentSection = null;
-
+      
 			data.split(/\r?\n/).forEach(line => {
 					if (regex.comment.test(line)) {
 							return;
@@ -1213,13 +1271,13 @@ function IniFile_GET(iniContent, section, key) {
 							currentSection = section;
 					}
 			});
-
+      
 			return value;
 	}
 
 	// Aquí debes cargar el contenido del archivo INI o proporcionarlo directamente
-
 	const parsedINI = parseINIString(iniContent);
+
 
 	// Buscamos el valor en la sección y clave especificadas
 	if (parsedINI[section] && parsedINI[section][key]) {
@@ -1230,14 +1288,56 @@ function IniFile_GET(iniContent, section, key) {
 }
 
 function parseIniToCLEO (ini){
-	let MODELS = localStorage.getItem('models').split('\n')
+	let MODELS = localStorage.getItem('./data/models.ide').split('\n')
 	MODELS.forEach((model, i) => MODELS[i] = model.split(' '))
 
-	let code = ''
+	let code = 'nop\n'
 
-	let indActor   = 0, numActor   = IniFile_GET(ini, 'numbers', 'actors'),
-			indAutos   = 0, numAutos   = IniFile_GET(ini, 'numbers', 'actors'),
-			indObjetos = 0, numObjetos = IniFile_GET(ini, 'numbers', 'actors')
+  let
+   interior=  IniFile_GET(ini,"game","set.interior")
+   
+   code += `Interior.SetVisible(${interior})\n`
+   code += `Actor.SetLinkInInterior(_Player,${interior})\n`
+
+  let model = IniFile_GET(ini,"player","model")
+  if (model > 0 && model <= 288){
+    code += `0@ = ${model}
+        Model.Load(0@)
+        repeat
+          wait 0
+        until Model.Available(0@)
+        Player.SetModel(_Char,0@)
+        Model.Release(0@)\n
+    `
+  }
+
+
+  let
+	  x   = IniFile_GET(ini, 'player', 'gcoord.x'),
+	  y   = IniFile_GET(ini, 'player', 'gcoord.y'),
+	  z   = IniFile_GET(ini, 'player', 'gcoord.z')
+	
+	code += `Actor.SetPosition(_Player,${x},${y},${z})\n`
+	
+	let
+	  weather = IniFile_GET(ini, 'time', 'set.weather'),
+	  hour = IniFile_GET(ini, 'time', 'set.hour'),
+	  minute = IniFile_GET(ini, 'time', 'set.minute')
+	  
+	code += `Weather.SetForceNow(${weather})\n`
+	code += `Game.SetTime(${hour},${minute})\n`
+	
+	
+	
+	let indActor = 0,
+	  numActor = IniFile_GET(ini, 'numbers', 'actors'),
+	  indAutos = 0,
+	  numAutos = IniFile_GET(ini, 'numbers', 'actors'),
+	  indObjetos = 0,
+	  numObjetos = IniFile_GET(ini, 'numbers', 'actors')
+
+  return code +'\nend_thread'
+  // ===================
 
 	const GENERATION = {
 			NORMAL:0,
@@ -1342,7 +1442,9 @@ function parseIniToCLEO (ini){
 	}
 
 	let jumpCode = 0
-
+/*
+createActor(modelType, ModelId, PedType, 0@)
+*/
 	while (numActor > indActor){
 		indActor++
 		let slot = 'ACTOR'+indActor
@@ -1439,11 +1541,6 @@ terminate_this_script
 const $node = $('#HEX')
 const $file = $('#file')
 
-const processTextByLine = text => {
-    const arr = text.split(/\r?\n/gm)
-    arr.map(line => console.log(line))
-}
-
 const openFile = event => {
   const input = event.target
   if (!input) throw new Error('null input')
@@ -1461,7 +1558,7 @@ const openFile = event => {
     $node.value = text
     hl()
     
-    processTextByLine(text)
+    $('#OUTHEX').innerText = $node.value.Translate(true, true)
   }
   
   reader.readAsText(first)
@@ -1478,18 +1575,52 @@ $node.onclick = () => {
     $('#OUTHEX').innerText = $node.value.Translate(true,true)
     getLine()
 }
-$node.oninput = hl
+
+let codigoOriginal = $node.value
+let codigoModificado = codigoOriginal
+$node.oninput = (e)=>{
+  codigoOriginal = $node.value
+  hl()
+  const ele = e.target
+  
+  let keyDown = ele.value.substr(ele.selectionStart-1, 1).toLowerCase()
+  
+  if (codigoOriginal.length < codigoModificado.length)
+    keyDown = 'backspace';
+  
+  if (keyDown === '') keyDown = 'backspace'
+  if (keyDown === ' ') keyDown = 'space'
+  if (keyDown === '\t') keyDown = 'tab'
+  if (keyDown === '\n') keyDown = 'enter'
+  
+  const pares = {
+    '(':')',
+    '{':'}',
+    '[':']',
+    '"':'"',
+    '`':'`',
+    "'":"'"
+  }
+  //textLength
+  if (keyDown in pares){
+    document.execCommand("insertText",false,pares[keyDown])
+    
+    ele.focus();
+    if (/['"`]/.test(keyDown)){
+      ele.selectionStart++
+      ele.selectionEnd--
+    }else {
+      ele.selectionStart--
+      ele.selectionEnd--
+    }
+    
+  }
+  codigoModificado = codigoOriginal
+}
+
 $node.onmousemove = getLine
 $node.onkeyup = (event) =>{
-  if (event.key === '(') {
-    document.execCommand("insertText",false,')')
-  }
 	try {
-	//console.log(event)
-    //if (event.code == 'Enter' 
-    //	|| event.code == 'Backspace'
-    //	|| event.code == 'Space'){
-        //let tempC = $node.value.Translate(true)
         $('#OUTHEX').innerText = $node.value.Translate(true,true)
         getLine()
         $('#error').style.display = 'none'
