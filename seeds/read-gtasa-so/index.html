@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload libGTASA.lst</title>
+    <style>
+        #output {
+            height: 14rem;
+            overflow-y: auto;
+        }
+        .pagination {
+            margin-top: 10px;
+            overflow: auto;
+            display: flex;
+        }
+        .pagination button {
+            margin: 0 2px;
+            padding: .5rem;
+        }
+    </style>
+<link rel="stylesheet" href="./../../css/main.css">
+
+</head>
+<body class="d-block py-3">
+    <h1>Upload libGTASA.lst</h1>
+    <p>Recommended minimum requirements.</p>
+    <p>6GB of RAM and any 2GHz OctaCore processor.<br>
+For the file to be processed in 7 seconds.</p>
+    <input type="file" id="fileInput" accept=".lst">
+    <button onclick="processFile()">process file</button><br>
+    <p>The page may close on the first attempt.<br>
+    Since everything operates on the same device.</p>
+    <button onclick="downloadHTML()">download HTML</button>
+    <pre id="output"></pre>
+    <div class="pagination" id="pagination"></div>
+     
+    <script>
+        let dividedLines = [];
+        let currentPage = 0;
+
+        function processFile() {
+            const fileInput = document.getElementById('fileInput');
+            const output = document.getElementById('output');
+            const pagination = document.getElementById('pagination');
+            
+            output.textContent = 'loading...\nWait plis';
+            if (!fileInput.files.length) {
+                alert('Por favor, selecciona un archivo.');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const text = event.target.result;
+                const lines = text.split('\n');
+                const linesPerPage = ~~(lines.length / 2000)
+                
+                dividedLines = [];
+
+                for (let i = 0; i < lines.length; i += linesPerPage) {
+                    dividedLines.push(lines.slice(i, i + linesPerPage).join('\n'));
+                }
+
+                currentPage = 0;
+                renderPage();
+                renderPagination();
+            };
+
+            reader.readAsText(file);
+        }
+
+        function renderPage() {
+            const output = document.getElementById('output');
+            output.textContent = dividedLines[currentPage] || '';
+        }
+
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+
+            for (let i = 0; i < 616; i++) {
+                const button = document.createElement('button');
+                button.textContent = i + 1;
+                button.onclick = () => {
+                    currentPage = i;
+                    renderPage();
+                };
+                pagination.appendChild(button);
+            }
+        }
+        
+        function downloadHTML() {
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sitio_actual.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        const $ = (element, _parent = document) => {
+	const callback = _parent
+	if (typeof _parent == 'function'){
+		_parent = document
+	}
+	const xElements = _parent.querySelectorAll(element)
+	const length = xElements.length
+
+	element = element.charAt(0) === '#' && !/\s/.test(element) || length === 1
+		? _parent.querySelector(element)
+		: length === 0
+			? undefined
+			: xElements
+
+	if (typeof callback == 'function'){
+		if(element){
+			if('' + element == '[object NodeList]'){ 
+				element.forEach(function(e,i){
+					callback(e,i)
+				})
+			}else{  
+				callback(element)
+			}
+		}
+	}else{
+		return element
+	}
+}
+    </script>
+    <script src="../cleo-compiler/js/css.min.js"></script>
+</body>
+</html>
