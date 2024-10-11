@@ -9,15 +9,16 @@
     <meta name="description" content="Descubre las herramientas y proyectos de MatiDragon, tu fuente de soluciones creativas y tutoriales de programación. Encuentra contenido exclusivo sobre desarrollo web, juegos y más.">
 </head>
 <body>
-:::d-flex wrap#db
-:::
+<div class="d-flex wrap" id="db"></div>
 
 <script src="./js/main.min.js"></script>
 <script>
 const DB = 
-`Cleo Compiler|3.1| Enchanti IDE es una potente herramienta para hacer CLEO Scripts multi-plataforma para GTA San Andreas, con una syntaxis basada en SB4 y JS.
+`
+Enchanti IDE|3.1| Enchanti IDE es una potente herramienta para hacer CLEO Scripts multi-plataforma para GTA San Andreas, con una syntaxis basada en SB4 y JS.
+Arcane Editor|1.0|Un simple esitor de texto con gerarquia de archivos.
 Mystical Unicode|1.6| Mystical Unicode es una potente herramienta para tener texto formateado en sitios como YouTube, Twitter, Facebook y otros, con el simple uso de caracteres Unicodes.`
-.split('\n')
+.trim().split('\n')
 
 let template = ''
 DB.forEach((e, i) => {
