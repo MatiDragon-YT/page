@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcane Editor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav>
+  <div id=currentDir>
+    <span id="menu">☰</span>
+    <span id="currentDirectory"></span>
+  </div>
+  <div>
+    <span id="compile" class="d-none">▶</span>
+  </div>
+</nav>
+
+<div id=backgroundExplorer></div>
+
+<div id="explorer">
+  <div class="d-flex row between">
+    <b>Arcane Editor</b>
+    <button id="settings" class="d-none">⚙️</button>
+  </div>
+  <div id="explorer-actions" class="d-flex row between g-3 mt-2">
+   <div class='d-flex g-1 between'>
+      <button id="addTextTab"> +📄</button>
+      <button id="addFolderTab"> +📁</button>
+      <button id="moveToRootButton" onclick="moveCutTabToRoot()" style="display: none;" class='ml-2'> »🦶</button>
+   </div>
+   <div>
+      <button id="clearAll">🗑️</button>
+   </div>
+  </div>
+  <div class="tabs" id="items"></div>
+</div>
+
+<div id="tabsContainer" class="scroll-shadows"></div>
+
+<textarea class="editor" id="editor" placeholder="create a file" disabled></textarea>
+
+
+    <div id="modal">
+        <div class="modal-content">
+            <span id="modal-title" class="modal-title"></span>
+            <p id="modal-message" class="modal-message"></p>
+            
+            <!-- Input opcional -->
+            <input id="modal-input" class="modal-input" type="text" style="display: none;" />
+
+            <div class="modal-buttons">
+                <button id="modal-accept" class="modal-button" onclick="acceptModal()">Aceptar</button>
+                <button id="modal-cancel" class="modal-button" onclick="cancelModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+<div id="toast-container"></div>
+  
+  
+</div>
+  
+</div>
+
+  
+
+
+<script src="css.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
