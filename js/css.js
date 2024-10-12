@@ -66,6 +66,8 @@ let tempCSS = ``
   			tempCSS += '.w' + prefix + i + '{width:' + i + '%!important}'
   			tempCSS += '.w' + prefix + i + 'rem{width:' + i + 'rem!important}'
   			tempCSS += '.h' + prefix + i + '{height:' + i + 'vh!important}'
+  			tempCSS += '.h' + prefix + i + 'rem{height:' + i + 'rem!important}'
+  			tempCSS += '.h' + prefix + i + 'd{height:' + i + 'dvh!important}'
   			tempCSS += '.opa' + prefix + i + '{opacity:' + i + '%!important}'
   		};
   
