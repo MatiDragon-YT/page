@@ -3,6 +3,9 @@
 	padding: 0;
 	/* outline: 1px solid cadetblue; */
 	scroll-behavior: smooth;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
+	outline: none;
 }
 
 *, :after, :before {
