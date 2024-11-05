@@ -1,0 +1,62 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+  font-size: 1rem;
+  
+}
+
+/*
+otros
+*/
+.contador {
+    counter-increment: listing;
+    color: grey;
+    width: 3em;
+    position: relative;
+    display: inline-block;
+}
+.contador::before {
+    content: counter(listing, decimal-leading-zero);
+}
+
+:root {
+  counter-reset: section;
+}
+
+[tip]{
+  position: relative;
+}
+[tip]:hover{
+  
+  &::before{
+    content: attr(tip);
+    background: #404b;
+    color: #f22;
+    position: absolute;
+    font-size: .75rem;
+    text-align: right;
+    display: flex;
+    min-width: 5rem;
+    max-width: 7rem;
+    right: 1rem;
+    top: 1rem;
+    padding: .3rem;
+    font-weight: bold;
+  }
+  &[up]::before{
+    top: -1rem;
+  }
+  &[right]::before{
+    right: -4rem;
+  }
+}
+
+#state.loading {
+    outline: #ffeb3b solid 1px !important;
+}
+#version_sbl, #state{
+    width: 5rem;
+    text-align: center;
+}

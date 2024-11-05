@@ -5,100 +5,11 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Enchanti IDE</title>
 	<link rel="stylesheet" href="./../../css/main.css">
+	<link rel="stylesheet" href="./styles.css">
 	<link rel="manifest" href="./manifest.json">
   <meta name="description" content="Enchanti IDE es una potente herramienta para hacer CLEO Scripts multi-plataforma para GTA San Andreas, con una syntaxis basada en SB4 y JS">
 </head>
 <body style="display: block;">
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-}
-
-  .header, .subheader, .navbar{
-    background-color: #360047;
-    /*text-align: center;*/
-  }
-  .header {border-bottom: 1px solid #4d004b;}
-
-  .navbar {
-    overflow: hidden;
-    border: 1px solid #4d004b;
-  }
-
-  .navbar a, .navbar label {
-    font-size: .7rem;
-    float: left;
-    display: block;
-    color: #dcb8ff;
-    text-align: center;
-    padding: 14px 16px;
-    text-decoration: none;
-  }
-
-  .dropdown {
-    float: left;
-    overflow: hidden;
-  }
-
-  .dropdown .dropbtn {
-    font-size: .7rem;    
-    border: none;
-    outline: none;
-    color: white;
-    padding: .9rem 1rem;
-    background-color: inherit;
-    font-family: inherit;
-    margin: 0;
-  }
-
-  .navbar a:hover, .dropdown:hover .dropbtn {
-    background-color: #4d004b;
-    color: #fff;
-    cursor: pointer;
-  }
-  .navbar a[disabled], .dropdown dropbtn[disabled]{
-    color: #A5229E;
-    background-color: #3D003B;
-  }
-
-  .dropdown-content {
-    display: none;
-    position: absolute;
-    background-color: #360047;
-    min-width: 10rem;
-    box-shadow: 0 .5rem 1rem 0 rgba(0,0,0,0.33);
-    z-index: 1;
-  }
-
-  .dropdown-content a, .dropdown-content label {
-    float: none;
-    color: #dcb8ff;
-    padding: 12px 16px;
-    text-decoration: none;
-    display: block;
-    text-align: left;
-  }
-
-  .dropdown-content a:hover, .dropdown-content label:hover{
-    background-color: #4d004b;
-    cursor: pointer;
-  }
-
-  .dropdown:hover .dropdown-content {
-    display: block;
-    cursor: pointer;
-  }
-  ::-webkit-scrollbar-thumb { background: #00e676}
-  .bottom-nav- {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-        }
-</style>
 <!--
 <div id="autocomplete" style="
     background: #28313e;
@@ -111,28 +22,6 @@
     border: 0;
 ">#JESTES = 345</div>
 -->
-<style>
-* {
-	font-size: 1rem;
-}
-.contador {
-    counter-increment: listing;
-    color: grey;
-    width: 3em;
-    position: relative;
-    display: inline-block;
-}
-.contador::before {
-    content: counter(listing, decimal-leading-zero);
-}
-#state.loading {
-    outline: #ffeb3b solid 1px !important;
-}
-#version_sbl, #state{
-    width: 5rem;
-    text-align: center;
-}
-</style>
 <script>
 
 	// GLOBAL VARS
@@ -286,95 +175,6 @@ SP.fixOpcodes = function(){
   return tm
 }
 
-function getLine(){
-  textData = $node.getLine()
-  /* lineaCursor, columnaCursor,
-			inSelection, charsSelected,
-			textSelected, primerPalabra, mediaPalabra */
-
-	if (textData.inSelection){
-		$('#line').innerText = '['+textData.charsSelected+']'
-		$('#opcode').innerText = ''
-	}else{
-		$('#line').innerText = textData.lineaCursor+':'+textData.columnaCursor
-		
-		let $o = x => $('#opcode').innerText = x
-		let $d = x => $("#short_desc").innerHTML = x
-		
-		let p = textData.primerPalabra.toLowerCase()
-		let m = textData.mediaPalabra
-		let o = shared_db[shared_db[p]] ?? shared_db[p]
-		
-		$d('')
-		$o('')
-		
-		p = p.r(/^\w+\(\)$/, '0050:')
-		
-		if (/[^@$&]/.test(p))
-		  p = p.r('!');
-		  
-		if (/^\w{1,4}:$/m.test(p))
-		  p = p.padStart(5, '0');
-		
-		let opcode = shared_db[p.r(':').toLowerCase()]
-		
-		if (/([a-z]\w+)?\.[a-z]\w+\(.+\)/i.test(textData.textLine)) {
-		  $o('class detected')
-		  
-		  //$d(shared_db[p.r(':')].short_desc)
-		}
-		else if (/^\!?[a-f\d]{1,4}:$/mi.test(p)) {
-		  if (opcode){
-  		  $o(
-  		    '▼ '+p.toUpperCase()+':'
-  		    +opcode.num_params 
-  		    +' ('+(m != p ? m : '')+')'
-  		  )
-  		  
-  		  $d(opcode.short_desc + '<br><a href="https://library.sannybuilder.com/#/sa/default/'+p.replace(':','')+'">read more</a>') 
-		  }
-		  else {
-		    $o(
-  		    '▼ '+p.toUpperCase()+':'
-  		    +'?'
-  		    +' ('+(m != p ? m : '')+')'
-  		  )
-  		  
-  		  $d("opcode not found at the data_base") 
-		  }
-		}
-		else if (opcode){
-		  if (typeof o != 'object'){
-		    o = shared_db[o.toLowerCase()]
-		  }
-		  
-		  $o(
-		    '▼ '+opcode.id+'::'+
-		   +(o.num_params)
-		   +' ('+m+')'
-		 )
-		 
-		 $d(o.short_desc + '<br><a href="https://library.sannybuilder.com/#/sa?q='+opcode.id.toUpperCase()+'">read more</a>') 
-		 
-		}
-		else if (/[\+\-\*\/=%<>!]?[=\-+][@#]?/.test(textData.textLine)) {
-		  $o('operation detected')
-		}
-		
-	}
-}
-
-function delay(callback, ms) {
-    let timer = 0;
-    return function() {
-        const context = this;
-        const args = arguments;
-        clearTimeout(timer);
-        timer = setTimeout(function() {
-            callback.apply(context, args);
-        }, ms || 0);
-    };
-}
 
 EP.class = function(str){
   if (!/^[\?\+\-\~\>]/m.test(str))
@@ -569,54 +369,7 @@ EP.getTextSelected = function() {
 	}
 </script>
 
-
-  <div class="navbar d-flex between">
-    <div>
-      
-    <div class="dropdown">
-      <button class="dropbtn">ᚪile 
-        <i class="fa fa-caret-down"></i>
-      </button>
-      <div class="dropdown-content">
-        <a onclick="$('#HEX').value = `nop
-wait 0
-
-// you magic here
-
-terminate_this_script`;$('#HEX').focus();$('#PREVIEW').innerHTML = '';" title="script">New</a>
-        <label for="file" title="source">Open...</label>
-        <label onclick="let h = localStorage.getItem('code-cached')??'';$('#HEX').value=h;$('#HEX').focus();$('#PREVIEW').innerHTML=h" title="source">Load cache</label>
-        <a onclick="localStorage.setItem('code-cached',$('#HEX').value)" title="within the browser">Save cache</a>
-        <a onclick="saveSource()" title="as any file">Save as...</a>
-        <a onclick="compilerSource()" title="source">Compile</a>
-      </div>
-    </div> 
-    <div class="dropdown">
-      <button class="dropbtn">モditor 
-        <i class="fa fa-caret-down"></i>
-      </button>
-      <div class="dropdown-content">
-        <a cmd=undo href="#">Undo</a>
-        <a cmd=redo href="#">Redo</a>
-        <a cmd=copy href="#">Copy</a>
-        <a cmd=cut href="#">Cut</a>
-        <a cmd=paste href="#">Paste</a>
-      </div>
-    </div> 
-    <div class="dropdown">
-      <button class="dropbtn" disabled>ㄘettings
-        <i class="fa fa-caret-down"></i>
-      </button>
-      <div class="dropdown-content">
-        <a href="#" disabled>Preferences</a>
-        <a href="#" disabled>Theme</a>
-        <a href="#" disabled>Hotkeys</a>
-      </div>
-    </div>
-    </div>
-    <a id='name-app'>Σηςнαητι ✦</a>
-    <!--<a>ΣηςнαητιSςrιρτ ✦</a>-->
-  </div>
+<div id="navbar_pc"></div>
 
 <style>
 .f-2 {
@@ -635,30 +388,16 @@ input[type=text]{
   background: #200029;
   border-bottom: 1px solid #200029;
 }
-:root {
-  counter-reset: section;
+
+#editor-counterLine span {
+  font-size: .7rem;
+  color:white;
 }
 
-[tip]{
-  position: relative;
-}
-[tip]:hover{
-  background: #7704;
-  &::before{
-    content: attr(tip);
-    background: #404b;
-    color: #f22;
-    position: absolute;
-    font-size: .75rem;
-    text-align: right;
-    display: flex;
-    min-width: 5rem;
-    max-width: 7rem;
-    right: 1rem;
-    top: 1rem;
-    padding: .3rem;
-    font-weight: bold;
-  }
+#OUTHEX {
+  height: 30dvh!important;
+  overflow: auto;
+  display: block
 }
 </style>
 
@@ -683,9 +422,9 @@ input[type=text]{
 </div>
 
 <div id="editor-body">
-  <pre id="editor-counterLine" class="m-0 r-0 p-1"></pre>
+  <pre id="editor-counterLine" class="m-0 r-0"></pre>
   
-	<textarea id="HEX" class="w-70 m-0 r-0 p-1 pl-5" placeholder="WIZARD, CAST THY SPELL!
+	<textarea id="HEX" class="w-100 m-0 r-0 p-1 pl-5" placeholder="WIZARD, CAST THY SPELL!
 	ᚹᛁᛉᚨᚱᛞ, ᚲᚨᛊᛏ ᚦᚤ ᛊᛈᛖᛚᛚ!" autocomplete="off" spellcheck="false">{ Syntax based on SB4 and JS }
 0000: this_is_a_NOP
 $misc != 0xff ? 7@ = !7@ : A = B || 0b1000
@@ -708,169 +447,12 @@ return
 
 :function
 cleo_return 0 {}</textarea>
-<pre id='PREVIEW' style="filter: blur(2px);" class="w-70 m-0 r-0 p-1"></pre>
-
-	<pre type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-30 m-0 r-0 pr-1 green"></pre>
+<pre id='PREVIEW' style="filter: blur(2px);" class="w-100 m-0 r-0 p-1"></pre>
 </div>
 
+	<pre type="text" id="OUTHEX" placeholder="hex's output" name="cleaned_hex" disabled class="w-100 m-0 r-0 pr-1 green"></pre>
 <div style='background: #2c003e'>
-<div id="table-command" class="d-flex column header bottom-nav">
-   <div id="error" placeholder="hex's output" name="cleaned_hex" class="w-100 p-1" style="
-      background: #290000;
-      color: #ff8080;
-      white-space: pre-wrap;
-      display: none;"></div>
-<footer id="data-line-config" class="d-flex between py-1 w-100 header">
-<div class="d-flex between g-1">
-  <span id='line'>0:0</span>
-<span id='opcode' onclick="$('#short_desc').toggle()"></span>
-</div>
-<div class="d-flex">
-<span id='version_sbl' class="d-none d-md-block">SBL</span>
-<select id='mode' class="ml-1 d-none" style="border: none;" disabled>
-  <option value="gta3">GTA III</option>
-  <option value="lcs">GTA LCS</option>
-  <option value="sa" selected>SA Cross-Plataform</option>
-  <option value="vc">GTA VC</option>
-  <option value="vcs">GTA VCS</option>
-  <option value="gta3_mobile">III Mobile</option>
-  <option value="sa_mobile">SA Mobile</option>
-  <option value="vc_mobile">VC Mobile</option>
-</select>
-<span>v 1.0.0</span>
-</div>
-</footer>
-<footer id="short_desc" class="py-1 d-none"></footer>
-
-<footer class="d-flex p-2 pb-0 w-100 g-3 d-sm-none subheader" id="keys-mobile">
-<key>↹</key>
-<key>&</key>
-<key>@</key>
-<key>$</key>
-<key>#</key>
-<key>=</key>
-<key>_</key>
-<key>"</key>
-<key>'</key>
-<key>(</key>
-<key>{</key>
-<key>[</key>
-</footer>
-<footer class="d-flex p-2 pt-0 w-100 g-3 d-sm-none subheader" id="keys-actions">
-<key key="up">⇡</key>
-<key key="down">⇣</key>
-<key key="left">⇠</key>
-<key key="right">⇢</key>
-<key cmd="undo">↶</key>
-<key cmd="redo">↷</key>
-<key cmd="copy">⎘</key>
-<key cmd="cut">✄</key>
-<key cmd="paste">⎗</key>
-<key key="all">☰</key>
-</footer>
-
-<div class="d-none">
-<input type="search" value="" placeholder="actor, car, object...." id="search" class="w-100">
-<pre id="result-search"class="m-0 r-0">
-Actor.create(655)
-</pre>
-</div>
-</div>
-
-    
-<style>
-[action]{
-  font-size: 1.5rem
-}
-a[action]{
-  color:yellow;
-  &:hover{
-    text-decoration: none
-  }
-}
-#editor-body {
-  overflow: auto;
-  display: flex;
-  height: 50dvh;
-}
-#editor-counterLine {
-  overflow: hidden;
-  width: 3rem;
-  color:#7d5bbe;
-  background: #200029;
-}
-#HEX {
-  position: absolute;
-  white-space: pre!important;
-  color: transparent;
-  background: transparent;
-  caret-color: white;
-  resize: none;
-  overflow: auto;
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-  line-height: 1.5em;
-  text-wrap: wrap!important;
-  overflow-wrap: break-word;
-  height: 50dvh;
-}
-html {
-  background: #2c003e;
-  margin-bottom: 5rem;
-}
-#PREVIEW {
-  white-space: pre!important;
-  text-wrap: wrap!important;
-  z-index: -99;
-  color: #dcb8ff;
-  background: #200029;
-  overflow-wrap: break-word;
-  height: 50dvh;
-}
-#editor-counterLine,
-#data-line-config *,
-#error,
-#HEX,
-#PREVIEW,
-#PREVIEW *,
-#OUTHEX,
-#short_desc {
-  font-size: 0.7rem!important;
-  tab-size: 2;
-}
-#FILENAME, {
-  border-bottom: #161b22 1px solid;
-}
-#short_desc {
-  overflow: auto;
-  max-height: 2rem;
-}
-#table-command {
-  background: #360047;
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-}
-select {
-  background: none;
-  color: #fff;
-}
-pre {
-  color: #dcb8ff;
-  background: #200029;
-}
-details[open] div {
-  padding-left: 1rem;
-  padding-top: .5rem;
-}
-details[open]::after{
-  content: '';
-  border: 0;
-  display: block;
-	border-bottom: solid #30363d 1px;
-	width: 100%;
-	margin: 15px 0;
-}
-</style>
+<div id='assistance_android'></div>
 
 
 	<!--<input type="checkbox" id="CHBSEPARATOR" checked="checked">Remover "0x" de los grupos de entrada<br><br>-->
@@ -885,333 +467,18 @@ IDE does not load <a onclick="
   ">clicking here</a>, wait 3s and <a href=index.html>refresh page</a>.<br>
 Array support is limited to LVAR_LVAR @(@,n).<br>
 </blockquote>
-<blockquote>
-IDE supports & features:
-<details>
-<summary>Syntax for conditions</summary>
-<h4>Primitive</h4>
-This is the most primitive way for the compiler to interpret code.
-<pre>
-IF 0
-  condition
-ELSE_GOTO @Label_false
-  body_is_true
-GOTO @End
-:Label_false
-  body_is_false
-:End
-</pre>
-The entire read stream moves through the conditions and jump points(labels).
+<div id='documentation'></div>
 
-<h4>Sugared</h4>
-The IDE has syntactic sugar to prevent us from getting too dizzy, although for now there are very few of these. You can nest them inside each other without any problem.
-<pre>
-IF
-  condition
-THEN
-  body
-END
-
-IF
-  condition
-THEN
-  is_true
-ELSE
-  is_false
-END
-</pre>
-You can also apply several conditions. You only have to indicate if you want to do an AND or OR check. You have a maximum of 8 conditions
-<pre>
-IF (AND|OR)
-  condition_1
-  condition_2
-  condition_n+1
-THEN
-  body
-END
-</pre>
-<h4>Ternary</h4>
-The syntax comes from JS and since commands can only be typed 1 per line, the IDE allows you to allow the false ternary.
-<pre>
-contition ? body
-
-condition ? is_true : is_false
-</pre>
-Can also be used to assign a value to a variable
-<pre>
-var -= cond ? is_true : is_false
-</pre>
-For now only one condition, but support for more will be coming soon.
-</details>
-
-<details>
-<summary>Syntax for loops</summary>
-You can work with labels.
-<pre>
-:Loop
-  body
-GOTO @Loop
-</pre>
-Or use automated processes.
-<pre>
-WHILE condition
-  body
-END
-
-FOR var = start [TO|TODOWN] final [STEP (int|float)]
-  body
-END
-
-REPEAT
-  body
-UNTIL condition
-</pre>
-loop controls are also here
-<pre>
-BREAK CONTINUE
-
-FOR 0@ = 0 TO 10
-  IF 0@ > 3
-  THEN CONTINUE // jump a loop
-  END
-  IF 0@ > 7
-  THEN BREAK // exit of loop
-  END
-END
-</pre>
-There is only one difference. The `WHILE FALSE` loops are not ignored by the compiler, and are compiled as a separate area of the main flow. Their contents are only accessed if you have jumps into their body.
-<pre>
-0@ = 0
-WHILE FALSE
-  :Suma
-    0@++
-  return
-END
-printf "0@ = %i" 1s 0@ // 0
-Suma()
-wait 1s
-printf "0@ = %i" 1s 0@ // 1
-</pre>
-If you make blocks that are too big and you get lost among many `END`, you can use these fasteners:
-<pre>
-ENDIF ENDWHILE ENDFOR
-</pre>
-All of these are interpreted as the same `END`, so you can use them as worshippers or visual highlighters.
-</details>
-
-<details>
-<summary>Opcodes and Keywords</summary>
-<h4>Opcodes</h4>
-if you explore opcodes in documentations and forums, you don't need to memorize the 4 characters of the opcode or just copy it.
-<pre>
-0: nop          -->  0000: nop
-FE: actor[...]  -->  00FE: actor[...]
-!7F: car[...]   -->  807F: car[...]
-1234: wxyz      -->  1234: wxyz
-</pre>
-<h4>Keywords</h4>
-This is another way to write opcodes, you just write its name and then it is replaced by the opcode.
-<pre>
-nop           -->  0000: nop
-WAIT 0        -->  0001: wait 0 ms
-not xyz 0@    -->  8ABC: !xyz 0@[...]
-</pre>
-These can be written in lowercase or uppercase, and can be negated or contradicted by placing at the beginning of the line one of these 2 executors `!, NOT`.<br>
-<br>
-The IDE also detects if a keyword was written from right to left and corrects it so that it is compileable.
-<pre>
-0@ = get_current_time
-// is equivalent to
-get_current_time = 0@
-</pre>
-</details>
-
-<details>
-<summary>Classes and Flows</summary>
-<h4>Classes</h4>
-The IDE is connected to 2 databases to be able to script with legacy or enchanted commands. So if we use aaa.bbb() and ccc.ddd() they will use the same opcode.
-<pre>
-Normal:
-CLASS.MEMBER(PARAM, VAR)
-
-Method:
-CLASS.MEMBER
-
-Conditional:
-CLASS.MEMBER(PARAM) == VAR
-
-Setter:
-CLASS.MEMBER(PARAM) = VAR
-
-Getter:
-VAR = CLASS.MEMBER(PARAM)
-</pre>
-The compiler does not know the order of the custom parameters, but instead interprets the orders, depending on how the classes are used.<br>
-<br>
-Everything that is located before the class is relocated at the end of the class.
-<pre>
-Multi-Geting:
-VAR1 VAR2 = CLASS.MEMBER(PARAM)
-VAR1, VAR2 = CLASS.MEMBER(PARAM)
-</pre>
-You also do not need to use commas(,) to separate the data. The compiler can detect the change of the data type, using the spaces.<br>
-<br>
-The compiler remembers which was the last class used, so if you use a dot (.) at the beginning of the line, you will access the member of that class.
-<pre>
-Last-Used:
-.MEMBER(PARAM)
-</pre>
-<h4>Flows</h4>
-Keywords that define the workflow and how it should behave on different occasions.
-<pre>
-IF, THEN, ELSE, END, WHILE, REPEAT,
-UNTIL, FOR, TRUE, FALSE, UNDEFINED,
-BREAK, CONTINUE, FOREACH, NOT, NULL
-</pre>
-Avoid naming things with these words, the order of how the text preprocessor is executed may break the script.
-</details>
-
-<details>
-<summary>Decimal interpreter</summary>
-The compiler not only has a translator for Hexadecimal and Binary numbers. It can also look up the numerical IDs of the model names.
-<pre>
-DEC  -6272_48 -2936 -42 0 5 972 729_0_03
-HEX  -0X7FFFFF -0x8AFF 0x0 0x03 0X700000
-BIN  -0B011110 -0b1110 0b0 0b01 0B10000000000
-TIME -2h -2m 1s 3.33S 10M 1H 60fps 30FPS
-NAME -#JESTER #fam1 #FAM2 #mini_gun
-NOTE -12E5 -3e2 1e9 10e+2 16E-3
-</pre>
-</details>
-
-<details>
-<summary>Floating interpreter</summary>
-If you program in any language, you may be used to some of its syntax. Here you will be able to use it.
-<pre>
-CSS -.0025 -.97 .0 .42 .736
-JS  -2_823.2 0.6_608 48_386.93
-PY  -42.8362 -3.5 1.0 142.8638
-C#  -20F -13.7f 1f 27f 52.86F
-R   -1.2E7 5.1e8 7.1e+2 9.3E-2
-</pre>
-You can begin or end a number with a period (.) or end it with `f`. Scientific notation (e) and separators (_) are also available.
-</details>
-
-<details>
-<summary>Literal interpreter</summary>
-The editor supports the classic LONG and SHORT formats of SB, and the JS BACKSTICK.
-<pre>
-SHORT  'Abc'    09,41-62-63-00-00-00-00-00
-LONG   "Abc"    0E,03,41-62-63
-BACKS  `"Abc"`  0E,05,22-41-62-63-22
-</pre>
-Character escapes can also be made with the slash (\t, \n, \", \xff).
-</details>
-
-<details>
-<summary>Hexadecimal interpreter</summary>
-The IDE works with the same syntax as SB, with some limitations. You cannot insert variables yet, but you can use the hex multiplication operators :)
-<pre>
-HEX
- 0 00 0(2)   --->  00 00 00 00
- "hello"     --->  68 65 6C 6C 6F
- 'hello'     --->  68 65 6C 6C 6F 00
-END
-</pre>
-The multiplication function, accepts arithmetic operations and rounds them to the nearest number.
-<pre>
-hex
- 0(4)   --->  00 00 00 00
- 0(4*2) --->  00 00 00 00 00 00 00 00
- 0(4.6) --->  00 00 00 00 00
- 0(4.3) --->  00 00 00 00
-end
-</pre>
-</details>
-
-<details>
-<summary>Expressions operative</summary>
-<h4>Sanny</h4>
-You have all the SB expressions and one extra.
-<pre>
-0@++         -->  000A: 0@ += 1
-0@ <> 1@     -->  803A: 0@ != 1@
-0@ = 1@      -->  0085: 0@ = 1@
-0@ = 1@ + 2@ -->  0A8E: 0@ = 1@ + 2@ // int
-0@f = 1@ + 2@-->  XXXX: 0@ = 1@ + 2@ // float
-0@ =# 1@     -->  0092: 0@ = int_to_float 1@
-0@ =& 1@     -->  0AC7: 0@ = var 1@ pointer
-0@ +=@ 1@    -->  007B: 0@ += delta_time * 1@
-0@ &= 1@     -->  0B17: 0@ &= bit 1@
-</pre>
-the compiler remembers the data type of each manually assigned variable, so you don't have to worry about the opcode used.<br>
-<br>
-you can also force a change of operation, adding a subfix (I or F) in the variable
-<pre>
-0@f++        -->  XXXX: 0@ += 1.0
-0@f <> 1@    -->  XXXX: 0@ != 1@
-0@ = 1@f     -->  XXXX: 0@ = 1@
-0@ =# 1@f    -->  XXXX: 0@ = float_to_int 1@
-</pre>
-<h4>Enchanti</h4>
-if only one variable is written in a line, it is passed as a condition.
-<pre>
-0@           -->  0039: 0@ == true
-!0@          -->  0039: 0@ == false
-</pre>
-You can also assign a negated value to the variables, or see is truthy.
-<pre>
-0@ = !1@     -->  1@ == 1 ? 0@ = 0 : 0@ = 1
-0@ = !!1@    -->  1@ == 0 ? 0@ = 1 : 0@ = 0
-0@ = 1@t     -->  1@ != 0 ? 0@ = 1 : 0@ = 0
-</pre>
-Fixed and temporary assignment operators are also available anywhere in the code.
-<pre>
-Car.Exist(0@(++1@,10i))
-// is compiled before the line
-1@ += 1
-Car.Exist(0@(1@,10i))
-
----
-
-Actor.Angle = 1@f++
-// is compiled after the line
-Actor.Angle = 1@
-1@ += 1.0
-
----
-
-wait 1@+30fps
-// is compiled before and after the line
-1@ += 30fps
-wait 1@
-1@ -= 30fps
-</pre>
-This syntax only discriminates spaces and commas.<br>
-<br>
-And cascading operations can also be performed in this manner
-<pre>
-1@ = 3 * 5 + 6
-// is compiled at cascade in the line
-1@ = 3
-1@ *= 5
-1@ += 6
-</pre>
-</details>
-
-- Constants and enumerations.<br>
-- Preview of errors and compiled in real time.<br>
-- Connection with <a href="https://library.sannybuilder.com/">Library::SannyBuilder</a> and <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">data::CrossPlataform</a><br>
-</blockquote>
-<blockquote class="info">
-- This IDE downloads files and stores them in the LocalStorage for faster uploads.<br>
-</blockquote>
 <footer class="center gray">
 Author: MatiDragon ; Contributors: Seemann, OrionSR, Miran.
 </footer>
 
-<script src="js/css.min.js"></script>
-<script type="module" src="compiler.js"></script>
+<script src="js/utils/css.min.js"></script>
+
+<script type="module" src="js/views.js"></script>
+<script type="module" src="js/compiler.js"></script>
+<script type="module" src="js/descompiler.js"></script>
+
 <script>
 let h = localStorage.getItem('code-cached')??''
 $('#HEX').value=h
@@ -1569,11 +836,11 @@ $file.onchange = openFile
 </script>
 <script>
 hl()
-getLine()
+
 $node.onclick = () => {
 	hl()
     $('#OUTHEX').innerText = $node.value.Translate(true,true)
-    getLine()
+    
 }
 
 let codigoOriginal = $node.value
@@ -1622,7 +889,7 @@ $node.onmousemove = getLine
 $node.onkeyup = (event) =>{
 	try {
         $('#OUTHEX').innerText = $node.value.Translate(true,true)
-        getLine()
+        
         $('#error').style.display = 'none'
     //}
     } catch(error) {
@@ -1645,13 +912,95 @@ function resaltadorV2(){
   
   $('#PREVIEW').innerHTML = text
 }
+function getLine() {
+  textData = $node.getLine()
+  /* lineaCursor, columnaCursor,
+			inSelection, charsSelected,
+			textSelected, primerPalabra, mediaPalabra */
 
+  if (textData.inSelection) {
+    $('#line').innerText = '[' + textData.charsSelected + ']'
+    $('#opcode').innerText = ''
+  } else {
+    $('#line').innerText = textData.lineaCursor + ':' + textData.columnaCursor
+
+    let $o = x => $('#opcode').innerText = x
+    let $d = x => $("#short_desc").innerHTML = x
+
+    let p = textData.primerPalabra.toLowerCase()
+    let m = textData.mediaPalabra
+    let o = shared_db[shared_db[p]] ?? shared_db[p]
+
+    $d('')
+    $o('')
+
+    p = p.r(/^\w+\(\)$/, '0050:')
+
+    if (/[^@$&]/.test(p))
+      p = p.r('!');
+
+    if (/^\w{1,4}:$/m.test(p))
+      p = p.padStart(5, '0');
+
+    let opcode = shared_db[p.r(':').toLowerCase()]
+
+    if (/([a-z]\w+)?\.[a-z]\w+\(.+\)/i.test(textData.textLine)) {
+      $o('class detected')
+
+      //$d(shared_db[p.r(':')].short_desc)
+    }
+    else if (/^\!?[a-f\d]{1,4}:$/mi.test(p)) {
+      if (opcode) {
+        $o(
+          '▼ ' + p.toUpperCase() + ':' +
+          opcode.num_params +
+          ' (' + (m != p ? m : '') + ')'
+        )
+
+        $d(opcode.short_desc + '<br><a href="https://library.sannybuilder.com/#/sa/default/' + p.replace(':', '') + '">read more</a>')
+      }
+      else {
+        $o(
+          '▼ ' + p.toUpperCase() + ':' +
+          '?' +
+          ' (' + (m != p ? m : '') + ')'
+        )
+
+        $d("opcode not found at the data_base")
+      }
+    }
+    else if (opcode) {
+      if (typeof o != 'object') {
+        o = shared_db[o.toLowerCase()]
+      }
+
+      $o(
+        '▼ ' + opcode.id + '::' +
+        +(o.num_params) +
+        ' (' + m + ')'
+      )
+
+      $d(o.short_desc + '<br><a href="https://library.sannybuilder.com/#/sa?q=' + opcode.id.toUpperCase() + '">read more</a>')
+
+    }
+    else if (/[\+\-\*\/=%<>!]?[=\-+][@#]?/.test(textData.textLine)) {
+      $o('operation detected')
+    }
+
+  }
+}
 function hl(){
-	getLine()
+	
+	
 	
 	$("#editor-counterLine").innerHTML = ''
   $('#HEX').value.split('\n').forEach((a,b)=>{
-    $("#editor-counterLine").innerHTML += b+1 + '\n'
+    $("#editor-counterLine").innerHTML += 
+    ($('#HEX').getLine().lineaCursor == b+1 ? '<span>' : '')
+    
+    + (b+1) +
+    ($('#HEX').getLine().lineaCursor == b+1 ? '</span>' : '')
+    + '\n'
   })
 
   //resaltadorV2()
@@ -1717,12 +1066,12 @@ function hl(){
 	//Variables globales
 	.r(/((\x{00}|[ifsv])\$([\d\w]+)?)/gm, enter.variables)
 	//Numeros
-	.r(/\b(\d+(b|x|\.)\w+)\b/gmi, enter.numbers)
+	.r(/\b(\d+([box.])\w+)\b/gmi, enter.numbers)
 	.r(/\b(\-?\.?\d[e\+\-_\d\.]+(fps|[smh])?)\b/gmi, enter.numbers)
 	.r(/\b(true|false|undefined|null|break|continue)\b/gmi, enter.numbers)
 	.r(/(?!\#)(\W)(?!\$)([\d_]+)(?!\:|\@)([ifsv]?)\b/gmi, '$1<span class=numbers>$2$3<\/span>')
 	//Modelos
-	.r(/(\#[^\"\'\#\s]+)\b/gm, "<span class='models'>$1<\/span>")
+	.r(/(c?\#(?![^\"\'\#\s])\w+)\b/gm, "<span class='models'>$1<\/span>")
 	//Clases
 	.r(/\b([a-z0-9]+)\.([a-z0-9]+)/gmi, "<span class=classes>$1</span>.<span class=commands>$2</span>")
 	.r(/(\!?)\.([\w]+)/gmi, "$1.<span class=commands>$2</span>")
@@ -1754,106 +1103,8 @@ $('#HEX').onscroll = () =>{
 }
 
 
-let $textarea = $('#HEX')
-const KEYS_MOBILE = ["\t","&","@","$","#","=","_",'""',"''",'()','{}','[]']
-$('#keys-mobile key', (e, i)=> {
-  e.onclick = ()=>{
-    $textarea.focus();
-      document.execCommand("insertText",false,KEYS_MOBILE[i])
-      if (i > 6) {
-        $textarea.selectionStart--
-        $textarea.selectionEnd--
-      }
-  }
-  //log(i)
-})
 
-let clipPaste = ""
 
-$("[cmd]", e => {
-  let x = e.gAttr("cmd")
-  e.title=x
-  if (x == "paste") {
-    e.onclick = () =>{
-      $textarea.focus();
-      document.execCommand("insertText",false,clipPaste);
-    }
-  } else if (x == "copy" || x == "cut") {
-    e.onclick = (y,z)=>{
-      $textarea.focus();
-      clipPaste = $textarea.getTextSelected()
-      document.execCommand(x);
-    }
-  } else {
-    const f = ()=>{
-      $textarea.focus();
-      document.execCommand(x);
-    }
-    e.onclick = f
-  }
-})
-
-let ctrlPressed = false
-$("key[key]", e => {
-  let x = e.gAttr("key")
-  e.title=x
-  if (x == "all") {
-    e.onclick = () =>{
-      $textarea.focus();
-      $textarea.selectionStart = 0
-      $textarea.selectionEnd = $textarea.value.length
-      getLine()
-    }
-  }
-  if (x == "left") {
-    e.onclick = () =>{
-      $textarea.focus();
-      $textarea.selectionStart--
-      $textarea.selectionEnd--
-      getLine()
-    }
-  }
-  if (x == "right") {
-    e.onclick = () =>{
-      $textarea.focus();
-      $textarea.selectionEnd++
-      $textarea.selectionStart++
-      getLine()
-    }
-  }
-  if (x == "up") {
-    e.onclick = () =>{
-      $textarea.focus();
-      let {columnaCursor, lineaCursor} = $textarea.getLine()
-      $textarea.setCursorFull(lineaCursor-1,columnaCursor)
-    }
-  }
-  if (x == "down") {
-    e.onclick = () =>{
-      $textarea.focus();
-      let {columnaCursor, lineaCursor} = $textarea.getLine()
-      $textarea.setCursorFull(lineaCursor+1,columnaCursor)
-    }
-  }
-  if (x == "ctrl") {
-    e.onclick = () =>{
-      $textarea.focus();
-      ctrlPressed = !ctrlPressed
-    }
-  }
-})
-
-// Escuchar el evento 'click' en todos los elementos <details>
-$('details').forEach((elem) => {
-  elem.addEventListener('click', function() {
-    // Cerrar todos los elementos <details> excepto el que se acaba de hacer clic
-    $('details').forEach((openElem) => {
-      if (openElem !== this) {
-        openElem.removeAttribute('open');
-      }
-    })
-  });
-});
 </script>
 <script>
   if (typeof navigator.serviceWorker !== 'undefined') {
@@ -1867,9 +1118,9 @@ const ASSETS = [
   OFFLINE_URL,
   "/../../css/main.css",
   "/../../js/css.js",
-  '/compiler.js',
-  '/js/css.min.js',
-  '/js/*',
+  '/js/compiler.js',
+  '/js/utils/css.min.js',
+  '/js/utils/*',
   "/data/*",
   "/"
   // Agrega aquí otros recursos que quieras precachear
@@ -1952,6 +1203,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     });
   });
 });
+
 </script>
 </body>
 </html>
