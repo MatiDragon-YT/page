@@ -1,0 +1,139 @@
+<div class="navbar d-flex between d-none">
+    <div>
+      
+    <div class="dropdown">
+      <button class="dropbtn">ᚪile 
+        <i class="fa fa-caret-down"></i>
+      </button>
+      <div class="dropdown-content">
+        <a onclick="$('#HEX').value = `thread 'name'
+wait 0
+
+// you magic here
+
+end_thread`;$('#HEX').focus();$('#PREVIEW').innerHTML = '';" title="script">New</a>
+        <label for="file" title="source">Open...</label>
+        <label onclick="let h = localStorage.getItem('code-cached')??'';$('#HEX').value=h;$('#HEX').focus();$('#PREVIEW').innerHTML=h" title="source">Load at browser</label>
+        <a onclick="localStorage.setItem('code-cached',$('#HEX').value)" title="within the browser">Save at browser</a>
+        <a onclick="saveSource()" title="as any file">Save as file</a>
+        <a onclick="compilerSource()" title="source">Compile</a>
+      </div>
+    </div> 
+    <div class="dropdown">
+      <button class="dropbtn">モditor 
+        <i class="fa fa-caret-down"></i>
+      </button>
+      <div class="dropdown-content">
+        <a cmd=undo href="#">Undo</a>
+        <a cmd=redo href="#">Redo</a>
+        <a cmd=copy href="#">Copy</a>
+        <a cmd=cut href="#">Cut</a>
+        <a cmd=paste href="#">Paste</a>
+      </div>
+    </div> 
+    <div class="dropdown">
+      <button class="dropbtn" disabled>ㄘettings
+        <i class="fa fa-caret-down"></i>
+      </button>
+      <div class="dropdown-content">
+        <a href="#" disabled>Preferences</a>
+        <a href="#" disabled>Theme</a>
+        <a href="#" disabled>Hotkeys</a>
+      </div>
+    </div>
+    </div>
+    <a id='name-app'>Σηςнαητι ✦</a>
+    <!--<a>ΣηςнαητιSςrιρτ ✦</a>-->
+  </div>
+  
+<style>
+
+/*
+barra de navegaion superior
+*/
+
+
+  .header, .subheader, .navbar{
+    background-color: #360047;
+    /*text-align: center;*/
+  }
+  .header {border-bottom: 1px solid #4d004b;}
+
+  .navbar {
+    overflow: hidden;
+    border: 1px solid #4d004b;
+  }
+
+  .navbar a, .navbar label {
+    font-size: .7rem;
+    float: left;
+    display: block;
+    color: #dcb8ff;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+  }
+
+  .dropdown {
+    float: left;
+    overflow: hidden;
+  }
+
+  .dropdown .dropbtn {
+    font-size: .7rem;    
+    border: none;
+    outline: none;
+    color: white;
+    padding: .9rem 1rem;
+    background-color: inherit;
+    font-family: inherit;
+    margin: 0;
+  }
+
+  .navbar a:hover, .dropdown:hover .dropbtn {
+    background-color: #4d004b;
+    color: #fff;
+    cursor: pointer;
+  }
+  .navbar a[disabled], .dropdown dropbtn[disabled]{
+    color: #A5229E;
+    background-color: #3D003B;
+  }
+
+  .dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #360047;
+    min-width: 10rem;
+    box-shadow: 0 .5rem 1rem 0 rgba(0,0,0,0.33);
+    z-index: 1;
+  }
+
+  .dropdown-content a, .dropdown-content label {
+    float: none;
+    color: #dcb8ff;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    text-align: left;
+  }
+
+  .dropdown-content a:hover, .dropdown-content label:hover{
+    background-color: #4d004b;
+    cursor: pointer;
+  }
+
+  .dropdown:hover .dropdown-content {
+    display: block;
+    cursor: pointer;
+  }
+  ::-webkit-scrollbar-thumb { background: #00e676}
+  .bottom-nav- {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+        }
+        
+
+</style>

@@ -1,0 +1,464 @@
+<style>
+  details[open] div {
+  padding-left: 1rem;
+  padding-top: .5rem;
+}
+details[open]::after{
+  content: '';
+  border: 0;
+  display: block;
+	border-bottom: solid #30363d 1px;
+	width: 100%;
+	margin: 15px 0;
+}
+</style>
+
+<blockquote>
+IDE supports & features:
+<details>
+<summary>Syntax for conditions</summary>
+<h4>Primitive</h4>
+This is the most primitive way for the compiler to interpret code.
+<pre>
+IF 0
+  condition
+ELSE_GOTO @Label_false
+  body_is_true
+GOTO @End
+:Label_false
+  body_is_false
+:End
+</pre>
+The entire read stream moves through the conditions and jump points(labels).
+
+<h4>Sugared</h4>
+The IDE has syntactic sugar to prevent us from getting too dizzy, although for now there are very few of these. You can nest them inside each other without any problem.
+<pre>
+IF
+  condition
+THEN
+  body
+END
+
+IF
+  condition
+THEN
+  is_true
+ELSE
+  is_false
+END
+</pre>
+You can also apply several conditions. You only have to indicate if you want to do an AND or OR check. You have a maximum of 8 conditions
+<pre>
+IF (AND|OR)
+  condition_1
+  condition_2
+  condition_n+1
+THEN
+  body
+END
+</pre>
+<h4>Ternary</h4>
+The syntax comes from JS and since commands can only be typed 1 per line, the IDE allows you to allow the false ternary.
+<pre>
+contition ? body
+
+condition ? is_true : is_false
+</pre>
+Can also be used to assign a value to a variable
+<pre>
+var -= cond ? is_true : is_false
+</pre>
+For now only one condition, but support for more will be coming soon.
+</details>
+
+<details>
+<summary>Syntax for loops</summary>
+You can work with labels.
+<pre>
+:Loop
+  body
+GOTO @Loop
+</pre>
+Or use automated processes.
+<pre>
+WHILE condition
+  body
+END
+
+FOR var = start [TO|TODOWN] final [STEP (int|float)]
+  body
+END
+
+REPEAT
+  body
+UNTIL condition
+</pre>
+loop controls are also here
+<pre>
+BREAK CONTINUE
+
+FOR 0@ = 0 TO 10
+  IF 0@ > 3
+  THEN CONTINUE // jump a loop
+  END
+  IF 0@ > 7
+  THEN BREAK // exit of loop
+  END
+END
+</pre>
+There is only one difference. The `WHILE FALSE` loops are not ignored by the compiler, and are compiled as a separate area of the main flow. Their contents are only accessed if you have jumps into their body.
+<pre>
+0@ = 0
+WHILE FALSE
+  :Suma
+    0@++
+  return
+END
+printf "0@ = %i" 1s 0@ // 0
+gosub @suma
+wait 1s
+printf "0@ = %i" 1s 0@ // 1
+</pre>
+If you make blocks that are too big and you get lost among many `END`, you can use these fasteners:
+<pre>
+ENDIF ENDWHILE ENDFOR
+</pre>
+All of these are interpreted as the same `END`, so you can use them as worshippers or visual highlighters.
+</details>
+
+<details>
+<summary>Jumps and Returns</summary>
+Here I will only explain that there are different ways to use a particular opcode, in simpler ways.<br>
+for example, to make simple jumps we can do this:
+<pre>
+0001: @label // opcode
+goto @label // keyword
+jump @label // sugar
+@label // equivalent
+</pre>
+All variants do the same thing and the last one is useful for shorter indications, as in this case:
+<pre>
+if 0@ != 1
+then @editActor
+else @createActor
+end
+
+// or
+
+!0@ ? @editActor : @createActor
+</pre>
+there is also a special syntax for subroutines(0050) and functions(0AB1).
+<pre>
+0050: gosub @label // opcode
+gosub @label // keyword
+label() // equivalent
+</pre>
+the opcode to be used varies depending on whether we pass parameters or expect a return.
+<pre>
+0AB1: cleo_call @label input 1 params 0@
+
+0@ = label()   // funcion
+0@ = label(1@) // funcion
+label(0@)      // function
+label()        // subrutine
+</pre>
+</details>
+
+<details>
+<summary>Opcodes and Keywords</summary>
+<h4>Opcodes</h4>
+if you explore opcodes in documentations and forums, you don't need to memorize the 4 characters of the opcode or just copy it.
+<pre>
+0: nop          -->  0000: nop
+FE: actor[...]  -->  00FE: actor[...]
+!7F: car[...]   -->  807F: car[...]
+1234: wxyz      -->  1234: wxyz
+</pre>
+<h4>Keywords</h4>
+This is another way to write opcodes, you just write its name and then it is replaced by the opcode.
+<pre>
+nop           -->  0000: nop
+WAIT 0        -->  0001: wait 0 ms
+not xyz 0@    -->  8ABC: !xyz 0@[...]
+</pre>
+These can be written in lowercase or uppercase, and can be negated or contradicted by placing at the beginning of the line one of these 2 executors `!, NOT`.<br>
+<br>
+The IDE also detects if a keyword was written from right to left and corrects it so that it is compileable.
+<pre>
+0@ = get_current_time
+// is equivalent to
+get_current_time = 0@
+</pre>
+</details>
+
+<details>
+<summary>Classes and Flows</summary>
+<h4>Classes</h4>
+The IDE is connected to 2 databases to be able to script with legacy or enchanted commands. So if we use aaa.bbb() and ccc.ddd() they will use the same opcode.
+<pre>
+Normal:
+CLASS.MEMBER(PARAM, VAR)
+
+Method:
+CLASS.MEMBER
+
+Conditional:
+CLASS.MEMBER(PARAM) == VAR
+
+Setter:
+CLASS.MEMBER(PARAM) = VAR
+
+Getter:
+VAR = CLASS.MEMBER(PARAM)
+</pre>
+The compiler does not know the order of the custom parameters, but instead interprets the orders, depending on how the classes are used.<br>
+<br>
+Everything that is located before the class is relocated at the end of the class.
+<pre>
+Multi-Geting:
+VAR1 VAR2 = CLASS.MEMBER(PARAM)
+VAR1, VAR2 = CLASS.MEMBER(PARAM)
+</pre>
+You also do not need to use commas(,) to separate the data. The compiler can detect the change of the data type, using the spaces.<br>
+<br>
+The compiler remembers which was the last class used, so if you use a dot (.) at the beginning of the line, you will access the member of that class.
+<pre>
+Last-Used:
+.MEMBER(PARAM)
+</pre>
+<h4>Flows</h4>
+Keywords that define the workflow and how it should behave on different occasions.
+<pre>
+IF, THEN, ELSE, END, WHILE, REPEAT,
+UNTIL, FOR, TRUE, FALSE, UNDEFINED,
+BREAK, CONTINUE, FOREACH, NOT, NULL
+</pre>
+Avoid naming things with these words, the order of how the text preprocessor is executed may break the script.
+</details>
+
+<details>
+<summary>Variable interpreter</summary>
+We do not need to declare variable types, or at least in most cases.<br>
+You can define the type of a variable with a prefix or subfix; I, F, S and V.
+<table>
+  <tr>
+    <th>Indication</th>
+    <th>Target</th>
+    <th>Use</th>
+  </tr>
+  <tr>
+    <td><code>I</code></td>
+    <td>INT</td>
+    <td><code>2@i i$2</code></td>
+  </tr>
+  <tr>
+    <td><code>F</code></td>
+    <td>FLOAT</td>
+    <td><code>2@f f$2</code></td>
+  </tr>
+  <tr>
+    <td><code>S</code></td>
+    <td>SHORT STRING</td>
+    <td><code>2@s s$2</code></td>
+  </tr>
+  <tr>
+    <td><code>V</code></td>
+    <td>LONG STRING</td>
+    <td><code>2@v v$2</code></td>
+  </tr>
+</table>
+This to perform precise operations.
+<pre>
+:sumFloat
+  0@ += 1@
+ret 1 0@ // return INT : ❌
+</pre>
+In this case, this function is expected to do a FLOAT operation, but since they are not defined, they will do an INT operation. this can be fixed, if we define the type of one.
+<pre>
+:sumFloat
+  0@f += 1@
+ret 1 0@ // return FLOAT : 👍
+</pre>
+The IDE remembers the last variable definitions and remembers if they went from INT to FLOAT and the other way around.
+</details>
+
+<details>
+<summary>Decimal interpreter</summary>
+The compiler not only has a translator for Hexadecimal and Binary numbers. It can also look up the numerical IDs of the model names.
+<pre>
+DEC  -6272_48 -2936 -42 0 5 972 729_0_03
+HEX  -0X7FFFFF -0x8AFF 0x0 0x03 0X700000
+BIN  -0B011110 -0b1110 0b0 0b01 0B10000000000
+OCT  -0O7143 -0o1472 0o0 0o107 0O70523
+TIME -2h -2m 1s 3.33S 10M 1H 60fps 30FPS
+NAME -#JESTER #fam1 #FAM2 #mini_gun
+NOTE -12E5 -3e2 1e9 10e+2 16E-3
+</pre>
+
+there is also a syntax for filling color fields in this way.
+<pre>
+c#123        =>   11 22 33
+c#123f       =>   11 22 33 FF
+c#131377     =>   13 13 77
+c#131377CC   =>   13 13 77 CC
+</pre>
+Useful for when we smell colors from the Internet and, of course, well interpreted.
+<pre>
+draw_box 1f 1f 2f 2f c#2323ABFF
+// traslated to
+draw_box 1.0 1.0 2.0 2.0 35 35 171 255
+</pre>
+</details>
+
+<details>
+<summary>Floating interpreter</summary>
+If you program in any language, you may be used to some of its syntax. Here you will be able to use it.
+<pre>
+CSS -.0025 -.97 .0 .42 .736
+JS  -2_823.2 0.6_608 48_386.93
+PY  -42.8362 -3.5 1.0 142.8638
+C#  -20F -13.7f 1f 27f 52.86F
+R   -1.2E7 5.1e8 7.1e+2 9.3E-2
+</pre>
+You can begin or end a number with a period (.) or end it with `f`. Scientific notation (e) and separators (_) are also available.
+</details>
+
+<details>
+<summary>Literal interpreter</summary>
+The editor supports the classic LONG and SHORT formats of SB, and the JS BACKSTICK.
+<pre>
+SHORT  'Abc'    09,41-62-63-00-00-00-00-00
+LONG   "Abc"    0E,03,41-62-63
+BACKS  `"Abc"`  0E,05,22-41-62-63-22
+</pre>
+Character escapes can also be made with the slash (\t, \n, \", \xff).
+</details>
+
+<details>
+<summary>Hexadecimal interpreter</summary>
+The IDE works with the same syntax as SB, with some limitations. You cannot insert variables yet, but you can use the hex multiplication operators :)
+<pre>
+HEX
+ 0 00 0(2)   --->  00 00 00 00
+ "hello"     --->  68 65 6C 6C 6F
+ `hello`     --->  68 65 6C 6C 6F
+ 'hello'     --->  68 65 6C 6C 6F 00
+END
+</pre>
+The multiplication function, accepts arithmetic operations and rounds them to the nearest number.
+<pre>
+hex
+ 0(4)   --->  00 00 00 00
+ 0(4*2) --->  00 00 00 00 00 00 00 00
+ 0(4.6) --->  00 00 00 00 00
+ 0(4.3) --->  00 00 00 00
+end
+</pre>
+</details>
+
+<details>
+<summary>Expressions operative</summary>
+<h4>Sanny</h4>
+You have all the SB expressions and one extra.
+<pre>
+0@++         -->  000A: 0@ += 1
+0@ <> 1@     -->  803A: 0@ != 1@
+0@ = 1@      -->  0085: 0@ = 1@
+0@ = 1@ + 2@ -->  0A8E: 0@ = 1@ + 2@ // int
+0@f = 1@ + 2@-->  XXXX: 0@ = 1@ + 2@ // float
+0@ =# 1@     -->  0092: 0@ = int_to_float 1@
+0@ =& 1@     -->  0AC7: 0@ = var 1@ pointer
+0@ +=@ 1@    -->  007B: 0@ += delta_time * 1@
+0@ &= 1@     -->  0B17: 0@ &= bit 1@
+</pre>
+the compiler remembers the data type of each manually assigned variable, so you don't have to worry about the opcode used.<br>
+<br>
+you can also force a change of operation, adding a subfix (I or F) in the variable
+<pre>
+0@f++        -->  XXXX: 0@ += 1.0
+0@f <> 1@    -->  XXXX: 0@ != 1@
+0@ = 1@f     -->  XXXX: 0@ = 1@
+0@ =# 1@f    -->  XXXX: 0@ = float_to_int 1@
+</pre>
+<h4>Enchanti</h4>
+if only one variable is written in a line, it is passed as a condition.
+<pre>
+0@           -->  0039: 0@ == true
+!0@          -->  0039: 0@ == false
+</pre>
+You can also assign a negated value to the variables, or see is truthy.
+<pre>
+0@ = !1@     -->  1@ == 1 ? 0@ = 0 : 0@ = 1
+0@ = !!1@    -->  1@ == 0 ? 0@ = 1 : 0@ = 0
+0@ = 1@t     -->  1@ != 0 ? 0@ = 1 : 0@ = 0
+</pre>
+Fixed and temporary assignment operators are also available anywhere in the code.
+<pre>
+Car.Exist(0@(++1@,10i))
+// is compiled before the line
+1@ += 1
+Car.Exist(0@(1@,10i))
+
+---
+
+Actor.Angle = 1@f++
+// is compiled after the line
+Actor.Angle = 1@
+1@ += 1.0
+
+---
+
+wait 1@+30fps
+// is compiled before and after the line
+1@ += 30fps
+wait 1@
+1@ -= 30fps
+</pre>
+This syntax only discriminates spaces and commas.<br>
+<br>
+And cascading operations can also be performed in this manner
+<pre>
+1@ = 3 * 5 + 6
+// is compiled at cascade in the line
+1@ = 3
+1@ *= 5
+1@ += 6
+</pre>
+</details>
+
+<details>
+<summary>Parameters interpreter</summary>
+The IDE can identify when an opcode has extra or missing parameters.
+<pre>
+nop  // ok     ->  00 00
+wait // error  ->  ERROR
+wait 0 // ok   ->  01 00 04 00
+</pre>
+whenever extra parameters are entered in opcodes that do not allow them, the latter will be removed.
+<pre>
+wait 0 33 22   ->  wait 0
+</pre>
+Of course, this does not affect opcodes with undefined number of parameters.
+<pre>
+cleo_call @func params 1 enter 0x0A
+</pre>
+But let's imagine that an opcode is not found in the IDE database. In this case, the IDE will auto-assign the number of parameters to a fixed one and depending on the number of parameters it used the first time it was invoked.
+<pre>
+XXXX: gg 3@
+// ok
+// OP:XXXX = 1 param
+
+XXXX: gg 24@ 33
+// error
+// OP:XXXX has 1 param, not 2.
+</pre>
+</details>
+
+- Constants and enumerations.<br>
+- Preview of errors and compiled in real time.<br>
+- Connection with <a href="https://library.sannybuilder.com/">Library::SannyBuilder</a> and <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">data::CrossPlataform</a><br>
+</blockquote>
+<blockquote class="info">
+- This IDE downloads files and stores them in the LocalStorage for faster uploads.<br>
+</blockquote>

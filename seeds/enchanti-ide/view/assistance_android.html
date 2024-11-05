@@ -1,0 +1,150 @@
+<div id="table-command" class="d-flex column header bottom-nav">
+   <div id="error" placeholder="hex's output" name="cleaned_hex" class="w-100 p-1"></div>
+      <div class="d-none" id="opcode-search">
+  <pre id="result-search" class="m-0 r-0"></pre>
+  <input type="search" value="" placeholder="actor, car, object...." id="search" class="w-100">
+      </div>
+<footer id="data-line-config" class="d-flex between py-1 w-100 header">
+<div class="d-flex between g-1">
+  <span id='line'>0:0</span>
+<span id='opcode' onclick="$('#short_desc').toggle()"></span>
+</div>
+<div class="d-flex">
+<span id='version_sbl' class="d-none d-md-block">SBL</span>
+<select id='mode' class="ml-1 d-none" style="border: none;" disabled>
+  <option value="gta3">GTA III</option>
+  <option value="lcs">GTA LCS</option>
+  <option value="sa" selected>SA Cross-Plataform</option>
+  <option value="vc">GTA VC</option>
+  <option value="vcs">GTA VCS</option>
+  <option value="gta3_mobile">III Mobile</option>
+  <option value="sa_mobile">SA Mobile</option>
+  <option value="vc_mobile">VC Mobile</option>
+</select>
+<span>v 1.3.0 :: 16/10/2024</span>
+</div>
+</footer>
+<footer id="short_desc" class="py-1 d-none"></footer>
+
+<footer class="d-flex p-2 pb-0 w-100 g-3 d-sm-none subheader" id="keys-mobile" fz>
+<key tip='tab' up right>↹</key>
+<key>&</key>
+<key>@</key>
+<key>$</key>
+<key>#</key>
+<key>=</key>
+<key>_</key>
+<key>"</key>
+<key>'</key>
+<key>(</key>
+<key>{</key>
+<key>[</key>
+</footer>
+<footer class="d-flex p-2 pt-0 w-100 g-3 d-sm-none subheader" fz="33px" id="keys-actions">
+<key key="up" tip='prev line' up right>⇡</key>
+<key key="down" tip='next line' up right>⇣</key>
+<key key="left" tip='prev column' up right>⇠</key>
+<key key="right" tip='next column' up right>⇢</key>
+<key cmd="undo" tip='undo change' up>↶</key>
+<key cmd="redo" tip='redo change' up>↷</key>
+<key cmd="copy" tip='copy text' up>⎘</key>
+<key cmd="cut" tip='cut text' up>✄</key>
+<key cmd="paste" tip='paste text' up>⎗</key>
+<key key="all" tip='select all' up>☰</key>
+</footer>
+
+
+</div>
+
+    
+<style>
+[action]{
+  font-size: 1.5rem
+}
+a[action]{
+  color:yellow;
+  &:hover{
+    text-decoration: none
+  }
+}
+#editor-body {
+  overflow: auto;
+  display: flex;
+  height: 30dvh;
+}
+#editor-counterLine {
+  overflow: hidden;
+  width: 3rem;
+  color:#7d5bbe;
+  background: #200029;
+}
+#HEX {
+  position: absolute;
+  white-space: pre!important;
+  color: transparent;
+  background: transparent;
+  caret-color: white;
+  resize: none;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+  line-height: 1.5em;
+  text-wrap: wrap!important;
+  overflow-wrap: break-word;
+  height: 30dvh;
+}
+html {
+  background: #2c003e;
+  margin-bottom: 5rem;
+}
+#PREVIEW {
+  white-space: pre!important;
+  text-wrap: wrap!important;
+  z-index: -99;
+  color: #dcb8ff;
+  background: #200029;
+  overflow-wrap: break-word;
+  height: 30dvh;
+}
+#editor-counterLine,
+#data-line-config *,
+#error,
+#HEX,
+#PREVIEW,
+#PREVIEW *,
+#OUTHEX,
+#short_desc {
+  font-size: 0.7rem!important;
+  tab-size: 2;
+}
+#FILENAME, {
+  border-bottom: #161b22 1px solid;
+}
+#short_desc {
+  overflow: auto;
+  max-height: 2rem;
+}
+#table-command {
+  background: #360047;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  z-index: 20;
+}
+select {
+  background: none;
+  color: #fff;
+}
+pre {
+  color: #dcb8ff;
+  background: #200029;
+}
+[fz] *{
+  font-size: 1.75rem;
+}
+#error {
+  background: #290000;
+  color: #ff8080;
+  white-space: pre-wrap;
+  display: none;
+}
+</style>
