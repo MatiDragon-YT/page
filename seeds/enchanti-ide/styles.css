@@ -49,15 +49,18 @@ body {
   }
 }
 
-#menu, #inspect, #compile, #open_docu{
+#menu, .navbar-btn{
   font-size: 2rem;
   padding: 0 .5rem;
 }
+.menu-btn{
+  font-size: 1.2rem;
+  background: #0004;
+  color: white;
+  padding: .3rem;
+}
 #inspect{
   color:#fff9;
-}
-#compile{
-  color:#5f5d;
 }
 #items {
   margin-top: .7rem;
@@ -132,7 +135,7 @@ body {
   overflow: auto;
   padding: 0!important;
   display: inline-block;
-  width: 70vw;
+  width: 50vw;
   text-wrap: nowrap;
 }
 
@@ -311,7 +314,7 @@ opciones de los items
     
     content: attr(tip);
     background: #404b;
-    color: #f22;
+    color: #f88;
     
     font-size: .75rem;
     text-align: right;
@@ -320,7 +323,10 @@ opciones de los items
     right: 1rem;
     top: 1rem;
     padding: .3rem;
-    font-weight: bold;
+    font-weight: 800;
+    box-shadow: 0 2px 7px -2px #0003;
+    z-index: 20;
+    animation: aparecer .2s;
   }
   
   &:hover{
@@ -332,6 +338,9 @@ opciones de los items
   
   &[up]::before{
     top: -1rem;
+  }
+  &[down]::before{
+    top: 2rem;
   }
   &[right]::before{
     right: -4rem;
@@ -688,7 +697,7 @@ key {
   position: absolute;
   z-index: 5;
   border: #fff2 solid 1px;
-  animation: aparecer .2 ease-out;
+  animation: aparecer .1s ease-out;
   &.hidden {
     display: none;
   }
@@ -760,10 +769,6 @@ key {
 }
 
 
-.syntax {
-  font-weight: 800!important;
-}
-
 /* Estilo para constantes de la categoría "vars" */
 .var {
     color: lightsalmon!important; /* Ejemplo de color */
@@ -800,17 +805,18 @@ key {
 	--c-blue: #2196f3;
 	--c-green: #00e676;
 	--c-pink: #e91e63;
+	--c-yellow: #ffd54f;
 }
 .keyword { color: var(--hl-keywords) }
 .model { color: var(--hl-models) }
 .class { color: var(--hl-class) }
-.property, .property * { color: var(--hl-property) }
+.property, .property * { color: var(--hl-property)!important }
 .number,
 .number * { color: var(--hl-numbers) }
 .var,
 .var * { color: var(--hl-variables) }
 .directive,
-.directive * { color: var(--hl-directives) }
+.directive * { color: var(--hl-directives)!important }
 .strings,
 .strings * { color: var(--hl-strings)!important}
 .charScape,
@@ -821,7 +827,9 @@ key {
 .label * { color: var(--hl-labels)!important }
 
 
-
+.yellow {
+  color: var(--c-yellow);
+}
 #editor-container {
     position: relative;
     width: 100%;
@@ -836,7 +844,7 @@ key {
 #highlighting,
 #editor {
     word-wrap: break-word;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
     font-family: inherit;
     font-size: inherit;
     line-height: inherit;
@@ -872,17 +880,28 @@ key {
   overflow-x: hidden;
   overflow-y: auto;
 }
+.overflow-auto {
+  overflow:auto;
+}
 
 .top-0{
   top:0;
 }
 
-#documentation {
+.other-view {
   background: #2e003e;
+  width: 100%;
   z-index: 5;
+  animation: aparecer .2s ease-in-out;
+  
   & *{
-  user-select: text;
-    -webkit-tap-highlight-color: red;}
+    user-select: text;
+    -webkit-tap-highlight-color: #f773;
+    &::selection {
+      background: #f773; /* Color de fondo */
+      color: #fff; /* Color del texto */
+    }
+  }
 }
 
 blockquote {
@@ -942,6 +961,11 @@ pre {
 	text-wrap: wrap;
 }
 
+#documentationpre pre,
+#documentationpre pre * {
+  font-size: 10px;
+}
+
 code, .code {
 	white-space: pre;
 	padding: 2px 5px;
@@ -953,7 +977,7 @@ table {
 	width: 100%;
 	margin: .5rem 0;
 	border-spacing: 0;
-	border: 1px solid #30363d;
+	border: 1px solid #fff1;
 	border-radius: 4px;
 	display: block;
 }
@@ -964,13 +988,13 @@ thead {
 
 th, td {
 	padding: .6rem;
-	border-left: #30363d 1px solid;
+	border-left: #fff1 1px solid;
 	text-align: center;
 	width: 1%;
 }
 
 td {
-	border-top: #30363d 1px solid;
+	border-top: #fff1 1px solid;
 }
 
 td:first-child, th:first-child {
@@ -990,7 +1014,7 @@ h1, h2, h3, h4, h5, h6,
 h1, h2, h3 {
 	padding: 1rem 0 0.3em;
 	margin-bottom: 1rem;
-	border-bottom: #30363d 1px solid;
+	border-bottom: #fff1 1px solid;
 }
 
 h4, h5, h6 {
@@ -1024,9 +1048,7 @@ a, a *{
 	text-decoration: none;
 	font-weight: 500;
 }
-a:hover, a:focus {
-	text-decoration: underline
-}
+
 a.button, label.button {
     background: var(--c-blue);
     color: black;
@@ -1042,4 +1064,37 @@ a.button, label.button {
 
 a.button:hover, a.button:focus {
 	text-decoration: none
+}
+.selec-auto{
+  user-select: auto
+}
+#debug_hex {
+  background: #0007;
+  color:#7f7;
+  text-wrap: pre-wrap;
+  overflow: auto;
+  user-select: auto;
+}
+
+a {
+    text-decoration: none;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 50% 100%;
+    background-repeat: no-repeat;
+    background-size: 0% 1px;
+    transition: background-size .3s;
+}
+a:hover, a:focus {
+    background-size: 100% 2px;
+}
+summary:hover,
+h1:hover,
+h2:hover,
+h3:hover,
+h4:hover,
+h5:hover,
+h6:hover{
+  color: white;
+  font-weight: 400 !important;
+  text-shadow: 0 0 1rem white;
 }

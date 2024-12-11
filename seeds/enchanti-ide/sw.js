@@ -8,11 +8,11 @@ const CACHE_NAME = "v1";
 const OFFLINE_URL = "index.html";
 const ASSETS = [
   OFFLINE_URL,
-  "/../../css/main.css",
-  "/../../js/css.js",
-  '/compiler.js',
-  '/js/css.min.js',
-  '/js/*',
+  "/style.css",
+  "/css.js",
+  '/manifest.json',
+  '/script.js',
+  '/sw.js',
   "/data/*",
   "/"
   // Agrega aquí otros recursos que quieras precachear

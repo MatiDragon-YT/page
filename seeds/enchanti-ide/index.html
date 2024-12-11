@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enchanti IDE</title>
     <link rel="stylesheet" href="styles.css">
+	<link rel="manifest" href="./manifest.json">
+  <meta name="description" content="Enchanti IDE es una potente herramienta para hacer CLEO Scripts multi-plataforma para GTA San Andreas, con una syntaxis basada en SB4 y JS">
 </head>
 <body>
 
@@ -14,41 +16,96 @@
     <span id="currentDirectory"></span>
   </div>
   <div class="d-flex row">
-    <button id="open_docu">¶</button>
-    <button id="compile">⎆</button>
+    <button class="navbar-btn d-none" for="settings">⚙️</button>
+    <button class="navbar-btn" for="debug_hex" down tip='see code hexadecimal'>👀</button>
+    <button class="navbar-btn" for="open_docu" down tip='learn about documentation'>📘</button>
+    <button class="navbar-btn" for="compile" down tip='compile and launcher '>🚀</button>
   </div>
 </nav>
-
 <main id=bodyapp>
-  
-  
-  
-<div id='documentation' class="d-flex column overflow-visible p-absolute p-3 h-83 d-none">
+
+
+<div id='settings' class="other-view d-flex column overflow-visible p-absolute py-3 h-83 d-none">
+  <h1>Ajustes</h1>
+<h2>Resaltador</h2>
+Puede generar demaciado retraso
+
+<label for="enable-resaltador">enable-resaltador</label>
+<input type="checkbox" name="enable-redaltador" id="enable-resaltador">
+
+<h2>Autocomplatado</h2>
+<table>
+  <tr>
+    <th>Sugerir</th>
+    <th>Estado</th>
+  </tr>
+  <tr>
+    <td>Modelos</td>
+    <td><select name="op" id="op">
+      <option value="hoka">ninguna apertura</option>
+      <option value="hoka">en apertura forzada</option>
+      <option value="hoka">en apertura automatica</option>
+      <option value="hoka">ambas aperturas</option>
+    </select></td>
+  </tr>
+</table>
+</div>
+
+
+<div id='documentation' class="other-view d-flex column overflow-visible p-absolute py-3 h-83 d-none">
+  <h1>Documentation</h1>
 <style>
-  details[open] div {
-  padding-left: 1rem;
-  padding-top: .5rem;
+details[open]{
+  padding-left: .5rem;
 }
-details[open]::after{
-  border: 0;
-  display: block;
-	border-bottom: solid #30363d 1px;
-	width: 100%;
-	margin: 15px 0;
+
+@keyframes show {
+    from {
+        opacity: 0;
+        scale: 75%;
+    }
+    to {
+        opacity: 1;
+        scale: 100%;
+    }
+}
+
+pre {
+    view-timeline-name: --image;
+    view-timeline-axis: block;
+
+    animation-timeline: --image;
+    animation-name: show;
+
+    animation-range: entry 0% cover 45%;
+    animation-fill-mode: both;
+
+    transition: all .3s;
+    
 }
 </style>
 
+<blockquote class="info">
+  - This IDE downloads files and stores them in the LocalStorage for faster uploads.<br>
+</blockquote>
+
 <blockquote class="warning">
-Bugs found:<br>
-IDE does not load <a onclick="
+<b>IDE does not respond:</b><br>
+<a onclick="
   localStorage.clear()
    window.location.href = window.location.href
-  ">clicking here</a>, wait 3s and <a href=index.html>refresh page</a>.<br>
-Array support is limited to LVAR_LVAR @(@,n).<br>
+  ">clear the database</a> to redownload it or <a href=index.html>refresh the page</a>.
 </blockquote>
 
 <blockquote>
-IDE supports & features:
+<b>IDE supports & features:</b><br>
+- Autocomplete.<br>
+- File manager.<br>
+- Syntax Highlighter.<br>
+- Preview of errors.<br>
+- Compiles for Android and PC.<br>
+- Connection with <a href="https://library.sannybuilder.com/">Library::SannyBuilder</a> and <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">data::CrossPlataform</a><br>
+<br>
 <details>
 <summary>Syntax for conditions</summary>
 <h4>Primitive</h4>
@@ -120,13 +177,17 @@ WHILE condition
   body
 END
 
-FOR var = start [TO|TODOWN] final [STEP (int|float)]
+REPEAT
+body
+UNTIL condition
+
+FOR var = start &lt;TO|TODOWN&gt; final [STEP (int|float)]
   body
 END
 
-REPEAT
+FOREACH var_array
   body
-UNTIL condition
+END
 </pre>
 loop controls are also here
 <pre>
@@ -154,6 +215,7 @@ gosub @suma
 wait 1s
 printf "0@ = %i" 1s 0@ // 1
 </pre>
+
 If you make blocks that are too big and you get lost among many `END`, you can use these fasteners:
 <pre>
 ENDIF ENDWHILE ENDFOR
@@ -272,8 +334,31 @@ Avoid naming things with these words, the order of how the text preprocessor is 
 </details>
 
 <details>
+<summary>Constants and Enumerations</summary>
+These are just a nice way to read our code better, so we don't have so many numbers or confusing statements in our code. They are like keywords or classes, which only represent a value and cannot be modified.
+<pre>
+// constants
+TRUE = 1
+_Player = $PLAYER_ACTOR
+PI = 3.14159265
+
+// enumerations
+PEDTYPE.CIVMALE = 4
+KEYCODE.R = 82
+BODYPART.TORSO = 1
+</pre>
+</details>
+
+<details>
 <summary>Variable interpreter</summary>
-We do not need to declare variable types, or at least in most cases.<br>
+We do not need to declare variable types, or at least in most cases.
+<pre>
+0@ = 123 // INT
+0@ = 1.3 // FLOAT
+0@ = '2' // SHORT
+0@ = "2" // LONG
+0@ = `2` // LONG
+</pre>
 You can define the type of a variable with a prefix or subfix; I, F, S and V.
 <table>
   <tr>
@@ -315,6 +400,29 @@ In this case, this function is expected to do a FLOAT operation, but since they 
 ret 1 0@ // return FLOAT : 👍
 </pre>
 The IDE remembers the last variable definitions and remembers if they went from INT to FLOAT and the other way around.
+<h4>Arrays</h4>
+Everyone already knows the syntax for writing an ARRAY in Sanny Builder, and if you don't, I'll show it here with an example.
+<pre>
+var_main(var_index,size_and_type)
+
+example: 0@(1@,20i)
+</pre>
+And we can use it anywhere as a common variable.<br>
+<br>
+Sanny, is extremely strict with syntaxes and does not support writing spaces in them, so if you make any assignment or anything, you must write it like this
+<pre>
+0@(1@,20i) = 123
+</pre>
+Enchanti offers a little more flexibility here. It does not require you to set the type of the data collection, (INT, FLOAT, SHORT, LONG) nor does it require you to set the size of the collection.
+<pre>
+0@(1@)     = '2'
+0@(1@,20)  = "2"
+0@(1@, 20) = `2`
+0@f(1@,20) = 1.3
+0@(1@,20i) = 123
+</pre>
+If you don't specify the type, the IDE will try to know what data you want to store. Be careful though, it only works for assigning constant data for the moment.
+If you do not specify the size, the IDE will set the number to 20, by default.
 </details>
 
 <details>
@@ -488,14 +596,13 @@ XXXX: gg 24@ 33
 // OP:XXXX has 1 param, not 2.
 </pre>
 </details>
+<br> 
+The IDE limits some features for better performance.<br>
+- The syntax highlighter only colors the lines near the cursor.<br>
+- Autocomplete is limited to displaying a maximum of 400 results.<br>
+- Autocomplete is only rendered if 0.2 seconds have passed since the last keystroke.
+</blockquote>
 
-- Constants and enumerations.<br>
-- Preview of errors and compiled in real time.<br>
-- Connection with <a href="https://library.sannybuilder.com/">Library::SannyBuilder</a> and <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">data::CrossPlataform</a><br>
-</blockquote>
-<blockquote class="info">
-- This IDE downloads files and stores them in the LocalStorage for faster uploads.<br>
-</blockquote>
 <div class="p-5"></div><div class="p-5"></div>
  </div>
   
@@ -503,9 +610,12 @@ XXXX: gg 24@ 33
 <div id=backgroundExplorer></div>
 
 <div id="explorer">
-  <div class="d-flex row between">
-    <b>Enchanti IDE 1.4.0 :: 22/11/2024</b>
-    <button id="settings" class="d-none">⚙️</button>
+  <div class="d-flex column g-1">
+    <h6>Enchanti IDE 1.4.1 :: 02/12/2024</h6>
+    <button class="menu-btn" id="name-app">🔥 Install</button>
+    <button class="menu-btn" for="compile">🚀 Compile</button>
+    <!--<button class="menu-btn" for="settings">⚙️ Settings</button>-->
+    <button class="menu-btn" for="open_docu">📘 Documentation</button>
   </div>
   <div id="explorer-actions" class="d-flex row between g-3 mt-2">
    <div class='d-flex g-1 between'>
@@ -530,6 +640,7 @@ XXXX: gg 24@ 33
     <div class="p-2 h-56" id="highlighting" aria-hidden="true"></div>
     <textarea class="p-2 h-56" id="editor" placeholder="create a file" disabled spellcheck="false"></textarea>
 </div>
+<div id="debug_hex" class="pre h-56 p-1 w-50 d-none"></div>
   <!--
   <textarea class="p-2 h-56" id="editor" placeholder="create a file" disabled></textarea>
   -->
@@ -547,7 +658,7 @@ XXXX: gg 24@ 33
 </main>
 
 <footer id='table-command' class="d-flex column">
-<div id="error" class="w-100 d-none"></div>
+<div id="error" class="w-100"></div>
 <div id="data-line-config" class="d-flex between py-1 w-100">
 <div class="d-flex g-1 p-1">
   <span id='current_line'></span>
@@ -624,11 +735,11 @@ const CACHE_NAME = "v1";
 const OFFLINE_URL = "index.html";
 const ASSETS = [
   OFFLINE_URL,
-  "/../../css/main.css",
-  "/../../js/css.js",
-  '/js/compiler.js',
-  '/js/utils/css.min.js',
-  '/js/utils/*',
+  "/style.css",
+  "/css.js",
+  '/manifest.json',
+  '/script.js',
+  '/sw.js',
   "/data/*",
   "/"
   // Agrega aquí otros recursos que quieras precachear
@@ -697,7 +808,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
   addBtn.addEventListener('click', () => {
     // hide our user interface that shows our A2HS button
-    addBtn.style.display = 'none';
+    addBtn.style.color = 'white';
+    addBtn.style.display = 'none'
     // Show the prompt
     deferredPrompt.prompt();
     // Wait for the user to respond to the prompt

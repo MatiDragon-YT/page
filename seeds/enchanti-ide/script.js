@@ -85,6 +85,14 @@ function apply(element, callback) {
 
 
 
+
+function vibrateNavigator(x){
+  if (window.navigator.vibrate)
+    window.navigator.vibrate(x)
+  else
+    log('API.vibrate: not available')
+}
+
 //       FUNCIONES DE OBJECT
 
 
@@ -358,18 +366,30 @@ SP.fixOpcodes = function(){
 }
 
 
-EP.class = function(str){
-  let [m, action, classes] = str.match(/^([\?\+\-\~\>]?)(.+)/m)
+EP.class = function(str = ''){
+  if (str != ''){
+    if (str.i(' ')){
+      str.split(' ').forEach(className=>{
+        this.class(className)
+      })
+      return this.classList.value.split(' ')
+    }
+    
+    let [m, action, classes] = str.match(/^([\!\?\+\-\~\>]?)(.+)/m)
+    
+    classes = classes.trim()
+    
+    if (action == '+') this.classList.add(classes);
+    if (action == '-') this.classList.remove(classes);
+    if (action == '~') this.classList.toggle(classes);
+    if (action == '>') this.classList.replace(classes);
+    if (action == '?')
+      return this.classList.contains(classes);
+    if (action == '!')
+      return !this.classList.contains(classes);
+  }
+  return this.classList.value.split(' ')
   
-  log({action, classes})
-  classes =classes.trim()
-  
-  if (action == '+') this.classList.add(classes);
-  if (action == '-') this.classList.remove(classes);
-  if (action == '~') this.classList.toggle(classes);
-  if (action == '>') this.classList.replace(classes);
-  if (action == '?')
-    return this.classList.contains(classes)
 }
 
 	EP.next = function(){
@@ -408,12 +428,12 @@ EP.class = function(str){
 			}, 12)	
 		}
 
-		if (this.classList.contains("d-block")){
-			this.classList.remove('d-block')
+		if (this.class("?d-block")){
+			this.class('-d-block')
 			this.style = 'display:block'
 		}
-		if (this.classList.contains("d-none")){
-			this.classList.remove('d-none')
+		if (this.class("?d-none")){
+			this.class('-d-none')
 			this.style = 'display:none'
 		}
 
@@ -583,6 +603,72 @@ EP.clearLine = function(lineNumber) {
 
 
 
+const $itemsContainer = $('#items');
+const $addTextTabButton = $('#addTextTab');
+const $addFolderTabButton = $('#addFolderTab');
+const $currentDirectory = $('#currentDirectory');
+const $clearAll = $('#clearAll');
+
+const $menu = $('#menu')
+const $explorer = $('#explorer')
+const $backgroundExplorer = $('#backgroundExplorer')
+
+const $editorCounterLine = $("#editor-counterLine")
+const $editorContainer = $('#editor-container')
+const $editor = $('#editor');
+const $highlighting = $("#highlighting")
+
+const $settings = $('#settings')
+const $documentation = $('#documentation')
+const $debugHex = $('#debug_hex')
+
+
+
+const resetView = (sinFx) => {
+  let visible = null
+  if (sinFx) visible = sinFx.class('?d-none');
+  
+  $settings.class('+d-none')
+  $documentation.class('+d-none')
+  $debugHex.class('+d-none')
+  
+  $editorCounterLine.class('-d-none')
+  $editorContainer.class('-w-50')
+  $highlighting.class('-w-50')
+  
+  if (sinFx){
+    if (visible) sinFx.class('-d-none')
+  }
+  return sinFx ? sinFx.class() : null
+}
+
+$('[for=open_docu]', e=>{e.onclick = () =>{
+  closeMenu()
+  resetView($documentation)
+}})
+
+$('[for="settings"]', e=>{e.onclick = () =>{
+  closeMenu()
+  resetView($settings)
+}})
+
+$('[for="debug_hex"]', e=>{e.onclick = () =>{
+  closeMenu()
+  $editorCounterLine.class('~d-none')
+  $editorContainer.class('~w-50')
+  $highlighting.class('')
+  $('#error').style.display = 'none'
+
+  if (!$debugHex.class('~d-none').i('d-none')){
+    syncDebugHex()
+    $settings.class('+d-none')
+    $documentation.class('+d-none')
+  }
+}})
+
+
+
+
 
 
 
@@ -591,22 +677,6 @@ EP.clearLine = function(lineNumber) {
 // tambien sistema de pestañas
 
 
-const $itemsContainer = $('#items');
-const $editor = $('#editor');
-const $addTextTabButton = $('#addTextTab');
-const $addFolderTabButton = $('#addFolderTab');
-const $currentDirectory = $('#currentDirectory');
-const $clearAll = $('#clearAll');
-const $menu = $('#menu')
-const $explorer = $('#explorer')
-const $backgroundExplorer = $('#backgroundExplorer')
-const $editorCounterLine = $("#editor-counterLine")
-const $open_docu = $('#open_docu')
-const $documentation = $('#documentation')
-
-$open_docu.onclick = () =>{
-  $documentation.class('~d-none')
-}
 
 let cutTabId = null;
 let activeTabId = null;
@@ -618,20 +688,18 @@ let currentTabId = localStorage.getItem('currentTabId');
 let DATA_DOWNLOADED = []
 
 let keywords = {
-    "syntax": ["hex", "end", "while", "if", "else", "for", "then", "break", "continue", "until", "repeat", 'float', 'int', 'string', 'long', 'short', 'not', 'and', 'or'],
+    "syntax": ["hex", "end", "while", "if", "else", "for", "then", "break", "continue", "until", "repeat", 'float', 'int', 'string', 'long', 'short', 'not', 'and', 'or', 'endif', 'endfor', 'endwhile', 'null', 'undefined', 'NaN', 'forin', 'forinend'],
     "label": [],
     "var": []
 };
 
-let constants = [
-  { name: "true", value: "1" },
-  { name: "false", value: "0" }
-];
+let constants = []
 
 let classMembers = {}
 
 // Supongamos que tienes una estructura de datos para las enumeraciones
 let enums = {};
+let models = {};
 
 const snippets = {
     "if-then-end": "if |\nthen |\nend",
@@ -640,7 +708,8 @@ const snippets = {
     "while-true": "while true\n  |\nend",
     "while-false": "while false\n  |\nend",
     "repeat-until": "repeat\n  |\nuntil |",
-    "for": "for 0@ = 0 to | step 1\n  |\nend"
+    "for": "for 0@ = 0 to | step 1\n  |\nend",
+    "forin": "forin 0@(1@,20)\n  0@(1@,20) = 0|\nend"
 };
 
 
@@ -649,25 +718,32 @@ const snippets = {
 
 let classNames = Object.keys(classMembers);
 
+function toggleMenu() {
+  if ($backgroundExplorer.style.display == 'none') {
+    $explorer.style.translate = '0'
 
+    $backgroundExplorer.style.display = 'block'
+    $backgroundExplorer.style.opacity = '1'
+    resetView()
+  } else {
+    $explorer.style.translate = '-100vw 0'
+    $backgroundExplorer.style.display = 'none'
+    $backgroundExplorer.style.opacity = '0'
+  }
+}
+
+function closeMenu() {
+  if ($backgroundExplorer.style.display != 'none') {
+    $explorer.style.translate = '-100vw 0'
+    $backgroundExplorer.style.display = 'none'
+    $backgroundExplorer.style.opacity = '0'
+  }
+}
 
 
 
 //    EXPLORADOR Y PESTAÑAS
 document.addEventListener('DOMContentLoaded', () => {
-	function toggleMenu() {
-		if($backgroundExplorer.style.display == 'none') {
-		  $explorer.style.translate = '0'
-		  
-			$backgroundExplorer.style.display = 'block'
-			$backgroundExplorer.style.opacity = '1'
-			
-		} else {
-		  $explorer.style.translate = '-100vw 0'
-			$backgroundExplorer.style.display = 'none'
-			$backgroundExplorer.style.opacity = '0'
-		}
-	}
 	$menu.onclick = toggleMenu
 	$backgroundExplorer.onclick = toggleMenu
 	
@@ -736,7 +812,7 @@ function getFileContent(path, currentDir = tabs, currentFolder = null, callingFi
             }
         } else {
             // Manejo del error: archivo no encontrado
-            window.navigator.vibrate(200);
+            vibrateNavigator(200);
             showToast(`File "${path}.txt" not found while importing from "${callingFile}.txt".`, 'fail', 5000);
             return null;
         }
@@ -757,7 +833,7 @@ function processImports(content, currentDir, currentFolder, callingFile) {
     });
 }
   
-function importFileInFile() {
+window.importFileInFile = function() {
     // Encontramos el archivo abierto
     let openTab = findTabById(currentTabId, tabs);
     if (!openTab) {
@@ -779,25 +855,21 @@ function importFileInFile() {
 }
   
   // Event listener para el botón "compile"
-  document.getElementById('compile').addEventListener('click', function() {
-    
-    
-    
+  $('[for=compile]', e=>{e.onclick = ()=>{
     try {
-      console.log(importFileInFile().toCompileSCM(
+      importFileInFile()
+      .toCompileSCM(
         findTabById(currentTabId, tabs).name + '.txt'
-      ));
+      )
       showToast(`Compiled project!`)
-      
-    } catch (e) {
-      
-      showToast('Error:<br>'+e.message, 'fail', 5000)
-      
-      throw e
+    } catch (error) {
+      showToast('Error:<br>'+error.message, 'fail', 5000)
+      console.error(error.message)
+      throw error
     }
-    
-    
-  });
+    closeMenu()
+    resetView()
+}});
 
 
 
@@ -858,6 +930,7 @@ function importFileInFile() {
     const tab = findTabById(tabId, tabs);
     if (tab && tab.type === 'text') {
         $editor.value = tab.content; // Cargar el nuevo contenido en el editor
+        syncHighlighting()
     }
 }
 
@@ -921,7 +994,7 @@ function importFileInFile() {
 		const childCount = tab.type === 'folder' ? `<sup>${tab.contents.length}</sup>` : '';
 		
 		const deleteButton = `<button onclick="
-          window.navigator.vibrate(200);
+          vibrateNavigator(200);
           showConfirmationDialog('${tab.name}', ()=>{
             Tab_Remove(${tab.id});
             Item_Remove(${tab.id});
@@ -1303,9 +1376,12 @@ window.Item_Paste = function(folderId) {
 		  
       if(userNumber === currentNumber.toString()) {
 		  	callback();
+		  } else {
+		    showToast(`Incorrect number. Operation cancelled.`, 'fail', 5000);
+		    vibrateNavigator(200)
 		  }
 		  if (elementName != 'ALL THE PROYECT')
-		    showToast('Successfully removed!')
+		    showToast('Successfully removed!');
     })
 	}
 
@@ -1727,10 +1803,14 @@ let nameBase=''
 		}
 		addCounterLine()
 		UpdateCurrentLine()
+		syncHighlighting()
+		
+		syncDebugHex()
 	};
 	$editor.onclick = () => {
 	  addCounterLine()
 	  UpdateCurrentLine()
+	  syncHighlighting()
 	}
 	
 	window.addCounterLine = function(){
@@ -1828,8 +1908,8 @@ function showToast(MENSAJE, _clase = '...', _duracion = 2000) {
   `;
   
   // Auto hide after 2 seconds
-  if (_clase == 'fail') window.navigator.vibrate(200);
-  if (_clase == '...') window.navigator.vibrate(50);
+  if (_clase == 'fail') vibrateNavigator(200);
+  if (_clase == '...') vibrateNavigator(50);
   setTimeout(() => closeToast(id), _duracion);
   
   $toast_container.appendChild($toast);
@@ -2092,7 +2172,6 @@ $("[key]", e => {
 
 let textData
 function UpdateCurrentLine() {
-  syncHighlighting()
   textData = $editor.DATA_TEXTAREA()
   /* lineaCursor, columnaCursor, inSelection,
      charsSelected, textSelected, primerPalabra,
@@ -2191,6 +2270,12 @@ document.addEventListener('click', function() {
 
 
 //        AUTO COMPLETADO
+
+
+
+
+
+
 let cursorX = 0;
 let cursorY = 0;
 let suggestionEngineType = "fuzzy"; // Puede ser "exact" o "fuzzy"
@@ -2264,6 +2349,7 @@ $editor.addEventListener("input", debounce(function(event) {
 
     // Verificar si es un objeto de enumeración (ignorando mayúsculas/minúsculas)
     const enumName = Object.keys(enums).find(enumKey => enumKey.toLowerCase() === classNameInput);
+    
     if (enumName) {
       suggestions = Object.keys(enums[enumName])
         .filter(enumKey => suggestionMatches(enumKey.toLowerCase(), partialMember))
@@ -2307,6 +2393,17 @@ $editor.addEventListener("input", debounce(function(event) {
         extraInfo: '[snippet]'
       }))
     );
+    
+    
+      suggestions.push(
+        ...constants
+        .filter(constant => suggestionMatches(constant.name.toLowerCase(), lowerLastWord))
+        .map(constant => ({
+          type: 'constant',
+          value: constant.name,
+          extraInfo: `= ${constant.value}`
+        }))
+      )
 
 
     // Sugerencias de clases, constantes y enumeraciones
@@ -2325,12 +2422,12 @@ $editor.addEventListener("input", debounce(function(event) {
     
     if (!eventoForzado){
       suggestions.push(
-        ...constants
-        .filter(constant => suggestionMatches(constant.name.toLowerCase(), lowerLastWord))
-        .map(constant => ({
-          type: 'constant',
-          value: constant.name,
-          extraInfo: `= ${constant.value}`
+        ...models
+        .filter(model => suggestionMatches(model.name.toLowerCase(), lowerLastWord))
+        .map(model => ({
+          type: 'model',
+          value: model.name,
+          extraInfo: `= ${model.value}`
         }))
       )
       
@@ -2348,7 +2445,7 @@ $editor.addEventListener("input", debounce(function(event) {
         );
       }
     }
-
+              //`
     updateAutocompletePositionWithCursor();
   }
 
@@ -2384,6 +2481,19 @@ document.getElementById("engineSelector").addEventListener("change", function(ev
 
 function updateAutocompleteMenu(suggestions, lastWord, classNameMatch) {
   autocompleteMenu.innerHTML = ""; // Limpiar las sugerencias previas
+ 
+ 
+ // para evitar que el hilo principal se congele durante mucho tiempo, limitamos la cantidad de sugerencias.
+ if (eventoForzado == false){
+   if (suggestions.length > 100) {
+     suggestions.length = 100
+   }
+ } else {
+   if (suggestions.length > 380) {
+     suggestions.length = 380
+   }
+ }
+  
   suggestions.forEach(({ type, value, extraInfo }) => {
     const suggestionItem = document.createElement("li");
     suggestionItem.classList.add("suggestion-item");
@@ -2431,8 +2541,13 @@ function updateAutocompleteMenu(suggestions, lastWord, classNameMatch) {
         typeIndicator.textContent = "π";
         extraInfoElement.textContent = extraInfo || ""; // Mostrar el valor si existe
         suggestionItem.classList.add(
-          /["']/.test(extraInfo) ? "string"
-          : /\$/.test(extraInfo) ? "var" : "number");
+          /["']/.test(extraInfo) ? "strings"
+          : /[\$\@\&]/.test(extraInfo) ? "var" : "number");
+        break;
+      case 'model':
+        typeIndicator.textContent = "M";
+        extraInfoElement.textContent = extraInfo || ""; // Mostrar el valor si existe
+        suggestionItem.classList.add("number");
         break;
       case 'snippet':
         typeIndicator.textContent = "§";
@@ -2527,6 +2642,9 @@ function completeWord(suggestion, lastWord, classNameMatch, type, extraInfo) {
   addCounterLine()
   syncHighlighting() // resalta el codigo
   Explorer_Save() // guarda el codigo
+  saveTabContent()
+  
+  syncDebugHex()
 }
 
 function updateAutocompletePositionWithCursor() {
@@ -2726,7 +2844,6 @@ $editor.addEventListener("keyup", event => {
   }
   
   codigoModificado = $editor.value
-  syncHighlighting()
 })
 
 function eliminarCaracter(cadena, posicion) {
@@ -2759,29 +2876,22 @@ function encontrarCaracterDiferente(str2, str1) {
 // RESALTADOR DE SINTAXIS
 
 
+NP.entre = function(min, max){
+  return this >= min && this <= max ? true : false
+}
 
-
-
-const highlighting = $("#highlighting")
 const keywordPattern = 
   new RegExp("\\b(" + keywords.syntax.join("|")+ ")\\b", "gi");
 
 
 let keysHigh;
 let classNamesReg;
-const syntaxHighlight = (text) => {
+let constantes;
+let CONSTANTS
 
-        // Escapa HTML
-    text = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/'/g, "&apos;")
-    .replace(/"/g, "&quot;")
-    .replace(/\//g, "&sol;")
-    
-    
-    const span = {
+const syntaxHighlight = (code, exception = $editor) => {
+
+  const span = {
 		start : "<span class=",
 		end : ">$1<\/span>"
 	}
@@ -2796,90 +2906,110 @@ const syntaxHighlight = (text) => {
 		classes   : span.start + "class"    + span.end
 	}
 
-	text = text
+  let lineaActual = $editor.DATA_TEXTAREA().lineaCursor
+  
+  code = code.split('\n').map((text,index) =>{
+  
+  if (exception != $editor || (index+1).entre(lineaActual-16, lineaActual+14)){
+  // Escapa HTML
+    text = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/'/g, "&apos;")
+    .replace(/"/g, "&quot;")
+    .replace(/\//g, "&sol;")
+    
 
+	text = text
 	//Comentarios 
-	.r(/(&sol;&sol;([^\n]*))/gm, enter.comments)
-	.r(/(&sol;\*[^\/]*?(\*&sol;))/gm, enter.comments)
-	.r(/(\{([^\$][^\{\}]*(\})?)?)/gm, enter.comments)
-	//Directivas
-	.r(/(\{\$[^{}\n]+\})/gm, enter.directives)
+	.r(/(&sol;&sol;([^\n]*)|&sol;\*[^\/]*?(\*&sol;))/, enter.comments)
+	
+	.r(/(\{([^\{\}]*(\})?)?)/g, enter => {
+	  return enter[1] == '$'
+	    ? '<span class=directive>'+enter+'</span>'
+	    : '<span class=comment>'+enter+'</span>'
+	})
 	
 	//Cadenas de texto
-	.r(/&quot;((?:\\|[^\\\n])+)&quot;/gmi, match => {
+	.r(/(&quot;((?:\\|[^\\\n])+)&quot;|&apos;((?:\\|[^\\\n])+)&apos;|`((?:\\|[^`\\])*)`)/gi, match => {
 	  match = match
-	  .r(/\\(x[a-f\d]{1,2}|t|n|&apos;|&quot;|`)/gi, "<span class=charScape>\\$1</span>")
+	  .r(/\\([xX]\w{1,2}|\w|&apos;|&quot;|`)/g, "<span class=charScape>\\$1</span>")
 	  return '<span class="strings">'+match+'</span>'
   })
 	
-	.r(/&apos;((?:\\|[^\\\n])+)&apos;/gmi, match => {
-	  match = match
-	  .r(/\\(x[\da-f]{1,2}|t|n|&apos;|&quot;|`)/gi, "<span class=charScape>\\$1</span>")
-	  return "<span class='strings'>"+match+"</span>"
-  })
-	
-	.r(/`((?:\\|[^`\\])*)(`)?/gmi, match => {
-	  match = match
-	  .r(/\\(x[\da-f]{1,2}|t|n|&apos;|&quot;|`)/g, "<span class=charScape>\\$1</span>")
-	  return "<span class='strings'>"+match+"</span>"
-  })
 	
 	//Etiquetas
-	.r(/([^\w\d_]|^)([@:])([\w\d_]+)?/gim, "$1<span class=label>$2$3<\/span>")
-	.r(/([^\w\.])(\w+)(\([^\n]*\))/gmi, "$1<span class=property>$2<\/span>$3")
+	.r(/([^\w]|^)([@:]\w+)/gm, "$1<span class=label>$2<\/span>")
+	.r(/([^\w\.])(\w+)(\([^\n]*\))/g, "$1<span class=property>$2<\/span>$3")
 	//Arreglos
-	.r(/(\[)([\d+]*)(\])/gmi, "$1<span class=number>$2<\/span>$3")
-	//Opcodes
-	//.r(/([a-f0-9]+\:)/gmi, enter.opcodes)
-	//Variables ADMA
-	.r(/(\&[0-9\-]+)/gim, enter.variables)
-	//Variables globales
-	.r(/((\x{00}|[ifsv])\$([\d\w]+)?)/gm, enter.variables)
+	.r(/(\[)([\d+]*)(\])/g, "$1<span class=number>$2<\/span>$3")
+	
+	//Variables
+	.r(/([ifvs]?\&amp;[0-9\-]+|(\x{00}|[ifsv])\$([\d\w]+)|timer(a|b|x|z)|\d+\@([ifsv])?)/gi, enter.variables)
+
+
 	//Numeros
-	.r(/\b(\d+([box.])\w+)\b/gmi, enter.numbers)
-	.r(/\b(\-?\.?\d[e\+\-_\d\.]+(fps|[smh])?)\b/gmi, enter.numbers)
-	.r(/\b(true|false|undefined|null)\b/gmi, enter.numbers)
-	.r(/(?!\#)(\W)(?!\$)([\d_]+)(?!\:|\@)([ifsv]?)\b/gmi, '$1<span class=number>$2$3<\/span>')
-	//Modelos
-	.r(/(c?\#\w+)\b/gm, "<span class='number'>$1<\/span>")
+	.r(/(c?\#\w*|\d+([box.])\w+|\-?\.?\d[e\+\-_\d\.]*(fps|[smh])?)\b/gi, enter.numbers)
+	
+	.r(/(?!\#)(\W)(?!\$)([\d_]+)(?!\:|\@)([ifsv]?)\b/ig, '$1<span class=number>$2$3<\/span>')
+
 	//Clases
-	//.r(/\b([a-z0-9]+)\.(.+)/gmi, "<span class=class>$1</span>.<span class=property>$2</span>")
-	.r(/(\w+)\.(\w+)/gmi, "<span class=class>$1</span>.<span class=property>$2</span>")
-	.r(/(\!?)\.([\w]+)/gmi, "$1.<span class=property>$2</span>")
-	.r(/(\$\w+|\d+\@)\.([0-9A-Z_a-z]+)/gm, "$1.<span class=property>$2</span>")
-	.r(/(:|of) (\w+)\n/gm, "$1 <span class=class>$2</span>\n")
-	.r(/\.([0-9A-Z_a-z]+)\n/gm,"." + enter.commands +"\n")
-	//Variables  
-	.r(/\b(timer(a|b|x|z))\b/gmi, enter.variables)
-	.r(/(\d+\@([ifsv])?)/gmi, enter.variables)
-	// Operadores
-	//.r(/(^|\s)(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\!=|\+\+|\-\-|&lt;|&gt;|&gt;\=|&lt;\=|\?\?|\|\||\!)(\s|$)/gmi,"$1<span class=label>$2<\/span>$3")
-	//.r(/(\!|\+\+|\-\-)/gmi,"<span class=label>$1<\/span>")
-   
-  .r(/\n/g, "<br/>")
-  
+
+	.r(/(\w+)\.(\w+)/gm, "<span class=class>$1</span>.<span class=property>$2</span>")
+	.r(/(\!?)\.([\w]+)/g, "$1.<span class=property>$2</span>")
+	.r(/(\$\w+|\d+\@)\.(\w+)/g, "$1.<span class=property>$2</span>")
+	.r(/\.([0-9A-Z_a-z]+)\n/g,"." + enter.commands +"\n")
+
+
       // Palabras claves: sintaxis
       text = text.replace(keywordPattern, '<span class="keyword ">$1</span>');
   
+	   text = text.r(constantes, enter => {
+	     
+	     let valor = CONSTANTS[enter.toUpperCase()]
+	     let clase = /["']/.test(valor) ? "strings"
+	     : /[\$\@\&]/.test(valor) ? "var"
+	     : "number"
+	     
+	     return `<span class="${clase}">${enter}</span>`
+	   });
+	
       // Palabras claves: opcodes
       text = text.replace(keysHigh, '<span class="keyword">$1</span>');
   
       // Clases Reservadas
       text = text.replace(classNamesReg, '<span class="class">$1</span>');
+  }
+  return text
+  }).join('<br/>')
   
-    return text;
+  return code
 };
 
 // Sincroniza el contenido del $editor con el resaltado
 function syncHighlighting(){
     const text = $editor.value;
-    highlighting.innerHTML = syntaxHighlight(text) + "\n"; // Añade \n para mantener la altura en textarea vacío
-    highlighting.scrollTop = $editor.scrollTop; // Sincroniza el scroll
+    $highlighting.innerHTML = syntaxHighlight(text) + "\n"; // Añade \n para mantener la altura en textarea vacío
+    $highlighting.scrollTop = $editor.scrollTop; // Sincroniza el scroll
 };
+
+function syncDebugHex(){
+  if (!$debugHex.class('?d-none'))
+  try {
+    $debugHex.innerText =
+      importFileInFile().Translate(true, true);
+    $('#error').style.display = 'none'
+  } catch (error) {
+    $('#error').style.display = 'flex'
+    $('#error').innerText = error.message
+    console.error(error.message)
+  }
+}
 
 $editor.addEventListener("click", syncHighlighting);
 $editor.addEventListener("scroll", () => {
-    highlighting.scrollTop = $editor.scrollTop;
+    $highlighting.scrollTop = $editor.scrollTop;
 });
 
 // Llamada inicial para el resaltado
@@ -2954,10 +3084,30 @@ DATA_DOWNLOADED = await LSgetCollection(
   $('#carga')
 );
 
-enums = autocompled_enumsGenerator(DATA_DOWNLOADED[DOWNLOADED.ENUMS])
+enums = autocompled_enumsGenerator(
+  DATA_DOWNLOADED[DOWNLOADED.ENUMS]
+)
 
-keywords.opcode = autocompled_keywordsGenerator(DATA_DOWNLOADED[1])
-constants = constants.concat(autocompled_modelsConstants(DATA_DOWNLOADED[6]))
+keywords.opcode = autocompled_keywordsGenerator(
+  DATA_DOWNLOADED[DOWNLOADED.KEYWORDS]
+)
+
+models = autocompled_modelsConstants(
+  DATA_DOWNLOADED[DOWNLOADED.MODELS]
+)
+
+DATA_DOWNLOADED[DOWNLOADED.CONSTANTS]
+	.r(/(^const|end$)/gm, '')
+	.r(/\r/g, '\n')
+	.r(/[\x20\t]+\n/g, '\n')
+	.r(/^[\x20\t]+/gm, '')
+	.r(/(\x20+)?=(\x20+)?/g, '=')
+	.split('\n')
+	.clear()
+  .forEach(e => {
+    const [constante, valor] = e.split('=')
+    constants.push({name: constante, value: valor})
+  })
 
 function autocompled_enumsGenerator(source) {
     // Eliminamos los saltos de línea y espacios innecesarios
@@ -3023,9 +3173,12 @@ function autocompled_keywordsGenerator(inputText){
 }
 
 keysHigh =
-  new RegExp("\\b(" + keywords.opcode.map(e => e.replace(/.+=/g, '')).join("|") + ")\\b", "gi");
-
-
+  new RegExp("\\b("
+    + keywords.opcode
+      .map(e => e.replace(/.+=/g, ''))
+      .join("|")
+    + ")\\b",
+  "gi");
 
 function autocompled_modelsConstants(inputText) {
   let collection = []
@@ -3209,24 +3362,7 @@ classNamesReg =
   
   
   
-  // Escuchar el evento 'click' en todos los elementos <details>
-$('details').forEach((elem) => {
-  elem.addEventListener('click', function() {
-    // Cerrar todos los elementos <details> excepto el que se acaba de hacer clic
-    $('details').forEach((openElem) => {
-      if (openElem !== this) {
-        openElem.removeAttribute('open');
-      }
-    })
-  });
-});
 
-
-
-$("details pre").forEach(e => {
-  e.innerHTML = syntaxHighlight(e.innerText)
-})
-  
   
   
   
@@ -3384,7 +3520,6 @@ lvar_array_string8  lenght  string8     string
    opcode |  id   id   |lstr16\           |
 lvar_array_string16 lenght  string_v    string
 
-
      op  @            l  $  values
     0600 08 0100 2803 7B 80 04 01
     0700 08 0100 2803 7B 81 06 00 00 80 3F
@@ -3511,7 +3646,9 @@ NP.toHex = function(){
 
 	return result.toBigEndian()
 }
-
+function IsInRange(VAR, MIN, MAX){
+	return (VAR >= MIN && VAR <= MAX) ? 1 : 0;
+}
 NP.intToHex = function () {
   let decimal = this
   let bitReq = 0
@@ -3778,7 +3915,10 @@ CUSTOM_VARIABLES.forEach((l,i)=>{
 })
 CUSTOM_VARIABLES = Object.fromEntries(CUSTOM_VARIABLES)
 
-let CONSTANTS = DATA_DOWNLOADED[DOWNLOADED.CONSTANTS]
+
+
+
+CONSTANTS = DATA_DOWNLOADED[DOWNLOADED.CONSTANTS]
 
 CONSTANTS = CONSTANTS
 	.r(/(^const|end$)/gm, '')
@@ -3791,6 +3931,13 @@ CONSTANTS = CONSTANTS
 	.clear()
 CONSTANTS.forEach((e,i) => CONSTANTS[i] = e.split('='))
 CONSTANTS = Object.fromEntries(CONSTANTS)
+
+constantes = 
+  new RegExp("\\b(" + Object.keys(CONSTANTS).join("|")+ ")\\b", "gi");
+
+
+
+
 
 let MODELS = DATA_DOWNLOADED[DOWNLOADED.MODELS]
 
@@ -3823,7 +3970,7 @@ async function dbSBL2(game){
 		  if (!omitir){
   		  SCM_DB2[command.name.toLowerCase()] = 
   			  command.id.toLowerCase();
-  			  
+  		
   			SCM_DB2[command.id.toLowerCase()] = {
   			  id: command.id.toLowerCase(),
   			  name: command.name,
@@ -3906,7 +4053,7 @@ await dbSBL2(game)
 SP.toUnicode = function() {
   return this.split("").map(s => {
 	return `${s.charCodeAt(0).toString(16).padStart(2, '0')}`;
-  }).join("-");
+  }).join("");
 }
 
 SP.hexToDec = function(){
@@ -3957,6 +4104,7 @@ SP.parseHigthLevelLoops = function(){
       reverse: [],
       custom: [],
       for : [],
+      forin: [],
       repeat : [],
       until : [],
       while : [],
@@ -3966,7 +4114,7 @@ SP.parseHigthLevelLoops = function(){
     // Para evitar que las etiquetas se repitan, usamos
     // contadores que solo sean para incrementar.
     let counts = {
-      reverse:0,for:0,repeat:0,while:0,if:0,custom:0
+      reverse:0,for:0,repeat:0,while:0,if:0,custom:0,forin:0
     }
     let label = ''
     
@@ -3974,8 +4122,11 @@ SP.parseHigthLevelLoops = function(){
     const lines = this.split('\n');
     let outputText = ''
     
+    //1@(2@, 123i)
+    
     const SYNTAX = {
-      FOR: /^FOR (.+)=(.+) (todown|to) (.+)STEP(.+)/im,
+      FOR: /^FOR (.+)=(.+) (TODOWN|TO) (.+)STEP(.+)/im,
+      FORIN: /^FORIN (.+\((.+),(\d+)\w\))/im,
       WHILE: /^WHILE (.+)/im,
       REPEAT: /^UNTIL (.+)/im,
       IF: /^IF (.+)/im
@@ -4040,6 +4191,29 @@ SP.parseHigthLevelLoops = function(){
           
           stacks.custom.push(label)
         }
+      }
+      else if(/^forin .+/im.test(line)) {
+        stacks.general.push('forin')
+        
+        const VALUES = line.match(SYNTAX.FORIN)
+        
+        const ARRAY = VALUES[1],
+              INDEX = VALUES[2],
+              SIZE = VALUES[3]
+        
+        label = `loop_forin_${++counts.forin}`
+        
+        line = [
+          INDEX+' = -1',
+          ':'+label+'_return // begin-loop',
+          INDEX+' += 1',
+          'if',
+          INDEX+' >= '+SIZE,
+          'goto_if_false @'+label
+        ].join('\n')
+        
+        
+        stacks.forin.push(label)
       }
       else if(/^for .+/im.test(line)) {
         stacks.general.push('for')
@@ -4111,7 +4285,7 @@ SP.parseHigthLevelLoops = function(){
       }
       else if(/^end$/im.test(line)) {
         if (stacks.general.length == 0) {
-          throw new Error(`pila sintactica: vacia`)
+          throw new Error(`>>> ERROR: The loops and conditionals were all closed. you are trying to put one too many.`)
         }
         else {
           let closed = stacks.general.pop()
@@ -4128,6 +4302,13 @@ SP.parseHigthLevelLoops = function(){
           }
           else if (closed == 'custom') {
             label = stacks.custom.pop()
+            line = [
+              'goto @'+label+'_return',
+              ':' + label +' // end-loop'
+            ].join('\n')
+          }
+          else if(closed == 'forin'){
+            label = stacks.forin.pop()
             line = [
               'goto @'+label+'_return',
               ':' + label +' // end-loop'
@@ -4151,7 +4332,7 @@ SP.parseHigthLevelLoops = function(){
     })
     if (stacks.general.length > 0){
       
-      throw new Error(`pila sintactica: `+stacks.general)
+      throw new Error(`>>> ERROR: there is an unclosed loop or condicional: ${stacks.general}\nWrite the closing with 'END'`)
     }
     return outputText;
 }
@@ -4325,11 +4506,6 @@ SP.formatScript = function() {
     return line.trim()
   }).clear()
   
-  if (/^while/i.test(code[0])
-  || /^repeat/i.test(code[0])
-  || /^for/i.test(code[0]))
-    code.unshift('nop');
-  
   code = code.join('\n')
   
   code = code
@@ -4479,7 +4655,7 @@ SP.preProcesar = function() {
       return `for ${n[3]} = 0 to ${n[4]} step 1\n`+
         n[5]+' = '+n[1]
     })
-    .r(/^END(IF|WHILE|FOR)$/gim, 'END')
+    .r(/^END(IF|WHILE|FORIN|FOR)$/gim, 'END')
     .r(/^(\+\+|--)(.*)$/gm, '$2$1')
     .r(/(.+) = (\d+@b|b[\$&]\w+)/gim, '$2 == 0 ? $1 = 0 : $1 = 1')
     // char VAR1 =& VAR2
@@ -4687,11 +4863,16 @@ end
     })
     // subrutine() | GOSUB
     .r(/^(\w+)\(\)$/gm, '\ngosub @$1\n')
+    
+    nString = nString.trim()
+    if (nString.length != 0){
+      nString = 'NOP\n'+ nString + '\nTERMINATE_THIS_SCRIPT';
+    }
   
   	return nString
 }
 
-const registroTipos = {};
+let registroTipos = {};
 
 function registrarTipo(variable, tipo) {
   if (/[@$&]/.test(variable)) {
@@ -4716,10 +4897,13 @@ function registrarTipo(variable, tipo) {
 function obtenerTipo(variable) {
   if (!isNaN(variable)) {
     return variable.includes('.') ? 'FLOAT' : 'INT';
-  } else if (/".+"/.test()) {
-    return 'LONG'
-  } else if (/'.+'/.test(variable)) {
-    return 'SHORT'
+  } else if (
+     /".*"/.test(variable)
+  || /`.*`/.test(variable) 
+  ) {
+    return 'LONGSTRING'
+  } else if (/'.*'/.test(variable)) {
+    return 'SHORTSTRING'
   }
 
   // Verificar si el tipo de la variable ya está registrado
@@ -4758,7 +4942,6 @@ function obtenerTipo(variable) {
     }
   }
 }
-
 function detectarOpcode(operacion, _lineaInvocada = 0) {
   const opcodes = {
     '=#': {
@@ -4879,9 +5062,7 @@ function detectarOpcode(operacion, _lineaInvocada = 0) {
       'GVAR_FLOAT-GVAR_FLOAT': '44',
       'LVAR_FLOAT-LVAR_FLOAT': '45',
       'GVAR_FLOAT-LVAR_FLOAT': '46',
-
-      'GVAR_SHORTSTRING-SHORT': '5A9',
-      'LVAR_SHORTSTRING-SHORT': '5AA',
+      
       'GVAR_SHORTSTRING-LVAR_SHORTSTRING': '5AD',
       'LVAR_SHORTSTRING-LVAR_SHORTSTRING': '5AE',
       
@@ -4901,6 +5082,19 @@ function detectarOpcode(operacion, _lineaInvocada = 0) {
       'LVAR_INT-GVAR_INT': '89',
       'GVAR_FLOAT-LVAR_FLOAT': '8A',
       'LVAR_FLOAT-GVAR_FLOAT': '8B',
+      
+      'GVAR_SHORTSTRING-SHORTSTRING': '5A9',
+      'LVAR_SHORTSTRING-SHORTSTRING': '5AA',
+      'GVAR_LONGSTRING-LONGSTRING': '6D1',
+      'LVAR_LONGSTRING-LONGSTRING': '6D2',
+
+/*
+05AA = @ SHORT LVAR_SHORTSTRING
+05A9 = $ SHORT GVAR_SHORTSTRING
+
+D206 = @ LONG LVAR_SHORTSTRING
+D106 = $ LONG GVAR_LONGSTRING
+*/
     },
     '>': {
       'GVAR_INT-INT': '18',
@@ -4929,7 +5123,7 @@ function detectarOpcode(operacion, _lineaInvocada = 0) {
     // Agrega otros operadores y sus combinaciones de opcodes
   };
 
-  const simple = /^([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)\s*(=(#|&)|[+\-]=@|[\/\*\+\-\=\!><]*=|>|<)\s*([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)$/im
+  const simple = /^([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)\s*(=(#|&)|[+\-]=@|[\/\*\+\-\=\!><]*=|>|<)\s*([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?|".*"|'.*')$/im
   
   function dividirOperacion(operacion) {
     const partes = operacion.dividirCadena()
@@ -4968,8 +5162,9 @@ function detectarOpcode(operacion, _lineaInvocada = 0) {
     ? tipoVariable1
     : obtenerTipo(variable2)
   
+  
   // Para establecer el tipo de variable, segun el tipo de dato primitivo INT o FLOAT.
-  if ( /INT/.test(tipoVariable1)
+  if (/INT/.test(tipoVariable1)
     && /FLOAT/.test(tipoVariable2)
   ){
     tipoVariable2 == "FLOAT"
@@ -4982,6 +5177,16 @@ function detectarOpcode(operacion, _lineaInvocada = 0) {
     tipoVariable2 == "INT"
     ? tipoVariable1 = tipoVariable1.replace("FLOAT","INT")
     : tipoVariable2 = tipoVariable2.replace("INT","FLOAT")
+  }
+  else if (!/SHORTSTRING/.test(tipoVariable1)
+    && /SHORTSTRING/.test(tipoVariable2)
+  ){
+    tipoVariable1 = tipoVariable1.r(/INT|FLOAT|LONGSTRING/,"SHORTSTRING")
+  }
+  else if (!/LONGSTRING/.test(tipoVariable1)
+    && /LONGSTRING/.test(tipoVariable2)
+  ){
+    tipoVariable1 = tipoVariable1.r(/INT|FLOAT|SHORTSTRING/,"LONGSTRING")
   }
   
   if (operador == '=#'){
@@ -5080,9 +5285,83 @@ SP.operationsToOpcodes = function () {
   
   return resultado
 }
+
+const regexVAR_ARRAY =
+  /([a-z]?(\$|\&)\w+|\d+@[a-z]?|\w+)\((\$\w+|\d+@|\w+)\s*([,\s]+\w+)?\)/gi;
+  
 SP.transformTypeData = function(){
   const nString = this.split('\n').map(line=>{
-    return line.dividirCadena().map(param =>{
+    
+    line = line
+      // NORMALIZADO DE ARRAYS
+      .r(regexVAR_ARRAY, input =>{
+        
+        input = input.r(/\s/g,'')
+
+        let arr = input.match(/(\$\w+|\d+@|\w+)/)[1]
+        let index = input.match(/\((\$\w+|\d+@|\w+)/)[1]
+        
+        let output = ''
+        if (!Input.isVariable(arr)
+        || !Input.isVariable(index)){
+          
+          let size = input.match(/,\s*(\w+)\)/)
+          size = size ? size[0] : ',20)'
+          
+          if (/^\w+$/m.test(index)) {
+            if (Input.isConstant(index)){
+              index = CONSTANTS[index.toUpperCase()]
+            }
+          }
+          if (/^\w+$/m.test(arr)) {
+            if (Input.isConstant(arr)) {
+              arr = CONSTANTS[arr.toUpperCase()]
+            }
+          }
+          if (Input.isVariable(arr)
+          && Input.isVariable(index)){
+            output = arr + '(' + index + size
+          }else {
+            throw new Error('>>> ILL-DEFINED ARRAY:\nYou misspelled some ARRAY constant you are trying to use.\n\t`' + input +'`')
+          }
+        }
+        
+        return output != '' ? output : input
+      })
+      
+      
+    line = line.dividirCadena()
+    
+    //log(line)
+    // Este bloque autocompleta la información de los ARRAYS incompletos, como el tipo y el tamaño.
+    if (line.length == 3){
+      const typeDetected = Input.getTypeCompile(line[2])
+      
+      if (Input.isArray(line[0])
+      && Input.isOperation(line[1])
+      && typeDetected){
+        const dataArray = line[0].split(',')
+        if(/[a-z]/i.test(dataArray[1]) == false){
+          line[0] = line[0]
+          .r(')', type => {
+            
+            switch (typeDetected){
+              case 'int': type = 'i'; break;
+              case 'float': type = 'f'; break;
+              case 'short': type = 's'; break;
+              case 'long': type = 'v'; break;
+              default: type = 'i';
+            }
+            
+            return type + ')'
+          })
+        }
+      }
+    }
+    
+    //log(line)
+    
+    return line.map(param =>{
       let isN = param.i('-') ? '-' : ''
       
       if (Input.isAdmaVar(param)){
@@ -5700,9 +5979,9 @@ let Input = {
   isAdmaVar: x => {
     return /^[a-z]?&\d+$/im.test(x)
   },
-  isLocalVarArray: x => /^\d+@[a-z]?(\(.+,\d+[a-z]?\))$/im.test(x),
-  isGlobalVarArray: x => /^[a-z]?\$\w+(\(.+,\d+[a-z]?\))$/im.test(x),
-  isAdmaVarArray: x => /^[a-z]?&\d+(\(.+,\d+[a-z]?\))$/im.test(x),
+  isLocalVarArray: x => /^\d+@[a-z]?(\(.+(,\d+[a-z]?)?\))$/im.test(x),
+  isGlobalVarArray: x => /^[a-z]?\$\w+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
+  isAdmaVarArray: x => /^[a-z]?&\d+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
   isNegate: x => /^\!.+/m.test(x),
   isNegative: x => /^\-.+/m.test(x),
   isPositive: x => /^\+.+/m.test(x),
@@ -5864,6 +6143,7 @@ SP.parseHexEnd = function(){
 }
 
 SP.adaptarCodigo = function(){
+  registroTipos = {}
   let result = this
     .removeComments()
     .transformTypeData()
@@ -5912,30 +6192,56 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 	
 	function translateLvar(dataInput){
   	dataInput = 
-  		Number(dataInput.r(/@(\w)?/,''))
+  		Number(dataInput.r(/@[a-z]?/i,''))
   		.toString(16)
   		.padStart(4,'0')
   		.toBigEndian();
   
   	return dataInput
   }
-  function translateAvar(dataInput){
-    dataInput = 
-      (Number(dataInput.r(/(\w)?&/,'')) * 4)
-      .toString(16)
-			.padStart(4,'0')
-			.toBigEndian()
-	
-		return dataInput
+  function translateAvar(dataInput) {
+    let tempNumber = dataInput
+    dataInput = Number(dataInput.r(/[a-z]?\&/i, ''))
+  
+    if (isNaN(dataInput)) throw new SyntaxError(`NAN parameter\n\tparameter ${tempNumber}\n\tat line ${numLine}\n\t\topcode ${setOp == '0000' ? 'autodefined' : setOp} ${command.toUpperCase()}`);
+    
+    dataInput = dataInput.toString(16)
+      .substring(0, 4)
+      .padStart(4, '0')
+      .toBigEndian()
+    
+    return dataInput
   }
-  function translateGvar(dataInput){
-    dataInput = 
-      (Number(dataInput.r(/(\w)?&/,'')) * 4)
-      .toString(16)
-			.padStart(4,'0')
-			.toBigEndian()
-	
-		return dataInput
+  function translateGvar(dataInput) {
+    dataInput = dataInput.r(/[a-z]?\$/i, '')
+  
+    if (/[a-z]/i.test(dataInput)) {
+      let coincide = false
+  
+      if (CUSTOM_VARIABLES[dataInput.toUpperCase()] != undefined) {
+        coincide = CUSTOM_VARIABLES[dataInput.toUpperCase()] * 4
+      }
+  
+      if (!coincide) {
+        dataInput = parseInt(Number(String(parseInt(dataInput, 35)).substring(0, 4) / 2))
+        if (dataInput > 1000) dataInput /= 5
+        if (dataInput > 500) dataInput /= 2
+        dataInput = parseInt(dataInput)
+      }
+      else {
+        dataInput = coincide
+      }
+    }
+    else {
+      dataInput = dataInput * 4
+    }
+  
+    dataInput = dataInput.toString(16)
+      .substring(0, 4)
+      .padStart(4, '0')
+      .toBigEndian()
+  
+    return dataInput
   }
 
   LineComand = LineComand
@@ -5963,7 +6269,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 		  Line = Line.r(/^\[(.*)\]$/, '$1')
 		  
 		  if (/([g-z]|\W)/i.test(Line)){
-        throw new SyntaxError(`Just input hexadecimal\n\tPosible line: ${1+numLine}`)
+        throw new SyntaxError(`Just input hexadecimal\n\tPosible line: ${numLine}`)
       }
 		  if (Line.length != 0){
 		    registeredBites.push(Line.length / 2)
@@ -6034,18 +6340,18 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 							isNegative = true
 						}
 
-						if (SCM_DB2[Argument]){
+						if (x[Argument]){
 							setOp = SCM_DB2[Argument]
 						}else{
 							
 							if (Line.endsWith('=')){
-							  throw new SyntaxError(`missing parameter\n\tin line ${(1+numLine)} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
+							  throw new SyntaxError(`missing parameter\n\tin line ${numLine} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
 							}
 							else if (Line === 'hex'){
-							  throw new SyntaxError(`missing closure\n\t>>> hex[...]end\n${charsCounter} | ${1+numLine}`)
+							  throw new SyntaxError(`missing closure\n\t>>> hex[...]end\n${charsCounter} | ${numLine}`)
 						  }
 						  else {
-							  throw new SyntaxError(`opcode undefined\n>>> ${Argument}\n${numLine+1}:${charsCounter} | ${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
+							  throw new SyntaxError(`opcode undefined\n>>> ${Argument}\n${numLine}:${charsCounter} | ${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
 							};
 						}
             
@@ -6078,7 +6384,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 					){
 					if (LineComand[numLine].length-1 < SCM_DB2[tempOp].num_params) {
 					  // si faltan parametros, se muestra un error
-					  throw new Error(`missing parameters\n>>> ${Argument}\n${numLine+1}:${charsCounter} | ${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
+					  throw new Error(`missing parameters\n>>> ${Argument}\n${numLine}:${charsCounter} | ${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
 					}
 					if (
 					  LineComand[numLine].length-1
@@ -6099,7 +6405,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
             typeData = Input.getTypeCompile(Argument)
           }
           else {
-            throw new SyntaxError(`directive undefined\n>>> ${Argument}\n${numLine+1}:${charsCounter-1} | ${Line}`)
+            throw new SyntaxError(`directive undefined\n>>> ${Argument}\n${numLine}:${charsCounter-1} | ${Line}`)
           }
           
 					switch (typeData) {
@@ -6113,7 +6419,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 							if (Argument.length == 0) Argument = '\x00'
 							Argument = Argument.substring(0,7)
 
-							Argument = (come(TYPE_CODE.STRING8) + Argument.toUnicode() + '-00').padEnd(26,'-00')
+							Argument = (come(TYPE_CODE.STRING8) + (Argument.toUnicode() + '00').padEnd(16,'00'))
 						break;
 
 						case 'long':
@@ -6259,22 +6565,20 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 
 							Argument = 
 								come(TYPE_CODE.LVAR) 
-								+ Number(Argument.r(/@(\w)?/,'')).toString(16)
-									.padStart(4,'0')
-									.toBigEndian();
-							
+								+ translateLvar(Argument)
+								
 						break;
 						
 						case 'lvararray':
-						  
-/*  STRUCT ARRAY
-         0006: 1@(2@, 123i) = 1
-    ____/   ___/  \__  | \     \
-    0600 08 0100 0200 7B 00 04 01
-    \__/  | \__/ \__/  |  |  \   \
-   opcode |  id   id   | lint \   \
-     lvar_array      lenght  int8  num
-*/
+						  registeredBites.push(6)
+              /*  STRUCT ARRAY
+                       0006: 1@(2@, 123i) = 1
+                  ____/   ___/  \__  | \     \
+                  0600 08 0100 0200 7B 00 04 01
+                  \__/  | \__/ \__/  |  |  \   \
+                 opcode |  id   id   | lint \   \
+                   lvar_array      lenght  int8  num
+              */
 						  let LVAR = Argument.match(
 						    /(\d+)@(\w)?(\(.+\))?/i
 						  )
@@ -6315,9 +6619,9 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						  index = {
 						   id: index.includes('@')
 						    ? translateLvar(index.match(/(\d+)@/)[1])
-						    : index.match(/(\$|\&)([\w\d_]+)/)[2],
-						   action : (()=>{
-						   }),
+						    : index.includes('&')
+						    ? translateAvar(index.match(/\&(\d+)/)[1])
+						    : translateGvar(index.match(/\$(\w+)/)[1]),
 						   global: !index.includes('@')
 						  }
 						  
@@ -6345,8 +6649,6 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
   						  }
 						  }
 						  
-						  registeredBites.push(6)
-						  
 						  Argument = (
 						    '['+typeArray + ','+
 						    translateLvar(Slvar.variable) + ','+
@@ -6359,132 +6661,113 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						break;
 
 						case 'gvar':
-							if (/(&|\$)(.+)(&|\$)/.test(Argument)){
-								registeredBites.push(6)
-								
-								Argument = 
-									come(TYPE_CODE.GVAR_ARRAY)
-									+ Argument
-										.r(/[a-z]?(\$|\&)\w+/gi, inputVar => {
-											if(/\$/.test(inputVar)){
-												inputVar = inputVar.r(/[a-z]?(\$|\&)/,'')
-
-												if (/[a-z]/i.test(inputVar)){
-													let coincide = false
-
-													if (CUSTOM_VARIABLES[inputVar.toUpperCase()] != undefined){
-														coincide = CUSTOM_VARIABLES[inputVar.toUpperCase()] * 4
-													}
-
-													if (!coincide){
-														inputVar = parseInt(Number(String(parseInt(inputVar, 35)).substring(0, 4) / 2))
-														if (inputVar > 1000) inputVar /= 5
-														if (inputVar > 500) inputVar /= 2
-														inputVar = parseInt(inputVar)
-													}
-													else {
-														inputVar = coincide
-													}
-												}
-												else{
-													inputVar = inputVar * 4
-												}
-											}
-
-											else {
-												
-												inputVar = Number(inputVar.r('&',''))
-
-											}
-
-											inputVar = come(TYPE_CODE.GVAR) + (
-												inputVar.toString(16)
-												.substring(0, 4)
-												.padStart(4,'0')
-												.toBigEndian()
-											)
-
-											if (isNaN(inputVar)) throw new SyntaxError(`NAN parameter\n\tparameter ${Argument}\n\tat line ${(1+numLine)}\n\t\topcode ${setOp == '0000' ? 'autodefined' : setOp} ${command.toUpperCase()}`);
-
-											return inputVar
-										})
-										.r(/,,/,',')
-										.r(/\(/)
-										.r(/[^,]\d+$/m, inputSize => {
-											return Number(inputSize.r(',').r(')')).toString(16)
-											.padStart(2,'0')
-										})
-										.r(/(i|f|s|v)\)/, inputType => {
-											inputType = inputType.r(')')
-
-											switch (inputType){
-												case 'i':
-													inputType = ELEMENT_TYPE.GINT
-												break;
-												case 'f':
-													inputType = ELEMENT_TYPE.GFLOAT
-												break;
-												case 's':
-													inputType = ELEMENT_TYPE.GSTRING8
-												break;
-												case 'v':
-													inputType = ELEMENT_TYPE.GSTRING16
-												break;
-											}
-
-											return ',' + inputType
-										})
-										.r(/\w+,\w+$/m, inputSize => {
-											inputSize = inputSize.split(',')
-
-											inputSize[0] = Number(inputSize[0]).toString(16).padStart(2,'0')
-											
-
-											return inputSize
-										})
-							}
-							else{ // no es areay
 								registeredBites.push(2)
 								
 								if(/\$/.test(Argument)){
-									Argument = Argument.r(/[a-z]?\$/i,'')
-
-									if (/[a-z]/i.test(Argument)){
-										let coincide = false
-
-										if (CUSTOM_VARIABLES[Argument.toUpperCase()] != undefined){
-											coincide = CUSTOM_VARIABLES[Argument.toUpperCase()] * 4
-										}
-
-										if (!coincide){
-											Argument = parseInt(Number(String(parseInt(Argument, 35)).substring(0, 4) / 2))
-											if (Argument > 1000) Argument /= 5
-											if (Argument > 500) Argument /= 2
-											Argument = parseInt(Argument)
-										}
-										else {
-											Argument = coincide
-										}
-									}
-									else{
-										Argument = Argument * 4
-									}
+									Argument = translateGvar(Argument)
 								}
-
 								else {
-									let tempNumber = Argument
-									Argument = Number(Argument.r('&',''))
-
-									if (isNaN(Argument)) throw new SyntaxError(`NAN parameter\n\tparameter ${tempNumber}\n\tat line ${(1+numLine)}\n\t\topcode ${setOp == '0000' ? 'autodefined' : setOp} ${command.toUpperCase()}`);
+									Argument = translateAvar(Argument)
 								}
-
-								Argument = come(TYPE_CODE.GVAR) + (
-									Argument.toString(16)
+								
+                Argument = Argument.toString(16)
 									.substring(0, 4)
 									.padStart(4,'0')
 									.toBigEndian()
-								)
-							}
+						    
+								Argument = come(TYPE_CODE.GVAR) + Argument
+						break;
+						
+						case 'gvararray':
+								registeredBites.push(6)
+              /*  STRUCT ARRAY
+                       0006: 1@(2@, 123i) = 1
+                  ____/   ___/  \__  | \     \
+                  0600 08 0100 0200 7B 00 04 01
+                  \__/  | \__/ \__/  |  |  \   \
+                 opcode |  id   id   | lint \   \
+                   lvar_array      lenght  int8  num
+              */
+						  let GVAR = Argument.match(
+						    /(\w)?\$(\w+)(\(.+\))?/i
+						  )
+						  let Sgvar = {
+						    variable: GVAR[2],
+						    type: GVAR[1],
+						    extend: GVAR[3]
+						  }
+						  if (Sgvar.extend){
+						    let ARRAY = GVAR[3].match(/\((.+),(\d+)(\w)?\)/i)
+						    Sgvar.extend = {
+						      index : ARRAY[1],
+						      size : ARRAY[2],
+						      subtype : ARRAY[3]
+						    }
+						  }
+						  
+						  
+						  let typeArrayG = 
+						    (Sgvar.type ?? Sgvar.extend.subtype ?? 'i')
+						  
+						  let typeSetG = typeArrayG
+						  
+						  //let var1 = 
+						  switch (typeArrayG){
+						    case 's':
+						      typeArrayG = TYPE_CODE.GVAR_ARRAY_STRING8
+						    break;
+						    case 'v':
+						      typeArrayG = TYPE_CODE.GVAR_ARRAY_STRING16
+						    break;
+						    default:
+						      typeArrayG = TYPE_CODE.GVAR_ARRAY
+						    break;
+						  }
+						  
+						  let indexG = Sgvar.extend.index
+						  indexG = {
+						   id: indexG.includes('@')
+						    ? translateLvar(indexG.match(/(\d+)@/)[1])
+						    : indexG.includes('&')
+						    ? translateAvar(indexG.match(/\&(\d+)/)[1])
+						    : translateGvar(indexG.match(/\$(\w+)/)[1])
+						   ,
+						   global: !indexG.includes('@')
+						  }
+						  
+						  if (indexG.global){
+						    switch (typeSetG){
+  						    case 's': typeSetG=ELEMENT_TYPE.GSTRING8
+  						    break;
+  						    case 'v': typeSetG=ELEMENT_TYPE.GSTRING16
+  						    break;
+  						    case 'i': typeSetG=ELEMENT_TYPE.GINT
+  						    break;
+  						    case 'f': typeSetG=ELEMENT_TYPE.GFLOAT
+  						    break;
+  						  }
+						  }else{
+						    switch (typeSetG){
+  						    case 's': typeSetG=ELEMENT_TYPE.LSTRING8
+  						    break;
+  						    case 'v': typeSetG=ELEMENT_TYPE.LSTRING16
+  						    break;
+  						    case 'i': typeSetG=ELEMENT_TYPE.LINT
+  						    break;
+  						    case 'f': typeSetG=ELEMENT_TYPE.LFLOAT
+  						    break;
+  						  }
+						  }
+						  
+						  Argument = (
+						    '['+typeArrayG + ','+
+						    translateGvar(Sgvar.variable) + ','+
+						    indexG.id + ','+
+						    Number(Sgvar.extend.size)
+									.toString(16)
+									.padStart(2,'0') + ','+
+						    typeSetG + '],'
+						  )
 						break;
 
 						case 'label':
@@ -6560,6 +6843,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
  * @return: String - Preview of output code compiled.
 */
 String.prototype.toCompileSCM = function(Name_File = ''){
+/*
 	if (Name_File.length == 0){
 		throw new Error("E-00: Añada un nombre al archivo.");
 		return
@@ -6569,20 +6853,20 @@ String.prototype.toCompileSCM = function(Name_File = ''){
 		throw new Error("E-01: Añada una extencion al archivo.");
 		return
 	}
-
+*/
 	if (this.length == 0){
-		throw new Error("E-02: Añada instrucciones al archivo.");
+		throw new Error("Add instructions to the file to be able to compile.");
 		return
 	}
 
 	let code_hex = this.Translate();
 
 	if (code_hex.length % 2 != 0) {
-		throw new Error("E-03: la longitud de la cadena hexadecimal es impar.");
+		throw new Error("The length of the hexadecimal string is odd.");
 		return;
 	}
 	if (/[^0-9A-F]/i.test(code_hex)){
-	  throw new Error("E-04: se hayo un caracter no hexadecimal.")
+	  throw new Error("A non-hexadecimal character was found.")
 	  return;
 	}
 
@@ -6596,7 +6880,7 @@ String.prototype.toCompileSCM = function(Name_File = ''){
 	let a = window.document.createElement('a');
 
 	a.href = window.URL.createObjectURL(new Blob([byteArray], { type: 'application/octet-stream' }));
-	a.download = Name_File;
+	a.download = Name_File.r('.txt','.csi');
 
 	// Append anchor to body.
 	document.body.appendChild(a)
@@ -6610,4 +6894,20 @@ String.prototype.toCompileSCM = function(Name_File = ''){
 
 
 
+  // Escuchar el evento 'click' en todos los elementos <details>
+$('details').forEach((elem) => {
+  elem.addEventListener('click', function() {
+    // Cerrar todos los elementos <details> excepto el que se acaba de hacer clic
+    $('details').forEach((openElem) => {
+      if (openElem !== this) {
+        openElem.removeAttribute('open');
+      }
+    })
+  });
+});
 
+
+
+$("details pre").forEach(e => {
+  e.innerHTML = syntaxHighlight(e.innerText, e)
+})
