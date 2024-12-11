@@ -5290,7 +5290,9 @@ const regexVAR_ARRAY =
   /([a-z]?(\$|\&)\w+|\d+@[a-z]?|\w+)\((\$\w+|\d+@|\w+)\s*([,\s]+\w+)?\)/gi;
 
 SP.normalizeArrays = function(){
-  const nString = this.split('\n').map(line=>{
+  const nString = this.split('\n')
+  .map(line=>{
+    
     line = line
       .r(regexVAR_ARRAY, input =>{
         
@@ -5355,8 +5357,10 @@ SP.normalizeArrays = function(){
       }
     }
     
-    line = line.join(' ')
+    return line.join(' ')
   }).join('\n')
+  
+  log(nString)
   
   return nString
 }
