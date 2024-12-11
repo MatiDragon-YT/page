@@ -5288,12 +5288,10 @@ SP.operationsToOpcodes = function () {
 
 const regexVAR_ARRAY =
   /([a-z]?(\$|\&)\w+|\d+@[a-z]?|\w+)\((\$\w+|\d+@|\w+)\s*([,\s]+\w+)?\)/gi;
-  
-SP.transformTypeData = function(){
+
+SP.normalizeArrays = function(){
   const nString = this.split('\n').map(line=>{
-    
     line = line
-      // NORMALIZADO DE ARRAYS
       .r(regexVAR_ARRAY, input =>{
         
         input = input.r(/\s/g,'')
@@ -5329,10 +5327,8 @@ SP.transformTypeData = function(){
         return output != '' ? output : input
       })
       
-      
     line = line.dividirCadena()
     
-    //log(line)
     // Este bloque autocompleta la información de los ARRAYS incompletos, como el tipo y el tamaño.
     if (line.length == 3){
       const typeDetected = Input.getTypeCompile(line[2])
@@ -5359,7 +5355,15 @@ SP.transformTypeData = function(){
       }
     }
     
-    //log(line)
+    line = line.join(' ')
+  }).join('\n')
+  
+  return nString
+}
+ 
+SP.transformTypeData = function(){
+  const nString = this.split('\n').map(line=>{
+    line = line.dividirCadena()
     
     return line.map(param =>{
       let isN = param.i('-') ? '-' : ''
@@ -6159,6 +6163,7 @@ SP.adaptarCodigo = function(){
     .classesToOpcodes()
     .constantsToValue()
     .transformTypeData()
+    .normalizeArrays()
     .determineOperations()
     .operationsToOpcodes()
     .keywordsToOpcodes()
