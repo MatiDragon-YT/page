@@ -86,7 +86,7 @@ function apply(element, callback) {
 
 
 
-function vibrateNavigator(x){
+window.vibrateNavigator = function(x){
   if (window.navigator.vibrate)
     window.navigator.vibrate(x)
   else
@@ -5359,8 +5359,6 @@ SP.normalizeArrays = function(){
     
     return line.join(' ')
   }).join('\n')
-  
-  log(nString)
   
   return nString
 }
