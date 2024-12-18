@@ -9,6 +9,9 @@
     -webkit-tap-highlight-color: transparent;
     outline: none;
     font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+    font-variant-emoji: text;
+    font-variant-numeric: slashed-zero;
+    font-variant-ligatures: common-ligatures;
 }
 *, :after, :before {
     box-sizing: border-box;
@@ -1071,7 +1074,7 @@ a.button:hover, a.button:focus {
 #debug_hex {
   background: #0007;
   color:#7f7;
-  text-wrap: pre-wrap;
+  text-wrap: nowrap;
   overflow: auto;
   user-select: auto;
 }

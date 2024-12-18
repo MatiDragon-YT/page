@@ -46,8 +46,8 @@ const $ = (element, _parent = document) => {
 	if(typeof callback == 'function') {
 		if(element) {
 			if('' + element == '[object NodeList]') {
-				element.forEach(function(e) {
-					callback(e)
+				element.forEach(function(node) {
+					callback(node)
 				})
 			} else {
 				callback(element)
@@ -2723,6 +2723,7 @@ function startDrag(event) {
 // Función para arrastrar el contenedor con optimización
 function drag(event) {
   addCounterLine()
+  //syncHighlighting()
   if (!isDragging) return;
 
   const touch = event.touches ? event.touches[0] : event;
@@ -2844,6 +2845,8 @@ $editor.addEventListener("keyup", event => {
   }
   
   codigoModificado = $editor.value
+  
+  syncHighlighting()
 })
 
 function eliminarCaracter(cadena, posicion) {
@@ -2906,11 +2909,30 @@ const syntaxHighlight = (code, exception = $editor) => {
 		classes   : span.start + "class"    + span.end
 	}
 
-  let lineaActual = $editor.DATA_TEXTAREA().lineaCursor
+  const TEXT_DATA = $editor.DATA_TEXTAREA()
+  let lineaActual = TEXT_DATA.lineaCursor
   
-  code = code.split('\n').map((text,index) =>{
+  //log(TEXT_DATA)
+  //if (TEXT_DATA.inSelection) {
+  //if (TEXT_DATA.linesSelected.includes(line + 1)
   
-  if (exception != $editor || (index+1).entre(lineaActual-16, lineaActual+14)){
+  
+  code = code.split('\n')
+  
+  code = code.map((text,index) =>{
+  
+  /*
+  if (TEXT_DATA.inSelection && TEXT_DATA.linesSelected.includes(index + 1)){
+    log('linea actual: ' + index+1)
+    lineaActual = index + 1
+  }
+  */
+  
+  if (
+    exception != $editor
+    || (code.length < 26)
+    || (index+1).entre(lineaActual-16, lineaActual+14)
+  ){
   // Escapa HTML
     text = text
     .replace(/&/g, "&amp;")
@@ -2993,6 +3015,7 @@ function syncHighlighting(){
     $highlighting.innerHTML = syntaxHighlight(text) + "\n"; // Añade \n para mantener la altura en textarea vacío
     $highlighting.scrollTop = $editor.scrollTop; // Sincroniza el scroll
 };
+
 
 function syncDebugHex(){
   if (!$debugHex.class('?d-none'))
@@ -4446,7 +4469,7 @@ SP.addNumbersToIfs = function() {
 		  
 			if (real > 1 && multiCondicion == false)
 			 throw new Error('¡Error! El "if" debe ir seguido de "and" o "or".')
-			  
+			   
 			if (real > 8 && multiCondicion == true)
 			  throw new Error('¡Este if tiene más de 8 líneas de texto!');
 			
@@ -4575,13 +4598,13 @@ SP.preProcesar = function() {
     let lineaAnterior = ""
     let lineaSiguiente = ""
     
-    const patron1 = /(\d+@[if]?|[if]?(\$|&)\w+|[a-z_]\w*)/;
+    const patron1 = /(\d+@[a-z]?|[a-z]?(\$|&)\w+|[a-z_]\w*)/;
     const patron2 = /([+-]{2})/;
     const patron3 = /([\+\-\*\/])([\w#$&@.]+)/;
     
     const patronEn = new RegExp(`^(${patron1.source + patron2.source}|${patron2.source + patron1.source})$`, 'mi')
     
-    const patronTemp = /(\d+@[if]?|[if]?[\$&]\w+|[a-z_]\w*)([\-+*\/])([\w#$&@.]+)/i
+    const patronTemp = /(\d+@[a-z]?|[a-z]?[\$&]\w+|[a-z_]\w*)([\-+*\/])([\w#$&@.]+)/i
   
     if (!/^\w+:/.test(linea) && !patronEn.test(linea)){
       if (patron2.test(linea)){
@@ -4844,6 +4867,11 @@ end
     .r(/^(\w+)\((.+)\)$/gmi, input=>{
       let vars = input.match(/([^\.\s\W]+)\((.+)\)$/m)
       
+      const isConst = Input.isConstant(vars[1])
+      if (isConst){
+        return isConst + '('+vars[2]+')'
+      };
+      
       let line = vars[2]
       let add = ''
       let inArray = false
@@ -4928,7 +4956,7 @@ function obtenerTipo(variable) {
     }
   }
 
-  if (/^\w?\$\w+/m.test(variable)){
+  if (/^\w?[\$&]\w+/m.test(variable)){
     const matchGlobal = variable.match(/^([a-z])?([&$]\w+)/i);
     if (matchGlobal) {
       const tipo = matchGlobal[1];
@@ -5123,7 +5151,7 @@ D106 = $ LONG GVAR_LONGSTRING
     // Agrega otros operadores y sus combinaciones de opcodes
   };
 
-  const simple = /^([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)\s*(=(#|&)|[+\-]=@|[\/\*\+\-\=\!><]*=|>|<)\s*([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?|".*"|'.*')$/im
+  const simple = /^([a-z]?[\$\&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)\s*(=(#|&)|[+\-]=@|[\/\*\+\-\=\!><]*=|>|<)\s*([a-z]?[\$\&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?|".*"|'.*')$/im
   
   function dividirOperacion(operacion) {
     const partes = operacion.dividirCadena()
@@ -5241,9 +5269,9 @@ D106 = $ LONG GVAR_LONGSTRING
 }
 
 SP.operationsToOpcodes = function () {
-  const simple = /^([a-z]?[&$]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)\s*(=(#|&)|[+\-]=@|[\/\*\+\-\=\!><]*=|>|<)\s*([a-z]?[$&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)$/im
+  const simple = /^([a-z]?[\&\$]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)\s*(=(#|&)|[+\-]=@|[\/\*\+\-\=\!><]*=|>|<)\s*([a-z]?[\$\&]\w+|\d+@[a-z]?|-?\d+(\.\d+)?)$/im
   
-  const addition = /^(\d+@\w?|\w?[$&]\w+|\w+)\s*(\+\+|--)$/
+  const addition = /^(\d+@\w?|\w?[\$\&]\w+|\w+)(\([^\n\)]+\))\s*(\+\+|--)$/
   
   const resultado = this.split('\n').map(linea => {
     linea = linea.trim()
@@ -5287,7 +5315,7 @@ SP.operationsToOpcodes = function () {
 }
 
 const regexVAR_ARRAY =
-  /([a-z]?(\$|\&)\w+|\d+@[a-z]?|\w+)\((\$\w+|\d+@|\w+)\s*([,\s]+\w+)?\)/gi;
+  /([a-z]?[\$\&]\w+|\d+@[a-z]?|\w+)\(([\$&]\w+|\d+@|\w+)\s*([,\s]+\w+)?\)/gi;
 
 SP.normalizeArrays = function(){
   const nString = this.split('\n')
@@ -5298,16 +5326,17 @@ SP.normalizeArrays = function(){
         
         input = input.r(/\s/g,'')
 
-        let arr = input.match(/(\$\w+|\d+@|\w+)/)[1]
-        let index = input.match(/\((\$\w+|\d+@|\w+)/)[1]
+        let arr = input.match(/([\$\&]\w+|\d+@|\w+)/)[1]
+        let index = input.match(/\(([\$\&]\w+|\d+@|\w+)/)[1]
+        
         
         let output = ''
+        
+        let size = input.match(/,\s*(\w+)\)/)
+        size = size ? size[0] : ',20)'
+
         if (!Input.isVariable(arr)
         || !Input.isVariable(index)){
-          
-          let size = input.match(/,\s*(\w+)\)/)
-          size = size ? size[0] : ',20)'
-          
           if (/^\w+$/m.test(index)) {
             if (Input.isConstant(index)){
               index = CONSTANTS[index.toUpperCase()]
@@ -5318,12 +5347,12 @@ SP.normalizeArrays = function(){
               arr = CONSTANTS[arr.toUpperCase()]
             }
           }
-          if (Input.isVariable(arr)
-          && Input.isVariable(index)){
-            output = arr + '(' + index + size
-          }else {
-            throw new Error('>>> ILL-DEFINED ARRAY:\nYou misspelled some ARRAY constant you are trying to use.\n\t`' + input +'`')
-          }
+        }
+        if (Input.isVariable(arr) &&
+          Input.isVariable(index)) {
+          output = arr + '(' + index + size
+        } else {
+          throw new Error('>>> ILL-DEFINED ARRAY:\nYou misspelled some ARRAY constant you are trying to use.\n\t`' + input + '`')
         }
         
         return output != '' ? output : input
@@ -5331,7 +5360,7 @@ SP.normalizeArrays = function(){
       
     line = line.dividirCadena()
     
-    // Este bloque autocompleta la información de los ARRAYS incompletos, como el tipo y el tamaño.
+    // Este bloque autocompleta información de los ARRAYS incompletos. Aca solo el tipo.
     if (line.length == 3){
       const typeDetected = Input.getTypeCompile(line[2])
       
@@ -5339,6 +5368,7 @@ SP.normalizeArrays = function(){
       && Input.isOperation(line[1])
       && typeDetected){
         const dataArray = line[0].split(',')
+        let tipoVar;
         if(/[a-z]/i.test(dataArray[1]) == false){
           line[0] = line[0]
           .r(')', type => {
@@ -5350,7 +5380,7 @@ SP.normalizeArrays = function(){
               case 'long': type = 'v'; break;
               default: type = 'i';
             }
-            
+            tipoVar = type
             return type + ')'
           })
         }
@@ -5818,8 +5848,10 @@ SP.dividirCadena = function() {
     if (subcadenaActual.trim() !== '') {
         resultado.push(subcadenaActual);
     }
+    
     return resultado;
 }
+
 
 SP.autoAddCleoFunction = function(){
   let code = this
@@ -5959,9 +5991,10 @@ let Input = {
     if (/^\w+$/mi.test(x)){
       x = x.toUpperCase()
       
-      return x in CONSTANTS
+      if (x in CONSTANTS)
+        return CONSTANTS[x];
     }
-    return false
+    return undefined
   },
   isEnum: x => {
     x = x.toUpperCase()
@@ -5999,6 +6032,24 @@ let Input = {
     || Input.isLocalVarArray(x)
     || Input.isGlobalVarArray(x)
     || Input.isAdmaVarArray(x))
+  },
+  getTypeVar: x => {
+    if (Input.isVariable(x)){
+      const type =
+        x.match(/@(\w)/)[1]
+        || x.match(/(\w)\$/)[1]
+        || x.match(/(\w)\&/)[1];
+        
+      return x == 'f' ? 'float'
+           : x == 's' ? 'short'
+           : x == 'v' ? 'long'
+           : 'int';
+      
+    } else {
+      const error = 'getTypeVar: required a variable of input. (0@, $any, &123)'
+      console.error(error)
+      return new Error(error)
+    }
   },
   isArray : x => {
     return (Input.isLocalVarArray(x)
@@ -6410,6 +6461,8 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 
           if (Input.isValid(Argument)){
             typeData = Input.getTypeCompile(Argument)
+            if (typeData == 'avararray')
+              typeData = 'gvararray';
           }
           else {
             throw new SyntaxError(`directive undefined\n>>> ${Argument}\n${numLine}:${charsCounter-1} | ${Line}`)
@@ -6668,6 +6721,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						break;
 
 						case 'gvar':
+						  log(Argument)
 								registeredBites.push(2)
 								
 								if(/\$/.test(Argument)){
@@ -6676,17 +6730,13 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 								else {
 									Argument = translateAvar(Argument)
 								}
-								
-                Argument = Argument.toString(16)
-									.substring(0, 4)
-									.padStart(4,'0')
-									.toBigEndian()
 						    
 								Argument = come(TYPE_CODE.GVAR) + Argument
 						break;
 						
 						case 'gvararray':
 								registeredBites.push(6)
+								log(Argument)
               /*  STRUCT ARRAY
                        0006: 1@(2@, 123i) = 1
                   ____/   ___/  \__  | \     \
@@ -6696,7 +6746,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
                    lvar_array      lenght  int8  num
               */
 						  let GVAR = Argument.match(
-						    /(\w)?\$(\w+)(\(.+\))?/i
+						    /(\w)?[\$&](\w+)(\(.+\))?/i
 						  )
 						  let Sgvar = {
 						    variable: GVAR[2],
@@ -6807,7 +6857,8 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 	})
 
 	let codeOfFinal = (_SepareWithComes
-						  ? codeDepurated.toString().r(/,,+/g,',')
+						  ? codeDepurated.toString()
+						    .r(/,,+/g,',')
 						  : codeDepurated.toString()
 						    .r(/,|\-|\[|\]/g,'')
 					  )

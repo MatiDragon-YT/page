@@ -7,7 +7,7 @@ importScripts('https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox
 const CACHE_NAME = "v1";
 const OFFLINE_URL = "index.html";
 const ASSETS = [
-  OFFLINE_URL,
+  "/index.html",
   "/style.css",
   "/css.js",
   '/manifest.json',
