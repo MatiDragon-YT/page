@@ -90,6 +90,14 @@
   		].forEach((value, index) => {
   		  tempCSS += `.d${prefix}${value} { display : ${value} !important}\n`
   		});
+  		
+  		[
+  			'left',
+  		  'center',
+  		 	'right'
+  		].forEach((value, index) => {
+        tempCSS += `.text${prefix}${value} { text-align : ${value} !important}\n`
+      });
  
  [
    ['wrap','flex-wrap: wrap'],

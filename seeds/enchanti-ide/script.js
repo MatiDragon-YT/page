@@ -302,6 +302,15 @@ async function LSgetCollection(files, messaElem, loadElem) {
 
 // &&&&&&&&&&&&&&&&&&&&&&&&&&&
 
+// Normalizar ambos strings para evitar diferencias por mayúsculas, acentos, etc.
+function normalizeString(input){
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+    .replace(/[^a-z0-9\s]/g, "") // Quitar caracteres especiales
+    .trim();
+}
 
 SP.dividirCadena = function() {
     const resultado = [];
@@ -600,8 +609,7 @@ EP.clearLine = function(lineNumber) {
 
 
 
-
-
+//    DOM ELEMENTS
 
 const $itemsContainer = $('#items');
 const $addTextTabButton = $('#addTextTab');
@@ -621,6 +629,64 @@ const $highlighting = $("#highlighting")
 const $settings = $('#settings')
 const $documentation = $('#documentation')
 const $debugHex = $('#debug_hex')
+
+
+//    SETTINGS
+
+let SUGGESTION_ENGINE_TYPE = "FUZZY";
+// Puede ser "EXACT" o "FUZZY" o "AKIN"
+let SUGGESTION_SORT_TYPE = "SIMILAR";
+// Puede ser "OFF" "SIMPLE" o "SIMILAR"
+let SUGGESTION_SORT_INVERT = false
+// Puede ser TRUE o FALSE
+let SUGGESTION_SORT_BY_TYPE = false
+// Puede ser TRUE o FALSE
+const typeWeights = {
+  snippet: 5,
+  keyword: 2,
+  class: 4,
+  enum: 3,
+  property: 1,
+  constant: 1
+};
+
+
+
+let DATA_DOWNLOADED = []
+
+
+//     PREFERENCES 
+let keywords = {
+    "syntax": ["hex", "end", "while", "if", "else", "for", "then", "break", "continue", "until", "repeat", 'float', 'int', 'string', 'long', 'short', 'not', 'and', 'or', 'endif', 'endfor', 'endwhile', 'null', 'undefined', 'NaN', 'forin', 'forinend'],
+    "label": [],
+    "var": []
+};
+
+let COMMAND_NAMES = []
+
+let constants = []
+
+let classMembers = {}
+let classNames = Object.keys(classMembers);
+
+// Supongamos que tienes una estructura de datos para las enumeraciones
+let enums = {};
+let models = {};
+
+const snippets = {
+    "if-then-end": "if |\nthen |\nend",
+    "if-then-else-end": "if |\nthen |\nelse |\nend",
+    "while": "while |\n  |\nend",
+    "while-true": "while true\n  |\nend",
+    "while-false": "while false\n  |\nend",
+    "repeat-until": "repeat\n  |\nuntil |",
+    "for": "for 0@ = 0 to | step 1\n  |\nend",
+    "forin": "forin 0@(1@,20)\n  0@(1@,20) = 0|\nend"
+};
+
+
+//       ++++++++++++++++++
+
 
 
 
@@ -685,38 +751,7 @@ let tabs = JSON.parse(localStorage.getItem('items')) || [];
 let currentTabId = localStorage.getItem('currentTabId');
 
 
-let DATA_DOWNLOADED = []
 
-let keywords = {
-    "syntax": ["hex", "end", "while", "if", "else", "for", "then", "break", "continue", "until", "repeat", 'float', 'int', 'string', 'long', 'short', 'not', 'and', 'or', 'endif', 'endfor', 'endwhile', 'null', 'undefined', 'NaN', 'forin', 'forinend'],
-    "label": [],
-    "var": []
-};
-
-let constants = []
-
-let classMembers = {}
-
-// Supongamos que tienes una estructura de datos para las enumeraciones
-let enums = {};
-let models = {};
-
-const snippets = {
-    "if-then-end": "if |\nthen |\nend",
-    "if-then-else-end": "if |\nthen |\nelse |\nend",
-    "while": "while |\n  |\nend",
-    "while-true": "while true\n  |\nend",
-    "while-false": "while false\n  |\nend",
-    "repeat-until": "repeat\n  |\nuntil |",
-    "for": "for 0@ = 0 to | step 1\n  |\nend",
-    "forin": "forin 0@(1@,20)\n  0@(1@,20) = 0|\nend"
-};
-
-
-
-
-
-let classNames = Object.keys(classMembers);
 
 function toggleMenu() {
   if ($backgroundExplorer.style.display == 'none') {
@@ -922,6 +957,7 @@ window.importFileInFile = function() {
 			}
 		});
 		addCounterLine()
+		syncHighlighting()
 	}
 
 	function updateActiveTab(tabId) {
@@ -946,9 +982,28 @@ window.importFileInFile = function() {
 	 * @param {Number} id
 	 */
 	window.Tab_Remove = function(id) {
+	  const isRendered = currentTabId == id;
+	  const inIndex = editedTabs.findIndex(tab => tab.id === id)
+	  
 		editedTabs = editedTabs.filter(tab => tab.id !== id);
 		localStorage.setItem('tabs', JSON.stringify(editedTabs));
-		renderEditedTabs();
+		
+		if (isRendered){
+		  $editor.value = ""
+      $editor.disabled = true
+      
+      if (editedTabs[inIndex]) {
+        Item_Select(editedTabs[inIndex].id)
+      }else if (editedTabs.length != 0){
+        Item_Select(editedTabs.last().id)
+      }else {
+        Item_Select(null)
+        $('.fileActive').class('-fileActive');
+        //currentTabId = null
+      }
+    }
+    syncHighlighting()
+		renderEditedTabs()
 	}
 	/** Añade una pestaña a la lista de pestañas editadas y actualiza el almacenamiento local y la interfaz.
 	 * @param {Object} tab
@@ -1034,9 +1089,7 @@ window.importFileInFile = function() {
       </span>
     `;
 		if(isActive) {
-			$tabElement.style.backgroundColor = '#E6E6FA17'; // Violeta claro para la pestaña activa
-		} else {
-			$tabElement.style.backgroundColor = ''; // Fondo normal para pestañas no activas
+			$tabElement.class('+fileActive'); // Violeta claro para la pestaña activa
 		}
 		$tabElement.onclick = (event) => {
 			if(currentTabId != tab.id) {
@@ -1411,7 +1464,7 @@ window.Item_Paste = function(folderId) {
 			if(tab.type === 'text') {
 				activeTabId = id;
 				$editor.value = tab.content;
-				saveCurrentTabId(id);
+				//saveCurrentTabId(id);
 				Items_render();
 				Tab_Add(tab);
 				$editor.disabled = false;
@@ -1421,6 +1474,7 @@ window.Item_Paste = function(folderId) {
 			}
 		}
 		updatePlaceholder()
+		saveCurrentTabId(id);
 	}
 	window.Item_Remove = function(id) {
 		tabs = deleteTabById(id, tabs)
@@ -1663,6 +1717,7 @@ let nameBase=''
 		}
 	};
 	window.Item_rename = function(id) {
+	  const isOpened = id === currentTabId
 	  const tab = findTabById(id, tabs);
 	  
 		openModal(
@@ -1698,6 +1753,7 @@ let nameBase=''
   			
   			showToast('Renamed successfully')
   		}
+  		if (isOpened) Item_Select(id);
     })
 	};
 	/** Descarga el archivo de texto con el contenido correspondiente.
@@ -1994,16 +2050,29 @@ function openModal(title, message, inputType = null, acceptText = 'ok', cancelTe
   modalTitle.textContent = title;
   modalMessage.innerHTML = message;
   modalAccept.textContent = acceptText;
+  
+  if (cancelText == null)
+    modalCancel.class("+d-none");
+  else
+    modalCancel.class("-d-none");
+  
   modalCancel.textContent = cancelText;
+
+ if (inputType == null && defaultValue != '') {
+  modalMessage.class(defaultValue.r(/\+/g, '-'))
+}
 
   // Si hay un tipo de entrada (texto o número)
   if (inputType) {
     modalInput.style.display = 'block';
     modalInput.type = inputType;
     modalInput.value = defaultValue; // Cargar valor predeterminado
-    
   } else {
     modalInput.style.display = 'none';
+
+    if (defaultValue != '') {
+      modalMessage.class(defaultValue)
+    }
   }
 
   // Mostrar el modal con animación
@@ -2278,7 +2347,6 @@ document.addEventListener('click', function() {
 
 let cursorX = 0;
 let cursorY = 0;
-let suggestionEngineType = "fuzzy"; // Puede ser "exact" o "fuzzy"
 
 // Debounce Function
 function debounce(func, delay) {
@@ -2327,47 +2395,77 @@ function isCursorInString(text, cursorPosition) {
   return enString
 }
 
-let eventoForzado = false
 
-$editor.addEventListener("input", debounce(function(event) {
+let eventoForzado = false;
+function SUGGESTION_LIMIT() {
+  if (eventoForzado == false) {
+    if (SUGGESTION_ENGINE_TYPE === 'EXACT') {
+      return 200
+    }
+    if (SUGGESTION_ENGINE_TYPE === 'FUZZY') {
+      return 75
+    }
+    if (SUGGESTION_ENGINE_TYPE === 'AKIN') {
+      return 10
+    }
+  } else {
+    if (SUGGESTION_ENGINE_TYPE === 'EXACT') {
+      return 500
+    }
+    if (SUGGESTION_ENGINE_TYPE === 'FUZZY') {
+      return 380
+    }
+    if (SUGGESTION_ENGINE_TYPE === 'AKIN') {
+      return 30
+    }
+  }
+}
+
+$editor.addEventListener("input", debounce(function (event) {
   const cursorPosition = $editor.selectionStart;
 
   // Verificar si el cursor está dentro de un string
-  if (isCursorInString($editor.value, cursorPosition)) {
-    return; // No mostrar el autocompletado si estamos dentro de un string
-  }
+  if (isCursorInString($editor.value, cursorPosition)) return;
 
   const textBeforeCursor = $editor.value.substring(0, cursorPosition);
   const lastWord = textBeforeCursor.split(/[^\w$@#\.]/).pop();
-  const classNameMatch = lastWord.match(/^(\w+)\.(\w*)$/); // Detectar "objeto."
+  const classNameMatch = lastWord.match(/^(\w+)\.(\w*)$/);
 
   let suggestions = [];
 
+  const addSuggestions = (newSuggestions) => {
+    if (suggestions.length < SUGGESTION_LIMIT()) {
+      const remainingSlots = SUGGESTION_LIMIT() - suggestions.length;
+      suggestions.push(...newSuggestions.slice(0, remainingSlots));
+    }
+  };
+
   if (classNameMatch) {
-    const classNameInput = classNameMatch[1].toLowerCase(); // Convertir a minúsculas
+    const classNameInput = classNameMatch[1].toLowerCase();
     const partialMember = classNameMatch[2].toLowerCase();
 
-    // Verificar si es un objeto de enumeración (ignorando mayúsculas/minúsculas)
     const enumName = Object.keys(enums).find(enumKey => enumKey.toLowerCase() === classNameInput);
-    
+
     if (enumName) {
-      suggestions = Object.keys(enums[enumName])
-        .filter(enumKey => suggestionMatches(enumKey.toLowerCase(), partialMember))
-        .map(enumKey => ({
-          type: 'enum',
-          value: enumKey,
-          extraInfo: `= ${enums[enumName][enumKey]}`
-        }));
+      addSuggestions(
+        Object.keys(enums[enumName])
+          .filter(enumKey => suggestionMatches(enumKey, partialMember))
+          .map(enumKey => ({
+            type: 'enum',
+            value: enumKey,
+            extraInfo: `= ${enums[enumName][enumKey]}`
+          }))
+      );
     } else {
-      // Verificar si es una clase (ignorando mayúsculas/minúsculas)
       const className = classNames.find(name => name.toLowerCase() === classNameInput);
       if (className && classMembers[className]) {
-        suggestions = classMembers[className]
-          .filter(member => suggestionMatches(member.name.toLowerCase(), partialMember))
-          .map(member => ({
-            type: 'property',
-            value: member.name,
-            extraInfo: `(${member.params || ''})${member.returns ? ' : ' + member.returns : ''}
+        addSuggestions(
+          classMembers[className]
+            .filter(member => suggestionMatches(member.name, partialMember))
+            .map(member => ({
+              type: 'property',
+              value: member.name,
+              extraInfo: `(${member.params || ''})${member.returns ? ' : ' + member.returns : ''}
             ${
               (!member.name.startsWith('Is')
               &&!member.name.startsWith('Get')
@@ -2375,130 +2473,222 @@ $editor.addEventListener("input", debounce(function(event) {
               &&!member.name.startsWith('Create'))
               ? member.methods || '' :''
             }`
-          }));
-      }
-    }
-
-  } else if (
-    (lastWord.length >= 2 && !/^\d/m.test(lastWord))
-    || eventoForzado) {
-    const lowerLastWord = lastWord.toLowerCase();
-    // Agregar snippets a las sugerencias
-    suggestions.push(
-      ...Object.keys(snippets)
-      .filter(snippet => suggestionMatches(snippet.toLowerCase(), lowerLastWord))
-      .map(snippet => ({
-        type: 'snippet',
-        value: snippet,
-        extraInfo: '[snippet]'
-      }))
-    );
-    
-    
-      suggestions.push(
-        ...constants
-        .filter(constant => suggestionMatches(constant.name.toLowerCase(), lowerLastWord))
-        .map(constant => ({
-          type: 'constant',
-          value: constant.name,
-          extraInfo: `= ${constant.value}`
-        }))
-      )
-
-
-    // Sugerencias de clases, constantes y enumeraciones
-    suggestions.push(
-      ...classNames
-      .filter(className => suggestionMatches(className.toLowerCase(), lowerLastWord))
-      .map(className => ({ type: 'class', value: className })),
-      ...Object.keys(enums)
-      .filter(enumName => suggestionMatches(enumName.toLowerCase(), lowerLastWord))
-      .map(enumName => ({
-        type: 'enumObject',
-        value: enumName,
-        extraInfo: '[enum]'
-      }))
-    );
-    
-    if (!eventoForzado){
-      suggestions.push(
-        ...models
-        .filter(model => suggestionMatches(model.name.toLowerCase(), lowerLastWord))
-        .map(model => ({
-          type: 'model',
-          value: model.name,
-          extraInfo: `= ${model.value}`
-        }))
-      )
-      
-      for (const [category, words] of Object.entries(keywords)) {
-        suggestions.push(
-          ...words
-          .filter(word => suggestionMatches(word.toLowerCase(), lowerLastWord))
-          .map(word => ({
-            type: 'keyword',
-            value: category == 'opcode' ?
-              word.r(/.+=/, '') : word,
-            extraInfo: category == 'opcode' ?
-              `[${word.r(/=.+/,'')}]` : `[${category}]`
-          }))
+            }))
         );
       }
     }
-              //`
+  } else if (
+    (lastWord.length >= 2 && !/^\d/m.test(lastWord)) ||
+    /^@/m.test(lastWord) ||
+    eventoForzado
+  ) {
+    const lowerLastWord = lastWord.toLowerCase();
+
+    addSuggestions(
+      Object.keys(snippets)
+        .filter(snippet => suggestionMatches(snippet, lowerLastWord))
+        .map(snippet => ({
+          type: 'snippet',
+          value: snippet,
+          extraInfo: '[snippet]'
+        }))
+    );
+
+    if (suggestions.length < SUGGESTION_LIMIT()) {
+      addSuggestions(
+        constants
+          .filter(constant => suggestionMatches(constant.name, lowerLastWord))
+          .map(constant => ({
+            type: 'constant',
+            value: constant.name,
+            extraInfo: `= ${constant.value}`
+          }))
+      );
+    }
+
+    addSuggestions(
+      classNames
+        .filter(className => suggestionMatches(className, lowerLastWord))
+        .map(className => ({ type: 'class', value: className }))
+    );
+
+    addSuggestions(
+      Object.keys(enums)
+        .filter(enumName => suggestionMatches(enumName, lowerLastWord))
+        .map(enumName => ({
+          type: 'enumObject',
+          value: enumName,
+          extraInfo: '[enum]'
+        }))
+    );
+
+    if (!eventoForzado && suggestions.length < SUGGESTION_LIMIT()) {
+      addSuggestions(
+        models
+          .filter(model => suggestionMatches(model.name, lowerLastWord))
+          .map(model => ({
+            type: 'model',
+            value: model.name,
+            extraInfo: model.value
+          }))
+      );
+
+      for (const [category, words] of Object.entries(keywords)) {
+        if (suggestions.length >= SUGGESTION_LIMIT()) break;
+        addSuggestions(
+          words
+            .filter(word => suggestionMatches(word, lowerLastWord))
+            .map(word => ({
+              type: 'keyword',
+              value: category === 'opcode' ? word.replace(/.+?=/, '') : word,
+              extraInfo: category === 'opcode' ? `[${word.replace(/=.+/, '')}]` : `[${category}]`
+            }))//`
+        );
+      }
+    }
     updateAutocompletePositionWithCursor();
   }
 
   if (suggestions.length > 0) {
+    suggestions.sort((a, b) => {
+      let result = 0
+    
+    if (SUGGESTION_SORT_TYPE == "SIMPLE") {
+      // Ordenar las sugerencias alfabéticamente por el valor de `value`
+      result = a.value.localeCompare(b.value)
+    }
+    if (SUGGESTION_SORT_TYPE == "SIMILAR") {
+      // Ordenar las sugerencias según la similitud con `lastWord`
+        
+          const similarityA = stringSimilarity(a.value, lastWord);
+          const similarityB = stringSimilarity(b.value, lastWord);
+          result = similarityB - similarityA; // Orden descendente por similitud
+       
+    }
+    
+    if (SUGGESTION_SORT_BY_TYPE == true) {
+      // Ordenar las sugerencias por tipo, usando ponderaciones
+      
+        const weightA = typeWeights[a.type] || 0;
+        const weightB = typeWeights[b.type] || 0;
+        result = weightB - weightA; // Orden descendente por peso del tipo
+     
+    }
+    return result
+    })
+    if (SUGGESTION_SORT_INVERT == true) {
+      suggestions.reverse();
+    }
+    
     updateAutocompleteMenu(suggestions, lastWord, classNameMatch);
   } else {
-    autocomplete.classList.add("hidden")
+    autocomplete.classList.add("hidden");
   }
-  eventoForzado = false
+  eventoForzado = false;
 }, 250));
 
-
 function suggestionMatches(word, query) {
-  if (suggestionEngineType === "exact") {
+  word = word.toLowerCase();  // Convierte a minúsculas
+  
+  
+  if (SUGGESTION_ENGINE_TYPE === "EXACT") {
     // Motor de búsqueda exacta (empieza con la palabra)
     return word.startsWith(query);
-  } else if (suggestionEngineType === "fuzzy") {
-    // Motor de búsqueda "fuzzy" (contiene la palabra en cualquier parte)
+  } else if (SUGGESTION_ENGINE_TYPE === "FUZZY") {
+    // Motor de búsqueda difusa (contiene la palabra en cualquier parte)
     return word.includes(query);
+  } else if (SUGGESTION_ENGINE_TYPE === "AKIN") {
+  // Motor de búsqueda "AKIN" (contiene una palabra parecida)
+    return areStringsSimilar(word, query);
   }
   return false;
 }
 
 function setSuggestionEngineType(type) {
-  if (["exact", "fuzzy"].includes(type)) {
-    suggestionEngineType = type;
+  if (["EXACT", "FUZZY", "AKIN"].includes(type)) {
+    SUGGESTION_ENGINE_TYPE = type;
   }
+}
+function stringSimilarity(str1, str2) {
+  const getCommonChars = (s1, s2) => {
+    let common = 0;
+    const map = {};
+    for (let char of s1) map[char] = (map[char] || 0) + 1;
+    for (let char of s2) if (map[char]) { common++; map[char]--; }
+    return common;
+  };
+  
+  const commonChars = getCommonChars(str1.toLowerCase(), str2.toLowerCase());
+  return commonChars / Math.max(str1.length, str2.length); // Similaridad normalizada (0 a 1)
+}
+function areStringsSimilar(str1, str2) {
+  // Si un string incluye al otro, son similares
+  if (str1.includes(str2)) return true;
+  if (str1.length < str2.length) return false;
+
+  // Definir tolerancia según la longitud
+  const tolerance =
+    str1.length <= 3 ? 1 : str1.length <= 10 ? 2 : 3;
+
+  const s1 = normalizeString(str1);
+  const s2 = normalizeString(str2);
+
+  // Verificar si al menos una letra de un string aparece en el otro
+  const hasCommonCharacter = (a, b) => {
+    const setA = new Set(a);
+    const setB = new Set(b);
+    for (const char of setA) {
+      if (setB.has(char)) return true;
+    }
+    return false;
+  };
+
+  if (!hasCommonCharacter(s1, s2)) return false;
+
+  // Calcular distancia de Levenshtein
+  const levenshteinDistance = (a, b) => {
+    const matrix = Array(a.length + 1)
+      .fill(null)
+      .map(() => Array(b.length + 1).fill(null));
+
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1, // Eliminación
+          matrix[i][j - 1] + 1, // Inserción
+          matrix[i - 1][j - 1] + cost // Sustitución
+        );
+      }
+    }
+
+    return matrix[a.length][b.length];
+  };
+
+  const distance = levenshteinDistance(s1, s2);
+  return distance <= tolerance;
 }
 
 document.getElementById("engineSelector").addEventListener("change", function(event) {
   setSuggestionEngineType(event.target.value);
 });
 
+/** Renderiza la lista de sugerencias del autocompletado
+ * @param {Array} suggestions - collection
+ * @param {String} lastWord - work
+ * @param {String} classNameMatch - class
+ */
 function updateAutocompleteMenu(suggestions, lastWord, classNameMatch) {
   autocompleteMenu.innerHTML = ""; // Limpiar las sugerencias previas
- 
- 
- // para evitar que el hilo principal se congele durante mucho tiempo, limitamos la cantidad de sugerencias.
- if (eventoForzado == false){
-   if (suggestions.length > 100) {
-     suggestions.length = 100
-   }
- } else {
-   if (suggestions.length > 380) {
-     suggestions.length = 380
-   }
- }
-  
   suggestions.forEach(({ type, value, extraInfo }) => {
     const suggestionItem = document.createElement("li");
     suggestionItem.classList.add("suggestion-item");
+    
     suggestionItem.textContent = value;
-
+    
     const typeIndicator = document.createElement("span");
     typeIndicator.classList.add("type-indicator");
 
@@ -2532,7 +2722,9 @@ function updateAutocompleteMenu(suggestions, lastWord, classNameMatch) {
         extraInfoElement.textContent = "[class]";
         break;
       case 'property':
-        typeIndicator.textContent = "ƒ";
+        typeIndicator.textContent =
+          extraInfo.includes('<') ? "⧰" : "ƒ";
+        
         extraInfoElement.textContent = extraInfo || "";
         // Mostrar info si existe
         extraInfoElement.style.float = "";
@@ -2546,7 +2738,22 @@ function updateAutocompleteMenu(suggestions, lastWord, classNameMatch) {
         break;
       case 'model':
         typeIndicator.textContent = "M";
-        extraInfoElement.textContent = extraInfo || ""; // Mostrar el valor si existe
+        
+        extraInfoElement.id = 'model'+extraInfo
+        extraInfoElement.class("+imgModel")
+
+        extraInfoElement.innerHTML = 
+        '= ' + extraInfo + ' 👁️'
+        // da una preview
+        
+      + `
+       <style>
+       #model${extraInfo}:hover::after {
+         background-image: url("https://files.prineside.com/gtasa_samp_model_id/white/${extraInfo}_w_s.jpg");
+       }
+       </style>
+        `
+        
         suggestionItem.classList.add("number");
         break;
       case 'snippet':
@@ -2893,7 +3100,8 @@ let constantes;
 let CONSTANTS
 
 const syntaxHighlight = (code, exception = $editor) => {
-
+  
+  keywords.label = []
   const span = {
 		start : "<span class=",
 		end : ">$1<\/span>"
@@ -2912,21 +3120,10 @@ const syntaxHighlight = (code, exception = $editor) => {
   const TEXT_DATA = $editor.DATA_TEXTAREA()
   let lineaActual = TEXT_DATA.lineaCursor
   
-  //log(TEXT_DATA)
-  //if (TEXT_DATA.inSelection) {
-  //if (TEXT_DATA.linesSelected.includes(line + 1)
-  
-  
   code = code.split('\n')
   
   code = code.map((text,index) =>{
   
-  /*
-  if (TEXT_DATA.inSelection && TEXT_DATA.linesSelected.includes(index + 1)){
-    log('linea actual: ' + index+1)
-    lineaActual = index + 1
-  }
-  */
   
   if (
     exception != $editor
@@ -2941,6 +3138,8 @@ const syntaxHighlight = (code, exception = $editor) => {
     .replace(/'/g, "&apos;")
     .replace(/"/g, "&quot;")
     .replace(/\//g, "&sol;")
+    
+    .replace(COMMAND_NAMES, '<span class="keyword">$1</span>');
     
 
 	text = text
@@ -2962,7 +3161,12 @@ const syntaxHighlight = (code, exception = $editor) => {
 	
 	
 	//Etiquetas
-	.r(/([^\w]|^)([@:]\w+)/gm, "$1<span class=label>$2<\/span>")
+	.r(/([^\w]|^)([@:]\w+)/gm, input=>{
+	  if (input.startsWith(':'))
+	    keywords.label.push(input.r(':', '@'));
+	  
+	 return input.r(/([^\w]|^)([@:]\w+)/gm,"$1<span class=label>$2<\/span>")
+	})
 	.r(/([^\w\.])(\w+)(\([^\n]*\))/g, "$1<span class=property>$2<\/span>$3")
 	//Arreglos
 	.r(/(\[)([\d+]*)(\])/g, "$1<span class=number>$2<\/span>$3")
@@ -3991,6 +4195,8 @@ async function dbSBL2(game){
 		  }
 		  
 		  if (!omitir){
+		    COMMAND_NAMES.push(command.name.toLowerCase())
+		    
   		  SCM_DB2[command.name.toLowerCase()] = 
   			  command.id.toLowerCase();
   		
@@ -4068,10 +4274,14 @@ const game = 'sa'
 
 let version = DATA_DOWNLOADED[DOWNLOADED.JSON_VERSION]
 
-
 await dbSBL(game)
 await dbSBL2(game)
 
+COMMAND_NAMES = new RegExp(
+  "\\b("+
+  [...new Set(COMMAND_NAMES)].join("|") +
+  ")\\b",
+  "gi");
 
 SP.toUnicode = function() {
   return this.split("").map(s => {
@@ -4536,7 +4746,7 @@ SP.formatScript = function() {
     .r(/^hex /mgi, "hex\n")
     .r(/^then /mgi, "then\n")
     .r(/^else /gmi, "else\n")
-    .r(/ end$/mgi, "\nend\n")
+    .r(/ (endif|endwhile|endforin|endfor|end)$/mgi, "\nend\n")
     .r(/^repeat /mgi, "repeat\n")
   return code
 }
@@ -4857,6 +5067,16 @@ else
 $1 = $3
 end
 `)
+    // 7@ = 7@ == $8
+    .r(/(.+) = (.+) (==|>=|<=|<|>|\!=|<>) (.+)$/gim,
+      `if
+$2 $3 $4
+then
+$1 = true
+else
+$1 = false
+end
+`)
     // [] : variable con limites maximos
     // () : variable con valor en bucle
     // [min..max]:0@
@@ -5116,13 +5336,6 @@ function detectarOpcode(operacion, _lineaInvocada = 0) {
       'GVAR_LONGSTRING-LONGSTRING': '6D1',
       'LVAR_LONGSTRING-LONGSTRING': '6D2',
 
-/*
-05AA = @ SHORT LVAR_SHORTSTRING
-05A9 = $ SHORT GVAR_SHORTSTRING
-
-D206 = @ LONG LVAR_SHORTSTRING
-D106 = $ LONG GVAR_LONGSTRING
-*/
     },
     '>': {
       'GVAR_INT-INT': '18',
@@ -5263,8 +5476,6 @@ D106 = $ LONG GVAR_LONGSTRING
   }
   opcode = opcode.padStart(4,'0')
   
-  //console.log({opcode, variable1, tipoVariable1, operador, variable2, tipoVariable2})
-  
   return opcode;
 }
 
@@ -5314,8 +5525,9 @@ SP.operationsToOpcodes = function () {
   return resultado
 }
 
+
 const regexVAR_ARRAY =
-  /([a-z]?[\$\&]\w+|\d+@[a-z]?|\w+)\(([\$&]\w+|\d+@|\w+)\s*([,\s]+\w+)?\)/gi;
+  /([a-z]?[\$\&]\w+|\d+@[a-z]?|\w+)\(([\$&]\w+|\d+@|\w+)\s*([,\s]+\w+)?\)(\w)?/gi;
 
 SP.normalizeArrays = function(){
   const nString = this.split('\n')
@@ -5329,11 +5541,13 @@ SP.normalizeArrays = function(){
         let arr = input.match(/([\$\&]\w+|\d+@|\w+)/)[1]
         let index = input.match(/\(([\$\&]\w+|\d+@|\w+)/)[1]
         
+        let type = input.match(/\)(\w)/)
+        type = type ? type[1] : ''
         
         let output = ''
         
         let size = input.match(/,\s*(\w+)\)/)
-        size = size ? size[0] : ',20)'
+        size = size ? size[0] : ',20'+type+')'
 
         if (!Input.isVariable(arr)
         || !Input.isVariable(index)){
@@ -5395,9 +5609,25 @@ SP.normalizeArrays = function(){
  
 SP.transformTypeData = function(){
   const nString = this.split('\n').map(line=>{
+    
+    line = line.trim()
+    .r(/^int (\d+@) /i, '$1i ')
+    .r(/^float (\d+@) /i, '$1f ')
+    .r(/^short (\d+@) /i, '$1s ')
+    .r(/^long (\d+@) /i, '$1v ')
+    .r(/^string (\d+@) /i, '$1v ')
+    
+    .r(/^int (\$\w+) /i, 'i$1 ')
+    .r(/^float (\$\w+) /i, 'f$1 ')
+    .r(/^short (\$\w+) /i, 's$1 ')
+    .r(/^long (\$\w+) /i, 'v$1 ')
+    .r(/^string (\$\w+) /i, 'v$1 ')
+    
     line = line.dividirCadena()
     
+    
     return line.map(param =>{
+      
       let isN = param.i('-') ? '-' : ''
       
       if (Input.isAdmaVar(param)){
@@ -6401,7 +6631,6 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						if (x[Argument]){
 							setOp = SCM_DB2[Argument]
 						}else{
-							
 							if (Line.endsWith('=')){
 							  throw new SyntaxError(`missing parameter\n\tin line ${numLine} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
 							}
@@ -6441,8 +6670,11 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 					  SCM_DB2[currentOpcode.toLowerCase()].variable
 					){
 					if (LineComand[numLine].length-1 < SCM_DB2[tempOp].num_params) {
+					  const missingParameters = 
+					  SCM_DB2[tempOp].num_params - LineComand[numLine].length+1
+					  
 					  // si faltan parametros, se muestra un error
-					  throw new Error(`missing parameters\n>>> ${Argument}\n${numLine}:${charsCounter} | ${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
+					  throw new Error(`${numLine}:${charsCounter} | missing ${missingParameters} parameters\n>>> ${Argument}\n${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
 					}
 					if (
 					  LineComand[numLine].length-1
@@ -6721,7 +6953,6 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						break;
 
 						case 'gvar':
-						  log(Argument)
 								registeredBites.push(2)
 								
 								if(/\$/.test(Argument)){
@@ -6736,7 +6967,6 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						
 						case 'gvararray':
 								registeredBites.push(6)
-								log(Argument)
               /*  STRUCT ARRAY
                        0006: 1@(2@, 123i) = 1
                   ____/   ___/  \__  | \     \
@@ -6969,3 +7199,28 @@ $('details').forEach((elem) => {
 $("details pre").forEach(e => {
   e.innerHTML = syntaxHighlight(e.innerText, e)
 })
+
+
+const VERSION_GUARDADA = Number(LS.get("current_version"))
+const VERSION_ACTUAL = 143
+
+const updatedSMS = ()=> 
+openModal("EnchantiIDE UPDATED!!!",
+`# 1.4.3
+
+* Variables can store the result of a condition.
+* If an opcode is missing parameters, you are told how many.
+* Constants are highlighted according to the type of data they store.
+* The IDE will try to auto-select the open files when you close one.
+* All command names are already highlighted.
+* If an open file is renamed, it is now closed or reopened.
+* new ways of declaring variables, operations and forcing the work of a data type.
+
+`.trim().split('\n').join(`<br>`), null,'Thx u <3', null, '+text-left');
+  
+if (VERSION_GUARDADA) {
+  if (VERSION_GUARDADA != VERSION_ACTUAL) updatedSMS()
+} else {
+  updatedSMS()
+}
+LS.set("current_version", VERSION_ACTUAL)

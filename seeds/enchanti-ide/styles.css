@@ -4,14 +4,17 @@
     border: none;
     scroll-behavior: smooth;
     transition-timing-function: ease-out;
-    font-size:1rem;
+    font-size:inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    text-align: inherit;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     outline: none;
     font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-    font-variant-emoji: text;
-    font-variant-numeric: slashed-zero;
-    font-variant-ligatures: common-ligatures;
+    font-variant-emoji: text!important;
+    font-variant-numeric: slashed-zero!important;
+    font-variant-ligatures: common-ligatures!important;
 }
 *, :after, :before {
     box-sizing: border-box;
@@ -31,7 +34,7 @@ html, body {
 }
 
 body {
-  font-size:1rem;
+  font-size:.9rem;
   font-weight: 400;
   line-height: 1.5;
   text-align: left;
@@ -227,6 +230,10 @@ hr {
 }
 
 
+
+.fileActive {
+  background: #E6E6FA17;
+}
 /*
 opciones de los items
 */
@@ -583,50 +590,6 @@ key {
 
 
 
-/*     editor      */
-
-#editor-content{
-  background-color: #3e1b4c; /* Fondo del editor */
-  
-  display: flex;
-  
-  & * {
-    	font-size: 14px;
-    	font-weight: 400;
-    	line-height: 1.5;
-  }
-}
-#editor-counterLine {
-  overflow: hidden;
-  color:#7d5bbe;
-  background: #3e1b4c;
-  height: 100%;
-  & span {
-    color:white;
-  }
-}
-#editor {
-    width: 100%;
-    min-height: 100%;
-    color: #e0e0e0;
-    background: none;
-    user-select: auto;
-    overflow: auto;
-    resize: none;
-    text-wrap: nowrap;
-    border: none;
-    
-    &[disabled]{
-      background: none;
-      border: none;
-    }
-    &:focus{
-      outline: none;
-    }
-}
-
-
-
 /*       MENU CONTEXTUAL */
 
 #context-menu {
@@ -695,81 +658,7 @@ key {
 
 
 
-/*        AUTOCOMPLETADO        */
-#autocomplete {
-  position: absolute;
-  z-index: 5;
-  border: #fff2 solid 1px;
-  animation: aparecer .1s ease-out;
-  &.hidden {
-    display: none;
-  }
-}
-#autocomplete-title {
-  height: .5rem;
-  background: #1b0f25;
-  width: 100%;
-  display: flex;
-}
 
-/* Animación suave cuando aparece el menú */
-@keyframes pulse {
-    50% {
-        transform: scale(1.05);
-        text-shadow: 0 0 1rem white;
-    }
-}
-
-.type-indicator:hover,
-.extra-info:hover{
-  color: white;
-  font-weight: 400!important;
-  text-shadow: 0 0 1rem white;
-}
-
-#autocomplete-menu {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-    overflow-y: auto;
-    min-height: 3rem;
-    max-height: 30rem;
-    min-width: 4rem;
-    max-width: 20rem;
-    resize: both;
-    background: #2e003e; /* Fondo de pestañas oscuro */
-    box-shadow: 0 .3rem 1rem rgba(0, 0, 0, 0.2);
-    
-    &::-webkit-scrollbar { width: .5rem;}
-    &::-webkit-scrollbar-track { background: #2e003e }
-    &::-webkit-scrollbar-thumb { background: #fff2}
-    &::-webkit-scrollbar-corner {background: #2e003e}
-    
-  & * {
-    font-size: .77rem;
-  }
-  & li {
-    padding: 2px 4px;
-    cursor: pointer;
-    text-wrap: nowrap;
-  }
-  
-  & li:hover {
-    background-color: #fff2;
-  }
-  & .type-indicator {
-    margin-right: .3rem;
-  }
-  /* Efecto de pulso para sugerencias al aparecer */
-  .suggestion-item.snippet {
-    animation: pulse 0.5s ease-in-out;
-  }
-}
-.dragging {
-  opacity: 0.8;
-  cursor: move;
-  border: 1px dashed #ccc;
-}
 
 
 /* Estilo para constantes de la categoría "vars" */
@@ -833,14 +722,74 @@ key {
 .yellow {
   color: var(--c-yellow);
 }
+span{
+  font-size: inherit!important;
+}
+
+/*     editor      */
+
+#editor-content{
+  background-color: #3e1b4c; /* Fondo del editor */
+  
+  display: flex;
+  
+  & * {
+    	font-size: 14px;
+    	font-weight: 400;
+    	line-height: 1.5;
+  }
+}
+#editor-counterLine {
+  overflow: hidden;
+  color:#7d5bbe;
+  background: #3e1b4c;
+  height: 100%;
+  & span {
+    color:white;
+  }
+}
+#editor {
+    width: 100%;
+    min-height: 100%;
+    color: #e0e0e0;
+    background: none;
+    user-select: auto;
+    overflow: auto;
+    resize: none;
+    text-wrap: nowrap;
+    border: none;
+    
+    &[disabled]{
+      background: none;
+      border: none;
+    }
+    &:focus{
+      outline: none;
+    }
+}
+
+/*    */
+#editor-content {
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+#editor-counterLine {
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+}
 #editor-container {
     position: relative;
     width: 100%;
     max-width: 600px;
-    font-family: monospace;
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 1.5;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
     overflow: hidden;
 }
 
@@ -877,6 +826,120 @@ key {
     caret-color: white;
     border: none;
     outline: none;
+    
+    &::selection {
+      background: #f773; /* Color de fondo */
+      color: #fff; /* Color del texto */
+    }
+}
+
+#debug_hex {
+  background: #0007;
+  color:#7f7;
+  text-wrap: nowrap;
+  overflow: auto;
+  user-select: auto;
+  font-size: inherit
+}
+
+/*        AUTOCOMPLETADO        */
+#autocomplete {
+  position: absolute;
+  z-index: 5;
+  border: #fff2 solid 1px;
+  animation: aparecer .1s ease-out;
+  font-size: inherit;
+  &.hidden {
+    display: none;
+  }
+}
+#autocomplete-title {
+  height: .5rem;
+  background: #1b0f25;
+  width: 100%;
+  display: flex;
+}
+
+.imgModel:hover::after{
+    content: '';
+    height: 5rem;
+    width: 5rem;
+    background-color: #0002;
+    background-size: contain;
+    background-repeat: no-repeat;
+    border: #fff2 1px solid;
+    z-index: 3;
+    position: absolute;
+    top: 1rem;
+    right: 5rem;
+}
+.imgModel:hover::before{
+    content: 'wait';
+    height: 5rem;
+    width: 5rem;
+    padding: 1.3rem;
+    z-index: 3;
+    position: absolute;
+    top: 1rem;
+    right: 5rem;
+}
+/* Animación suave cuando aparece el menú */
+@keyframes pulse {
+    50% {
+        transform: scale(1.05);
+        text-shadow: 0 0 1rem white;
+    }
+}
+
+.type-indicator:hover,
+.extra-info:hover{
+  color: white;
+  font-weight: 400!important;
+  text-shadow: 0 0 1rem white;
+}
+
+#autocomplete-menu {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    min-height: 3rem;
+    max-height: 30rem;
+    min-width: 4rem;
+    max-width: 20rem;
+    resize: both;
+    background: #2e003e; /* Fondo de pestañas oscuro */
+    box-shadow: 0 .3rem 1rem rgba(0, 0, 0, 0.2);
+    
+    &::-webkit-scrollbar { width: .5rem;}
+    &::-webkit-scrollbar-track { background: #2e003e }
+    &::-webkit-scrollbar-thumb { background: #fff2}
+    &::-webkit-scrollbar-corner {background: #2e003e}
+    
+  & * {
+    font-size: inherit;
+  }
+  & li {
+    padding: 2px 4px;
+    cursor: pointer;
+    text-wrap: nowrap;
+  }
+  
+  & li:hover {
+    background-color: #fff2;
+  }
+  & .type-indicator {
+    margin-right: .3rem;
+  }
+  /* Efecto de pulso para sugerencias al aparecer */
+  .suggestion-item.snippet {
+    animation: pulse 0.5s ease-in-out;
+  }
+}
+.dragging {
+  opacity: 0.8;
+  cursor: move;
+  border: 1px dashed #ccc;
 }
 
 .overflow-visible {
@@ -949,7 +1012,7 @@ dl, ol, ul { margin: 1rem calc(1.5rem + .5vw) }
 dd, li { margin: 0 0 5px }
 
 code, .code, kbd, pre, samp {
-  font-size: 14px;
+  font-size: in;
 	background:  #1b0f25;
 	color: white;
 	font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
@@ -1070,13 +1133,6 @@ a.button:hover, a.button:focus {
 }
 .selec-auto{
   user-select: auto
-}
-#debug_hex {
-  background: #0007;
-  color:#7f7;
-  text-wrap: nowrap;
-  overflow: auto;
-  user-select: auto;
 }
 
 a {

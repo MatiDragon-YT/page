@@ -26,29 +26,19 @@
 
 
 <div id='settings' class="other-view d-flex column overflow-visible p-absolute py-3 h-83 d-none">
-  <h1>Ajustes</h1>
-<h2>Resaltador</h2>
-Puede generar demaciado retraso
+<h1>Settings</h1>
 
-<label for="enable-resaltador">enable-resaltador</label>
-<input type="checkbox" name="enable-redaltador" id="enable-resaltador">
+<h2>Autocomplete</h2>
 
-<h2>Autocomplatado</h2>
-<table>
-  <tr>
-    <th>Sugerir</th>
-    <th>Estado</th>
-  </tr>
-  <tr>
-    <td>Modelos</td>
-    <td><select name="op" id="op">
-      <option value="hoka">ninguna apertura</option>
-      <option value="hoka">en apertura forzada</option>
-      <option value="hoka">en apertura automatica</option>
-      <option value="hoka">ambas aperturas</option>
-    </select></td>
-  </tr>
-</table>
+<h3>Engine type</h3>
+[▓░░] EXACT : start equal.<br>
+[▓▓░] FUZZY : this the word. (default)<br>
+[▓▓▓] AKIN : similar words.
+<h3>Order</h3>
+[▓░░] OFF : none, disable.<br>
+[▓▓░] SIMPLE : this the word.<br>
+[▓▓▓] SIMILAR : similar words. (default)
+
 </div>
 
 
@@ -415,14 +405,25 @@ Sanny, is extremely strict with syntaxes and does not support writing spaces in 
 </pre>
 Enchanti offers a little more flexibility here. It does not require you to set the type of the data collection, (INT, FLOAT, SHORT, LONG) nor does it require you to set the size of the collection.
 <pre>
-0@(1@)     = '2'
-0@(1@,20)  = "2"
-0@(1@, 20) = `2`
-0@f(1@,20) = 1.3
-0@(1@,20i) = 123
+0@(1@)          = '2'
+0@(1@,20)       = "2"
+0@(1@, 20)      = `2`
+0@f(1@,20)      = 1.3
+0@(1@,20i)      = 123
+0@(1@,20)f      = 1.3
+float 0@(1@,20) = 1.3
 </pre>
-If you don't specify the type, the IDE will try to know what data you want to store. Be careful though, it only works for assigning constant data for the moment.
-If you do not specify the size, the IDE will set the number to 20, by default.
+If you don't specify the type, the IDE will try to know what data you want to store. Be careful though, it only works for assigning constant data for the moment.<br>
+If you do not specify the size, the IDE will set the number to 20, by default.<br>
+Constants are not left out. They are also supported and you can set their type as you see fit.
+<pre>
+a(b)          = '2'
+a(b,20)       = "2"
+a(b, 20)      = `2`
+a(b,20)f      = 1.3
+a(b,20i)      = 123
+float a(b,20) = 1.3
+</pre>
 </details>
 
 <details>
@@ -522,6 +523,7 @@ you can also force a change of operation, adding a subfix (I or F) in the variab
 0@f <> 1@    -->  XXXX: 0@ != 1@
 0@ = 1@f     -->  XXXX: 0@ = 1@
 0@ =# 1@f    -->  XXXX: 0@ = float_to_int 1@
+float 0@ = 1@-->  XXXX: 0@f = 1@
 </pre>
 <h4>Enchanti</h4>
 if only one variable is written in a line, it is passed as a condition.
@@ -534,6 +536,12 @@ You can also assign a negated value to the variables, or see is truthy.
 0@ = !1@     -->  1@ == 1 ? 0@ = 0 : 0@ = 1
 0@ = !!1@    -->  1@ == 0 ? 0@ = 1 : 0@ = 0
 0@ = 1@t     -->  1@ != 0 ? 0@ = 1 : 0@ = 0
+</pre>
+Or why not, your own condition? ;)
+<pre>
+0@ = 1@ == 2@
+// is equivalent to
+0@ = 1@ == 2@ ? true : false
 </pre>
 Fixed and temporary assignment operators are also available anywhere in the code.
 <pre>
@@ -574,7 +582,7 @@ And cascading operations can also be performed in this manner
 The IDE can identify when an opcode has extra or missing parameters.
 <pre>
 nop  // ok     ->  00 00
-wait // error  ->  ERROR
+wait // error  ->  missing params
 wait 0 // ok   ->  01 00 04 00
 </pre>
 whenever extra parameters are entered in opcodes that do not allow them, the latter will be removed.
@@ -611,10 +619,10 @@ The IDE limits some features for better performance.<br>
 
 <div id="explorer">
   <div class="d-flex column g-1">
-    <h6>Enchanti IDE 1.4.1 :: 02/12/2024</h6>
+    <h6>Enchanti IDE 1.4.4 :: 02/12/2024</h6>
     <button class="menu-btn" id="name-app">🔥 Install</button>
     <button class="menu-btn" for="compile">🚀 Compile</button>
-    <!--<button class="menu-btn" for="settings">⚙️ Settings</button>-->
+    <button class="menu-btn" for="settings">⚙️ Settings</button>
     <button class="menu-btn" for="open_docu">📘 Documentation</button>
   </div>
   <div id="explorer-actions" class="d-flex row between g-3 mt-2">
@@ -640,6 +648,7 @@ The IDE limits some features for better performance.<br>
     <div class="p-2 h-56" id="highlighting" aria-hidden="true"></div>
     <textarea class="p-2 h-56" id="editor" placeholder="create a file" disabled spellcheck="false"></textarea>
 </div>
+
 <div id="debug_hex" class="pre h-56 p-1 w-50 d-none"></div>
   <!--
   <textarea class="p-2 h-56" id="editor" placeholder="create a file" disabled></textarea>
@@ -708,13 +717,11 @@ The IDE limits some features for better performance.<br>
    <button id="openAutocompleteBtn">⧲<span class="d-none d-sm-inline-block ml-2">Open autocomplete</span></button>
 </div>
 
-<div id="autocomplete" class="hidden">
+
+  <div id="autocomplete" class="hidden">
   <span id="autocomplete-title"></span>
   <ul id="autocomplete-menu" style="width:20rem;height:7rem;"></ul>
 </div>
-
-
-
 
 
 
