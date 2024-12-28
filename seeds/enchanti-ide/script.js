@@ -7202,11 +7202,11 @@ $("details pre").forEach(e => {
 
 
 const VERSION_GUARDADA = Number(LS.get("current_version"))
-const VERSION_ACTUAL = 143
+const VERSION_ACTUAL = 144
 
 const updatedSMS = ()=> 
 openModal("EnchantiIDE UPDATED!!!",
-`# 1.4.3
+`# 1.4.4
 
 * Variables can store the result of a condition.
 * If an opcode is missing parameters, you are told how many.
@@ -7214,7 +7214,10 @@ openModal("EnchantiIDE UPDATED!!!",
 * The IDE will try to auto-select the open files when you close one.
 * All command names are already highlighted.
 * If an open file is renamed, it is now closed or reopened.
-* new ways of declaring variables, operations and forcing the work of a data type.
+* New ways of declaring variables, operations and forcing the work of a data type.
+* You can see a preview of the object models.
+* The autocomplete now sorts the suggestions in order of the closest plant to complete.
+* Finally, every time the IDE is updated, this message will be displayed for you to see.
 
 `.trim().split('\n').join(`<br>`), null,'Thx u <3', null, '+text-left');
   
