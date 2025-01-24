@@ -593,7 +593,8 @@ Of course, this does not affect opcodes with undefined number of parameters.
 <pre>
 cleo_call @func params 1 enter 0x0A
 </pre>
-But let's imagine that an opcode is not found in the IDE database. In this case, the IDE will auto-assign the number of parameters to a fixed one and depending on the number of parameters it used the first time it was invoked.
+But let's imagine that an opcode is not found in the IDE database.<br />
+In this case, the IDE will auto-assign the number of parameters to a fixed one and depending on the number of parameters it used the first time it was invoked.
 <pre>
 XXXX: gg 3@
 // ok
@@ -603,8 +604,52 @@ XXXX: gg 24@ 33
 // error
 // OP:XXXX has 1 param, not 2.
 </pre>
+It can adapt its parameter limiter according to your needs, so you can write a single script for Android and PC.
+<pre>
+WRITE_MEMORY 1 2 3
+// missing (1||2) parameters
+WRITE_MEMORY 1 2 3 4
+// ok, for PC
+WRITE_MEMORY 1 2 3 4 5
+// ok, for Android
+WRITE_MEMORY 1 2 3 4 5 6
+// is cleaner and ok
+LOAD_ALL_STREAMING_MODELS
+// is mobile and occupy the same opcode
+</pre>
 </details>
-<br> 
+
+<details>
+<summary>Command finder with IA</summary>
+Let's be honest, there is no AI like Copilot here, but a simple scoring algorithm, which searches for the title or description closest to our request.<br>
+<b>Syntax</b>
+<pre>
+// ‹message› (??|??)
+</pre>
+This is a built-in tool in the editor. So to use it, you just have to position yourself on a line that has no written content, and proceed to make a comment.<br />
+<br />
+Here you just describe what you need (in English) and when you finish, end the line with '??' to ask for an opcode and it will appear with the commented parameters.
+<b>Example</b>
+<pre>
+// create a actor??
+</pre>
+<b>Result</b>
+<pre>
+// create a actor
+CREATE_CHAR {PedType} {model_char} {float} {float} {float} = {var_any}
+//Creates a character at the specified location, with the specified model and pedtype
+</pre>
+or '!!' to auto-complete them with usage examples.<br>
+<b>Example</b>
+<pre>
+// create a actor!!
+</pre>
+<b>Result</b>
+<pre>
+CREATE_CHAR PEDTYPE.CIVMALE [model_char] 23.56 21.87 44.94 = $I0J
+</pre>
+</details>
+<br>
 The IDE limits some features for better performance.<br>
 - The syntax highlighter only colors the lines near the cursor.<br>
 - Autocomplete is limited to displaying a maximum of 400 results.<br>
@@ -639,7 +684,16 @@ The IDE limits some features for better performance.<br>
 </div>
 
 <div id="toast-container"></div>
+<div id="tab-list" class="d-flex row between">
 <div id="tabsContainer" class="scroll-shadows"></div>
+<span id="button-quick-keys">⥅</span>
+<div id="menu-quick-keys" class="d-none">
+<button id="quick-close"><b>-</b> Quick Close</button>
+<hr/>
+<button id="close-others"><b>-</b> Close Others</button>
+<button id="close-all"><b>-</b> Close All</button>
+</div>
+</div>
 
  <div id="editor-content" class="h-56 d-flex row">
   <pre id="editor-counterLine" class="h-56 m-0 r-0 pl-3 pr-2 px-2"></pre>
@@ -671,13 +725,14 @@ The IDE limits some features for better performance.<br>
 <div id="data-line-config" class="d-flex between py-1 w-100">
 <div class="d-flex g-1 p-1">
   <span id='current_line'></span>
-  <span id='current_opcode'></span>
+  <span id='current_opcode' onclick="$('#short_desc').toggle()" class='d-none'></span>
 </div>
 <div class="d-flex g-1 p-1">
     <span id="carga" class="active"></span>
     <span id="porcentaje"></span>
 </div>
 </div>
+
 <div id="short_desc" class="py-1 d-none"></div>
 
 <div class="d-flex ccenter center p-2 pb-0 w-100 g-3 d-sm-none" id="keys-mobile">

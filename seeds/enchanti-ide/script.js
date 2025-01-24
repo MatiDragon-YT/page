@@ -29,7 +29,10 @@ NodeList.prototype.forEach = Array.prototype.forEach
 /** Console.log
  * @param {AnyTypeData} opciona
  */
-const log = (MESSAGE) => console.log(MESSAGE)
+const log = (MESSAGE) => {
+  console.log(MESSAGE)
+  return MESSAGE
+}
 /** Smart selector for elements of the DOM
  * @param {DOMString}
  * @param {Element} optional
@@ -57,6 +60,7 @@ const $ = (element, _parent = document) => {
 		return element
 	}
 }
+
 /** Smart creator for elements of the DOM
  * @param {DOMString}
  * @return {Element}
@@ -82,16 +86,71 @@ function apply(element, callback) {
   }
 }
 
-
-
-
-
 window.vibrateNavigator = function(x){
   if (window.navigator.vibrate)
     window.navigator.vibrate(x)
   else
     log('API.vibrate: not available')
 }
+
+
+
+
+//     FUNCIONES PARA OPTIMIZAR LLAMADAS
+
+
+
+
+function debounce(func, delay) {
+    let debounceTimer;
+    return function() {
+        const context = this;
+        const args = arguments;
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => func.apply(context, args), delay);
+    };
+}
+
+function memoize(func) {
+  const cache = new Map(); // Caché para resultados
+
+  return (...args) => {
+    // Crear una clave única
+    const key = JSON.stringify(args);
+
+    // Verificar si ya está en caché
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+
+    // Si no está en caché, ejecuta la función y almacena el resultado
+    const result = func(...args);
+    cache.set(key, result);
+    return result;
+  };
+}
+
+function throttle(func, limit){
+  let lastFunc;
+  let lastRan;
+  return (...args) => {
+    const context = this;
+    if (!lastRan) {
+      func.apply(context, args); // Ejecuta inmediatamente
+      lastRan = Date.now();
+    } else {
+      clearTimeout(lastFunc); // Limpia el temporizador
+      lastFunc = setTimeout(() => {
+        if (Date.now() - lastRan >= limit) {
+          func.apply(context, args); // Ejecuta si pasa el límite
+          lastRan = Date.now();
+        }
+      }, limit - (Date.now() - lastRan));
+    }
+  };
+};
+
+
 
 //       FUNCIONES DE OBJECT
 
@@ -132,8 +191,32 @@ function deepMerge(target, source) {
 
 
 
+function compressJSON(jsonString) {
+  try {
+    const json = JSON.parse(jsonString);
+    return JSON.stringify(json);
+  } catch (error) {
+    return jsonString;
+  }
+}
 
 
+
+
+function Random_getValue(obj) {
+  const keys = Object.keys(obj);
+  const randomKey = keys[Math.floor(Math.random() * keys.length)];
+  return obj[randomKey];
+}
+function Random_getKey(obj) {
+  const keys = Object.keys(obj);
+  const randomKey = keys[Math.floor(Math.random() * keys.length)];
+  return randomKey;
+}
+function Random_getItem(arr) {
+  const indiceAleatorio = Math.floor(Math.random() * arr.length);
+  return arr[indiceAleatorio];
+}
 //       FUNCIONES DE ARRAY
 
 
@@ -232,7 +315,7 @@ async function LSget(url, _saveAt, retries = 3) {
         const response = await fetch(url);
         const streamResponse = await fetchPercentage(response);
         text = await streamResponse.text();
-        LS.set(_saveAt, text);
+        LS.set(_saveAt, compressJSON(text));
         break;
       } catch (error) {
         if (attempt === retries) {
@@ -296,6 +379,7 @@ async function LSgetCollection(files, messaElem, loadElem) {
 
   return results;
 }
+
 
 
 
@@ -611,29 +695,40 @@ EP.clearLine = function(lineNumber) {
 
 //    DOM ELEMENTS
 
-const $itemsContainer = $('#items');
-const $addTextTabButton = $('#addTextTab');
-const $addFolderTabButton = $('#addFolderTab');
-const $currentDirectory = $('#currentDirectory');
-const $clearAll = $('#clearAll');
+const $itemsContainer = $('#items')
+const $addTextTabButton = $('#addTextTab')
+const $addFolderTabButton = $('#addFolderTab')
+const $currentDirectory = $('#currentDirectory')
+const $clearAll = $('#clearAll')
 
 const $menu = $('#menu')
 const $explorer = $('#explorer')
 const $backgroundExplorer = $('#backgroundExplorer')
 
+const $tabsContainer = $('#tabsContainer')
 const $editorCounterLine = $("#editor-counterLine")
 const $editorContainer = $('#editor-container')
-const $editor = $('#editor');
+const $editor = $('#editor')
 const $highlighting = $("#highlighting")
 
-const $settings = $('#settings')
-const $documentation = $('#documentation')
-const $debugHex = $('#debug_hex')
+const $error = $('#error')
+const $currentLine = $('#current_line')
+const $currentOpcode = $('#current_opcode')
+const $shortDesc = $("#short_desc")
 
+const $debugHex = $('#debug_hex')
+const $documentation = $('#documentation')
+const $settings = $('#settings')
+
+const $buttonQuickKeys = $('#button-quick-keys') 
+const $menuQuickKeys = $('#menu-quick-keys')
+const $quickClose = $('#quick-close')
+const $closeAll = $('#close-all')
+const $closeOthers = $('#close-others')
 
 //    SETTINGS
 
-let SUGGESTION_ENGINE_TYPE = "FUZZY";
+let SUGGESTION_ENGINE_TYPE = "AKIN";
 // Puede ser "EXACT" o "FUZZY" o "AKIN"
 let SUGGESTION_SORT_TYPE = "SIMILAR";
 // Puede ser "OFF" "SIMPLE" o "SIMILAR"
@@ -697,6 +792,7 @@ const resetView = (sinFx) => {
   $settings.class('+d-none')
   $documentation.class('+d-none')
   $debugHex.class('+d-none')
+  $menuQuickKeys.class('+d-none')
   
   $editorCounterLine.class('-d-none')
   $editorContainer.class('-w-50')
@@ -723,7 +819,7 @@ $('[for="debug_hex"]', e=>{e.onclick = () =>{
   $editorCounterLine.class('~d-none')
   $editorContainer.class('~w-50')
   $highlighting.class('')
-  $('#error').style.display = 'none'
+  $error.style.display = 'none'
 
   if (!$debugHex.class('~d-none').i('d-none')){
     syncDebugHex()
@@ -732,11 +828,31 @@ $('[for="debug_hex"]', e=>{e.onclick = () =>{
   }
 }})
 
+$quickClose.onclick = () => {
+  Tab_Remove(currentTabId)
+  $menuQuickKeys.class('+d-none')
+}
+$closeAll.onclick = () => {
+  editedTabs.forEach(tb => Tab_Remove(tb.id))
+  $menuQuickKeys.class('+d-none')
+}
+$closeOthers.onclick = () => {
+  
+  editedTabs.forEach(tb => {
+    if (tb.id != currentTabId)
+      Tab_Remove(tb.id)
+  })
+  
+  $menuQuickKeys.class('+d-none')
+}
+$buttonQuickKeys.onclick = () => {
+  $menuQuickKeys.class('-d-none')
+}
 
-
-
-
-
+$currentOpcode.onclick = () => {
+  $shortDesc.toggle()
+  $editor.focus()
+}
 
 //---------------------
 // explorador de archivos aqui
@@ -867,7 +983,7 @@ function processImports(content, currentDir, currentFolder, callingFile) {
         return importedContent !== null ? importedContent : match;
     });
 }
-  
+
 window.importFileInFile = function() {
     // Encontramos el archivo abierto
     let openTab = findTabById(currentTabId, tabs);
@@ -883,17 +999,17 @@ window.importFileInFile = function() {
     let finalContent = processImports(openTab.content, tabs, parentFolder, openTab.name);
 
     // Imprimimos el resultado final
+    
     if (!/\{\$I\s+([^\s]+)\}/i.test(finalContent)){
       return finalContent
     }
     return null
 }
   
-  // Event listener para el botón "compile"
-  $('[for=compile]', e=>{e.onclick = ()=>{
+// Event listener para el botón "compile"
+$('[for=compile]', e=>{e.onclick = ()=>{
     try {
-      importFileInFile()
-      .toCompileSCM(
+      importFileInFile().toCompileSCM(
         findTabById(currentTabId, tabs).name + '.txt'
       )
       showToast(`Compiled project!`)
@@ -931,7 +1047,6 @@ window.importFileInFile = function() {
 	}
 
 	function renderEditedTabs() {
-		const $tabsContainer = $('#tabsContainer');
 		$tabsContainer.innerHTML = '';
 		editedTabs.forEach(tab => {
 			const $tabButton = new$('button');
@@ -1002,6 +1117,7 @@ window.importFileInFile = function() {
         //currentTabId = null
       }
     }
+    
     syncHighlighting()
 		renderEditedTabs()
 	}
@@ -1475,6 +1591,7 @@ window.Item_Paste = function(folderId) {
 		}
 		updatePlaceholder()
 		saveCurrentTabId(id);
+		syncDebugHex()
 	}
 	window.Item_Remove = function(id) {
 		tabs = deleteTabById(id, tabs)
@@ -1850,7 +1967,8 @@ let nameBase=''
 	$addTextTabButton.onclick = Explorer_addText;
 	$addFolderTabButton.onclick = Explorer_addFolder;
 	
-	$editor.oninput = () => {
+	$editor.addEventListener('input', debounce(function(){
+	  
 		saveTabContent()
 		if(currentTabId !== null) {
 			const tab = findTabById(parseInt(currentTabId), tabs);
@@ -1862,11 +1980,15 @@ let nameBase=''
 		syncHighlighting()
 		
 		syncDebugHex()
-	};
+		  const contextMenu = document.getElementById('context-menu');
+      contextMenu.classList.remove('d-flex')
+	}, 250));
+	
 	$editor.onclick = () => {
 	  addCounterLine()
 	  UpdateCurrentLine()
 	  syncHighlighting()
+	  $menuQuickKeys.class('+d-none')
 	}
 	
 	window.addCounterLine = function(){
@@ -2237,27 +2359,138 @@ $("[key]", e => {
   }
 })
 
-
-
-let textData
 function UpdateCurrentLine() {
-  textData = $editor.DATA_TEXTAREA()
+  let textData = $editor.DATA_TEXTAREA()
+  ///log(textData)
   /* lineaCursor, columnaCursor, inSelection,
      charsSelected, textSelected, primerPalabra,
      mediaPalabra, textLine, linesSelected,
      posicionCursorAbsoluta */
+  
+  
+  // LINEA ACTUAL:
   if (textData.inSelection) {
-    $('#current_line').innerText =
-      '[' + textData.charsSelected + '] '
-      
-      if (textData.linesSelected.length > 1){
-      $('#current_line').innerText += 
-        ' Ln '+ textData.linesSelected.first() + '-' + textData.linesSelected.last()
-      }
+    $currentLine.innerText =
+    '[' + textData.charsSelected + ']'
+    if (textData.linesSelected.length > 1){
+      $currentLine.innerText += 
+      ' Ln '+ textData.linesSelected.first() + '..' + textData.linesSelected.last()
+    }
   } else {
-    $('#current_line').innerText =
-      'Ln '+textData.lineaCursor + ', Col ' + textData.columnaCursor
+    $currentLine.innerText =
+    'Ln '+textData.lineaCursor + ', Col ' + textData.columnaCursor
   }
+    
+    $currentOpcode.class('+d-none')
+    $shortDesc.class('+d-none')
+    // OPCODE ACTUAL:
+    
+    
+    
+    let opcodesDetected = []
+    let currentCol = 0
+    let opcodeFind = {
+      name: null,
+      id: '',
+      short: ''
+    }
+    
+    const textLine = textData.textLine.trim()
+    
+    if (textLine != ''){
+      textLine.dividirCadena().forEach(e => {
+        currentCol += e.length + 1
+        
+        let posible = e.match(/([A-Z]\w+\.[A-Z]\w+|[A-Z]\w+)/im)
+        
+        posible = posible != null
+          ? Input.isCommand(posible[0])
+          : null
+        
+        if (posible){
+          if (typeof posible == 'object'){
+            
+            if ('GET' in posible
+             || 'SET' in posible
+             || 'IS' in posible
+            ){
+              // es una clase
+              if (Object.keys(posible).length > 1){
+                opcodeFind.name = 'METHOD'
+                
+                Object.keys(posible).forEach(e => {
+                  const DExtracted = SCM_DB2[posible[e]]
+                  opcodeFind.id += 
+                    opcodeFind.id == ''
+                    ? DExtracted.id + '|'
+                    : DExtracted.id
+                  opcodeFind.short_desc += 
+                    opcodeFind.short_desc == ''
+                    ? DExtracted.short_desc + ' && '
+                    : DExtracted.short_desc
+                })
+              }
+              else {
+                Object.keys(posible).forEach(e => {
+                  const DExtracted = SCM_DB2[posible[e]]
+                  opcodeFind = {
+                    name: DExtracted.name,
+                    id: DExtracted.id,
+                    short_desc: DExtracted.short_desc
+                  }
+                })
+              }
+            }
+            else {
+              // es otra cosa
+              opcodeFind = {
+                name: posible.name,
+                id: posible.opcode,
+                short_desc: posible.short_desc
+              }
+            }
+            opcodesDetected.push(
+              {command: opcodeFind, hastaCol: currentCol}
+            )
+          }
+        }
+      })
+      
+      
+      let opFind = findObjectByNumber(opcodesDetected, textData.columnaCursor)
+      
+      
+      //console.clear()
+      //log({opcodesDetected, opFind})
+      
+      
+      if (opFind != null && opFind.command) {
+        opFind = opFind.command
+        
+        const opId = opFind.id.toUpperCase()
+        const opName = opFind.name.toUpperCase()
+        
+        const opParams = 
+          opId.includes('|') ? 2
+          : SCM_DB2[opId.toLowerCase()].num_params
+          + SCM_DB2[opId.toLowerCase()].output.length
+        
+        $currentOpcode.innerText =
+        '▼ '+ opId +'='+ opParams +' : '+ opName
+       
+       // +'('+opFind.params.length+')'
+        
+      
+        $shortDesc.innerText = opFind.short_desc
+      
+        $currentOpcode.class('-d-none')
+      }
+    }
+    
+   // $currentOpcode.innerText = ''
+    //$shortDesc.class('+d-none')
+    //$currentOpcode.class('+d-none') 
+  
 }
 function hasScrollBar(e) {
     return {
@@ -2273,7 +2506,25 @@ $editor.onscroll = () =>{
 
 
 
+function findObjectByNumber(array, number) {
+  // Verificar si solo hay un objeto con "command" no nulo
+  const objectWithCommand = array.filter(obj => 
+    obj.command !== null && obj.command !== false
+  );
+  
+  if (objectWithCommand.length === 1) {
+    return objectWithCommand[0]; // Si hay solo uno, devolverlo
+  }
 
+  // Si no, buscar el objeto según "hastaCol"
+  for (let i = 0; i < array.length; i++) {
+    if (number <= array[i].hastaCol) {
+      return array[i];
+    }
+  }
+
+  return null; // Si no encuentra ninguno (número fuera de rango)
+}
 
 
 
@@ -2348,17 +2599,6 @@ document.addEventListener('click', function() {
 let cursorX = 0;
 let cursorY = 0;
 
-// Debounce Function
-function debounce(func, delay) {
-    let debounceTimer;
-    return function() {
-        const context = this;
-        const args = arguments;
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => func.apply(context, args), delay);
-    };
-}
-
 document.addEventListener("mousemove", function(event) {
     cursorX = event.clientX;
     cursorY = event.clientY;
@@ -2375,9 +2615,11 @@ $editor.addEventListener("click", () => {
     autocomplete.classList.add("hidden");
 });
 
-function isCursorInString(text, cursorPosition) {
-  let enString = false,
-    elString = '';
+function Autocomplete_isAvaliable(text, cursorPosition) {
+  let enString = false;
+  let elString = '';
+    
+  let inComment = false;
   
   for (let i=0; i < cursorPosition; i++){
     if (/['"`]/.test(text[i])){
@@ -2390,11 +2632,15 @@ function isCursorInString(text, cursorPosition) {
         enString = !enString
       }
     }
+    if (text[i] === '/' && text[i + 1] === '/') {
+      inComment = true;
+    } else if (text[i] === '\n') {
+      inComment = false;
+    }
   }
   
-  return enString
+  return (enString || inComment)
 }
-
 
 let eventoForzado = false;
 function SUGGESTION_LIMIT() {
@@ -2416,7 +2662,7 @@ function SUGGESTION_LIMIT() {
       return 380
     }
     if (SUGGESTION_ENGINE_TYPE === 'AKIN') {
-      return 30
+      return 100
     }
   }
 }
@@ -2425,9 +2671,10 @@ $editor.addEventListener("input", debounce(function (event) {
   const cursorPosition = $editor.selectionStart;
 
   // Verificar si el cursor está dentro de un string
-  if (isCursorInString($editor.value, cursorPosition)) return;
+  if (Autocomplete_isAvaliable($editor.value, cursorPosition)) return;
 
   const textBeforeCursor = $editor.value.substring(0, cursorPosition);
+  
   const lastWord = textBeforeCursor.split(/[^\w$@#\.]/).pop();
   const classNameMatch = lastWord.match(/^(\w+)\.(\w*)$/);
 
@@ -2523,29 +2770,39 @@ $editor.addEventListener("input", debounce(function (event) {
     );
 
     if (!eventoForzado && suggestions.length < SUGGESTION_LIMIT()) {
-      addSuggestions(
-        models
-          .filter(model => suggestionMatches(model.name, lowerLastWord))
-          .map(model => ({
-            type: 'model',
-            value: model.name,
-            extraInfo: model.value
-          }))
-      );
-
+      
       for (const [category, words] of Object.entries(keywords)) {
-        if (suggestions.length >= SUGGESTION_LIMIT()) break;
+        if (suggestions.length >= SUGGESTION_LIMIT())break;
+        
         addSuggestions(
           words
-            .filter(word => suggestionMatches(word, lowerLastWord))
-            .map(word => ({
-              type: 'keyword',
-              value: category === 'opcode' ? word.replace(/.+?=/, '') : word,
-              extraInfo: category === 'opcode' ? `[${word.replace(/=.+/, '')}]` : `[${category}]`
-            }))//`
-        );
+          .filter(word => 
+            suggestionMatches(word, lowerLastWord)
+          )
+          .map(word => ({
+            type: 'keyword',
+            value: category === 'opcode'
+              ? word.replace(/.+?=/, '')
+              : word,
+            extraInfo: category === 'opcode'
+              ? '['+word.replace(/=.+/, '')+']'
+              : '['+category+']'
+          }))
+        )
       }
+      
+      addSuggestions(
+        models
+        .filter(model => suggestionMatches(model.name, lowerLastWord))
+        .map(model => ({
+          type: 'model',
+          value: model.name,
+          extraInfo: model.value
+        }))
+      );
     }
+    
+    
     updateAutocompletePositionWithCursor();
   }
 
@@ -2587,6 +2844,89 @@ $editor.addEventListener("input", debounce(function (event) {
   eventoForzado = false;
 }, 250));
 
+
+
+
+
+
+
+function areStringsSimilarWithMemoization() {
+  const cache = new Map();
+
+  return (str1, str2) => {
+    // Generar una clave única para las cadenas
+    const key = `${str1}|${str2}`;
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+
+    // Función normalizada
+    function normalizeString(str) {
+      return str.toLowerCase().replace(/[^a-z]/g, '');
+    }
+
+    // Si un string incluye al otro, son similares
+    if (str1.includes(str2)) return true;
+    if (str1.length < str2.length) return false;
+
+    // Definir tolerancia según la longitud
+    const tolerance =
+      str1.length <= 3 ? 1 : str1.length <= 10 ? 2 : 3;
+
+    const s1 = normalizeString(str1);
+    const s2 = normalizeString(str2);
+
+    // Verificar si al menos una letra de un string aparece en el otro
+    const hasCommonCharacter = (a, b) => {
+      const setA = new Set(a);
+      const setB = new Set(b);
+      for (const char of setA) {
+        if (setB.has(char)) return true;
+      }
+      return false;
+    };
+
+    if (!hasCommonCharacter(s1, s2)) return false;
+
+    // Calcular distancia de Levenshtein
+    const levenshteinDistance = (a, b) => {
+      const matrix = Array(a.length + 1)
+        .fill(null)
+        .map(() => Array(b.length + 1).fill(null));
+
+      for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+      for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+      for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j] + 1, // Eliminación
+            matrix[i][j - 1] + 1, // Inserción
+            matrix[i - 1][j - 1] + cost // Sustitución
+          );
+        }
+      }
+
+      return matrix[a.length][b.length];
+    };
+
+    const distance = levenshteinDistance(s1, s2);
+    const result = distance <= tolerance;
+
+    // Almacenar el resultado en el caché
+    cache.set(key, result);
+    return result;
+  };
+}
+
+// Crear una instancia de la función con memoización
+const areStringsSimilar = areStringsSimilarWithMemoization();
+
+
+
+
+
 function suggestionMatches(word, query) {
   word = word.toLowerCase();  // Convierte a minúsculas
   
@@ -2621,6 +2961,8 @@ function stringSimilarity(str1, str2) {
   const commonChars = getCommonChars(str1.toLowerCase(), str2.toLowerCase());
   return commonChars / Math.max(str1.length, str2.length); // Similaridad normalizada (0 a 1)
 }
+
+/*
 function areStringsSimilar(str1, str2) {
   // Si un string incluye al otro, son similares
   if (str1.includes(str2)) return true;
@@ -2671,6 +3013,12 @@ function areStringsSimilar(str1, str2) {
   const distance = levenshteinDistance(s1, s2);
   return distance <= tolerance;
 }
+
+
+*/
+
+
+
 
 document.getElementById("engineSelector").addEventListener("change", function(event) {
   setSuggestionEngineType(event.target.value);
@@ -2742,6 +3090,10 @@ function updateAutocompleteMenu(suggestions, lastWord, classNameMatch) {
         extraInfoElement.id = 'model'+extraInfo
         extraInfoElement.class("+imgModel")
 
+        const urlImg = extraInfo+0 > 312
+          ? `https://files.prineside.com/gtasa_samp_model_id/white/${extraInfo}_w_s.jpg`
+          : `https://wiki.multitheftauto.com/wiki/File:Skinid${extraInfo}.jpg`;
+
         extraInfoElement.innerHTML = 
         '= ' + extraInfo + ' 👁️'
         // da una preview
@@ -2749,10 +3101,12 @@ function updateAutocompleteMenu(suggestions, lastWord, classNameMatch) {
       + `
        <style>
        #model${extraInfo}:hover::after {
-         background-image: url("https://files.prineside.com/gtasa_samp_model_id/white/${extraInfo}_w_s.jpg");
+         background-image: url("${urlImg}");
        }
        </style>
         `
+        
+        
         
         suggestionItem.classList.add("number");
         break;
@@ -3104,7 +3458,7 @@ const syntaxHighlight = (code, exception = $editor) => {
   keywords.label = []
   const span = {
 		start : "<span class=",
-		end : ">$1<\/span>"
+		end : ">$1</span>"
 	}
 
 	const enter = {
@@ -3139,7 +3493,6 @@ const syntaxHighlight = (code, exception = $editor) => {
     .replace(/"/g, "&quot;")
     .replace(/\//g, "&sol;")
     
-    .replace(COMMAND_NAMES, '<span class="keyword">$1</span>');
     
 
 	text = text
@@ -3165,20 +3518,29 @@ const syntaxHighlight = (code, exception = $editor) => {
 	  if (input.startsWith(':'))
 	    keywords.label.push(input.r(':', '@'));
 	  
-	 return input.r(/([^\w]|^)([@:]\w+)/gm,"$1<span class=label>$2<\/span>")
+	 return input.r(/([^\w]|^)([@:]\w+)/gm,"$1<span class=label>$2</span>")
 	})
+	.r(/^(\w+:)$/gm, "<span class=label>$1</span>")
 	.r(/([^\w\.])(\w+)(\([^\n]*\))/g, "$1<span class=property>$2<\/span>$3")
 	//Arreglos
-	.r(/(\[)([\d+]*)(\])/g, "$1<span class=number>$2<\/span>$3")
+	.r(/(\[)([\d+]*)(\])/g, "$1<span class=number>$2</span>$3")
 	
 	//Variables
 	.r(/([ifvs]?\&amp;[0-9\-]+|(\x{00}|[ifsv])\$([\d\w]+)|timer(a|b|x|z)|\d+\@([ifsv])?)/gi, enter.variables)
 
 
 	//Numeros
-	.r(/(c?\#\w*|\d+([box.])\w+|\-?\.?\d[e\+\-_\d\.]*(fps|[smh])?)\b/gi, enter.numbers)
+	.r(/(\x20?c?\#\w*|\d+([box.])\w+|\-?\.?\d[e\+\-_\d\.]*(fps|[smh])?)\b/gi, input=>{
+	  
+	  if (/ c#[a-f0-9]{3,6}/i.test(input)){
+	    return input.r(/^ c/i,
+        '<span style="color:' + input.trim().r('c') + '">▇</span>c').r(/(c#.+)/, enter.numbers)
+	  }
+	  
+	  return '<span class=number>'+input+'</span>'
+  })
 	
-	.r(/(?!\#)(\W)(?!\$)([\d_]+)(?!\:|\@)([ifsv]?)\b/ig, '$1<span class=number>$2$3<\/span>')
+	.r(/(?!\#)(\W)(?!\$)([\d_]+)(?!\:|\@)([ifsv]?)\b/ig, '$1<span class=number>$2$3</span>')
 
 	//Clases
 
@@ -3189,7 +3551,7 @@ const syntaxHighlight = (code, exception = $editor) => {
 
 
       // Palabras claves: sintaxis
-      text = text.replace(keywordPattern, '<span class="keyword ">$1</span>');
+      text = text.replace(keywordPattern, '<span class="keyword">$1</span>');
   
 	   text = text.r(constantes, enter => {
 	     
@@ -3222,16 +3584,16 @@ function syncHighlighting(){
 
 
 function syncDebugHex(){
-  if (!$debugHex.class('?d-none'))
+  if (!$debugHex.class('?d-none')){
   try {
     $debugHex.innerText =
       importFileInFile().Translate(true, true);
-    $('#error').style.display = 'none'
+    $error.style.display = 'none'
   } catch (error) {
-    $('#error').style.display = 'flex'
-    $('#error').innerText = error.message
+    $error.style.display = 'flex'
+    $error.innerText = error.message
     console.error(error.message)
-  }
+  }}
 }
 
 $editor.addEventListener("click", syncHighlighting);
@@ -3268,7 +3630,9 @@ const DOWNLOADED = {
   CONSTANTS:5,
   MODELS:6,
   JSON_VERSION:7,
-  JSON_DATA:8
+  JSON_DATA:8,
+  OPCODES:9,
+  JSON_DATA_MOBILE:10,
 }
 
 /**/
@@ -3305,7 +3669,15 @@ DATA_DOWNLOADED = await LSgetCollection(
    
    // file json sa
    ['https://raw.githubusercontent.com/sannybuilder/library/master/sa/sa.json',
-   './data/sa.json']
+   './data/sa.json'],
+   
+   // opcodes
+   ['./data/opcodes.txt'],
+   
+      // file json sa
+   ['https://raw.githubusercontent.com/sannybuilder/library/master/sa_mobile/sa_mobile.json',
+   './data/sa_mobile.json'],
+   
  ],
   $('#porcentaje'), // Elemento HTML para mostrar progreso
   $('#carga')
@@ -3772,7 +4144,186 @@ lvar_array_string16 lenght  string_v    string
 
 //     TRANSPILADORES
 
-
+const Input = {
+  isLong: x => /^".*"$/m.test(x),
+  isShort: x => /^'.*'$/m.test(x),
+  isFormat: x => /^`.*`$/m.test(x),
+  isString : x => {
+    return (Input.isLong(x)
+    || Input.isShort(x)
+    || Input.isFormat(x))
+  },
+  isInt : x => /^[+-]?\d[\d_]*$/m.test(x),
+  isFloat : x => /^[+-]?(\.\d[\d_]*|\d[\d_]*[f\.][\d_]*)$/mi.test(x),
+  isNote: x => /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)$/m.test(x),
+  isTime: x => /^[+-]?(\d+\.\d+|\.?\d+)(fps|[smh])$/.test(x),
+  isHexInt: x => /^0x[\da-f]+$/im.test(x),
+  isHexFloat: x => /^0x[\da-f]+(\.[\da-f]*)?p[+-]?\d+$/im.test(x),
+  isHex: x => Input.isHexInt(x) ?? Input.isHexFloat(x),
+  isBin: x => /^0b[01]+$/im.test(x),
+  isOct: x => /^0o[0-7]+$/im.test(x),
+  isModel: x => /^#\w+$/m.test(x),
+  isNumber: x => {
+    return (Input.isTime(x)
+    || Input.isNote(x)
+    || Input.isFloat(x)
+    || Input.isInt(x)
+    || Input.isBin(x)
+    || Input.isOct(x)
+    || Input.isHex(x)
+    || NaN)
+  },
+  isOpcode: x => /^[a-f\d]+:$/mi.test(x),
+  isKeyword: x => {
+    if (/^[a-z]\w*$/mi.test(x)){
+      let keys = `while,end,if,then,else,repeat,until,for,int,float,string,short,long`.split(',')
+      
+      if (keys.i(x.toLowerCase())){
+        return true
+      }
+      
+      return SCM_DB[x.toLowerCase()]
+    }
+    return null
+  },
+  isClass: x => {
+    x = x.toUpperCase()
+    
+    if (/^([A-Z]\w+)\.([A-Z]\w+)(\([^\n]*\))?$/mi.test(x)){
+      let m = x.match(/\w+/g)
+      
+      if (m && m[0] in classes && m[1] in classes[m[0]]) {
+        const op = classes[m[0]][m[1]]
+      
+        return op
+      }
+    }
+    
+    return null
+  },
+  isCommand: x => {
+    const cmdFind = (Input.isOpcode(x)
+    || Input.isKeyword(x)
+    || Input.isClass(x)
+    || null)
+    
+    return cmdFind
+  },
+  isConstant: x => {
+    if (/^\w+$/mi.test(x)){
+      x = x.toUpperCase()
+      
+      if (x in CONSTANTS)
+        return CONSTANTS[x];
+    }
+    return undefined
+  },
+  isEnum: x => {
+    x = x.toUpperCase()
+    let m = x.match(/^([a-z]\w*)\.(\w*)$/mi)
+    
+    if (m){
+      if (m[1] in CUSTOM_ENUM && m[2] in CUSTOM_ENUM[m[1]])
+        return CUSTOM_ENUM[m[1]];
+    }
+    else if (/^\w+$/m.test(x)){
+      if (x in CUSTOM_ENUM)
+        return CUSTOM_ENUM[x];
+    }
+    return false
+  },
+  isValueSimple: x => {
+    return (Input.isConstant(x)
+    || Input.isEnum(x))
+  },
+  isLocalVar: x => {
+    return /^\d+@[a-z]?$/im.test(x)
+  },
+  isGlobalVar: x => {
+    return /^[a-z]?\$\w+$/im.test(x)
+  },
+  isAdmaVar: x => {
+    return /^[a-z]?&\d+$/im.test(x)
+  },
+  isLocalVarArray: x => /^\d+@[a-z]?(\(.+(,\d+[a-z]?)?\))$/im.test(x),
+  isGlobalVarArray: x => /^[a-z]?\$\w+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
+  isAdmaVarArray: x => /^[a-z]?&\d+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
+  isNegate: x => /^\!.+/m.test(x),
+  isNegative: x => /^\-.+/m.test(x),
+  isPositive: x => /^\+.+/m.test(x),
+  isOperation: x => /^([\!=^~<>%+*/-]+|=#|[+-]=@|=&)$/.test(x),
+  isVariable : x => {
+    return (Input.isLocalVar(x)
+    || Input.isGlobalVar(x)
+    || Input.isAdmaVar(x)
+    || Input.isLocalVarArray(x)
+    || Input.isGlobalVarArray(x)
+    || Input.isAdmaVarArray(x))
+  },
+  getTypeVar: x => {
+    if (Input.isVariable(x)){
+      const type =
+        x.match(/@(\w)/)[1]
+        || x.match(/(\w)\$/)[1]
+        || x.match(/(\w)\&/)[1];
+        
+      return x == 'f' ? 'float'
+           : x == 's' ? 'short'
+           : x == 'v' ? 'long'
+           : 'int';
+      
+    } else {
+      const error = 'getTypeVar: required a variable of input. (0@, $any, &123)'
+      console.error(error)
+      return new Error(error)
+    }
+  },
+  isArray : x => {
+    return (Input.isLocalVarArray(x)
+    || Input.isGlobalVarArray(x)
+    || Input.isAdmaVarArray(x))
+  },
+  isLabel : x => /^[:@]\w+$/m.test(x),
+  isValueConstant : x => {
+    return (Input.isValueSimple(x)
+    || Input.isNumber(x)
+    || Input.isString(x)
+    || Input.isVariable(x))
+  },
+  isValid: x => {
+    return (Input.isCommand(x)
+    || Input.isNumber(x)
+    || Input.isString(x)
+    || Input.isVariable(x)
+    || Input.isValueSimple(x)
+    || Input.isLabel(x))
+  },
+  getTypeData: x => {
+    if (Input.isLabel(x)) return 'label';
+    if (Input.isCommand(x)) return 'command';
+    if (Input.isNumber(x)) return 'number';
+    if (Input.isString(x)) return 'string';
+    if (Input.isVariable(x)) return 'variable';
+    if (Input.isValueSimple(x)) return 'constant';
+    if (Input.isOperation(x)) return 'operation';
+    else return undefined
+  },
+  getTypeCompile: x => {
+    if (Input.isLabel(x)) return 'label';
+    if (Input.isInt(x)) return 'int';
+    if (Input.isFloat(x)) return 'float';
+    if (Input.isShort(x)) return 'short';
+    if (Input.isLong(x)) return 'long';
+    if (Input.isFormat(x)) return 'long';
+    if (Input.isLocalVar(x)) return 'lvar';
+    if (Input.isGlobalVar(x)) return 'gvar';
+    if (Input.isAdmaVar(x)) return 'avar';
+    if (Input.isLocalVarArray(x)) return 'lvararray';
+    if (Input.isGlobalVarArray(x)) return 'gvararray';
+    if (Input.isAdmaVarArray(x)) return 'avararray';
+    else return undefined
+  }
+}
 
 
 
@@ -3841,7 +4392,7 @@ SP.setOpcodeNegative = function() {
   //   retornar la suma de ambos.
   return (
     +('0x' + (this + "")) + 0x8000
-  ).toString(16).padStart(4,'0')
+  ).toString(16).padStart(4,'0').toUpperCase()
 }
 
 SP.setOpcodePositive = function() {
@@ -3853,7 +4404,7 @@ SP.setOpcodePositive = function() {
   //   retornar la resta de ambos.
   return (
     +('0x' + (this + "")) - 0x8000
-  ).toString(16).padStart(4,'0')
+  ).toString(16).padStart(4,'0').toUpperCase()
 }
 
 /** Convert any number to HEX with BIG-ENDIAN
@@ -4000,18 +4551,11 @@ SP.enumsGenerator = function() {
 
 let CUSTOM_ENUM = DATA_DOWNLOADED[DOWNLOADED.ENUMS].enumsGenerator()
 
-/*
-let SASCM = (await LSget(
-  'https://raw.githubusercontent.com/MatiDragon-YT/data/master/sa_cp/SASCM.INI',
-  'cyan',
-  './data/SASCM.INI'
-))
-*/
 
 let CUSTOM_KEYWORDS = DATA_DOWNLOADED[DOWNLOADED.KEYWORDS]
 
 CUSTOM_KEYWORDS = 
-CUSTOM_KEYWORDS.toLowerCase().split('\n').map(keyword =>{
+CUSTOM_KEYWORDS.toUpperCase().split('\n').map(keyword =>{
   keyword = keyword.trim()
   if (!keyword.startsWith(';')){
     if (keyword != ''){
@@ -4179,22 +4723,193 @@ MODELS = Object.fromEntries(MODELS)
 
 let SCM_DB = {}
 let SCM_DB2 = {}
-let DATA_DB = ''
-let DATA_DB2 = ''
+let SCM_DB3 = {}
 
-async function dbSBL2(game){
-  DATA_DB2 = DATA_DOWNLOADED[DOWNLOADED.JSON_DATA]
+let CUSTOM_KEYWORDS3 = {}
+function dbSBL3(DATA_DB3) {
+  if (DATA_DB3 == undefined) return SCM_DB3;
+  
+  DATA_DB3 = JSON.parse(DATA_DB3)
+  
+  DATA_DB3.extensions.forEach(extension => {
+    extension.commands.forEach((command) => {
+      let register = true
+      if (command?.attrs?.is_unsupported == true) {
+        register = false
+      }
+
+      if (register) {
+        keywords.opcode.push(
+          command.id.toUpperCase() +'='+
+          command.name.toUpperCase()
+        )
+
+        if (SCM_DB3[command.id.toUpperCase()] == undefined){
+          SCM_DB3[command.id.toUpperCase()] = []
+        }
+        
+        if (
+          !SCM_DB3[command.id.toUpperCase()]
+          .includes(command.name.toUpperCase())
+        ){
+          SCM_DB3[command.id.toUpperCase()].push(
+            command.name.toUpperCase()
+            //+'='+(command.num_params??0)
+          )
+        }
+        
+        
+        
+       //   command.name.toLowerCase();
+        if (
+          SCM_DB3[command.name.toUpperCase()] == undefined
+        ){
+          SCM_DB3[command.name.toUpperCase()] = {
+            id: command.id.toUpperCase(),
+            name: command.name.toUpperCase(),
+            class: command.class ?? '',
+            member: command.member ?? '',
+            short_desc: command.short_desc ?? '',
+            num_params: command.num_params ?? 0,
+            input: command.input ?? [],
+            output: command.output ?? [],
+            attrs: command.attrs ?? '',
+            variable: false,
+            multiparam: false,
+            operator: command.operator ?? null,
+          }
+        }else {
+          if (SCM_DB3[command.name.toUpperCase()].num_params != command.num_params) {
+            SCM_DB3[command.name.toUpperCase()].num_params = [
+              SCM_DB3[command.name.toUpperCase()].num_params, command.num_params
+            ]
+            SCM_DB3[command.name.toUpperCase()].input = [
+              SCM_DB3[command.name.toUpperCase()].input, command.input
+            ]
+            SCM_DB3[command.name.toUpperCase()].output = [
+              SCM_DB3[command.name.toUpperCase()].output, command.output
+            ]
+            
+            SCM_DB3[command.name.toUpperCase()].multiparam = true
+          }
+        }
+        
+        if (SCM_DB3[command.name.toUpperCase()].multiparam == false){
+          SCM_DB3[command.name.toUpperCase()]
+          .input
+          .forEach(e => {
+            if (e.type == 'arguments')
+            {
+              SCM_DB3[command.name.toUpperCase()].variable = true
+            }
+          })
+        }
+      }
+    })
+  })
+
+  CUSTOM_KEYWORDS.forEach(keyword => {
+    CUSTOM_KEYWORDS3[keyword.key] = SCM_DB3[keyword.opcode]
+  })
+  return SCM_DB3
+}
+
+SP.DB_getData = function(){
+  return SCM_DB3[this.toUpperCase()]
+}
+
+SP.DB_getOpcode = function() {
+  return SCM_DB3[this.toUpperCase()].id
+}
+
+SP.DB_getCommand = function(num_param = null) {
+  let entrada = this.toUpperCase()
+  if (SCM_DB3[entrada].length > 1){
+    let LOpcodes = []
+    
+    SCM_DB3[entrada].forEach(name => {
+      if (typeof SCM_DB3[name].num_params == 'number'){
+        LOpcodes.push({
+          name: SCM_DB3[name].name,
+          num_params: SCM_DB3[name].num_params - SCM_DB3[name].variable,
+          variable: SCM_DB3[name].variable
+        })
+      } else {
+        LOpcodes.push({
+          name: SCM_DB3[name].name,
+          num_params: SCM_DB3[name].num_params[0] - SCM_DB3[name].variable,
+          variable: SCM_DB3[name].variable
+        })
+        LOpcodes.push({
+          name: SCM_DB3[name].name,
+          num_params: SCM_DB3[name].num_params[1] - SCM_DB3[name].variable,
+          variable: SCM_DB3[name].variable
+        })
+      }
+    })
+    
+    if (num_param == null) return LOpcodes;
+    
+    const max = Math.max(...LOpcodes.map(e=>e.num_params))
+    
+    if (num_param > max) throw new Error('You put in extra parameters. The IDE could not clear the extra parameters. do it manually.')
+    
+    
+    function findOpcodeByInputOrVariable(opcodes, inputNumber) {
+      // Buscar el objeto donde input sea igual a inputNumber
+      const exactMatch = opcodes.find(opcode => opcode.num_params === inputNumber);
+      if (exactMatch) return exactMatch;
+    
+      // Si no hay coincidencia, buscar el primer objeto con variable en true
+      const fallback = opcodes.find(opcode => opcode.variable === true);
+      return fallback || null; // Retorna null si no encuentra ninguno
+    }
+    
+    const findOpcode = findOpcodeByInputOrVariable(LOpcodes, num_param)
+    
+    if (findOpcode){
+      return findOpcode
+    }else{
+      const avaliables = LOpcodes
+        .map(op => op.num_params)
+        .sort((a,b) => a - b)
+      
+      throw new Error('The number of parameters does not match any opcode in the database: '+ avaliables)
+    }
+  }
+  
+  return SCM_DB3[entrada][0].DB_getData()
+}
+
+dbSBL3(DATA_DOWNLOADED[DOWNLOADED.JSON_DATA_MOBILE])
+dbSBL3(DATA_DOWNLOADED[DOWNLOADED.JSON_DATA])
+//log(SCM_DB3)
+
+
+
+keywords.opcode = [...new Set(keywords.opcode.map(e => e.toUpperCase()))]
+
+keysHigh =
+  new RegExp("\\b(" +
+    keywords.opcode
+    .map(e => e.replace(/.+=/g, ''))
+    .join("|") +
+    ")\\b",
+    "gi");
+    
+function dbSBL2(game){
+  let DATA_DB2 = DATA_DOWNLOADED[DOWNLOADED.JSON_DATA]
 
   DATA_DB2 = JSON.parse(DATA_DB2)
   
 	DATA_DB2.extensions.forEach(extension => {
 		extension.commands.forEach((command) => {
-		  let omitir = false
-		  if (command?.attrs?.is_unsupported){
-		    omitir = true
+		  let register = true
+		  if (command?.attrs?.is_unsupported == true){
+		    register = false
 		  }
 		  
-		  if (!omitir){
+		  if (register){
 		    COMMAND_NAMES.push(command.name.toLowerCase())
 		    
   		  SCM_DB2[command.name.toLowerCase()] = 
@@ -4229,40 +4944,45 @@ async function dbSBL2(game){
 	CUSTOM_KEYWORDS.forEach(keyword => {
 	  SCM_DB2[keyword.key] = SCM_DB2[keyword.opcode] 
 	})
-	
-	LS.set('shared_db', JSON.stringify(SCM_DB2))
 	return true
 }
 
 
-async function dbSBL(game){
-  DATA_DB = DATA_DOWNLOADED[DOWNLOADED.JSON_DATA]
+function dbSBL(game){
+  let DATA_DB = DATA_DOWNLOADED[DOWNLOADED.JSON_DATA]
 
   DATA_DB = JSON.parse(DATA_DB)
-  
-  
   
 	DATA_DB.extensions.forEach(extension =>{
 		
 		extension.commands.forEach((command, c) =>{
-		  let omitir = false
+		  let register = true
 			
-		  if (command.attrs) {
-				if ("is_unsupported" in command.attrs) {
-					omitir = true
-				}
+		  if (command?.attrs?.is_unsupported == true) {
+			  register = false
 		  }
 		  
-		  if (!omitir){
+		  if (register){
 				SCM_DB[command.name.toLowerCase()] = {
+				  name: command.name,
 					opcode : command.id.toLowerCase(),
-					params : []
+					short_desc : command?.short_desc || '',
+					params : [],
+					input : [],
+					output: []
 				}
 				if (command.input) {
-					command.input.forEach(param =>{
-						SCM_DB[command.name.toLowerCase()].params.push(param.type.toLowerCase())
-					})
-				}
+        command.input.forEach(param => {
+          SCM_DB[command.name.toLowerCase()].input.push(param.source ? param.source != 'literal' ? param.source: param.type: param.type)
+          SCM_DB[command.name.toLowerCase()].params.push(param.type)
+        })
+        }
+        if (command.output) {
+        command.output.forEach(param => {
+          SCM_DB[command.name.toLowerCase()].output.push(param.source)
+          SCM_DB[command.name.toLowerCase()].params.push(param.type)
+        })
+      }
 		  }
 		})
 	})
@@ -4274,12 +4994,12 @@ const game = 'sa'
 
 let version = DATA_DOWNLOADED[DOWNLOADED.JSON_VERSION]
 
-await dbSBL(game)
-await dbSBL2(game)
+dbSBL(game)
+dbSBL2(game)
 
 COMMAND_NAMES = new RegExp(
   "\\b("+
-  [...new Set(COMMAND_NAMES)].join("|") +
+  [...new Set(COMMAND_NAMES.map(e => e.toUpperCase()))].join("|") +
   ")\\b",
   "gi");
 
@@ -4722,8 +5442,8 @@ SP.addNumbersToIfs = function() {
 SP.removeComments = function() {
   let result = this
     .r(/\/\/.*$/gm, '')
-		.r(/(\s+)?\/\*([^\/]*)?\*\//gm, '')
-		.r(/(\s+)?\{([^\$][^\}]*(\})?)?/gm, '')
+		.r(/(\s*)\/\*([^\/]*)?\*\//gm, '')
+		.r(/(\s*)\{([^\$][^\}]*(\})?)?/gm, '')
 	
 	return result
     .split('\n')
@@ -4867,6 +5587,7 @@ SP.preProcesar = function() {
   })
   
   nString = nString
+    .r(/^(\w+):$/gm, ':$1')
     .r(/\btoHex\(([^)(]+)\)(\.offset\((\d+)\))?/gi, (...input) => {
       let str = input[1] || ''
       let offset = +input[3] ?? 0
@@ -5190,39 +5911,42 @@ function obtenerTipo(variable) {
     }
   }
 }
+
+
+
 function detectarOpcode(operacion, _lineaInvocada = 0) {
   const opcodes = {
     '=#': {
-      'GVAR_INT-GVAR_FLOAT': '8C',
-      'GVAR_FLOAT-GVAR_INT': '8D',
-      'LVAR_INT-GVAR_FLOAT': '8E',
-      'LVAR_FLOAT-GVAR_INT': '8F',
-      'GVAR_INT-LVAR_FLOAT': '90',
-      'GVAR_FLOAT-LVAR_INT': '91',
-      'LVAR_INT-LVAR_FLOAT': '92',
-      'LVAR_FLOAT-LVAR_INT': '93',
+      'GVAR_INT-GVAR_FLOAT': 'CSET_VAR_INT_TO_VAR_FLOAT',
+      'GVAR_FLOAT-GVAR_INT': 'CSET_VAR_FLOAT_TO_VAR_INT',
+      'LVAR_INT-GVAR_FLOAT': 'CSET_LVAR_INT_TO_VAR_FLOAT',
+      'LVAR_FLOAT-GVAR_INT': 'CSET_LVAR_FLOAT_TO_VAR_INT',
+      'GVAR_INT-LVAR_FLOAT': 'CSET_VAR_INT_TO_LVAR_FLOAT',
+      'GVAR_FLOAT-LVAR_INT': 'CSET_VAR_FLOAT_TO_LVAR_INT',
+      'LVAR_INT-LVAR_FLOAT': 'CSET_LVAR_INT_TO_LVAR_FLOAT',
+      'LVAR_FLOAT-LVAR_INT': 'CSET_LVAR_FLOAT_TO_LVAR_INT',
     },
     '+=@': {
-      'GVAR_FLOAT-FLOAT': '78',
-      'LVAR_FLOAT-FLOAT': '79',
-      'GVAR_FLOAT-GVAR_FLOAT': '7A',
-      'LVAR_FLOAT-LVAR_FLOAT': '7B',
-      'LVAR_FLOAT-GVAR_FLOAT': '7C',
-      'GVAR_FLOAT-LVAR_FLOAT': '7D',
+      'GVAR_FLOAT-FLOAT': 'ADD_TIMED_VAL_TO_FLOAT_VAR',
+      'LVAR_FLOAT-FLOAT': 'ADD_TIMED_VAL_TO_FLOAT_LVAR',
+      'GVAR_FLOAT-GVAR_FLOAT': 'ADD_TIMED_FLOAT_VAR_TO_FLOAT_VAR',
+      'LVAR_FLOAT-LVAR_FLOAT': 'ADD_TIMED_FLOAT_LVAR_TO_FLOAT_LVAR',
+      'LVAR_FLOAT-GVAR_FLOAT': 'ADD_TIMED_FLOAT_VAR_TO_FLOAT_LVAR',
+      'GVAR_FLOAT-LVAR_FLOAT': 'ADD_TIMED_FLOAT_LVAR_TO_FLOAT_VAR',
     },
     '-=@': {
-      'GVAR_FLOAT-FLOAT': '7E',
-      'LVAR_FLOAT-FLOAT': '7F',
-      'GVAR_FLOAT-GVAR_FLOAT': '80',
-      'LVAR_FLOAT-LVAR_FLOAT': '81',
-      'LVAR_FLOAT-GVAR_FLOAT': '82',
-      'GVAR_FLOAT-LVAR_FLOAT': '83',
+      'GVAR_FLOAT-FLOAT': 'SUB_TIMED_VAL_FROM_FLOAT_VAR',
+      'LVAR_FLOAT-FLOAT': 'SUB_TIMED_VAL_FROM_FLOAT_LVAR',
+      'GVAR_FLOAT-GVAR_FLOAT': 'SUB_TIMED_FLOAT_VAR_FROM_FLOAT_VAR',
+      'LVAR_FLOAT-LVAR_FLOAT': 'SUB_TIMED_FLOAT_LVAR_FROM_FLOAT_LVAR',
+      'LVAR_FLOAT-GVAR_FLOAT': 'SUB_TIMED_FLOAT_VAR_FROM_FLOAT_LVAR',
+      'GVAR_FLOAT-LVAR_FLOAT': 'SUB_TIMED_FLOAT_LVAR_FROM_FLOAT_VAR',
     },
     '+=': {
-      'GVAR_INT-INT': '8',
-      'GVAR_FLOAT-FLOAT': '9',
-      'LVAR_INT-INT': 'A',
-      'LVAR_FLOAT-FLOAT': 'B',
+      'GVAR_INT-INT': 'ADD_VAL_TO_INT_VAR',
+      'GVAR_FLOAT-FLOAT': 'ADD_VAL_TO_FLOAT_VAR',
+      'LVAR_INT-INT': 'ADD_VAL_TO_INT_LVAR',
+      'LVAR_FLOAT-FLOAT': 'ADD_VAL_TO_FLOAT_LVAR',
       
       'GVAR_INT-GVAR_INT': '58',
       'GVAR_FLOAT-GVAR_FLOAT': '59',
@@ -5527,7 +6251,7 @@ SP.operationsToOpcodes = function () {
 
 
 const regexVAR_ARRAY =
-  /([a-z]?[\$\&]\w+|\d+@[a-z]?|\w+)\(([\$&]\w+|\d+@|\w+)\s*([,\s]+\w+)?\)(\w)?/gi;
+  /(\.?)([a-z]?[\$\&]\w+|\d+@[a-z]?|\w+)\(([\$&]\w+|\d+@|\w+)\s*([,\s]+\w+)?\)(\w)?/gi;
 
 SP.normalizeArrays = function(){
   const nString = this.split('\n')
@@ -5535,6 +6259,8 @@ SP.normalizeArrays = function(){
     
     line = line
       .r(regexVAR_ARRAY, input =>{
+        if (/^\./m.test(input)) 
+          return input;
         
         input = input.r(/\s/g,'')
 
@@ -5684,8 +6410,8 @@ SP.transformTypeData = function(){
         if (color.length == 1){
           color = ''+color+color+color
         }
-        if (color.length == 2 || color.length >= 5){
-          throw new Error("Interprete color:\n\tLas longitudes validas son; 1, 3, 4, 6 y 8.")
+        if (color.length == 2 || color.length >= 7){
+          throw new Error("Interprete color:\n\tLas longitudes validas son; 1, 3, 4, 6 y 8.\ningreaste: "+color)
         }
         if (color.length <= 4){
           color = color
@@ -5695,7 +6421,7 @@ SP.transformTypeData = function(){
       	color = color.match(/.{1,2}/g).map(
       	  e => +('0x'+e)
       	).join(' ')
-
+        
         return color
       })
       .r(/^#\w+$/mi, model =>{
@@ -5794,14 +6520,15 @@ SP.classesToOpcodes = function(){
   }
   
   let ncode = ''
-  let lastClass = ''
+  let lastClass = null
   
   this.split('\n').forEach(line =>{
     line = line.trim()
     
     let isClass = false
     if (/([a-z]\w+)?\.([a-z]\w+)/i.test(line)){
-      line.match(/([a-z]\w+)?\.([a-z]\w+)/ig).forEach(c=>{
+      line.match(/([a-z]\w+)?\.([a-z]\w+)/ig)
+      .forEach(c=>{
         c = c.match(/([a-z]\w+)?\.([a-z]\w+)/i)
         
         if (!isClass){
@@ -5818,6 +6545,7 @@ SP.classesToOpcodes = function(){
         }
       })
     }
+    
     
     if (isClass){
     let isNegative = line.startsWith('!');
@@ -5994,7 +6722,6 @@ SP.classesToOpcodes = function(){
 
 SP.keywordsToOpcodes = function(){
   let nString = ''
-  
   this.split('\n').forEach(line => {
     let isNegative = false
     let nLine = ''
@@ -6013,24 +6740,19 @@ SP.keywordsToOpcodes = function(){
           }
           
           let isNegative = param[0] == '!'
-          let keyword = /^\!?(\w+)/m.exec(param)[1].toLowerCase()
+          let keyword = /^\!?(\w+)/m.exec(param)[1].toUpperCase()
             
-          if (keyword in SCM_DB2){
+          if (keyword in CUSTOM_KEYWORDS3){
+            param = SCM_DB3[CUSTOM_KEYWORDS3[keyword][0]].id
             
-            param = SCM_DB2[keyword].opcode ?? SCM_DB2[keyword].id ?? SCM_DB2[keyword]
-            
-            if (typeof SCM_DB2[keyword] == 'string'){
-              
-            }
             if (isNegative){
-              param = param.setOpcodeNegative()
+              param = setOpcodeNegative(param)
             }
-            
-            param = param +': '
+            param += ':'
           }
           
-        
       }
+      
       if (change)
         nLine = param +' '+ nLine
       else
@@ -6161,173 +6883,6 @@ SP.determineOperations = function(){
   return n
 }
 
-let Input = {
-  isLong: x => /^".*"$/m.test(x),
-  isShort: x => /^'.*'$/m.test(x),
-  isFormat: x => /^`.*`$/m.test(x),
-  isString : x => {
-    return (Input.isLong(x)
-    || Input.isShort(x)
-    || Input.isFormat(x))
-  },
-  isInt : x => /^[+-]?\d[\d_]*$/m.test(x),
-  isFloat : x => /^[+-]?(\.\d[\d_]*|\d[\d_]*[f\.][\d_]*)$/mi.test(x),
-  isNote: x => /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)$/m.test(x),
-  isTime: x => /^[+-]?(\d+\.\d+|\.?\d+)(fps|[smh])$/.test(x),
-  isHexInt: x => /^0x[\da-f]+$/im.test(x),
-  isHexFloat: x => /^0x[\da-f]+(\.[\da-f]*)?p[+-]?\d+$/im.test(x),
-  isHex: x => Input.isHexInt(x) ?? Input.isHexFloat(x),
-  isBin: x => /^0b[01]+$/im.test(x),
-  isOct: x => /^0o[0-7]+$/im.test(x),
-  isModel: x => /^#\w+$/m.test(x),
-  isNumber: x => {
-    return (Input.isTime(x)
-    || Input.isNote(x)
-    || Input.isFloat(x)
-    || Input.isInt(x)
-    || Input.isBin(x)
-    || Input.isOct(x)
-    || Input.isHex(x))
-  },
-  isOpcode: x => /^[a-f\d]+:$/mi.test(x),
-  isKeyword: x => {
-    if (/^[a-z]\w*$/mi.test(x)){
-      let keys = `while,end,if,then,else,repeat,until,for,int,float,string,short,long`.split(',')
-      
-      if (keys.i(x)){
-        return true
-      }
-      
-      return SCM_DB2[x]
-    }
-    return false
-  },
-  isClass: x => {
-    x = x.toUpperCase()
-    let m =
-      x.match(/^([a-z]\w*)\.([a-z]\w*)\(([^\n]*)\)$/mi)
-      || x.match(/^([a-z]\w*)\.([a-z]\w*)$/mi)
-    if (m){
-      return (m[1] in classes && m[2] in classes[m[1]])
-    }
-    return false
-  },
-  isCommand: x => {
-    return (Input.isOpcode(x)
-    || Input.isKeyword(x)
-    || Input.isClass(x))
-  },
-  isConstant: x => {
-    if (/^\w+$/mi.test(x)){
-      x = x.toUpperCase()
-      
-      if (x in CONSTANTS)
-        return CONSTANTS[x];
-    }
-    return undefined
-  },
-  isEnum: x => {
-    x = x.toUpperCase()
-    let m = x.match(/^([a-z]\w*)\.(\w*)$/mi)
-    
-    if (m){
-      return (m[1] in CUSTOM_ENUM && m[2] in CUSTOM_ENUM[m[1]])
-    }
-    return false
-  },
-  isValueSimple: x => {
-    return (Input.isConstant(x)
-    || Input.isEnum(x))
-  },
-  isLocalVar: x => {
-    return /^\d+@[a-z]?$/im.test(x)
-  },
-  isGlobalVar: x => {
-    return /^[a-z]?\$\w+$/im.test(x)
-  },
-  isAdmaVar: x => {
-    return /^[a-z]?&\d+$/im.test(x)
-  },
-  isLocalVarArray: x => /^\d+@[a-z]?(\(.+(,\d+[a-z]?)?\))$/im.test(x),
-  isGlobalVarArray: x => /^[a-z]?\$\w+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
-  isAdmaVarArray: x => /^[a-z]?&\d+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
-  isNegate: x => /^\!.+/m.test(x),
-  isNegative: x => /^\-.+/m.test(x),
-  isPositive: x => /^\+.+/m.test(x),
-  isOperation: x => /^([\!=^~<>%+*/-]+|=#|[+-]=@|=&)$/.test(x),
-  isVariable : x => {
-    return (Input.isLocalVar(x)
-    || Input.isGlobalVar(x)
-    || Input.isAdmaVar(x)
-    || Input.isLocalVarArray(x)
-    || Input.isGlobalVarArray(x)
-    || Input.isAdmaVarArray(x))
-  },
-  getTypeVar: x => {
-    if (Input.isVariable(x)){
-      const type =
-        x.match(/@(\w)/)[1]
-        || x.match(/(\w)\$/)[1]
-        || x.match(/(\w)\&/)[1];
-        
-      return x == 'f' ? 'float'
-           : x == 's' ? 'short'
-           : x == 'v' ? 'long'
-           : 'int';
-      
-    } else {
-      const error = 'getTypeVar: required a variable of input. (0@, $any, &123)'
-      console.error(error)
-      return new Error(error)
-    }
-  },
-  isArray : x => {
-    return (Input.isLocalVarArray(x)
-    || Input.isGlobalVarArray(x)
-    || Input.isAdmaVarArray(x))
-  },
-  isLabel : x => /^[:@]\w+$/m.test(x),
-  isValueConstant : x => {
-    return (Input.isValueSimple(x)
-    || Input.isNumber(x)
-    || Input.isString(x)
-    || Input.isVariable(x))
-  },
-  isValid: x => {
-    return (Input.isCommand(x)
-    || Input.isNumber(x)
-    || Input.isString(x)
-    || Input.isVariable(x)
-    || Input.isValueSimple(x)
-    || Input.isLabel(x))
-  },
-  getTypeData: x => {
-    if (Input.isLabel(x)) return 'label';
-    if (Input.isCommand(x)) return 'command';
-    if (Input.isNumber(x)) return 'number';
-    if (Input.isString(x)) return 'string';
-    if (Input.isVariable(x)) return 'variable';
-    if (Input.isValueSimple(x)) return 'constant';
-    if (Input.isOperation(x)) return 'operation';
-    else return undefined
-  },
-  getTypeCompile: x => {
-    if (Input.isLabel(x)) return 'label';
-    if (Input.isInt(x)) return 'int';
-    if (Input.isFloat(x)) return 'float';
-    if (Input.isShort(x)) return 'short';
-    if (Input.isLong(x)) return 'long';
-    if (Input.isFormat(x)) return 'long';
-    if (Input.isLocalVar(x)) return 'lvar';
-    if (Input.isGlobalVar(x)) return 'gvar';
-    if (Input.isAdmaVar(x)) return 'avar';
-    if (Input.isLocalVarArray(x)) return 'lvararray';
-    if (Input.isGlobalVarArray(x)) return 'gvararray';
-    if (Input.isAdmaVarArray(x)) return 'avararray';
-    else return undefined
-  }
-}
-
 SP.removeTrash = function(){
   let nCode = ''
   let code = this.split('\n')
@@ -6343,7 +6898,7 @@ SP.removeTrash = function(){
 			  param = ''
 		  }
 		  else if (/^[a-z]\w+$/mi.test(param)) {
-			  if (!Input.isConstant(param)){
+			  if (!Input.isConstant(param) && !(param in SCM_DB3)){
 			    param = ''
 			  }
 			}
@@ -6531,7 +7086,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
   
     return dataInput
   }
-
+  
   LineComand = LineComand
   .adaptarCodigo()
 	.split('\n')
@@ -6541,13 +7096,15 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 	  Line = Line.trim()
 	  
 	  let lineDepurated = []
-	  let setOp = ''
+	  let setOp = undefined
 	  let isNegative = false
-	  let command = ''
-	  let typeData = ''
-	  let currentOpcode = ''
+	  let command = undefined
+	  let typeData = undefined
+	  let currentOpcode = undefined
+	  let numParamsInCurrentLine = undefined
 	  
 	  let charsCounter = 0
+	  
 		if (Line.match(/^:/)) {
 		  // si es una etiqueta
 			registeredBites.push(Line.r(':','').toUpperCase())
@@ -6565,6 +7122,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 		  }
 		}
 		else {
+		  // si es una linea de comandos
 			LineComand[numLine] = Line.dividirCadena()
 			.map(data => {
 			  data = data.trim()
@@ -6573,16 +7131,9 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 			  }
 			  return data
 			})
-			LineComand[numLine].forEach((Argument, numArgument) => {
-			  
-				if (numArgument >= 1) {
-					if (/^[=!\-+*\/%\^#@<>&$]+$/mi.test(Argument)) {
-						LineComand[numLine][numArgument] = ''
-					}
-				}
-			})
 			LineComand[numLine] = LineComand[numLine].clear()
 			
+			numParamsInCurrentLine = LineComand[numLine]
 			LineComand[numLine].forEach((Argument, numArgument) => {
 			  charsCounter += Argument.length
 			  
@@ -6627,8 +7178,8 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 							Argument = Argument.r('!','')
 							isNegative = true
 						}
-
-						if (x[Argument]){
+            
+						if (Argument){
 							setOp = SCM_DB2[Argument]
 						}else{
 							if (Line.endsWith('=')){
@@ -6652,7 +7203,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 					command = Argument
 					
 					registeredBites.push(2)
-					currentOpcode = currentOpcode.toUpperCase()
+					currentOpcode = currentOpcode.toLowerCase()
 					
 					// Este ultimo bloque es para saber
 					//   si faltan parametros o hay de más 
@@ -6669,23 +7220,59 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 					if (!
 					  SCM_DB2[currentOpcode.toLowerCase()].variable
 					){
-					if (LineComand[numLine].length-1 < SCM_DB2[tempOp].num_params) {
-					  const missingParameters = 
-					  SCM_DB2[tempOp].num_params - LineComand[numLine].length+1
 					  
-					  // si faltan parametros, se muestra un error
-					  throw new Error(`${numLine}:${charsCounter} | missing ${missingParameters} parameters\n>>> ${Argument}\n${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
-					}
-					if (
-					  LineComand[numLine].length-1
-					  > SCM_DB2[tempOp].num_params
-					) {
-					  // si hay parametros de mas, se borran
-  			    LineComand[numLine].splice( 
-  					  SCM_DB2[tempOp].num_params+1,
-  					  LineComand[numLine].length
-  	  		  )
-					}
+					  
+					  let hs = {
+  					  tempOp,
+  					  
+  					  paraMetidos:
+  					    LineComand[numLine].length-1,
+  					    
+  					  reqVersionA:
+  					    SCM_DB2[tempOp].num_params,
+  					    
+  					  reqVersionB:
+  					    tempOp.DB_getCommand(LineComand[numLine].length-1),
+  					    
+  					  multiple: typeof tempOp.DB_getCommand().num_params == 'object',
+  					  
+  					  
+  					}
+  					
+  					hs.permitido = hs.multiple ?
+              tempOp.DB_getCommand().num_params.i(LineComand[numLine].length - 1) :
+              true
+            
+            hs.min = hs.multiple ?
+              Math.min(...tempOp.DB_getCommand().num_params) :
+              tempOp.DB_getCommand().num_params
+            
+            hs.max = hs.multiple ?
+              Math.max(...tempOp.DB_getCommand().num_params) :
+              tempOp.DB_getCommand().num_params
+              
+            hs.diff = hs.min != hs.max
+  					
+  					if (LineComand[numLine].length-1 < hs.min) {
+  					  const pEnter = LineComand[numLine].length
+  					  const missingParameters = hs.min - pEnter + 1
+  					  
+  					  
+  					  
+  					  // si faltan parametros, se muestra un error
+  					  throw new Error(`${numLine}:${charsCounter} | missing ${hs.diff ? '('+(hs.min-pEnter+1)+'||'+(hs.max-pEnter+1)+')' : missingParameters} parameters\n>>> ${Argument}\n${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
+  					}
+  					
+  					if (
+  					  LineComand[numLine].length-1
+  					  > hs.max
+  					) {
+  					  // si hay parametros de mas, se borran
+    			    LineComand[numLine].splice( 
+    					  hs.max+1,
+    					  LineComand[numLine].length
+    	  		  )
+  					}
 					}
 				}
 				else { // is Argument
@@ -7077,6 +7664,9 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 			//   indefinido, se agrega un terminal-nulo
 			//   para indicar el final de los parametros que
 			//   se le pasan al opcode.
+			//log(numParamsInCurrentLine)
+			//log(SCM_DB3[currentOpcode.toUpperCase()])
+			
 			if (SCM_DB2[currentOpcode.toLowerCase()].variable){
 			  registeredBites.push(1)
 			  lineDepurated.push(come(TYPE_CODE.TERMINAL_NULL))
@@ -7201,12 +7791,257 @@ $("details pre").forEach(e => {
 })
 
 
+
+
+
+
+
+
+
+
+// BUSCADOR RAPIDO CON IA
+
+
+
+
+
+
+
+// Función para generar el mapa semántico desde un string
+function generateSemanticMap(dataString) {
+  const lines = dataString.split('\n');
+  const semanticMap = {};
+
+  lines.forEach(line => {
+    const words = line.split(',').map(word => word.trim());
+    const mainWord = words[0];
+    semanticMap[mainWord] = words.slice(1);
+    words.slice(1).forEach(synonym => {
+      if (!semanticMap[synonym]) {
+        semanticMap[synonym] = [mainWord, ...words.filter(w => w !== synonym)];
+      }
+    });
+  });
+
+  return semanticMap;
+}
+
+// String de entrada
+const semanticData = `
+actor,char,character,npc,entity
+vehicle,car,helicopter,motorbike,motorcycle,truck,plane,ship,tank,trailer,rc
+create,add,make,build,construct,put,spawn,produce
+object,element,item,entity
+search,searchlight,seek
+request,load,import,fetch
+menu,panel,interface
+list,array,collection,group,sequence,catalog
+remove,destroy,delete,erase,clear,dispose,unload,detach,exclude
+change,add,write,modify,update,edit,ajust,overwrite,revise,alter
+`;
+
+// Generar el mapa semántico dinámicamente
+const semanticMap = generateSemanticMap(semanticData);
+
+// Lista de comandos
+let jsonData = JSON.parse(
+  DATA_DOWNLOADED[DOWNLOADED.JSON_DATA]
+)
+
+let commands = []
+
+
+jsonData.extensions.forEach(cmds => {
+  commands = [...commands, ...cmds.commands]
+})
+
+commands = commands.filter(item =>
+  item.hasOwnProperty('name') &&
+  item.hasOwnProperty('short_desc')
+);
+
+const stopwords = ['a','an','the'];
+// Normalizar texto
+function normalizeText(text) {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, '')
+    .replace(/_/g, ' ')
+    .split(' ')
+    .filter(word => !stopwords.includes(word))
+    .join(' ');
+}
+
+// Expandir palabras con el diccionario semántico
+function expandWords(text) {
+  const words = text.split(' ');
+  return words
+    .map(word => [word, ...(semanticMap[word] || [])])
+    .flat();
+}
+
+// Medir similitud entre textos
+function calculateSimilarity(inputWords, commandWords) {
+  const matches = inputWords.filter(word => commandWords.includes(word));
+  return matches.length / Math.max(inputWords.length, commandWords.length);
+}
+
+// Buscar el mejor comando
+function findBestCommand(input, commands) {
+  const normalizedInput = expandWords(normalizeText(input));
+  let bestMatch = null;
+  let bestScore = 0;
+
+  commands.forEach(({ name, short_desc }) => {
+  
+    const cmdWords = expandWords(normalizeText(name));
+const descWords = expandWords(normalizeText(short_desc));
+const score = Math.max(
+  calculateSimilarity(normalizedInput, cmdWords),
+  calculateSimilarity(normalizedInput, descWords)
+);
+
+if (score > bestScore) {
+  bestScore = score;
+  bestMatch = name;
+}
+});
+  
+  const result = bestMatch +' '
+    +SCM_DB[bestMatch.toLowerCase()]?.input
+    .map(e => '{'+e+'}').join(' ')
+		+(
+		  'output' in SCM_DB[bestMatch.toLowerCase()]
+		  && SCM_DB[bestMatch.toLowerCase()].output != ''
+		?' = ':'')
+		+SCM_DB[bestMatch.toLowerCase()]?.output
+    .map(e => '{'+e+'}').join(' ')
+		+ (SCM_DB[bestMatch.toLowerCase()].short_desc == ''? '': '\n//' + SCM_DB[bestMatch.toLowerCase()].short_desc)
+		
+return result
+}
+
+
+// Detectar cambios en el textarea
+$editor.addEventListener('input', function(e) {
+  const textArea = e.target;
+  const lines = textArea.value.split('\n');
+  const cursorLineIndex = textArea.value.substr(0, textArea.selectionStart).split('\n').length - 1;
+
+  // Línea actual del cursor
+  const currentLine = lines[cursorLineIndex];
+  
+  const cursorPos = textArea.selectionStart -2;
+  if (currentLine.startsWith('//')
+    && (currentLine.endsWith('??')
+      || currentLine.endsWith('!!')
+    )
+  ) {
+    const autocompleteParams = currentLine.i('!!')
+    
+    const userInput = currentLine.r(/(\?\?|\!\!)$/m).trim();
+    let suggestion = findBestCommand(userInput, commands)
+
+    if (suggestion) {
+      if (autocompleteParams) {
+        suggestion = suggestion
+        // {type} {model} {float} {float} {float} {var_any}
+        .r(/\{float\}/g, ()=> (Math.random() * 70).toFixed(2))
+        .r(/\{int\}/g, ()=> ~~(Math.random() * 70))
+        .r(/\{bool\}/g, ()=> Math.random() >= 0.5 ? 'true' : 'false')
+        .r(/\{\w+\}/g, text => {
+          let mod = text.r(/(\{|\})/g)
+          let enumDetected =
+            Input.isEnum(mod)
+        
+          if (enumDetected != false) {
+            return mod.toUpperCase() +
+              '.' +
+              Random_getKey(enumDetected)
+          }
+          return text
+        })
+        .r(/\{gxt_key\}/g, ()=>
+        "'" + generarStringAleatorio(~~(Math.random() * 7),1)
+        + "'")
+        .r(/\{(model_[^\}]+)\}/g, '#$1')
+        .r(/\{label\}/g, ()=> '@' + generarStringAleatorio(~~(Math.random() * 7),1))
+        .r(/\{var_global\}/g, () => '$' +
+          ~~(Math.random() * 10947)
+        )
+        .r(/\{var_local\}/g, ()=> '@' +
+           ~~(Math.random() * 32)
+        )
+        .r(/\{var_any\}/g, ()=>
+          Math.random() >= 0.5
+          ? '@' + ~~(Math.random() * 32)
+          : '$' + ~~(Math.random() * 10947)
+        )
+        .r(/\{(\w+)\}/g, '[$1]')
+      }
+      // Si ya existe la sugerencia justo después, no la agrega de nuevo
+      if (lines[cursorLineIndex + 1]?.trim() === suggestion.split('\n')[0]) {
+        return;
+      }
+
+      // Eliminar "??" y agregar la sugerencia en la siguiente línea
+      lines[cursorLineIndex] = currentLine.r(/(\?\?|\!\!)$/m).trim();
+      lines.splice(cursorLineIndex + 1, 0, 
+        (autocompleteParams ? 
+        suggestion.r(/\n.+/) : suggestion)
+      );
+      textArea.value = lines.join('\n');
+
+      // Restaurar posición del cursor
+      textArea.setSelectionRange(cursorPos, cursorPos);
+      
+      autocomplete.class("+hidden");
+    }
+  }
+});
+
+
+
+function generarStringAleatorio(longitud, min = 0) {
+  const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_';
+  let resultado = '';
+  longitud = longitud < min ? min : longitud
+  
+  for (let i = 0; i < longitud; i++) {
+    const indiceAleatorio = Math.floor(Math.random() * caracteres.length);
+    resultado += caracteres.charAt(indiceAleatorio);
+  }
+  return resultado;
+}
+
+
+
+
+
+
+//  HISTORIAL DE VERSION
+
+
+
+
+
+
 const VERSION_GUARDADA = Number(LS.get("current_version"))
-const VERSION_ACTUAL = 144
+const VERSION_ACTUAL = 145
 
 const updatedSMS = ()=> 
 openModal("EnchantiIDE UPDATED!!!",
-`# 1.4.4
+`
+# 1.4.5
+
+* Integrated command finder with "IA". Just open a comment, write what you want and close the comment with '!!' or '??'. Both will give you different results.
+* Auto-register new opcodes at first use.
+* The number of real-time updates of the hex view was reduced.
+* Between PC and Android there are opcodes that change ID, NAME or number of parameters, now the IDE will try to adapt to your needs, so that the same opcode can be compiled in different configurations.
+
+# 1.4.4
 
 * Variables can store the result of a condition.
 * If an opcode is missing parameters, you are told how many.

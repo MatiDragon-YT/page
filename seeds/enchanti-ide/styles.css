@@ -167,6 +167,7 @@ body {
     width: 1rem;
     height: 1rem;
     border-radius: 20px;
+    text-align: center;
     
     &:hover{
       background: #f556;
@@ -531,7 +532,9 @@ opciones de los items
   }
   
   & .modal-message {
-      margin-bottom: 20px;
+    margin-bottom: 20px;
+    max-height: 60vh;
+    overflow: auto;
   }
   
   & .modal-input {
@@ -680,6 +683,8 @@ key {
 	--co: #c9d1d9;
 	--co-t: #c9d1d988;
 
+  --editor-font-size: 10px;
+
 	--hl-labels: lightseagreen;
 	--hl-keywords: pink;
 	--hl-models: mediumpurple;
@@ -732,12 +737,6 @@ span{
   background-color: #3e1b4c; /* Fondo del editor */
   
   display: flex;
-  
-  & * {
-    	font-size: 14px;
-    	font-weight: 400;
-    	line-height: 1.5;
-  }
 }
 #editor-counterLine {
   overflow: hidden;
@@ -771,7 +770,7 @@ span{
 /*    */
 #editor-content {
   font-family: monospace;
-  font-size: 12px;
+  font-size: var(--editor-font-size);
   line-height: 1.5;
   font-weight: 400;
 }
@@ -801,6 +800,7 @@ span{
     font-size: inherit;
     line-height: inherit;
     white-space: pre-wrap;
+    tab-size: 2;
 }
 
 #highlighting {
@@ -848,7 +848,7 @@ span{
   z-index: 5;
   border: #fff2 solid 1px;
   animation: aparecer .1s ease-out;
-  font-size: inherit;
+  font-size: var(--editor-font-size);
   &.hidden {
     display: none;
   }
@@ -893,7 +893,7 @@ span{
 
 .type-indicator:hover,
 .extra-info:hover{
-  color: white;
+  color: white!important;
   font-weight: 400!important;
   text-shadow: 0 0 1rem white;
 }
@@ -1156,4 +1156,64 @@ h6:hover{
   color: white;
   font-weight: 400 !important;
   text-shadow: 0 0 1rem white;
+}
+
+#data-line-config, #short_desc{
+  font-size: var(--editor-font-size);
+}
+
+#current_opcode, #short_desc {
+  animation: opcode .3s linear;
+}
+
+@keyframes opcode {
+  from {
+    text-shadow: 0 0 1rem white;
+  }
+
+  to {
+    color: white;
+  }
+}
+
+#button-quick-keys {
+  position: absolute;
+  right: 0;
+  writing-mode: vertical-lr;
+  font-size: 2rem!important;
+  background: #1b0f25;
+  border-left: 1px solid #4a0037;
+  &:active{
+    background: #fff3;
+  }
+}
+#menu-quick-keys {
+  position: absolute;
+  right: 0;
+  top:2rem;
+  display: flex;
+  flex-direction: column;
+  padding: .3rem 0;
+  border-radius: 5px;
+  z-index: 3;
+  
+  background: #2e003e; /* Violeta más suave */
+  box-shadow: 0 0 1rem #0007;
+  
+  animation: aparecer .1s linear;
+  & button {
+    background: #0000;
+    color: #e0e0e0;
+    padding: .3rem .5rem;
+    
+    &:hover {
+      background: #fff3;
+    }
+  }
+  & hr {
+    background: #fff1;
+  }
+}
+#tab-list {
+  align-items: center
 }
