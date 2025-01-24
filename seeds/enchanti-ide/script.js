@@ -7008,7 +7008,7 @@ SP.adaptarCodigo = function(){
     .fixOpcodes()
     .removeTrash()
 
-   return result
+   return (result)
 }
 
 SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
@@ -7180,7 +7180,8 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 						}
             
 						if (Argument){
-							setOp = SCM_DB2[Argument]
+							setOp = SCM_DB3[Argument.toUpperCase()].id
+							
 						}else{
 							if (Line.endsWith('=')){
 							  throw new SyntaxError(`missing parameter\n\tin line ${numLine} the trigger ${Argument}\n\t${setOp == '0000' ? 'XXXX' : setOp} >> ${Line}`)
@@ -8040,6 +8041,7 @@ openModal("EnchantiIDE UPDATED!!!",
 * Auto-register new opcodes at first use.
 * The number of real-time updates of the hex view was reduced.
 * Between PC and Android there are opcodes that change ID, NAME or number of parameters, now the IDE will try to adapt to your needs, so that the same opcode can be compiled in different configurations.
+* Small drop-down to close open tabs.
 
 # 1.4.4
 
