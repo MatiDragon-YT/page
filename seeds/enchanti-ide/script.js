@@ -111,25 +111,6 @@ function debounce(func, delay) {
     };
 }
 
-function memoize(func) {
-  const cache = new Map(); // Caché para resultados
-
-  return (...args) => {
-    // Crear una clave única
-    const key = JSON.stringify(args);
-
-    // Verificar si ya está en caché
-    if (cache.has(key)) {
-      return cache.get(key);
-    }
-
-    // Si no está en caché, ejecuta la función y almacena el resultado
-    const result = func(...args);
-    cache.set(key, result);
-    return result;
-  };
-}
-
 function throttle(func, limit){
   let lastFunc;
   let lastRan;
@@ -151,7 +132,54 @@ function throttle(func, limit){
 };
 
 
+function memoize(func) {
+  const cache = new Map(); // Caché para resultados
 
+  return (...args) => {
+    // Crear una clave única
+    const key = JSON.stringify(args);
+
+    // Verificar si ya está en caché
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+
+    // Si no está en caché, ejecuta la función y almacena el resultado
+    const result = func(...args);
+    cache.set(key, result);
+    return result;
+  };
+}
+
+function memoizeWithLimit(func, limit = 50) {
+  const cache = new Map();
+
+  return (...args) => {
+    const key = JSON.stringify(args);
+
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+
+    const result = func(...args);
+    cache.set(key, result);
+
+    // Eliminar la entrada más antigua si se supera el límite
+    if (cache.size > limit) {
+      const oldestKey = cache.keys().next().value;
+      cache.delete(oldestKey);
+    }
+
+    return result;
+  };
+}
+  
+
+let memoization = {
+  levenshteinDistance: memoize(levenshteinDistance),
+  hasCommonCharacter: memoize(hasCommonCharacter),
+  stringSimilarity: memoize(stringSimilarity),
+}
 //       FUNCIONES DE OBJECT
 
 
@@ -395,6 +423,52 @@ function normalizeString(input){
     .replace(/[^a-z0-9\s]/g, "") // Quitar caracteres especiales
     .trim();
 }
+
+// Calcular distancia de Levenshtein
+function levenshteinDistance(a, b) {
+    const matrix = Array(a.length + 1)
+      .fill(null)
+      .map(() => Array(b.length + 1).fill(null));
+
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1, // Eliminación
+          matrix[i][j - 1] + 1, // Inserción
+          matrix[i - 1][j - 1] + cost // Sustitución
+        );
+      }
+    }
+
+    return matrix[a.length][b.length];
+  };
+  
+function stringSimilarity(str1, str2) {
+  const getCommonChars = (s1, s2) => {
+    let common = 0;
+    const map = {};
+    for (let char of s1) map[char] = (map[char] || 0) + 1;
+    for (let char of s2) if (map[char]) { common++; map[char]--; }
+    return common;
+  };
+  
+  const commonChars = getCommonChars(str1.toLowerCase(), str2.toLowerCase());
+  return commonChars / Math.max(str1.length, str2.length); // Similaridad normalizada (0 a 1)
+}
+
+// Verificar si al menos una letra de un string aparece en el otro
+function hasCommonCharacter(a, b) {
+    const setA = new Set(a);
+    const setB = new Set(b);
+    for (const char of setA) {
+      if (setB.has(char)) return true;
+    }
+    return false;
+};
 
 SP.dividirCadena = function() {
     const resultado = [];
@@ -1967,8 +2041,7 @@ let nameBase=''
 	$addTextTabButton.onclick = Explorer_addText;
 	$addFolderTabButton.onclick = Explorer_addFolder;
 	
-	$editor.addEventListener('input', debounce(function(){
-	  
+	$editor.addEventListener('input', function(){
 		saveTabContent()
 		if(currentTabId !== null) {
 			const tab = findTabById(parseInt(currentTabId), tabs);
@@ -1982,7 +2055,7 @@ let nameBase=''
 		syncDebugHex()
 		  const contextMenu = document.getElementById('context-menu');
       contextMenu.classList.remove('d-flex')
-	}, 250));
+	});
 	
 	$editor.onclick = () => {
 	  addCounterLine()
@@ -2431,8 +2504,9 @@ function UpdateCurrentLine() {
                 })
               }
               else {
-                Object.keys(posible).forEach(e => {
-                  const DExtracted = SCM_DB2[posible[e]]
+                Object.keys(posible).forEach((e, i) => {
+                  let DExtracted = SCM_DB3[SCM_DB3[posible[e]][0]]
+                  
                   opcodeFind = {
                     name: DExtracted.name,
                     id: DExtracted.id,
@@ -2686,8 +2760,15 @@ $editor.addEventListener("input", debounce(function (event) {
       suggestions.push(...newSuggestions.slice(0, remainingSlots));
     }
   };
+  
+  const memoizedFilter = memoizeWithLimit((list, query)=> {
+    return list.filter(item =>
+      item.toLowerCase().includes(query.toLowerCase())
+    );
+  }, 100);
 
   if (classNameMatch) {
+    // estas escribiendo el miembro de una classe o enum
     const classNameInput = classNameMatch[1].toLowerCase();
     const partialMember = classNameMatch[2].toLowerCase();
 
@@ -2726,11 +2807,13 @@ $editor.addEventListener("input", debounce(function (event) {
     }
   } else if (
     (lastWord.length >= 2 && !/^\d/m.test(lastWord)) ||
-    /^@/m.test(lastWord) ||
+    /^(@|#)/m.test(lastWord) ||
     eventoForzado
   ) {
+    // estas escribiendo cualquier cosa
+    
     const lowerLastWord = lastWord.toLowerCase();
-
+    
     addSuggestions(
       Object.keys(snippets)
         .filter(snippet => suggestionMatches(snippet, lowerLastWord))
@@ -2753,6 +2836,12 @@ $editor.addEventListener("input", debounce(function (event) {
       );
     }
 
+/*
+addSuggestions(
+  memoizedFilter(classNames, lowerLastWord)
+    .map(className => ({ type: 'class', value: className }))
+);
+*/
     addSuggestions(
       classNames
         .filter(className => suggestionMatches(className, lowerLastWord))
@@ -2806,32 +2895,36 @@ $editor.addEventListener("input", debounce(function (event) {
     updateAutocompletePositionWithCursor();
   }
 
-  if (suggestions.length > 0) {
+  
+if (suggestions.length > 0) {
     suggestions.sort((a, b) => {
       let result = 0
-    
-    if (SUGGESTION_SORT_TYPE == "SIMPLE") {
-      // Ordenar las sugerencias alfabéticamente por el valor de `value`
-      result = a.value.localeCompare(b.value)
-    }
-    if (SUGGESTION_SORT_TYPE == "SIMILAR") {
-      // Ordenar las sugerencias según la similitud con `lastWord`
-        
-          const similarityA = stringSimilarity(a.value, lastWord);
-          const similarityB = stringSimilarity(b.value, lastWord);
-          result = similarityB - similarityA; // Orden descendente por similitud
-       
-    }
-    
-    if (SUGGESTION_SORT_BY_TYPE == true) {
-      // Ordenar las sugerencias por tipo, usando ponderaciones
       
-        const weightA = typeWeights[a.type] || 0;
-        const weightB = typeWeights[b.type] || 0;
-        result = weightB - weightA; // Orden descendente por peso del tipo
-     
-    }
-    return result
+      switch (SUGGESTION_SORT_TYPE) {
+        case 'SIMPLE':
+          // Ordenar las sugerencias alfabéticamente por el valor de `value`
+          result = a.value.localeCompare(b.value)
+        break;
+        case 'SIMILAR':
+          // Ordenar las sugerencias según la similitud con `lastWord`
+  
+          const similarityA = memoization.stringSimilarity(a.value, lastWord);
+          const similarityB = memoization.stringSimilarity(b.value, lastWord);
+  
+          result = similarityB - similarityA; // Orden descendente por similitud
+        break;
+        default:
+      }
+      
+      if (SUGGESTION_SORT_BY_TYPE == true) {
+        // Ordenar las sugerencias por tipo, usando ponderaciones
+        
+          const weightA = typeWeights[a.type] || 0;
+          const weightB = typeWeights[b.type] || 0;
+          result = weightB - weightA; // Orden descendente por peso del tipo
+       
+      }
+      return result
     })
     if (SUGGESTION_SORT_INVERT == true) {
       suggestions.reverse();
@@ -2876,42 +2969,10 @@ function areStringsSimilarWithMemoization() {
     const s1 = normalizeString(str1);
     const s2 = normalizeString(str2);
 
-    // Verificar si al menos una letra de un string aparece en el otro
-    const hasCommonCharacter = (a, b) => {
-      const setA = new Set(a);
-      const setB = new Set(b);
-      for (const char of setA) {
-        if (setB.has(char)) return true;
-      }
-      return false;
-    };
 
-    if (!hasCommonCharacter(s1, s2)) return false;
+    if (!memoization.hasCommonCharacter(s1, s2)) return false;
 
-    // Calcular distancia de Levenshtein
-    const levenshteinDistance = (a, b) => {
-      const matrix = Array(a.length + 1)
-        .fill(null)
-        .map(() => Array(b.length + 1).fill(null));
-
-      for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
-      for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
-
-      for (let i = 1; i <= a.length; i++) {
-        for (let j = 1; j <= b.length; j++) {
-          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j] + 1, // Eliminación
-            matrix[i][j - 1] + 1, // Inserción
-            matrix[i - 1][j - 1] + cost // Sustitución
-          );
-        }
-      }
-
-      return matrix[a.length][b.length];
-    };
-
-    const distance = levenshteinDistance(s1, s2);
+    const distance = memoization.levenshteinDistance(s1, s2);
     const result = distance <= tolerance;
 
     // Almacenar el resultado en el caché
@@ -2922,7 +2983,6 @@ function areStringsSimilarWithMemoization() {
 
 // Crear una instancia de la función con memoización
 const areStringsSimilar = areStringsSimilarWithMemoization();
-
 
 
 
@@ -2939,7 +2999,7 @@ function suggestionMatches(word, query) {
     return word.includes(query);
   } else if (SUGGESTION_ENGINE_TYPE === "AKIN") {
   // Motor de búsqueda "AKIN" (contiene una palabra parecida)
-    return areStringsSimilar(word, query);
+    return memoization.areStringsSimilar(word, query);
   }
   return false;
 }
@@ -2949,21 +3009,8 @@ function setSuggestionEngineType(type) {
     SUGGESTION_ENGINE_TYPE = type;
   }
 }
-function stringSimilarity(str1, str2) {
-  const getCommonChars = (s1, s2) => {
-    let common = 0;
-    const map = {};
-    for (let char of s1) map[char] = (map[char] || 0) + 1;
-    for (let char of s2) if (map[char]) { common++; map[char]--; }
-    return common;
-  };
-  
-  const commonChars = getCommonChars(str1.toLowerCase(), str2.toLowerCase());
-  return commonChars / Math.max(str1.length, str2.length); // Similaridad normalizada (0 a 1)
-}
 
-/*
-function areStringsSimilar(str1, str2) {
+memoization.areStringsSimilar = memoize((str1, str2)=> {
   // Si un string incluye al otro, son similares
   if (str1.includes(str2)) return true;
   if (str1.length < str2.length) return false;
@@ -2975,47 +3022,14 @@ function areStringsSimilar(str1, str2) {
   const s1 = normalizeString(str1);
   const s2 = normalizeString(str2);
 
-  // Verificar si al menos una letra de un string aparece en el otro
-  const hasCommonCharacter = (a, b) => {
-    const setA = new Set(a);
-    const setB = new Set(b);
-    for (const char of setA) {
-      if (setB.has(char)) return true;
-    }
-    return false;
-  };
+  if (!memoization.hasCommonCharacter(s1, s2)) return false;
 
-  if (!hasCommonCharacter(s1, s2)) return false;
-
-  // Calcular distancia de Levenshtein
-  const levenshteinDistance = (a, b) => {
-    const matrix = Array(a.length + 1)
-      .fill(null)
-      .map(() => Array(b.length + 1).fill(null));
-
-    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
-    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
-
-    for (let i = 1; i <= a.length; i++) {
-      for (let j = 1; j <= b.length; j++) {
-        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1, // Eliminación
-          matrix[i][j - 1] + 1, // Inserción
-          matrix[i - 1][j - 1] + cost // Sustitución
-        );
-      }
-    }
-
-    return matrix[a.length][b.length];
-  };
-
-  const distance = levenshteinDistance(s1, s2);
+  const distance = memoization.levenshteinDistance(s1, s2);
   return distance <= tolerance;
-}
+})
 
 
-*/
+
 
 
 
