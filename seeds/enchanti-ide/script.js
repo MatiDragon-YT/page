@@ -1840,13 +1840,15 @@ function Explorer_addText() {
         console.error('The folder with the specified ID does not exist.');
         return;
     }
-let nameBase=''
+    
+    let nameBase = generateUniqueName('New '+(type === 'text' ? 'file' : 'folder'), type, folder.contents)
+
     openModal(
     'New ' + (type === 'text' ? 'file' : 'folder'), 
     'Enter a name with the path (e.g., "src/main")', 
     'text',
     'Ok', 'Cancel',
-    nameBase = 'New ' + (type === 'text' ? 'file' : 'folder')
+    nameBase
 ).then(path => {
         if (path == null) return;
 
@@ -1879,10 +1881,10 @@ let nameBase=''
             }
         });
 
-        // Verificar si ya existe un archivo o carpeta con el mismo nombre
+        // Verificar si ya existe una carpeta con el mismo nombre
         const existingItem = currentFolder.find(tab => tab.name === finalName && tab.type === type);
         if (existingItem) {
-            showToast(`The file "${fileName}" already exists in this folder.`, 'fail', 5000);
+            showToast(`The file "${finalName}" already exists in this folder.`, 'fail', 5000);
             return;
         }
 
@@ -1975,6 +1977,7 @@ let nameBase=''
 	window.File_upload = function(folderId) {
 		const fileInput = document.createElement('input');
 		fileInput.type = 'file';
+		fileInput.multiple = true;
 		fileInput.accept = '.txt'; // Limitar a archivos de texto, puedes cambiar esto según tu necesidad
 		fileInput.onchange = () => handleFileUpload(fileInput.files, folderId);
 		fileInput.click();
@@ -8054,11 +8057,18 @@ function generarStringAleatorio(longitud, min = 0) {
 
 
 const VERSION_GUARDADA = Number(LS.get("current_version"))
-const VERSION_ACTUAL = 145
+const VERSION_ACTUAL = 146
 
 const updatedSMS = ()=> 
-openModal("EnchantiIDE UPDATED!!!",
+openModal("Enchanti IDE UPDATED!!!",
 `
+# 1.4.6
+
+* fix search opcode with a point at mid.
+* fix a file/folder with same name at same url.
+* fix scrolling archive.
+* support for upload multiple files.
+
 # 1.4.5
 
 * Integrated command finder with "IA". Just open a comment, write what you want and close the comment with '!!' or '??'. Both will give you different results.

@@ -70,6 +70,9 @@ body {
 }
 #items {
   margin-top: .7rem;
+  padding-bottom: 1rem;
+  overflow: auto;
+  height: 70vh;
 }
 
 .navbar {
