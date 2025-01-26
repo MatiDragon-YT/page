@@ -448,6 +448,11 @@ function levenshteinDistance(a, b) {
   };
   
 function stringSimilarity(str1, str2) {
+  str1 = normalizeString(str1)
+  str2 = normalizeString(str2.r(/\w+\./))
+  
+  if (str1 == str2) return 1;
+  
   const getCommonChars = (s1, s2) => {
     let common = 0;
     const map = {};
@@ -456,7 +461,7 @@ function stringSimilarity(str1, str2) {
     return common;
   };
   
-  const commonChars = getCommonChars(str1.toLowerCase(), str2.toLowerCase());
+  const commonChars = getCommonChars(str1, str2);
   return commonChars / Math.max(str1.length, str2.length); // Similaridad normalizada (0 a 1)
 }
 
@@ -2897,43 +2902,48 @@ addSuggestions(
 
   
 if (suggestions.length > 0) {
-    suggestions.sort((a, b) => {
-      let result = 0
-      
-      switch (SUGGESTION_SORT_TYPE) {
-        case 'SIMPLE':
-          // Ordenar las sugerencias alfabéticamente por el valor de `value`
-          result = a.value.localeCompare(b.value)
-        break;
-        case 'SIMILAR':
-          // Ordenar las sugerencias según la similitud con `lastWord`
-  
-          const similarityA = memoization.stringSimilarity(a.value, lastWord);
-          const similarityB = memoization.stringSimilarity(b.value, lastWord);
-  
-          result = similarityB - similarityA; // Orden descendente por similitud
-        break;
-        default:
+  // Ordenar las sugerencias
+  suggestions.sort((a, b) => {
+    let result = 0;
+
+    // Ordenar según el tipo de orden definido
+    if (SUGGESTION_SORT_TYPE === 'SIMPLE') {
+      // Ordenar alfabéticamente
+      result = a.value.localeCompare(b.value);
+    } else if (SUGGESTION_SORT_TYPE === 'SIMILAR') {
+      // Ordenar por similitud con `lastWord`
+      const similarityA = memoization.stringSimilarity(a.value, lastWord);
+      const similarityB = memoization.stringSimilarity(b.value, lastWord);
+      result = similarityB - similarityA; // Mayor similitud primero
+    }
+
+    // Aplicar orden por tipo si está activado
+    if (SUGGESTION_SORT_BY_TYPE) {
+      const weightA = typeWeights[a.type] || 0;
+      const weightB = typeWeights[b.type] || 0;
+
+      // Si ya hay un resultado de la comparación previa, aplicamos el peso como desempate
+      if (result === 0) {
+        result = weightB - weightA; // Mayor peso primero
       }
-      
-      if (SUGGESTION_SORT_BY_TYPE == true) {
-        // Ordenar las sugerencias por tipo, usando ponderaciones
-        
-          const weightA = typeWeights[a.type] || 0;
-          const weightB = typeWeights[b.type] || 0;
-          result = weightB - weightA; // Orden descendente por peso del tipo
-       
-      }
-      return result
-    })
-    if (SUGGESTION_SORT_INVERT == true) {
-      suggestions.reverse();
     }
     
-    updateAutocompleteMenu(suggestions, lastWord, classNameMatch);
-  } else {
-    autocomplete.classList.add("hidden");
+    log({a,b,result})
+
+    return result;
+  });
+
+  // Invertir el orden si está activado
+  if (SUGGESTION_SORT_INVERT) {
+    suggestions.reverse();
   }
+
+  // Actualizar el menú de autocompletado
+  updateAutocompleteMenu(suggestions, lastWord, classNameMatch);
+} else {
+  // Ocultar el menú si no hay sugerencias
+  autocomplete.classList.add("hidden");
+}
   eventoForzado = false;
 }, 250));
 
@@ -7882,8 +7892,8 @@ function normalizeText(text) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\w\s]/g, '')
-    .replace(/_/g, ' ')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/(_|\.|\,)/g, ' ')
     .split(' ')
     .filter(word => !stopwords.includes(word))
     .join(' ');
