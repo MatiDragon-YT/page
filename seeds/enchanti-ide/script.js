@@ -278,13 +278,6 @@ AP.first = function() {
 
 
 
-// Utilidad de LocalStorage
-const LS = {
-  t : localStorage,
-  get : (x) => LS.t.getItem(x),
-  set : (x, y) => LS.t.setItem(x, y)
-}
-
 /**
  * Hace una petición Fetch con posibilidad de pasar un callback para indicar el porcentaje de descarga.
  * Si la descarga toma más de 3 segundos o falla, recarga la página.
@@ -325,17 +318,63 @@ async function fetchPercentage(response, callback) {
   );
 }
 
+
+//    UTILIDAD DE INDEXEDDB
+
+const IDB = {
+  dbName: "MyDatabase",
+  storeName: "DataStore",
+
+  async init() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(IDB.dbName, 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(IDB.storeName)) {
+          db.createObjectStore(IDB.storeName);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject("Error al abrir IndexedDB");
+    });
+  },
+
+  async get(key) {
+    const db = await IDB.init();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB.storeName, "readonly");
+      const store = tx.objectStore(IDB.storeName);
+      const request = store.get(key);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject("Error al obtener dato de IndexedDB");
+    });
+  },
+
+  async set(key, value) {
+    const db = await IDB.init();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB.storeName, "readwrite");
+      const store = tx.objectStore(IDB.storeName);
+      const request = store.put(value, key);
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => reject("Error al guardar dato en IndexedDB");
+    });
+  }
+};
+
+
+
 /**
- * Almacena un archivo de texto en el localStorage y lo recupera para evitar descargas innecesarias.
+ * Almacena un archivo de texto en IndexedDB y lo recupera para evitar descargas innecesarias.
  * Si falla, recarga la página.
  * @param {string} url - URL de descarga.
- * @param {string} _saveAt - Dirección de almacenamiento (opcional).
+ * @param {string} _saveAt - Clave de almacenamiento en IndexedDB (opcional).
  * @param {number} retries - Intentos antes de recargar
- * @returns {string} - Texto recuperado
+ * @returns {Promise<string>} - Texto recuperado
  */
-async function LSget(url, _saveAt, retries = 3) {
+async function IDBget(url, _saveAt, retries = 3) {
   _saveAt = _saveAt ?? url;
-  let text = LS.get(_saveAt);
+  let text = await IDB.get(_saveAt);
 
   if (!text) {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -343,7 +382,7 @@ async function LSget(url, _saveAt, retries = 3) {
         const response = await fetch(url);
         const streamResponse = await fetchPercentage(response);
         text = await streamResponse.text();
-        LS.set(_saveAt, compressJSON(text));
+        await IDB.set(_saveAt, compressJSON(text));
         break;
       } catch (error) {
         if (attempt === retries) {
@@ -359,15 +398,17 @@ async function LSget(url, _saveAt, retries = 3) {
   return text;
 }
 
-/**
- * Descarga y almacena múltiples archivos de texto en el localStorage, mostrando el progreso con hashtags.
- * Si falla alguno, recarga la página.
- * @param {Array} files - Array de arrays con URLs y direcciones de almacenamiento.
- * @param {HTMLElement} messaElem - Elemento HTML para mostrar el progreso.
- * @returns {Array<string>} - Array con el contenido de los archivos descargados.
- */
 
-async function LSgetCollection(files, messaElem, loadElem) {
+
+/**
+ * Descarga y almacena múltiples archivos de texto en IndexedDB, mostrando el progreso con hashtags.
+ * Si falla alguno, recarga la página.
+ * @param {Array} files - Array de arrays con URLs y claves de almacenamiento.
+ * @param {HTMLElement} messaElem - Elemento HTML para mostrar el progreso.
+ * @param {HTMLElement} loadElem - Elemento HTML para mostrar la barra de progreso.
+ * @returns {Promise<Array<string>>} - Array con el contenido de los archivos descargados.
+ */
+async function IDBgetCollection(files, messaElem, loadElem) {
   const results = [];
   const totalFiles = files.length;
   let completedFiles = 0;
@@ -376,7 +417,7 @@ async function LSgetCollection(files, messaElem, loadElem) {
   function updateProgress() {
     if (messaElem) {
       loadElem.textContent = `${"▓".repeat(completedFiles)}${"░".repeat(totalFiles - completedFiles)}`;
-      messaElem.textContent = 'Downloading...';
+      messaElem.textContent = "Downloading...";
     }
   }
 
@@ -385,23 +426,22 @@ async function LSgetCollection(files, messaElem, loadElem) {
 
   for (const [url, saveAt] of files) {
     try {
-      const text = await LSget(url, saveAt);
+      const text = await IDBget(url, saveAt);
       results.push(text);
       completedFiles++;
       updateProgress();
     } catch {
-      messaElem.textContent = "Reloading..."
+      messaElem.textContent = "Reloading...";
       setTimeout(() => {
         location.reload(); // Recarga la página si algún archivo falla
       }, 350);
-      
     }
   }
 
-  // Espera 1 segundo y cambia el texto de progreso a [OKEY!!]
+  // Espera 1 segundo y cambia el texto de progreso a [OK]
   if (messaElem) {
     setTimeout(() => {
-      messaElem.textContent = "OK"
+      messaElem.textContent = "OK";
     }, 250);
   }
 
@@ -411,8 +451,21 @@ async function LSgetCollection(files, messaElem, loadElem) {
 
 
 
+//   UTILIDAD DE LOCALSTORAGE
+
+
+const LS = {
+  t : localStorage,
+  get : (x) => LS.t.getItem(x),
+  set : (x, y) => LS.t.setItem(x, y)
+}
+
+
 
 // &&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+
+
 
 // Normalizar ambos strings para evitar diferencias por mayúsculas, acentos, etc.
 function normalizeString(input){
@@ -640,9 +693,193 @@ EP.class = function(str = ''){
     updateDataLine()
 }
 
+let SCM_DB = {}
+let SCM_DB2 = {}
+let SCM_DB3 = {}
+let CUSTOM_KEYWORDS3 = {}
+const Input = {
+  isLong: x => /^".*"$/m.test(x),
+  isShort: x => /^'.*'$/m.test(x),
+  isFormat: x => /^`.*`$/m.test(x),
+  isString : x => {
+    return (Input.isLong(x)
+    || Input.isShort(x)
+    || Input.isFormat(x))
+  },
+  isInt : x => /^[+-]?\d[\d_]*$/m.test(x),
+  isFloat : x => /^[+-]?(\.\d[\d_]*|\d[\d_]*[f\.][\d_]*)$/mi.test(x),
+  isNote: x => /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)$/m.test(x),
+  isTime: x => /^[+-]?(\d+\.\d+|\.?\d+)(fps|[smh])$/.test(x),
+  isHexInt: x => /^0x[\da-f]+$/im.test(x),
+  isHexFloat: x => /^0x[\da-f]+(\.[\da-f]*)?p[+-]?\d+$/im.test(x),
+  isHex: x => Input.isHexInt(x) ?? Input.isHexFloat(x),
+  isBin: x => /^0b[01]+$/im.test(x),
+  isOct: x => /^0o[0-7]+$/im.test(x),
+  isModel: x => /^#\w+$/m.test(x),
+  isNumber: x => {
+    return (Input.isTime(x)
+    || Input.isNote(x)
+    || Input.isFloat(x)
+    || Input.isInt(x)
+    || Input.isBin(x)
+    || Input.isOct(x)
+    || Input.isHex(x)
+    || NaN)
+  },
+  isOpcode: x => /^[a-f\d]+:$/mi.test(x),
+  isKeyword: x => {
+    if (/^[a-z]\w*$/mi.test(x)){
+      let keys = `while,end,if,then,else,repeat,until,for,int,float,string,short,long`.split(',')
+      
+      if (keys.i(x.toLowerCase())){
+        return true
+      }
+      
+      return SCM_DB[x.toLowerCase()]
+    }
+    return null
+  },
+  isClass: x => {
+    x = x.toUpperCase()
+    
+    if (/^([A-Z]\w+)\.([A-Z]\w+)(\([^\n]*\))?$/mi.test(x)){
+      let m = x.match(/\w+/g)
+      
+      if (m && m[0] in classes && m[1] in classes[m[0]]) {
+        const op = classes[m[0]][m[1]]
+      
+        return op
+      }
+    }
+    
+    return null
+  },
+  isCommand: x => {
+    const cmdFind = (Input.isOpcode(x)
+    || Input.isKeyword(x)
+    || Input.isClass(x)
+    || null)
+    
+    return cmdFind
+  },
+  isConstant: x => {
+    if (/^\w+$/mi.test(x)){
+      x = x.toUpperCase()
+      
+      if (x in CONSTANTS)
+        return CONSTANTS[x];
+    }
+    return undefined
+  },
+  isEnum: x => {
+    x = x.toUpperCase()
+    let m = x.match(/^([a-z]\w*)\.(\w*)$/mi)
+    
+    if (m){
+      if (m[1] in CUSTOM_ENUM && m[2] in CUSTOM_ENUM[m[1]])
+        return CUSTOM_ENUM[m[1]];
+    }
+    else if (/^\w+$/m.test(x)){
+      if (x in CUSTOM_ENUM)
+        return CUSTOM_ENUM[x];
+    }
+    return false
+  },
+  isValueSimple: x => {
+    return (Input.isConstant(x)
+    || Input.isEnum(x))
+  },
+  isLocalVar: x => {
+    return /^\d+@[a-z]?$/im.test(x)
+  },
+  isGlobalVar: x => {
+    return /^[a-z]?\$\w+$/im.test(x)
+  },
+  isAdmaVar: x => {
+    return /^[a-z]?&\d+$/im.test(x)
+  },
+  isLocalVarArray: x => /^\d+@[a-z]?(\(.+(,\d+[a-z]?)?\))$/im.test(x),
+  isGlobalVarArray: x => /^[a-z]?\$\w+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
+  isAdmaVarArray: x => /^[a-z]?&\d+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
+  isNegate: x => /^\!.+/m.test(x),
+  isNegative: x => /^\-.+/m.test(x),
+  isPositive: x => /^\+.+/m.test(x),
+  isOperation: x => /^([\!=^~<>%+*/-]+|=#|[+-]=@|=&)$/.test(x),
+  isVariable : x => {
+    return (Input.isLocalVar(x)
+    || Input.isGlobalVar(x)
+    || Input.isAdmaVar(x)
+    || Input.isLocalVarArray(x)
+    || Input.isGlobalVarArray(x)
+    || Input.isAdmaVarArray(x))
+  },
+  getTypeVar: x => {
+    if (Input.isVariable(x)){
+      const type =
+        x.match(/@(\w)/)[1]
+        || x.match(/(\w)\$/)[1]
+        || x.match(/(\w)\&/)[1];
+        
+      return x == 'f' ? 'float'
+           : x == 's' ? 'short'
+           : x == 'v' ? 'long'
+           : 'int';
+      
+    } else {
+      const error = 'getTypeVar: required a variable of input. (0@, $any, &123)'
+      console.error(error)
+      return new Error(error)
+    }
+  },
+  isArray : x => {
+    return (Input.isLocalVarArray(x)
+    || Input.isGlobalVarArray(x)
+    || Input.isAdmaVarArray(x))
+  },
+  isLabel : x => /^[:@]\w+$/m.test(x),
+  isValueConstant : x => {
+    return (Input.isValueSimple(x)
+    || Input.isNumber(x)
+    || Input.isString(x)
+    || Input.isVariable(x))
+  },
+  isValid: x => {
+    return (Input.isCommand(x)
+    || Input.isNumber(x)
+    || Input.isString(x)
+    || Input.isVariable(x)
+    || Input.isValueSimple(x)
+    || Input.isLabel(x))
+  },
+  getTypeData: x => {
+    if (Input.isLabel(x)) return 'label';
+    if (Input.isCommand(x)) return 'command';
+    if (Input.isNumber(x)) return 'number';
+    if (Input.isString(x)) return 'string';
+    if (Input.isVariable(x)) return 'variable';
+    if (Input.isValueSimple(x)) return 'constant';
+    if (Input.isOperation(x)) return 'operation';
+    else return undefined
+  },
+  getTypeCompile: x => {
+    if (Input.isLabel(x)) return 'label';
+    if (Input.isInt(x)) return 'int';
+    if (Input.isFloat(x)) return 'float';
+    if (Input.isShort(x)) return 'short';
+    if (Input.isLong(x)) return 'long';
+    if (Input.isFormat(x)) return 'long';
+    if (Input.isLocalVar(x)) return 'lvar';
+    if (Input.isGlobalVar(x)) return 'gvar';
+    if (Input.isAdmaVar(x)) return 'avar';
+    if (Input.isLocalVarArray(x)) return 'lvararray';
+    if (Input.isGlobalVarArray(x)) return 'gvararray';
+    if (Input.isAdmaVarArray(x)) return 'avararray';
+    else return undefined
+  }
+}
 
-	EP.getCursor = function() {
-    return [this.selectionStart, this.selectionEnd];
+EP.getCursor = function() {
+  return [this.selectionStart, this.selectionEnd];
 };
 
 EP.DATA_TEXTAREA = function() {
@@ -1690,7 +1927,7 @@ window.Item_Paste = function(folderId) {
 		renderEditedTabs()
 	};
 
-	function updatePlaceholder() {
+	window.updatePlaceholder = ()=> {
 		// Uso de la función
 		if(countTextFiles(tabs) != 0) {
 			$editor.placeholder = '✨ Choose a file to get started ✨';
@@ -2126,9 +2363,7 @@ function Explorer_addText() {
 		}
 		return count;
 	}
-	updatePlaceholder()
-	addCounterLine()
-	syncHighlighting()
+	
 });
 
 
@@ -2749,6 +2984,34 @@ function SUGGESTION_LIMIT() {
   }
 }
 
+function getLastUsedClass(text, cursorPosition) {
+  const lines =
+    text.substring(0, cursorPosition).split('\n');
+  
+  let claseRecuperada = null
+  
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const segments = lines[i]
+      .dividirCadena()
+      .reverse()
+  
+    segments.forEach(posible => {
+      const match = posible.match(/(\w+\.\w+)/)
+  
+      if (match) {
+        claseRecuperada =
+          Input.isClass(match[0]) ?
+          match[0].r(/\.\w+/) :
+          null;
+      }
+    })
+    
+    if (claseRecuperada) return claseRecuperada;
+  }
+  
+  return null
+}
+
 $editor.addEventListener("input", debounce(function (event) {
   const cursorPosition = $editor.selectionStart;
 
@@ -2769,11 +3032,11 @@ $editor.addEventListener("input", debounce(function (event) {
     }
   };
   
-  const memoizedFilter = memoizeWithLimit((list, query)=> {
+  const memoizedFilter = memoize((list, query)=> {
     return list.filter(item =>
       item.toLowerCase().includes(query.toLowerCase())
     );
-  }, 100);
+  });
 
   if (classNameMatch) {
     // estas escribiendo el miembro de una classe o enum
@@ -2813,7 +3076,36 @@ $editor.addEventListener("input", debounce(function (event) {
         );
       }
     }
-  } else if (
+  }
+  else if (/^\.\w*$/m.test(lastWord)){
+    // estas escribiendo el miembro de una classe o enum
+    const classNameInput = getLastUsedClass($editor.value, cursorPosition)
+    
+    if (classNameInput){
+      const partialMember = lastWord.match(/^\.(\w*)$/)[1].toLowerCase();
+    
+      const className = classNames.find(name => name.toLowerCase() === classNameInput);
+      if (className && classMembers[className]) {
+        addSuggestions(
+          classMembers[className]
+            .filter(member => suggestionMatches(member.name, partialMember))
+            .map(member => ({
+              type: 'property',
+              value: '.'+ member.name,
+              extraInfo: `(${member.params || ''})${member.returns ? ' : ' + member.returns : ''}
+            ${
+              (!member.name.startsWith('Is')
+              &&!member.name.startsWith('Get')
+              &&!member.name.startsWith('Set')
+              &&!member.name.startsWith('Create'))
+              ? member.methods || '' :''
+            }`
+            }))
+        );
+      }
+    }
+  }
+  else if (
     (lastWord.length >= 2 && !/^\d/m.test(lastWord)) ||
     /^(@|#)/m.test(lastWord) ||
     eventoForzado
@@ -2930,8 +3222,6 @@ if (suggestions.length > 0) {
         result = weightB - weightA; // Mayor peso primero
       }
     }
-    
-    log({a,b,result})
 
     return result;
   });
@@ -3603,14 +3893,14 @@ const syntaxHighlight = (code, exception = $editor) => {
 };
 
 // Sincroniza el contenido del $editor con el resaltado
-function syncHighlighting(){
+window.syncHighlighting = ()=>{
     const text = $editor.value;
     $highlighting.innerHTML = syntaxHighlight(text) + "\n"; // Añade \n para mantener la altura en textarea vacío
     $highlighting.scrollTop = $editor.scrollTop; // Sincroniza el scroll
 };
 
 
-function syncDebugHex(){
+window.syncDebugHex = ()=>{
   if (!$debugHex.class('?d-none')){
   try {
     $debugHex.innerText =
@@ -3663,7 +3953,7 @@ const DOWNLOADED = {
 }
 
 /**/
-DATA_DOWNLOADED = await LSgetCollection(
+DATA_DOWNLOADED = await IDBgetCollection(
  [
    // enums
    ['https://library.sannybuilder.com/assets/sa/enums.txt',
@@ -4171,186 +4461,7 @@ lvar_array_string16 lenght  string_v    string
 
 //     TRANSPILADORES
 
-const Input = {
-  isLong: x => /^".*"$/m.test(x),
-  isShort: x => /^'.*'$/m.test(x),
-  isFormat: x => /^`.*`$/m.test(x),
-  isString : x => {
-    return (Input.isLong(x)
-    || Input.isShort(x)
-    || Input.isFormat(x))
-  },
-  isInt : x => /^[+-]?\d[\d_]*$/m.test(x),
-  isFloat : x => /^[+-]?(\.\d[\d_]*|\d[\d_]*[f\.][\d_]*)$/mi.test(x),
-  isNote: x => /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)$/m.test(x),
-  isTime: x => /^[+-]?(\d+\.\d+|\.?\d+)(fps|[smh])$/.test(x),
-  isHexInt: x => /^0x[\da-f]+$/im.test(x),
-  isHexFloat: x => /^0x[\da-f]+(\.[\da-f]*)?p[+-]?\d+$/im.test(x),
-  isHex: x => Input.isHexInt(x) ?? Input.isHexFloat(x),
-  isBin: x => /^0b[01]+$/im.test(x),
-  isOct: x => /^0o[0-7]+$/im.test(x),
-  isModel: x => /^#\w+$/m.test(x),
-  isNumber: x => {
-    return (Input.isTime(x)
-    || Input.isNote(x)
-    || Input.isFloat(x)
-    || Input.isInt(x)
-    || Input.isBin(x)
-    || Input.isOct(x)
-    || Input.isHex(x)
-    || NaN)
-  },
-  isOpcode: x => /^[a-f\d]+:$/mi.test(x),
-  isKeyword: x => {
-    if (/^[a-z]\w*$/mi.test(x)){
-      let keys = `while,end,if,then,else,repeat,until,for,int,float,string,short,long`.split(',')
-      
-      if (keys.i(x.toLowerCase())){
-        return true
-      }
-      
-      return SCM_DB[x.toLowerCase()]
-    }
-    return null
-  },
-  isClass: x => {
-    x = x.toUpperCase()
-    
-    if (/^([A-Z]\w+)\.([A-Z]\w+)(\([^\n]*\))?$/mi.test(x)){
-      let m = x.match(/\w+/g)
-      
-      if (m && m[0] in classes && m[1] in classes[m[0]]) {
-        const op = classes[m[0]][m[1]]
-      
-        return op
-      }
-    }
-    
-    return null
-  },
-  isCommand: x => {
-    const cmdFind = (Input.isOpcode(x)
-    || Input.isKeyword(x)
-    || Input.isClass(x)
-    || null)
-    
-    return cmdFind
-  },
-  isConstant: x => {
-    if (/^\w+$/mi.test(x)){
-      x = x.toUpperCase()
-      
-      if (x in CONSTANTS)
-        return CONSTANTS[x];
-    }
-    return undefined
-  },
-  isEnum: x => {
-    x = x.toUpperCase()
-    let m = x.match(/^([a-z]\w*)\.(\w*)$/mi)
-    
-    if (m){
-      if (m[1] in CUSTOM_ENUM && m[2] in CUSTOM_ENUM[m[1]])
-        return CUSTOM_ENUM[m[1]];
-    }
-    else if (/^\w+$/m.test(x)){
-      if (x in CUSTOM_ENUM)
-        return CUSTOM_ENUM[x];
-    }
-    return false
-  },
-  isValueSimple: x => {
-    return (Input.isConstant(x)
-    || Input.isEnum(x))
-  },
-  isLocalVar: x => {
-    return /^\d+@[a-z]?$/im.test(x)
-  },
-  isGlobalVar: x => {
-    return /^[a-z]?\$\w+$/im.test(x)
-  },
-  isAdmaVar: x => {
-    return /^[a-z]?&\d+$/im.test(x)
-  },
-  isLocalVarArray: x => /^\d+@[a-z]?(\(.+(,\d+[a-z]?)?\))$/im.test(x),
-  isGlobalVarArray: x => /^[a-z]?\$\w+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
-  isAdmaVarArray: x => /^[a-z]?&\d+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
-  isNegate: x => /^\!.+/m.test(x),
-  isNegative: x => /^\-.+/m.test(x),
-  isPositive: x => /^\+.+/m.test(x),
-  isOperation: x => /^([\!=^~<>%+*/-]+|=#|[+-]=@|=&)$/.test(x),
-  isVariable : x => {
-    return (Input.isLocalVar(x)
-    || Input.isGlobalVar(x)
-    || Input.isAdmaVar(x)
-    || Input.isLocalVarArray(x)
-    || Input.isGlobalVarArray(x)
-    || Input.isAdmaVarArray(x))
-  },
-  getTypeVar: x => {
-    if (Input.isVariable(x)){
-      const type =
-        x.match(/@(\w)/)[1]
-        || x.match(/(\w)\$/)[1]
-        || x.match(/(\w)\&/)[1];
-        
-      return x == 'f' ? 'float'
-           : x == 's' ? 'short'
-           : x == 'v' ? 'long'
-           : 'int';
-      
-    } else {
-      const error = 'getTypeVar: required a variable of input. (0@, $any, &123)'
-      console.error(error)
-      return new Error(error)
-    }
-  },
-  isArray : x => {
-    return (Input.isLocalVarArray(x)
-    || Input.isGlobalVarArray(x)
-    || Input.isAdmaVarArray(x))
-  },
-  isLabel : x => /^[:@]\w+$/m.test(x),
-  isValueConstant : x => {
-    return (Input.isValueSimple(x)
-    || Input.isNumber(x)
-    || Input.isString(x)
-    || Input.isVariable(x))
-  },
-  isValid: x => {
-    return (Input.isCommand(x)
-    || Input.isNumber(x)
-    || Input.isString(x)
-    || Input.isVariable(x)
-    || Input.isValueSimple(x)
-    || Input.isLabel(x))
-  },
-  getTypeData: x => {
-    if (Input.isLabel(x)) return 'label';
-    if (Input.isCommand(x)) return 'command';
-    if (Input.isNumber(x)) return 'number';
-    if (Input.isString(x)) return 'string';
-    if (Input.isVariable(x)) return 'variable';
-    if (Input.isValueSimple(x)) return 'constant';
-    if (Input.isOperation(x)) return 'operation';
-    else return undefined
-  },
-  getTypeCompile: x => {
-    if (Input.isLabel(x)) return 'label';
-    if (Input.isInt(x)) return 'int';
-    if (Input.isFloat(x)) return 'float';
-    if (Input.isShort(x)) return 'short';
-    if (Input.isLong(x)) return 'long';
-    if (Input.isFormat(x)) return 'long';
-    if (Input.isLocalVar(x)) return 'lvar';
-    if (Input.isGlobalVar(x)) return 'gvar';
-    if (Input.isAdmaVar(x)) return 'avar';
-    if (Input.isLocalVarArray(x)) return 'lvararray';
-    if (Input.isGlobalVarArray(x)) return 'gvararray';
-    if (Input.isAdmaVarArray(x)) return 'avararray';
-    else return undefined
-  }
-}
+
 
 
 
@@ -4748,11 +4859,7 @@ MODELS = MODELS
 MODELS.forEach((e,i) => MODELS[i] = e.split(' '))
 MODELS = Object.fromEntries(MODELS)
 
-let SCM_DB = {}
-let SCM_DB2 = {}
-let SCM_DB3 = {}
 
-let CUSTOM_KEYWORDS3 = {}
 function dbSBL3(DATA_DB3) {
   if (DATA_DB3 == undefined) return SCM_DB3;
   
@@ -6523,10 +6630,10 @@ SP.constantsToValue = function(){
 }
 
 /*
-CurrentWeapon(0@) = 23 // 01B9: 0@ 23
-0@ = CurrentWeapon(1@) // 0470: 0@ 1@
-CurrentWeapon(0@) == 34 //02D8: 0@ 34
-CurrentWeapon(0@) > 34 //02D7: 0@ 34
+Current.Weapon(0@) = 23 // 01B9: 0@ 23
+0@ = Current.Weapon(1@) // 0470: 0@ 1@
+Current.Weapon(0@) == 34 //02D8: 0@ 34
+Current.Weapon(0@) > 34 //02D7: 0@ 34
 */
 
 SP.classesToOpcodes = function(){
@@ -7896,7 +8003,6 @@ function normalizeText(text) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\w\s]/g, ' ')
-    .replace(/(_|\.|\,)/g, ' ')
     .split(' ')
     .filter(word => !stopwords.includes(word))
     .join(' ');
@@ -8098,3 +8204,6 @@ if (VERSION_GUARDADA) {
   updatedSMS()
 }
 LS.set("current_version", VERSION_ACTUAL)
+updatePlaceholder()
+	addCounterLine()
+	syncHighlighting()
