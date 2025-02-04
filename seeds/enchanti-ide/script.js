@@ -179,6 +179,7 @@ let memoization = {
   levenshteinDistance: memoize(levenshteinDistance),
   hasCommonCharacter: memoize(hasCommonCharacter),
   stringSimilarity: memoize(stringSimilarity),
+  normalizeText: memoize(normalizeText),
 }
 //       FUNCIONES DE OBJECT
 
@@ -590,7 +591,7 @@ SP.fixOpcodes = function(){
   return tm
 }
 
-
+let classes = {}
 EP.class = function(str = ''){
   if (str != ''){
     if (str.i(' ')){
@@ -600,18 +601,18 @@ EP.class = function(str = ''){
       return this.classList.value.split(' ')
     }
     
-    let [m, action, classes] = str.match(/^([\!\?\+\-\~\>]?)(.+)/m)
+    let [m, action, clase] = str.match(/^([\!\?\+\-\~\>]?)(.+)/m)
     
-    classes = classes.trim()
+    clase = clase.trim()
     
-    if (action == '+') this.classList.add(classes);
-    if (action == '-') this.classList.remove(classes);
-    if (action == '~') this.classList.toggle(classes);
-    if (action == '>') this.classList.replace(classes);
+    if (action == '+') this.classList.add(clase);
+    if (action == '-') this.classList.remove(clase);
+    if (action == '~') this.classList.toggle(clase);
+    if (action == '>') this.classList.replace(clase);
     if (action == '?')
-      return this.classList.contains(classes);
+      return this.classList.contains(clase);
     if (action == '!')
-      return !this.classList.contains(classes);
+      return !this.classList.contains(clase);
   }
   return this.classList.value.split(' ')
   
@@ -697,6 +698,7 @@ let SCM_DB = {}
 let SCM_DB2 = {}
 let SCM_DB3 = {}
 let CUSTOM_KEYWORDS3 = {}
+
 const Input = {
   isLong: x => /^".*"$/m.test(x),
   isShort: x => /^'.*'$/m.test(x),
@@ -1370,6 +1372,9 @@ $('[for=compile]', e=>{e.onclick = ()=>{
 			$tabButton.onclick = () => {
 				Item_Select(tab.id);
 				updateActiveTab(tab.id);
+        $highlighting.innerHTML = syntaxHighlight(
+          $editor.value, null
+        )
 			};
 			$tabButton.className = 'upperTab'
 			
@@ -2286,7 +2291,7 @@ function Explorer_addText() {
 	$addTextTabButton.onclick = Explorer_addText;
 	$addFolderTabButton.onclick = Explorer_addFolder;
 	
-	$editor.addEventListener('input', function(){
+	$editor.addEventListener('input', debounce(function(){
 		saveTabContent()
 		if(currentTabId !== null) {
 			const tab = findTabById(parseInt(currentTabId), tabs);
@@ -2300,7 +2305,7 @@ function Explorer_addText() {
 		syncDebugHex()
 		  const contextMenu = document.getElementById('context-menu');
       contextMenu.classList.remove('d-flex')
-	});
+	}, 85));
 	
 	$editor.onclick = () => {
 	  addCounterLine()
@@ -3078,6 +3083,7 @@ $editor.addEventListener("input", debounce(function (event) {
     }
   }
   else if (/^\.\w*$/m.test(lastWord)){
+    eventoForzado = true
     // estas escribiendo el miembro de una classe o enum
     const classNameInput = getLastUsedClass($editor.value, cursorPosition)
     
@@ -3770,7 +3776,15 @@ let classNamesReg;
 let constantes;
 let CONSTANTS
 
+let codigoAnterior = $editor.value
+
+let codigoResaltado = $highlighting.innerHTML
+
 const syntaxHighlight = (code, exception = $editor) => {
+  
+  if (exception == $editor && code === codigoAnterior) return codigoResaltado;
+  
+  codigoAnterior = code
   
   keywords.label = []
   const span = {
@@ -3888,7 +3902,7 @@ const syntaxHighlight = (code, exception = $editor) => {
   }
   return text
   }).join('<br/>')
-  
+  codigoResaltado = code
   return code
 };
 
@@ -3914,12 +3928,17 @@ window.syncDebugHex = ()=>{
 }
 
 $editor.addEventListener("click", syncHighlighting);
+
+$editor.addEventListener("input", debounce(()=>{
+  $highlighting.innerHTML = syntaxHighlight(
+    $editor.value, null
+  )
+  $highlighting.scrollTop = $editor.scrollTop; // Sincroniza el scroll
+}, 2500));
+
 $editor.addEventListener("scroll", () => {
     $highlighting.scrollTop = $editor.scrollTop;
 });
-
-// Llamada inicial para el resaltado
-syncHighlighting();
 
 const openAutocompleteBtn = document.getElementById("openAutocompleteBtn");
 
@@ -4711,7 +4730,7 @@ CUSTOM_KEYWORDS.toUpperCase().split('\n').map(keyword =>{
 let addClass = false
 let currentClass = ''
 
-let classes = deepMerge(
+classes = deepMerge(
  deepMerge({}, 
   txtToClass(DATA_DOWNLOADED[DOWNLOADED.CLASSES_SB])
  ),
@@ -7120,7 +7139,7 @@ SP.parseHexEnd = function(){
 
 SP.adaptarCodigo = function(){
   registroTipos = {}
-  let result = this
+  const result = this
     .removeComments()
     .transformTypeData()
     .parseHexEnd()
@@ -7944,7 +7963,7 @@ $("details pre").forEach(e => {
 
 // Función para generar el mapa semántico desde un string
 function generateSemanticMap(dataString) {
-  const lines = dataString.split('\n');
+  const lines = dataString.trim().split('\n');
   const semanticMap = {};
 
   lines.forEach(line => {
@@ -7968,11 +7987,14 @@ vehicle,car,helicopter,motorbike,motorcycle,truck,plane,ship,tank,trailer,rc
 create,add,make,build,construct,put,spawn,produce
 object,element,item,entity
 search,searchlight,seek
-request,load,import,fetch
-menu,panel,interface
+request,load,import,fetch,obtain
+menu,panel,interface,ui
 list,array,collection,group,sequence,catalog
 remove,destroy,delete,erase,clear,dispose,unload,detach,exclude
 change,add,write,modify,update,edit,ajust,overwrite,revise,alter
+weapon,gun,pistol,shotgun,rifle
+camera,cam,view,perspective
+sound,audio,sfx,effect,music
 `;
 
 // Generar el mapa semántico dinámicamente
@@ -7995,7 +8017,9 @@ commands = commands.filter(item =>
   item.hasOwnProperty('short_desc')
 );
 
-const stopwords = ['a','an','the'];
+
+const stopwords = new Set(['a', 'an', 'the', 'and', 'or', 'for', 'to', 'in', 'on', 'at', 'of', 'with', 'by', 'as', 'is', 'are'])
+
 // Normalizar texto
 function normalizeText(text) {
   return text
@@ -8003,10 +8027,13 @@ function normalizeText(text) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\w\s]/g, ' ')
-    .split(' ')
-    .filter(word => !stopwords.includes(word))
+    .replace(/(_|\.|\,)/g, ' ')
+    .replace(/\b(\w+?)(ing|ed|s|es|tion)\b/g, '$1') // Stemming básico
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !stopwords.has(word))
     .join(' ');
 }
+
 
 // Expandir palabras con el diccionario semántico
 function expandWords(text) {
@@ -8021,17 +8048,16 @@ function calculateSimilarity(inputWords, commandWords) {
   const matches = inputWords.filter(word => commandWords.includes(word));
   return matches.length / Math.max(inputWords.length, commandWords.length);
 }
-
 // Buscar el mejor comando
 function findBestCommand(input, commands) {
-  const normalizedInput = expandWords(normalizeText(input));
+  const normalizedInput = expandWords(memoization.normalizeText(input));
   let bestMatch = null;
   let bestScore = 0;
 
   commands.forEach(({ name, short_desc }) => {
   
-    const cmdWords = expandWords(normalizeText(name));
-const descWords = expandWords(normalizeText(short_desc));
+    const cmdWords = expandWords(memoization.normalizeText(name));
+const descWords = expandWords(memoization.normalizeText(short_desc));
 const score = Math.max(
   calculateSimilarity(normalizedInput, cmdWords),
   calculateSimilarity(normalizedInput, descWords)
@@ -8113,7 +8139,7 @@ $editor.addEventListener('input', function(e) {
           ? '@' + ~~(Math.random() * 32)
           : '$' + ~~(Math.random() * 10947)
         )
-        .r(/\{(\w+)\}/g, '[$1]')
+        .r(/\{(\w+)\}/g, '$1')
       }
       // Si ya existe la sugerencia justo después, no la agrega de nuevo
       if (lines[cursorLineIndex + 1]?.trim() === suggestion.split('\n')[0]) {
@@ -8132,6 +8158,7 @@ $editor.addEventListener('input', function(e) {
       textArea.setSelectionRange(cursorPos, cursorPos);
       
       autocomplete.class("+hidden");
+      saveTabContent()
     }
   }
 });
@@ -8206,4 +8233,6 @@ if (VERSION_GUARDADA) {
 LS.set("current_version", VERSION_ACTUAL)
 updatePlaceholder()
 	addCounterLine()
-	syncHighlighting()
+	$highlighting.innerHTML = syntaxHighlight(
+    $editor.value, null
+  )
