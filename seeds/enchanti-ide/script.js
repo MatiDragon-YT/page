@@ -21,8 +21,6 @@ AP.i = AP.includes
 RegExp.prototype.s = RegExp.prototype.source
 NodeList.prototype.forEach = Array.prototype.forEach
 
-
-
 //       FUNCIONES DE DOM
 
 
@@ -454,13 +452,11 @@ async function IDBgetCollection(files, messaElem, loadElem) {
 
 //   UTILIDAD DE LOCALSTORAGE
 
-
 const LS = {
   t : localStorage,
   get : (x) => LS.t.getItem(x),
   set : (x, y) => LS.t.setItem(x, y)
 }
-
 
 
 // &&&&&&&&&&&&&&&&&&&&&&&&&&&
@@ -1022,8 +1018,9 @@ const $clearAll = $('#clearAll')
 const $menu = $('#menu')
 const $explorer = $('#explorer')
 const $backgroundExplorer = $('#backgroundExplorer')
-
 const $tabsContainer = $('#tabsContainer')
+const $contextMenu = $('#context-menu')
+
 const $editorCounterLine = $("#editor-counterLine")
 const $editorContainer = $('#editor-container')
 const $editor = $('#editor')
@@ -1327,6 +1324,13 @@ window.importFileInFile = function() {
 // Event listener para el botón "compile"
 $('[for=compile]', e=>{e.onclick = ()=>{
     try {
+      saveTabContent()
+  		if(currentTabId !== null) {
+  			const tab = findTabById(parseInt(currentTabId), tabs);
+  			tab.content = $editor.value;
+  			Explorer_Save();
+  		}
+  		syncDebugHex()
       importFileInFile().toCompileSCM(
         findTabById(currentTabId, tabs).name + '.txt'
       )
@@ -1337,7 +1341,7 @@ $('[for=compile]', e=>{e.onclick = ()=>{
       throw error
     }
     closeMenu()
-    resetView()
+    //resetView()
 }});
 
 
@@ -2298,14 +2302,17 @@ function Explorer_addText() {
 			tab.content = $editor.value;
 			Explorer_Save();
 		}
+		syncDebugHex()
+	},1000));
+	
+  $editor.addEventListener('input', debounce(function(){
 		addCounterLine()
 		UpdateCurrentLine()
 		syncHighlighting()
 		
-		syncDebugHex()
-		  const contextMenu = document.getElementById('context-menu');
-      contextMenu.classList.remove('d-flex')
-	}, 85));
+		
+     $contextMenu.classList.remove('d-flex')
+	}, 86));
 	
 	$editor.onclick = () => {
 	  addCounterLine()
@@ -2861,21 +2868,20 @@ $editor.addEventListener('contextmenu', function(e) {
   if (e.target != $editor) return;
   
   e.preventDefault();
-  const contextMenu = document.getElementById('context-menu');
 
   // Coordenadas iniciales del cursor
   let posX = e.clientX;
   let posY = e.clientY + 7;
   
-  contextMenu.style.top = `0px`;
-  contextMenu.style.left = `0px`;
-  contextMenu.classList.add('d-flex')
+  $contextMenu.style.top = `0px`;
+  $contextMenu.style.left = `0px`;
+  $contextMenu.classList.add('d-flex')
 
-  contextMenu.style.opacity = '0';
+  $contextMenu.style.opacity = '0';
 
   // Obtenemos el tamaño del menú contextual
-  const menuWidth = contextMenu.offsetWidth;
-  const menuHeight = contextMenu.offsetHeight;
+  const menuWidth = $contextMenu.offsetWidth;
+  const menuHeight = $contextMenu.offsetHeight;
 
   // Tamaño de la ventana
   const windowWidth = window.innerWidth;
@@ -2895,15 +2901,14 @@ $editor.addEventListener('contextmenu', function(e) {
   }
 
   // Establecemos la posición corregida del menú
-  contextMenu.style.top = `${posY}px`;
-  contextMenu.style.left = `${posX}px`;
-  contextMenu.classList.add('d-flex')
-  contextMenu.style.opacity = '1';
+  $contextMenu.style.top = `${posY}px`;
+  $contextMenu.style.left = `${posX}px`;
+  $contextMenu.classList.add('d-flex')
+  $contextMenu.style.opacity = '1';
 });
 
 document.addEventListener('click', function() {
-  const contextMenu = document.getElementById('context-menu');
-  contextMenu.classList.remove('d-flex')
+  $contextMenu.classList.remove('d-flex')
 });
 
 
@@ -8180,21 +8185,23 @@ function generarStringAleatorio(longitud, min = 0) {
 
 
 
-
-
 //  HISTORIAL DE VERSION
-
-
-
-
-
-
-const VERSION_GUARDADA = Number(LS.get("current_version"))
-const VERSION_ACTUAL = 146
+const VERSION_ACTUAL = 147
+const VERSION_GUARDADA = Number(LS.get("current_version") ?? 0)
 
 const updatedSMS = ()=> 
 openModal("Enchanti IDE UPDATED!!!",
 `
+# 1.4.7
+
+* All code is highlighted after 1s passes with no new keystrokes.
+* The highlighter no longer updates when the cursor is moved.
+* All downloadable files are moved from LocalStorage to IndexedDB.
+* All edited files are saved after 1s without new clicks.
+* fix: offline mode does not load properly.
+* fix: code is not highlighted if the last line is typed.
+* fix: the highlighter refreshes every time you scroll the screen, even if you have the documentation open.
+
 # 1.4.6
 
 * fix search opcode with a point at mid.
@@ -8224,15 +8231,12 @@ openModal("Enchanti IDE UPDATED!!!",
 * Finally, every time the IDE is updated, this message will be displayed for you to see.
 
 `.trim().split('\n').join(`<br>`), null,'Thx u <3', null, '+text-left');
-  
-if (VERSION_GUARDADA) {
-  if (VERSION_GUARDADA != VERSION_ACTUAL) updatedSMS()
-} else {
-  updatedSMS()
-}
-LS.set("current_version", VERSION_ACTUAL)
 updatePlaceholder()
-	addCounterLine()
-	$highlighting.innerHTML = syntaxHighlight(
-    $editor.value, null
-  )
+addCounterLine()
+$highlighting.innerHTML = syntaxHighlight($editor.value, null)
+
+if (VERSION_GUARDADA < VERSION_ACTUAL) {
+  updatedSMS();
+  LS.set("current_version", VERSION_ACTUAL)
+}
+
