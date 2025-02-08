@@ -10,12 +10,9 @@
     text-align: inherit;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    content-visibility: auto;
+   /* content-visibility: auto;*/
     outline: none;
     font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-    font-variant-emoji: text!important;
-    font-variant-numeric: slashed-zero!important;
-    font-variant-ligatures: common-ligatures!important;
 }
 *, :after, :before {
     box-sizing: border-box;
@@ -31,6 +28,7 @@ html, body {
   scroll-behavior: smooth;
   display: flex;
   flex-direction: column;
+  height: 100vh;
   height: 100dvh;
 }
 
@@ -71,7 +69,7 @@ body {
 }
 #items {
   margin-top: .7rem;
-  padding-bottom: 10rem;
+  padding-bottom: 1rem;
   overflow: auto;
   height: 70vh;
 }
@@ -137,7 +135,7 @@ body {
   font-weight: 600;
   font-size:1rem;
   border:none;
-  padding: .5rem;
+  padding: .5rem .5rem;
   gap: .4rem;
 }
 #currentDirectory{
@@ -153,7 +151,6 @@ body {
   min-width: max-content;
   display: flex;
   cursor: pointer;
-  align-items: center;
 
   &.active{
     color:white;

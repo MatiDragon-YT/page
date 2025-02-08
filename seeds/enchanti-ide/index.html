@@ -22,8 +22,7 @@
     <button class="navbar-btn" for="compile" down tip='compile and launcher '>🚀</button>
   </div>
 </nav>
-<main id=bodyapp>
-
+<main id='bodyapp'>
 
 <div id='settings' class="other-view d-flex column overflow-visible p-absolute py-3 h-83 d-none">
 <h1>Settings</h1>
@@ -656,36 +655,35 @@ The IDE limits some features for better performance.<br>
 - Autocomplete is limited to displaying a maximum of 400 results.<br>
 - Autocomplete is only rendered if 0.2 seconds have passed since the last keystroke.
 </blockquote>
-
 <div class="p-5"></div><div class="p-5"></div>
- </div>
-  
-  
-<div id=backgroundExplorer></div>
+</div>
 
+<div id='backgroundExplorer'></div>
 <div id="explorer">
   <div class="d-flex column g-1">
-    <h6>Enchanti IDE 1.4.6 :: 01/26/2025</h6>
+    <h6>Enchanti IDE 1.4.7 :: 02/08/2025</h6>
     <button class="menu-btn" id="name-app">🔥 Install</button>
     <button class="menu-btn" for="compile">🚀 Compile</button>
     <button class="menu-btn d-none" for="settings">⚙️ Settings</button>
     <button class="menu-btn" for="open_docu">📘 Documentation</button>
   </div>
   <div id="explorer-actions" class="d-flex row between g-3 mt-2">
-   <div class='d-flex g-1 between'>
+    <div class='d-flex g-1 between'>
       <button id="addTextTab"> +📄</button>
       <button id="addFolderTab"> +📁</button>
       <button id="moveToRootButton" onclick="moveCutTabToRoot()" style="display: none;" class='ml-2'> »🦶</button>
-   </div>
-   <div>
+    </div>
+    <div>
       <button id="clearAll">🗑️</button>
-   </div>
+    </div>
   </div>
   <div class="tabs" id="items"></div>
 </div>
 
-<div id="toast-container"></div>
 
+
+
+<div id="toast-container"></div>
 <div id="tab-list" class="d-flex row between pr-4">
   <div id="tabsContainer" class="scroll-shadows"></div>
   <span id="button-quick-keys">⥅</span>
@@ -711,8 +709,6 @@ The IDE limits some features for better performance.<br>
   -->
  </div>
  
- 
- 
 <div class="d-none">
  <label>autocomplete</label>
  <select id="engineSelector">
@@ -720,6 +716,8 @@ The IDE limits some features for better performance.<br>
    <option value="fuzzy" selected>Fuzzy</option>
  </select>
 </div>
+
+
 </main>
 
 <footer id='table-command' class="d-flex column">
