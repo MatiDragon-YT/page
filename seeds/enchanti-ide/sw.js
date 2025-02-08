@@ -4,11 +4,11 @@ importScripts('https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox
 
 // Versión actualizada del Service Worker para manejar la página offline
 
-const CACHE_NAME = "1.4.7";
+const CACHE_NAME = "1.4.7-1";
 const OFFLINE_URL = "index.html";
 const ASSETS = [
   "/index.html",
-  "/style.css",
+  "/styles.css",
   "/css.js",
   '/manifest.json',
   '/script.js',
@@ -59,7 +59,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   // Lista de archivos que se actualizarán siempre desde la red
-  const alwaysUpdateFiles = ['/index.html', 'index.html', '/script.js', '/sw.js', '/style.css', 'style.css', '/css.js'];
+  const alwaysUpdateFiles = ['/index.html', 'index.html', '/script.js', '/sw.js', '/styles.css', 'styles.css', '/css.js'];
 
   // Si la solicitud es para alguno de estos archivos...
   if (alwaysUpdateFiles.some(path => event.request.url.endsWith(path))) {
