@@ -1043,7 +1043,7 @@ const $closeOthers = $('#close-others')
 
 //    SETTINGS
 
-let SUGGESTION_ENGINE_TYPE = "AKIN";
+let SUGGESTION_ENGINE_TYPE = "FUZZY";
 // Puede ser "EXACT" o "FUZZY" o "AKIN"
 let SUGGESTION_SORT_TYPE = "SIMILAR";
 // Puede ser "OFF" "SIMPLE" o "SIMILAR"
@@ -1059,7 +1059,7 @@ const typeWeights = {
   property: 1,
   constant: 1
 };
-
+let DEFAULT_SIZE_ARRAY = 20
 
 
 let DATA_DOWNLOADED = []
@@ -1376,9 +1376,7 @@ $('[for=compile]', e=>{e.onclick = ()=>{
 			$tabButton.onclick = () => {
 				Item_Select(tab.id);
 				updateActiveTab(tab.id);
-        $highlighting.innerHTML = syntaxHighlight(
-          $editor.value, null
-        )
+        
 			};
 			$tabButton.className = 'upperTab'
 			
@@ -1397,7 +1395,9 @@ $('[for=compile]', e=>{e.onclick = ()=>{
 			}
 		});
 		addCounterLine()
-		syncHighlighting()
+		$highlighting.innerHTML = syntaxHighlight(
+      $editor.value, null
+    )
 	}
 
 	function updateActiveTab(tabId) {
@@ -2303,7 +2303,7 @@ function Explorer_addText() {
 			Explorer_Save();
 		}
 		syncDebugHex()
-	},1000));
+	},300));
 	
   $editor.addEventListener('input', debounce(function(){
 		addCounterLine()
@@ -3813,100 +3813,102 @@ const syntaxHighlight = (code, exception = $editor) => {
   code = code.split('\n')
   
   code = code.map((text,index) =>{
-  
-  
-  if (
-    exception != $editor
-    || (code.length < 26)
-    || (index+1).entre(lineaActual-16, lineaActual+14)
-  ){
-  // Escapa HTML
-    text = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/'/g, "&apos;")
-    .replace(/"/g, "&quot;")
-    .replace(/\//g, "&sol;")
     
     
-
-	text = text
-	//Comentarios 
-	.r(/(&sol;&sol;([^\n]*)|&sol;\*[^\/]*?(\*&sol;))/, enter.comments)
-	
-	.r(/(\{([^\{\}]*(\})?)?)/g, enter => {
-	  return enter[1] == '$'
-	    ? '<span class=directive>'+enter+'</span>'
-	    : '<span class=comment>'+enter+'</span>'
-	})
-	
-	//Cadenas de texto
-	.r(/(&quot;((?:\\|[^\\\n])+)&quot;|&apos;((?:\\|[^\\\n])+)&apos;|`((?:\\|[^`\\])*)`)/gi, match => {
-	  match = match
-	  .r(/\\([xX]\w{1,2}|\w|&apos;|&quot;|`)/g, "<span class=charScape>\\$1</span>")
-	  return '<span class="strings">'+match+'</span>'
-  })
-	
-	
-	//Etiquetas
-	.r(/([^\w]|^)([@:]\w+)/gm, input=>{
-	  if (input.startsWith(':'))
-	    keywords.label.push(input.r(':', '@'));
-	  
-	 return input.r(/([^\w]|^)([@:]\w+)/gm,"$1<span class=label>$2</span>")
-	})
-	.r(/^(\w+:)$/gm, "<span class=label>$1</span>")
-	.r(/([^\w\.])(\w+)(\([^\n]*\))/g, "$1<span class=property>$2<\/span>$3")
-	//Arreglos
-	.r(/(\[)([\d+]*)(\])/g, "$1<span class=number>$2</span>$3")
-	
-	//Variables
-	.r(/([ifvs]?\&amp;[0-9\-]+|(\x{00}|[ifsv])\$([\d\w]+)|timer(a|b|x|z)|\d+\@([ifsv])?)/gi, enter.variables)
-
-
-	//Numeros
-	.r(/(\x20?c?\#\w*|\d+([box.])\w+|\-?\.?\d[e\+\-_\d\.]*(fps|[smh])?)\b/gi, input=>{
-	  
-	  if (/ c#[a-f0-9]{3,6}/i.test(input)){
-	    return input.r(/^ c/i,
-        '<span style="color:' + input.trim().r('c') + '">▇</span>c').r(/(c#.+)/, enter.numbers)
-	  }
-	  
-	  return '<span class=number>'+input+'</span>'
-  })
-	
-	.r(/(?!\#)(\W)(?!\$)([\d_]+)(?!\:|\@)([ifsv]?)\b/ig, '$1<span class=number>$2$3</span>')
-
-	//Clases
-
-	.r(/(\w+)\.(\w+)/gm, "<span class=class>$1</span>.<span class=property>$2</span>")
-	.r(/(\!?)\.([\w]+)/g, "$1.<span class=property>$2</span>")
-	.r(/(\$\w+|\d+\@)\.(\w+)/g, "$1.<span class=property>$2</span>")
-	.r(/\.([0-9A-Z_a-z]+)\n/g,"." + enter.commands +"\n")
-
-
-      // Palabras claves: sintaxis
-      text = text.replace(keywordPattern, '<span class="keyword">$1</span>');
+    if (
+      exception != $editor
+      || (code.length < 26)
+      || (index+1).entre(lineaActual-16, lineaActual+14)
+    ){
+    // Escapa HTML
+      text = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/'/g, "&apos;")
+      .replace(/"/g, "&quot;")
+      .replace(/\//g, "&sol;")
+      
+      
   
-	   text = text.r(constantes, enter => {
-	     
-	     let valor = CONSTANTS[enter.toUpperCase()]
-	     let clase = /["']/.test(valor) ? "strings"
-	     : /[\$\@\&]/.test(valor) ? "var"
-	     : "number"
-	     
-	     return `<span class="${clase}">${enter}</span>`
-	   });
-	
-      // Palabras claves: opcodes
-      text = text.replace(keysHigh, '<span class="keyword">$1</span>');
+  	text = text
+  	//Comentarios 
+  	.r(/(&sol;&sol;([^\n]*)|&sol;\*[^\/]*?(\*&sol;))/, enter.comments)
+  	
+  	.r(/(\{([^\{\}]*(\})?)?)/g, enter => {
+  	  return enter[1] == '$'
+  	    ? '<span class=directive>'+enter+'</span>'
+  	    : '<span class=comment>'+enter+'</span>'
+  	})
+  	
+  	//Cadenas de texto
+  	.r(/(&quot;((?:\\|[^\\\n])+)&quot;|&apos;((?:\\|[^\\\n])+)&apos;|`((?:\\|[^`\\])*)`)/gi, match => {
+  	  match = match
+  	  .r(/\\([xX]\w{1,2}|\w|&apos;|&quot;|`)/g, "<span class=charScape>\\$1</span>")
+  	  return '<span class="strings">'+match+'</span>'
+    })
+  	
+  	
+  	//Etiquetas
+  	.r(/([^\w]|^)([@:]\w+)/gm, input=>{
+  	  if (input.startsWith(':'))
+  	    keywords.label.push(input.r(':', '@'));
+  	  
+  	 return input.r(/([^\w]|^)([@:]\w+)/gm,"$1<span class=label>$2</span>")
+  	})
+  	.r(/^(\w+:)$/gm, "<span class=label>$1</span>")
+  	.r(/([^\w\.])(\w+)(\([^\n]*\))/g, "$1<span class=property>$2<\/span>$3")
+  	//Arreglos
+  	.r(/(\[)([\d+]*)(\])/g, "$1<span class=number>$2</span>$3")
+  	
+  	//Variables
+  	.r(/([ifvs]?\&amp;[0-9\-]+|(\x{00}|[ifsv])\$([\d\w]+)|timer(a|b|x|z)|\d+\@([ifsv])?)/gi, enter.variables)
   
-      // Clases Reservadas
-      text = text.replace(classNamesReg, '<span class="class">$1</span>');
-  }
-  return text
-  }).join('<br/>')
+  
+  	//Numeros
+  	.r(/(\x20?c?\#\w*|\d+([box.])\w+|\-?\.?\d[e\+\-_\d\.]*(fps|[smh])?)\b/gi, input=>{
+  	  
+  	  if (/ c#[a-f0-9]{3,6}/i.test(input)){
+  	    return input.r(/^ c/i,
+          '<span style="color:' + input.trim().r('c') + '">▇</span>c').r(/(c#.+)/, enter.numbers)
+  	  }
+  	  
+  	  return '<span class=number>'+input+'</span>'
+    })
+  	
+  	.r(/(?!\#)(\W)(?!\$)([\d_]+)(?!\:|\@)([ifsv]?)\b/ig, '$1<span class=number>$2$3</span>')
+  
+  	//Clases
+  
+  	.r(/(\w+)\.(\w+)/gm, "<span class=class>$1</span>.<span class=property>$2</span>")
+  	.r(/(\!?)\.([\w]+)/g, "$1.<span class=property>$2</span>")
+  	.r(/(\$\w+|\d+\@)\.(\w+)/g, "$1.<span class=property>$2</span>")
+  	.r(/\.([0-9A-Z_a-z]+)\n/g,"." + enter.commands +"\n")
+  
+  
+        // Palabras claves: sintaxis
+        text = text.replace(keywordPattern, '<span class="keyword">$1</span>');
+    
+  	   text = text.r(constantes, enter => {
+  	     
+  	     let valor = CONSTANTS[enter.toUpperCase()]
+  	     let clase = /["']/.test(valor) ? "strings"
+  	     : /[\$\@\&]/.test(valor) ? "var"
+  	     : "number"
+  	     
+  	     return `<span class="${clase}">${enter}</span>`
+  	   });
+  	
+        // Palabras claves: opcodes
+        text = text.replace(keysHigh, '<span class="keyword">$1</span>');
+    
+        // Clases Reservadas
+        text = text.replace(classNamesReg, '<span class="class">$1</span>');
+    }
+    return text
+  })
+  
+  code = code.join('<br/>')
   codigoResaltado = code
   return code
 };
@@ -5184,7 +5186,8 @@ SP.parseHigthLevelIfs = function() {
         } else if (/THEN/i.test(linea)) {
             etiquetas.push(`label_${etiquetaCounter}`);
             etiquetaCounter++;
-            return 'goto_if_false @' + etiquetas[etiquetas.length - 1];
+            
+            return 'ELSE_JUMP @' + etiquetas[etiquetas.length - 1];
         } else if (/ELSE/i.test(linea)) {
             const etiqueta = etiquetas.pop();
             const etiquetaElse = `label_${etiquetaCounter}`;
@@ -5251,7 +5254,7 @@ SP.parseHigthLevelLoops = function(){
         
         label = `if_${++counts.if}`
         line = [
-          'goto_if_false @'+label+''
+          'ELSE_JUMP @'+label+''
         ].join('\n')
         
         stacks.if.push(label);
@@ -5297,7 +5300,7 @@ SP.parseHigthLevelLoops = function(){
             ':'+label+'_return // begin-loop',
             'if',
             values[1],
-            'goto_if_false @' + label
+            'ELSE_JUMP @' + label
           ].join('\n')
           
           stacks.custom.push(label)
@@ -5320,7 +5323,7 @@ SP.parseHigthLevelLoops = function(){
           INDEX+' += 1',
           'if',
           INDEX+' >= '+SIZE,
-          'goto_if_false @'+label
+          'ELSE_JUMP @'+label
         ].join('\n')
         
         
@@ -5345,7 +5348,7 @@ SP.parseHigthLevelLoops = function(){
           variable+' '+(forUp?'-=':'+=')+' '+step,
           'if',
           variable+' '+(forUp?'<=':'>=')+' '+end,
-          'goto_if_false @'+label
+          'ELSE_JUMP @'+label
         ].join('\n')
         
         stacks.for.push(label)
@@ -5387,7 +5390,7 @@ SP.parseHigthLevelLoops = function(){
             line = [
               'if',
               condition,
-              'goto_if_false @'+label,
+              'ELSE_JUMP @'+label,
                 'goto @'+label+'_return',
               ':'+label +' // end-loop'
             ].join('\n')
@@ -5673,8 +5676,9 @@ let CLEO_FUNCTIONS
 SP.preProcesar = function() {
   CLEO_FUNCTIONS = {
     MATH : {
-      INT_INT : false,
-      FLOAT_FLOAT : false,
+      INT_IS_INT : false,
+      FLOAT_IS_FLOAT : false,
+      FLOAT_IS_INT : false,
       INVERT_BOOL : false,
       TO_BOOL : false,
     }
@@ -5736,10 +5740,10 @@ SP.preProcesar = function() {
     }
     
     if (/^\d+ == \d+$/im.test(linea)){
-      CLEO_FUNCTIONS.MATH.INT_INT = true
+      CLEO_FUNCTIONS.MATH.INT_IS_INT = true
     }
     if (/^\d+\.\d+ == \d+\.\d+$/mi.test(linea)){
-      CLEO_FUNCTIONS.MATH.FLOAT_FLOAT = true
+      CLEO_FUNCTIONS.MATH.FLOAT_IS_FLOAT = true
     }
     nString += linea.trim() + '\n'
   })
@@ -5839,7 +5843,7 @@ SP.preProcesar = function() {
   	  
   	  return r
   	})
-  	.r(/^@(\w+)$/gm, 'goto @$1')
+  	.r(/^@(\w+)$/gm, 'GOTO @$1')
   	
   	
     .r(/^\w+ = \d+ [\*\/\+\-] \d+( [\*\/\+\-] \d+)+$/gim,  input =>{
@@ -5870,17 +5874,17 @@ SP.preProcesar = function() {
   	  }
   	  
   	  let op = {
-  	   "&": "0B10",
-  	   "|": "0B11",
-  	   "^":"0B12",
-  	   "~":"0B13",
-  	   "%":"0B14",
-  	   ">>":"0B15",
-  	   "<<":"0B16",
-  	   "+":"0A8E",
-  	   "-":"0A8F",
-  	   "*":"0A90",
-  	   "/":"0A91",
+  	   "&": "BIT_AND",
+  	   "|": "BIT_OR",
+  	   "^":"BIT_XOR",
+  	   "~":"BIT_NOT",
+  	   "%":"MOD",
+  	   ">>":"BIT_SHR",
+  	   "<<":"BIT_SHL",
+  	   "+":"INT_ADD",
+  	   "-":"INT_SUB",
+  	   "*":"INT_MUL",
+  	   "/":"INT_DIV",
   	  }[operador];
   	  
   	  let res = op+": "+var2+' '+var3+' '+var1
@@ -5888,7 +5892,7 @@ SP.preProcesar = function() {
   	  return res
   	})
   	//0B1A: ~ 0@
-  	.r(/^~(.+)/m, '0B1A: $1')
+  	.r(/^~(.+)/m, 'BIT_NOT_COMPOUND $1')
     // 7@ = !!7@
     .r(/(.+) = !!(.+)$/gim,
 `if
@@ -5984,12 +5988,12 @@ end
       
       const length = add.split(' ').clear().length
       
-      input = 'cleo_call @'+vars[1]+' '+length+' '+add.rA('\x01', ',')+'\n'
+      input = 'CLEO_CALL @'+vars[1]+' '+length+' '+add.rA('\x01', ',')+'\n'
       
       return input
     })
     // subrutine() | GOSUB
-    .r(/^(\w+)\(\)$/gm, '\ngosub @$1\n')
+    .r(/^(\w+)\(\)$/gm, '\nGOSUB @$1\n')
     
     nString = nString.trim()
     if (nString.length != 0){
@@ -6072,7 +6076,8 @@ function obtenerTipo(variable) {
 
 
 
-function detectarOpcode(operacion, _lineaInvocada = 0) {
+function detectarOpcode(operacion, _lineaInvocada = 0, _romperIntentos = false) {
+  if (_romperIntentos == true) return null;
   const opcodes = {
     '=#': {
       'GVAR_INT-GVAR_FLOAT': 'CSET_VAR_INT_TO_VAR_FLOAT',
@@ -6101,148 +6106,149 @@ function detectarOpcode(operacion, _lineaInvocada = 0) {
       'GVAR_FLOAT-LVAR_FLOAT': 'SUB_TIMED_FLOAT_LVAR_FROM_FLOAT_VAR',
     },
     '+=': {
-      'GVAR_INT-INT': 'ADD_VAL_TO_INT_VAR',
-      'GVAR_FLOAT-FLOAT': 'ADD_VAL_TO_FLOAT_VAR',
-      'LVAR_INT-INT': 'ADD_VAL_TO_INT_LVAR',
-      'LVAR_FLOAT-FLOAT': 'ADD_VAL_TO_FLOAT_LVAR',
-      
-      'GVAR_INT-GVAR_INT': '58',
-      'GVAR_FLOAT-GVAR_FLOAT': '59',
-      'LVAR_INT-LVAR_INT': '5A',
-      'LVAR_FLOAT-LVAR_FLOAT': '5B',
-      'LVAR_INT-GVAR_INT': '5C',
-      'LVAR_FLOAT-GVAR_FLOAT': '5D',
-      'GVAR_INT-LVAR_INT': '5E',
-      'GVAR_FLOAT-LVAR_FLOAT': '5F',
+    'GVAR_INT-INT': 'ADD_VAL_TO_INT_VAR',
+    'GVAR_FLOAT-FLOAT': 'ADD_VAL_TO_FLOAT_VAR',
+    'LVAR_INT-INT': 'ADD_VAL_TO_INT_LVAR',
+    'LVAR_FLOAT-FLOAT': 'ADD_VAL_TO_FLOAT_LVAR',
+     
+    'GVAR_INT-GVAR_INT': 'ADD_INT_VAR_TO_INT_VAR',
+    'GVAR_FLOAT-GVAR_FLOAT': 'ADD_FLOAT_VAR_TO_FLOAT_VAR',
+    'LVAR_INT-LVAR_INT': 'ADD_INT_LVAR_TO_INT_LVAR',
+    'LVAR_FLOAT-LVAR_FLOAT': 'ADD_FLOAT_LVAR_TO_FLOAT_LVAR',
+    'LVAR_INT-GVAR_INT': 'ADD_INT_VAR_TO_INT_LVAR',
+    'LVAR_FLOAT-GVAR_FLOAT': 'ADD_FLOAT_VAR_TO_FLOAT_LVAR',
+    'GVAR_INT-LVAR_INT': 'ADD_INT_LVAR_TO_INT_VAR',
+    'GVAR_FLOAT-LVAR_FLOAT': 'ADD_FLOAT_LVAR_TO_FLOAT_VAR',
     },
     '-=': {
-      'GVAR_INT-INT': 'C',
-      'GVAR_FLOAT-FLOAT': 'D',
-      'LVAR_INT-INT': 'E',
-      'LVAR_FLOAT-FLOAT': 'F',
+      'GVAR_INT-INT': 'SUB_VAL_FROM_INT_VAR',
+      'GVAR_FLOAT-FLOAT': 'SUB_VAL_FROM_FLOAT_VAR',
+      'LVAR_INT-INT': 'SUB_VAL_FROM_INT_LVAR',
+      'LVAR_FLOAT-FLOAT': 'SUB_VAL_FROM_FLOAT_LVAR',
       
-      'GVAR_INT-GVAR_INT': '60',
-      'GVAR_FLOAT-GVAR_FLOAT': '61',
-      'LVAR_INT-LVAR_INT': '62',
-      'LVAR_FLOAT-LVAR_FLOAT': '63',
-      'LVAR_INT-GVAR_INT': '64',
-      'LVAR_FLOAT-GVAR_FLOAT': '65',
-      'GVAR_INT-LVAR_INT': '66',
-      'GVAR_FLOAT-LVAR_FLOAT': '67',
+      'GVAR_INT-GVAR_INT': 'SUB_INT_VAR_FROM_INT_VAR',
+      'GVAR_FLOAT-GVAR_FLOAT': 'SUB_FLOAT_VAR_FROM_FLOAT_VAR',
+      'LVAR_INT-LVAR_INT': 'SUB_INT_LVAR_FROM_INT_LVAR',
+      'LVAR_FLOAT-LVAR_FLOAT': 'SUB_FLOAT_LVAR_FROM_FLOAT_LVAR',
+      'LVAR_INT-GVAR_INT': 'SUB_INT_VAR_FROM_INT_LVAR',
+      'LVAR_FLOAT-GVAR_FLOAT': 'SUB_FLOAT_VAR_FROM_FLOAT_LVAR',
+      'GVAR_INT-LVAR_INT': 'SUB_INT_LVAR_FROM_INT_VAR',
+      'GVAR_FLOAT-LVAR_FLOAT': 'SUB_FLOAT_LVAR_FROM_FLOAT_VAR',
     },
     '*=': {
-      'GVAR_INT-INT': '10',
-      'GVAR_FLOAT-FLOAT': '11',
-      'LVAR_INT-INT': '12',
-      'LVAR_FLOAT-FLOAT': '13',
+      'GVAR_INT-INT': 'MULT_INT_VAR_BY_VAL',
+      'GVAR_FLOAT-FLOAT': 'MULT_FLOAT_VAR_BY_VAL',
+      'LVAR_INT-INT': 'MULT_INT_LVAR_BY_VAL',
+      'LVAR_FLOAT-FLOAT': 'MULT_FLOAT_LVAR_BY_VAL',
       
-      'GVAR_INT-GVAR_INT': '68',
-      'GVAR_FLOAT-GVAR_FLOAT': '69',
-      'LVAR_INT-LVAR_INT': '6A',
-      'LVAR_FLOAT-LVAR_FLOAT': '6B',
-      'LVAR_INT-GVAR_INT': '6C',
-      'LVAR_FLOAT-GVAR_FLOAT': '6D',
-      'GVAR_INT-LVAR_INT': '6E',
-      'GVAR_FLOAT-LVAR_FLOAT': '6F',
+      'GVAR_INT-GVAR_INT': 'MULT_INT_VAR_BY_INT_VAR',
+      'GVAR_FLOAT-GVAR_FLOAT': 'MULT_FLOAT_VAR_BY_FLOAT_VAR',
+      'LVAR_INT-LVAR_INT': 'MULT_INT_LVAR_BY_INT_LVAR',
+      'LVAR_FLOAT-LVAR_FLOAT': 'MULT_FLOAT_LVAR_BY_FLOAT_LVAR',
+      'LVAR_INT-GVAR_INT': 'MULT_INT_VAR_BY_INT_LVAR',
+      'LVAR_FLOAT-GVAR_FLOAT': 'MULT_FLOAT_VAR_BY_FLOAT_LVAR',
+      'GVAR_INT-LVAR_INT': 'MULT_INT_LVAR_BY_INT_VAR',
+      'GVAR_FLOAT-LVAR_FLOAT': 'MULT_FLOAT_LVAR_BY_FLOAT_VAR',
     },
     '/=': {
-      'GVAR_INT-INT': '14',
-      'GVAR_FLOAT-FLOAT': '15',
-      'LVAR_INT-INT': '16',
-      'LVAR_FLOAT-FLOAT': '17',
+      'GVAR_INT-INT': 'DIV_INT_VAR_BY_VAL',
+      'GVAR_FLOAT-FLOAT': 'DIV_FLOAT_VAR_BY_VAL',
+      'LVAR_INT-INT': 'DIV_INT_LVAR_BY_VAL',
+      'LVAR_FLOAT-FLOAT': 'DIV_FLOAT_LVAR_BY_VAL',
       
-      'GVAR_INT-GVAR_INT': '70',
-      'GVAR_FLOAT-GVAR_FLOAT': '71',
-      'LVAR_INT-LVAR_INT': '72',
-      'LVAR_FLOAT-LVAR_FLOAT': '73',
-      'LVAR_INT-GVAR_INT': '74',
-      'LVAR_FLOAT-GVAR_FLOAT': '75',
-      'GVAR_INT-LVAR_INT': '76',
-      'GVAR_FLOAT-LVAR_FLOAT': '77',
+      'GVAR_INT-GVAR_INT': 'DIV_INT_VAR_BY_INT_VAR',
+      'GVAR_FLOAT-GVAR_FLOAT': 'DIV_FLOAT_VAR_BY_FLOAT_VAR',
+      'LVAR_INT-LVAR_INT': 'DIV_INT_LVAR_BY_INT_LVAR',
+      'LVAR_FLOAT-LVAR_FLOAT': 'DIV_FLOAT_LVAR_BY_FLOAT_LVAR',
+      'LVAR_INT-GVAR_INT': 'DIV_INT_VAR_BY_INT_LVAR',
+      'LVAR_FLOAT-GVAR_FLOAT': 'DIV_FLOAT_VAR_BY_FLOAT_LVAR',
+      'GVAR_INT-LVAR_INT': 'DIV_INT_LVAR_BY_INT_VAR',
+      'GVAR_FLOAT-LVAR_FLOAT': 'DIV_FLOAT_LVAR_BY_FLOAT_VAR',
     },
     '>=': {
-      'GVAR_INT-INT': '28',
-      'LVAR_INT-INT': '29',
-      'INT-GVAR_INT': '2A',
-      'INT-LVAR_INT': '2B',
-      'GVAR_INT-GVAR_INT': '2C',
-      'LVAR_INT-LVAR_INT': '2D',
-      'GVAR_INT-LVAR_INT': '2E',
-      'LVAR_INT-GVAR_INT': '2F',
-      'GVAR_FLOAT-FLOAT': '30',
-      'LVAR_FLOAT': '31',
-      'FLOAT-GVAR_FLOAT': '32',
-      'FLOAT-LVAR_FLOAT': '33',
-      'GVAR_FLOAT-GVAR_FLOAT': '34',
-      'LVAR_FLOAT-LVAR_FLOAT': '35',
-      'GVAR_FLOAT-LVAR_FLOAT': '36',
-      'LVAR_FLOAT-GVAR_FLOAT': '37',
+      'GVAR_INT-INT': 'IS_INT_VAR_GREATER_OR_EQUAL_TO_NUMBER',
+      'LVAR_INT-INT': 'IS_INT_LVAR_GREATER_OR_EQUAL_TO_NUMBER',
+      'INT-GVAR_INT': 'IS_NUMBER_GREATER_OR_EQUAL_TO_INT_VAR',
+      'INT-LVAR_INT': 'IS_NUMBER_GREATER_OR_EQUAL_TO_INT_LVAR',
+      'GVAR_INT-GVAR_INT': 'IS_INT_VAR_GREATER_OR_EQUAL_TO_INT_VAR',
+      'LVAR_INT-LVAR_INT': 'IS_INT_LVAR_GREATER_OR_EQUAL_TO_INT_LVAR',
+      'GVAR_INT-LVAR_INT': 'IS_INT_VAR_GREATER_OR_EQUAL_TO_INT_LVAR',
+      'LVAR_INT-GVAR_INT': 'IS_INT_LVAR_GREATER_OR_EQUAL_TO_INT_VAR',
+      'GVAR_FLOAT-FLOAT': 'IS_FLOAT_VAR_GREATER_OR_EQUAL_TO_NUMBER',
+      'LVAR_FLOAT': 'IS_FLOAT_LVAR_GREATER_OR_EQUAL_TO_NUMBER',
+      'FLOAT-GVAR_FLOAT': 'IS_NUMBER_GREATER_OR_EQUAL_TO_FLOAT_VAR',
+      'FLOAT-LVAR_FLOAT': 'IS_NUMBER_GREATER_OR_EQUAL_TO_FLOAT_LVAR',
+      'GVAR_FLOAT-GVAR_FLOAT': 'IS_FLOAT_VAR_GREATER_OR_EQUAL_TO_FLOAT_VAR',
+      'LVAR_FLOAT-LVAR_FLOAT': 'IS_FLOAT_LVAR_GREATER_OR_EQUAL_TO_FLOAT_LVAR',
+      'GVAR_FLOAT-LVAR_FLOAT': 'IS_FLOAT_VAR_GREATER_OR_EQUAL_TO_FLOAT_LVAR',
+      'LVAR_FLOAT-GVAR_FLOAT': 'IS_FLOAT_LVAR_GREATER_OR_EQUAL_TO_FLOAT_VAR',
     },
     '==': {
       'INT-INT': 'XXX0',
       'FLOAT-FLOAT': 'XXX1',
-      'GVAR_INT-INT': '38',
-      'LVAR_INT-INT': '39',
-      'GVAR_INT-GVAR_INT': '3A',
-      'LVAR_INT-LVAR_INT': '3B',
-      'GVAR_INT-LVAR_INT': '3C',
       
-      'GVAR_FLOAT-FLOAT': '42',
-      'LVAR_FLOAT-FLOAT': '43',
-      'GVAR_FLOAT-GVAR_FLOAT': '44',
-      'LVAR_FLOAT-LVAR_FLOAT': '45',
-      'GVAR_FLOAT-LVAR_FLOAT': '46',
+      'GVAR_INT-INT': 'IS_INT_VAR_EQUAL_TO_NUMBER',
+      'LVAR_INT-INT': 'IS_INT_LVAR_EQUAL_TO_NUMBER',
+      'GVAR_INT-GVAR_INT': 'IS_INT_VAR_EQUAL_TO_INT_VAR',
+      'LVAR_INT-LVAR_INT': 'IS_INT_LVAR_EQUAL_TO_INT_LVAR',
+      'GVAR_INT-LVAR_INT': 'IS_INT_VAR_EQUAL_TO_INT_LVAR',
       
-      'GVAR_SHORTSTRING-LVAR_SHORTSTRING': '5AD',
-      'LVAR_SHORTSTRING-LVAR_SHORTSTRING': '5AE',
+      'GVAR_FLOAT-FLOAT': 'IS_FLOAT_VAR_EQUAL_TO_NUMBER',
+      'LVAR_FLOAT-FLOAT': 'IS_FLOAT_LVAR_EQUAL_TO_NUMBER',
+      'GVAR_FLOAT-GVAR_FLOAT': 'IS_FLOAT_VAR_EQUAL_TO_FLOAT_VAR',
+      'LVAR_FLOAT-LVAR_FLOAT': 'IS_FLOAT_LVAR_EQUAL_TO_FLOAT_LVAR',
+      'GVAR_FLOAT-LVAR_FLOAT': 'IS_FLOAT_VAR_EQUAL_TO_FLOAT_LVAR',
       
-      'LVAR_INT-GVAR_INT': '7D6',
-      'LVAR_INT-GVAR_FLOAT': '7D7',
+      'GVAR_SHORTSTRING-LVAR_SHORTSTRING': 'IS_VAR_TEXT_LABEL_EQUAL_TO_TEXT_LABEL',
+      'LVAR_SHORTSTRING-LVAR_SHORTSTRING': 'IS_LVAR_TEXT_LABEL_EQUAL_TO_TEXT_LABEL',
+      
+      'LVAR_INT-GVAR_INT': 'IS_INT_LVAR_EQUAL_TO_INT_VAR',
+      'LVAR_INT-GVAR_FLOAT': 'IS_FLOAT_LVAR_EQUAL_TO_FLOAT_VAR',
     },
     '=': {
-      'GVAR_INT-INT': '4',
-      'GVAR_FLOAT-FLOAT': '5',
-      'LVAR_INT-INT': '6',
-      'LVAR_FLOAT-FLOAT': '7',
-      'GVAR_INT-GVAR_INT': '84',
-      'LVAR_INT-LVAR_INT': '85',
-      'GVAR_FLOAT-GVAR_FLOAT': '86',
-      'LVAR_FLOAT-LVAR_FLOAT': '87',
-      'GVAR_INT-LVAR_INT': '88',
-      'LVAR_INT-GVAR_INT': '89',
-      'GVAR_FLOAT-LVAR_FLOAT': '8A',
-      'LVAR_FLOAT-GVAR_FLOAT': '8B',
+      'GVAR_INT-INT': 'SET_VAR_INT',
+      'GVAR_FLOAT-FLOAT': 'SET_VAR_FLOAT',
+      'LVAR_INT-INT': 'SET_LVAR_INT',
+      'LVAR_FLOAT-FLOAT': 'SET_LVAR_FLOAT',
+      'GVAR_INT-GVAR_INT': 'SET_VAR_INT_TO_VAR_INT',
+      'LVAR_INT-LVAR_INT': 'SET_LVAR_INT_TO_LVAR_INT',
+      'GVAR_FLOAT-GVAR_FLOAT': 'SET_VAR_FLOAT_TO_VAR_FLOAT',
+      'LVAR_FLOAT-LVAR_FLOAT': 'SET_LVAR_FLOAT_TO_LVAR_FLOAT',
+      'GVAR_INT-LVAR_INT': 'SET_VAR_FLOAT_TO_LVAR_FLOAT',
+      'LVAR_INT-GVAR_INT': 'SET_LVAR_FLOAT_TO_VAR_FLOAT',
+      'GVAR_FLOAT-LVAR_FLOAT': 'SET_VAR_INT_TO_LVAR_INT',
+      'LVAR_FLOAT-GVAR_FLOAT': 'SET_LVAR_INT_TO_VAR_INT',
       
-      'GVAR_SHORTSTRING-SHORTSTRING': '5A9',
-      'LVAR_SHORTSTRING-SHORTSTRING': '5AA',
-      'GVAR_LONGSTRING-LONGSTRING': '6D1',
-      'LVAR_LONGSTRING-LONGSTRING': '6D2',
+      'GVAR_SHORTSTRING-SHORTSTRING': 'SET_VAR_TEXT_LABEL',
+      'LVAR_SHORTSTRING-SHORTSTRING': 'SET_LVAR_TEXT_LABEL',
+      'GVAR_LONGSTRING-LONGSTRING': 'SET_VAR_TEXT_LABEL16',
+      'LVAR_LONGSTRING-LONGSTRING': 'SET_LVAR_TEXT_LABEL16',
 
     },
     '>': {
-      'GVAR_INT-INT': '18',
-      'LVAR_INT-INT': '19',
-      'INT-GVAR_INT': '1A',
-      'INT-LVAR_INT': '1B',
-      'GVAR_INT-GVAR_INT': '1C',
-      'LVAR_INT-LVAR_INT': '1D',
-      'GVAR_INT-LVAR_INT': '1E',
-      'LVAR_INT-GVAR_INT': '1F',
-      'GVAR_FLOAT-FLOAT': '20',
-      'LVAR_FLOAT': '21',
-      'FLOAT-GVAR_FLOAT': '22',
-      'FLOAT-LVAR_FLOAT': '23',
-      'GVAR_FLOAT-GVAR_FLOAT': '24',
-      'LVAR_FLOAT-LVAR_FLOAT': '25',
-      'GVAR_FLOAT-LVAR_FLOAT': '26',
-      'LVAR_FLOAT-GVAR_FLOAT': '27',
+      'GVAR_INT-INT': 'IS_INT_VAR_GREATER_THAN_NUMBER',
+      'LVAR_INT-INT': 'IS_INT_LVAR_GREATER_THAN_NUMBER',
+      'INT-GVAR_INT': 'IS_NUMBER_GREATER_THAN_INT_VAR',
+      'INT-LVAR_INT': 'IS_NUMBER_GREATER_THAN_INT_LVAR',
+      'GVAR_INT-GVAR_INT': 'IS_INT_VAR_GREATER_THAN_INT_VAR',
+      'LVAR_INT-LVAR_INT': 'IS_INT_LVAR_GREATER_THAN_INT_LVAR',
+      'GVAR_INT-LVAR_INT': 'IS_INT_VAR_GREATER_THAN_INT_LVAR',
+      'LVAR_INT-GVAR_INT': 'IS_INT_LVAR_GREATER_THAN_INT_VAR',
+      'GVAR_FLOAT-FLOAT': 'IS_FLOAT_VAR_GREATER_THAN_NUMBER',
+      'LVAR_FLOAT': 'IS_FLOAT_LVAR_GREATER_THAN_NUMBER',
+      'FLOAT-GVAR_FLOAT': 'IS_NUMBER_GREATER_THAN_FLOAT_VAR',
+      'FLOAT-LVAR_FLOAT': 'IS_NUMBER_GREATER_THAN_FLOAT_LVAR',
+      'GVAR_FLOAT-GVAR_FLOAT': 'IS_FLOAT_VAR_GREATER_THAN_FLOAT_VAR',
+      'LVAR_FLOAT-LVAR_FLOAT': 'IS_FLOAT_LVAR_GREATER_THAN_FLOAT_LVAR',
+      'GVAR_FLOAT-LVAR_FLOAT': 'IS_FLOAT_VAR_GREATER_THAN_FLOAT_LVAR',
+      'LVAR_FLOAT-GVAR_FLOAT': 'IS_FLOAT_LVAR_GREATER_THAN_FLOAT_VAR',
     },
-    '&=':'B17',
-    '|=':'B18',
-    '^=':'B19',
-    '%=':'B1B',
-    '>>=':'B1C',
-    '<<=':'B1D',
+    '&=':'BIT_AND_COMPOUND',
+    '|=':'BIT_OR_COMPOUND',
+    '^=':'BIT_XOR_COMPOUND',
+    '%=':'MOD_COMPOUND',
+    '>>=':'BIT_SHR_COMPOUND',
+    '<<=':'BIT_SHL_COMPOUND',
     // Agrega otros operadores y sus combinaciones de opcodes
   };
 
@@ -6337,7 +6343,22 @@ function detectarOpcode(operacion, _lineaInvocada = 0) {
   let opcode = opcodes[operador][combinacionTipos];
 
   if (!opcode) {
-    throw new Error('Invalid operation\n>>> '+operacion);
+    log({variable1, operador, variable2})
+    if (Input.isValueConstant(variable1)
+      && Input.isOperation(operador)
+      && Input.isValueConstant(variable2)
+    ){
+      const reFormulado =
+        variable2+' '+operador+' '+variable1
+        
+      opcode = detectarOpcode(reFormulado, _lineaInvocada,true)
+      
+      if (!opcode) throw new Error('Invalid operation\n>>> '+operacion);
+      
+      return opcode+' '+reFormulado
+    } else{
+      throw new Error('Invalid operation\n>>> '+operacion)
+    }
   }
 
   // Registrar solo las variables, no los números literales
@@ -6352,11 +6373,8 @@ function detectarOpcode(operacion, _lineaInvocada = 0) {
   }
   
   if (esNegado){
-    opcode = (parseInt(opcode, 16) | 1 << 15)
-      .toString(16)
-      .toUpperCase()
+    opcode = '!'+opcode
   }
-  opcode = opcode.padStart(4,'0')
   
   return opcode;
 }
@@ -6379,7 +6397,9 @@ SP.operationsToOpcodes = function () {
     ) {
       // Procesar la línea con la operación
       const opcodeDetectado = detectarOpcode(linea)
-      return `${opcodeDetectado}: ${linea}`
+      
+      return opcodeDetectado.includes(' ')
+        ? opcodeDetectado : `${opcodeDetectado} ${linea}`
     }
     else if (addition.test(linea)) {
       const operation = linea.i('++') ? '+=' : '-='
@@ -6431,7 +6451,7 @@ SP.normalizeArrays = function(){
         let output = ''
         
         let size = input.match(/,\s*(\w+)\)/)
-        size = size ? size[0] : ',20'+type+')'
+        size = size ? size[0] : ','+DEFAULT_SIZE_ARRAY+type+')'
 
         if (!Input.isVariable(arr)
         || !Input.isVariable(index)){
@@ -6965,30 +6985,31 @@ SP.dividirCadena = function() {
 
 SP.autoAddCleoFunction = function(){
   let code = this
-  if (CLEO_FUNCTIONS.MATH.INT_INT){
-    code += `\n:MATH_INT_INT
+  if (CLEO_FUNCTIONS.MATH.INT_IS_INT){
+    code += `\n:MATH_INT_IS_INT
     if 0@i == 1@i
     then ret 1 true
     else ret 1 false
     end
     ret 0\n`
   }
-  if (CLEO_FUNCTIONS.MATH.FLOAT_FLOAT){
-    code += `\n:MATH_FLOAT_FLOAT
+  if (CLEO_FUNCTIONS.MATH.FLOAT_IS_FLOAT){
+    code += `\n:MATH_FLOAT_IS_FLOAT
     if 0@f == 1@f
     then ret 1 true
     else ret 1 false
     end
     ret 0\n`
   }
+  //if (CLEO_FUNCTIONS.FLOAT_IS_INT)
   return code.formatScript()
 }
 SP.fixOpcodes = function(){
   let tm = this.split('\n').map(line => {
     if (/^X\w+: /mi.test(line)){
      line = line.r(/^(X\w+):(.+)/, (...i ) => {
-      if (i[1] == 'XXX0')i[1]= '0AB1: @MATH_INT_INT 2';
-      if (i[1] == 'XXX1')i[1]= '0AB1: @MATH_FLOAT_FLOAT 2';
+      if (i[1] == 'XXX0')i[1]= 'CLEO_CALL @MATH_INT_IS_INT 2';
+      if (i[1] == 'XXX1')i[1]= 'CLEO_CALL @MATH_FLOAT_IS_FLOAT 2';
      
       return i[1] + i[2]
      })
@@ -7144,7 +7165,7 @@ SP.parseHexEnd = function(){
 
 SP.adaptarCodigo = function(){
   registroTipos = {}
-  const result = this
+  let result = this
     .removeComments()
     .transformTypeData()
     .parseHexEnd()
@@ -7165,8 +7186,7 @@ SP.adaptarCodigo = function(){
     .keywordsToOpcodes()
     .fixOpcodes()
     .removeTrash()
-
-   return (result)
+   return result
 }
 
 SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
@@ -8186,28 +8206,29 @@ function generarStringAleatorio(longitud, min = 0) {
 
 
 //  HISTORIAL DE VERSION
-const VERSION_ACTUAL = 147
-const VERSION_GUARDADA = Number(LS.get("current_version") ?? 0)
+const HISTORY = `
+# 1.4.8
 
-const updatedSMS = ()=> 
-openModal("Enchanti IDE UPDATED!!!",
-`
+* add: support reverse arithmetic conditionals (1 == b).
+* fix: syntax high-level.
+* fix: support arithmetic operations.
+
 # 1.4.7
 
-* All code is highlighted after 1s passes with no new keystrokes.
-* The highlighter no longer updates when the cursor is moved.
-* All downloadable files are moved from LocalStorage to IndexedDB.
-* All edited files are saved after 1s without new clicks.
+* add: All code is highlighted after 1s passes with no new keystrokes.
+* change: The highlighter no longer updates when the cursor is moved.
+* change: All downloadable files are moved from LocalStorage to IndexedDB.
+* change: All edited files are saved after 1s without new clicks.
 * fix: offline mode does not load properly.
 * fix: code is not highlighted if the last line is typed.
 * fix: the highlighter refreshes every time you scroll the screen, even if you have the documentation open.
 
 # 1.4.6
 
-* fix search opcode with a point at mid.
-* fix a file/folder with same name at same url.
-* fix scrolling archive.
-* support for upload multiple files.
+* fix: search opcode with a point at mid.
+* fix: a file/folder with same name at same url.
+* fix: scrolling archive.
+* add: support for upload multiple files.
 
 # 1.4.5
 
@@ -8230,13 +8251,18 @@ openModal("Enchanti IDE UPDATED!!!",
 * The autocomplete now sorts the suggestions in order of the closest plant to complete.
 * Finally, every time the IDE is updated, this message will be displayed for you to see.
 
-`.trim().split('\n').join(`<br>`), null,'Thx u <3', null, '+text-left');
+`.trim()
+
+const VERSION_GUARDADA = LS.get("current_version") ?? ''
+
+const updatedSMS = ()=> 
+openModal("Enchanti IDE UPDATED!!!", HISTORY.split('\n').join(`<br>`), null,'Thx u <3', null, '+text-left');
 updatePlaceholder()
 addCounterLine()
 $highlighting.innerHTML = syntaxHighlight($editor.value, null)
 
-if (VERSION_GUARDADA < VERSION_ACTUAL) {
+if (VERSION_GUARDADA.length != HISTORY.length) {
   updatedSMS();
-  LS.set("current_version", VERSION_ACTUAL)
+  LS.set("current_version", HISTORY)
 }
 
