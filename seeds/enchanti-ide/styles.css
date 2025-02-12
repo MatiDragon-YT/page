@@ -33,7 +33,7 @@ html, body {
 }
 
 body {
-  font-size:.9rem;
+  font-size:.85rem;
   font-weight: 400;
   line-height: 1.5;
   text-align: left;
@@ -55,11 +55,11 @@ body {
 }
 
 #menu, .navbar-btn{
-  font-size: 2rem;
+  font-size: 1.65rem;
   padding: 0 .5rem;
 }
 .menu-btn{
-  font-size: 1.2rem;
+  font-size: .85rem;
   background: #0004;
   color: white;
   padding: .3rem;
@@ -69,7 +69,7 @@ body {
 }
 #items {
   margin-top: .7rem;
-  padding-bottom: 1rem;
+  padding-bottom: 10rem;
   overflow: auto;
   height: 70vh;
 }
@@ -133,7 +133,7 @@ body {
   background: none;
   color:#fff9;
   font-weight: 600;
-  font-size:1rem;
+  font-size:.85rem;
   border:none;
   padding: .5rem .5rem;
   gap: .4rem;
@@ -166,8 +166,8 @@ body {
     background: none;
     color: inherit;
     border:none;
-    width: 1rem;
-    height: 1rem;
+    width: .85rem;
+    height: .85rem;
     border-radius: 20px;
     text-align: center;
     
@@ -215,7 +215,7 @@ body {
   padding: .5rem 0;
 }
 .folder-contents {
-  padding-left: 1rem;
+  padding-left: .85rem;
   border-left: solid 1px #ff09;
 }
 sup {
@@ -259,7 +259,7 @@ opciones de los items
     & button {
       background: none;
       border: none;
-      padding: .4rem 1rem;
+      padding: .4rem .85rem;
       text-align: left;
       color: #fff;
       &:hover {
@@ -273,7 +273,7 @@ opciones de los items
     display: flex;
     flex-flow: column;
     background: #2e003e;
-    box-shadow: 0 .5rem 1rem #0005;
+    box-shadow: 0 .5rem .85rem #0005;
     border-radius: 5px;
     animation: aparecer-reves .2s ease-out;
   }
@@ -333,8 +333,8 @@ opciones de los items
     text-align: right;
     min-width: 5rem;
     max-width: 7rem;
-    right: 1rem;
-    top: 1rem;
+    right: .85rem;
+    top: .85rem;
     padding: .3rem;
     font-weight: 800;
     box-shadow: 0 2px 7px -2px #0003;
@@ -350,7 +350,7 @@ opciones de los items
   }
   
   &[up]::before{
-    top: -1rem;
+    top: -.85rem;
   }
   &[down]::before{
     top: 2rem;
@@ -589,7 +589,7 @@ opciones de los items
 }
 
 key {
-  font-size: 6.5vw;
+  font-size: 6vw;
 }
 
 
@@ -603,7 +603,7 @@ key {
   position: absolute;
   color: white;
   background: #2e003e; /* Fondo de pestañas oscuro */
-  box-shadow: 0 .3rem 1rem rgba(0, 0, 0, 0.2);
+  box-shadow: 0 .3rem .85rem rgba(0, 0, 0, 0.2);
   z-index: 1000;
   transition: all 0s;
     & hr {
@@ -613,7 +613,7 @@ key {
     & button {
       background: none;
       border: none;
-      padding: .4rem 1rem;
+      padding: .4rem .85rem;
       text-align: left;
       color: #fff;
       &:hover {
@@ -642,7 +642,7 @@ key {
     display: flex;
     flex-flow: column;
     background: #2e003e;
-    box-shadow: 0 .5rem 1rem #0005;
+    box-shadow: 0 .5rem .85rem #0005;
     border-radius: 5px;
     animation: aparecer-reves .2s ease-out;
   }
@@ -872,7 +872,7 @@ span{
     border: #fff2 1px solid;
     z-index: 3;
     position: absolute;
-    top: 1rem;
+    top: .85rem;
     right: 5rem;
 }
 .imgModel:hover::before{
@@ -882,14 +882,14 @@ span{
     padding: 1.3rem;
     z-index: 3;
     position: absolute;
-    top: 1rem;
+    top: .85rem;
     right: 5rem;
 }
 /* Animación suave cuando aparece el menú */
 @keyframes pulse {
     50% {
         transform: scale(1.05);
-        text-shadow: 0 0 1rem white;
+        text-shadow: 0 0 .85rem white;
     }
 }
 
@@ -897,7 +897,7 @@ span{
 .extra-info:hover{
   color: white!important;
   font-weight: 400!important;
-  text-shadow: 0 0 1rem white;
+  text-shadow: 0 0 .85rem white;
 }
 
 #autocomplete-menu {
@@ -911,7 +911,7 @@ span{
     max-width: 20rem;
     resize: both;
     background: #2e003e; /* Fondo de pestañas oscuro */
-    box-shadow: 0 .3rem 1rem rgba(0, 0, 0, 0.2);
+    box-shadow: 0 .3rem .85rem rgba(0, 0, 0, 0.2);
     
     &::-webkit-scrollbar { width: .5rem;}
     &::-webkit-scrollbar-track { background: #2e003e }
@@ -973,7 +973,7 @@ span{
 }
 
 blockquote {
-	padding: 5px 1rem;
+	padding: 5px .85rem;
 	margin: 5px 0;
 	border-left: #00c853 4px solid;
 	color: #009688;
@@ -993,8 +993,8 @@ blockquote {
 	color: #009688;
 }
 div.success, div.warning, div.info {
-	padding: 5px 1rem;
-	margin: 1rem 0;
+	padding: 5px .85rem;
+	margin: .85rem 0;
 	display: block;
 }
 
@@ -1009,12 +1009,12 @@ ins {
 	text-underline-position: under;
 }
 
-dl, ol, ul { margin: 1rem calc(1.5rem + .5vw) }
+dl, ol, ul { margin: .85rem calc(1.5rem + .5vw) }
 
 dd, li { margin: 0 0 5px }
 
 code, .code, kbd, pre, samp {
-  font-size: in;
+  font-size: inherit;
 	background:  #1b0f25;
 	color: white;
 	font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
@@ -1080,8 +1080,8 @@ h1, h2, h3, h4, h5, h6,
 	font-weight: 600
 }
 h1, h2, h3 {
-	padding: 1rem 0 0.3em;
-	margin-bottom: 1rem;
+	padding: .85rem 0 0.3em;
+	margin-bottom: .85rem;
 	border-bottom: #fff1 1px solid;
 }
 
@@ -1094,7 +1094,7 @@ h2, .h2, .h2\* * { font-size: calc(1.325rem + .9vw) }
 h3, .h3, .h3\* * { font-size: calc(1.3rem + .6vw) }
 h4, .h4, .h4\* * { font-size: calc(1.275rem + .3vw) }
 h5, .h5, .h5\* * { font-size: 1.25rem }
-h6, .h6, .h6\* * { font-size: 1rem }
+h6, .h6, .h6\* * { font-size: .85rem }
 
 img {
   image-rendering: optimizespeed;
@@ -1126,7 +1126,7 @@ a.button, label.button {
     font-weight: bold;
     text-align: center;
     text-transform: uppercase;
-    font-size: .84em;
+    font-size: .85em;
     cursor: pointer;
 }
 
@@ -1157,7 +1157,7 @@ h5:hover,
 h6:hover{
   color: white;
   font-weight: 400 !important;
-  text-shadow: 0 0 1rem white;
+  text-shadow: 0 0 .85rem white;
 }
 
 #data-line-config, #short_desc{
@@ -1170,7 +1170,7 @@ h6:hover{
 
 @keyframes opcode {
   from {
-    text-shadow: 0 0 1rem white;
+    text-shadow: 0 0 .85rem white;
   }
 
   to {
@@ -1200,7 +1200,7 @@ h6:hover{
   z-index: 3;
   
   background: #2e003e; /* Violeta más suave */
-  box-shadow: 0 0 1rem #0007;
+  box-shadow: 0 0 .85rem #0007;
   
   animation: aparecer .1s linear;
   & button {
@@ -1218,4 +1218,21 @@ h6:hover{
 }
 #tab-list {
   align-items: center
+}
+
+#fast_commandContainer {
+  display: block;
+  & ul {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+  }
+  & li {
+    padding: 0;
+    cursor: pointer;
+    margin-top: 2px;
+  }
+  & li:hover {
+    background: #f003;
+  }
 }

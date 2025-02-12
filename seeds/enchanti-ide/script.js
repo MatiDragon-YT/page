@@ -1,4 +1,76 @@
+// Author: MatiDragon.
+// Contributors with comments: Seemann, OrionSR, Miran.
+
+// Enchanti IDE © 2024 by Matias Alberto Rossi (Alias: MatiDragon) is licensed under CC BY-NC-SA 4.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+/*
+  Cada dia entiendo menos el código,
+    hay noches que me duermo pensando
+    en ¿por que lo hago? sera que tengo
+    amnesia, alzheimer o me volvi masoquista??
+    
+  Si alguien vé esto, le deseo
+    suerte desde el más allá.
+    
+                  - MatiDragon (2001-2028)
+*/
 'use strict';
+
+
+//  VERSION ACTUAL
+const CURRENT_VERSION = '1.4.8 :: FEB/11/2024'
+
+//  HISTORIAL DE VERSION
+const HISTORY = `
+# 1.4.8
+
+* add: support reverse arithmetic conditionals (1 == b).
+* fix: syntax high-level.
+* fix: support arithmetic operations.
+
+# 1.4.7
+
+* add: All code is highlighted after 1s passes with no new keystrokes.
+* change: The highlighter no longer updates when the cursor is moved.
+* change: All downloadable files are moved from LocalStorage to IndexedDB.
+* change: All edited files are saved after 1s without new clicks.
+* fix: offline mode does not load properly.
+* fix: code is not highlighted if the last line is typed.
+* fix: the highlighter refreshes every time you scroll the screen, even if you have the documentation open.
+
+# 1.4.6
+
+* fix: search opcode with a point at mid.
+* fix: a file/folder with same name at same url.
+* fix: scrolling archive.
+* add: support for upload multiple files.
+
+# 1.4.5
+
+* Integrated command finder with "IA". Just open a comment, write what you want and close the comment with '!!' or '??'. Both will give you different results.
+* Auto-register new opcodes at first use.
+* The number of real-time updates of the hex view was reduced.
+* Between PC and Android there are opcodes that change ID, NAME or number of parameters, now the IDE will try to adapt to your needs, so that the same opcode can be compiled in different configurations.
+* Small drop-down to close open tabs.
+
+# 1.4.4
+
+* Variables can store the result of a condition.
+* If an opcode is missing parameters, you are told how many.
+* Constants are highlighted according to the type of data they store.
+* The IDE will try to auto-select the open files when you close one.
+* All command names are already highlighted.
+* If an open file is renamed, it is now closed or reopened.
+* New ways of declaring variables, operations and forcing the work of a data type.
+* You can see a preview of the object models.
+* The autocomplete now sorts the suggestions in order of the closest plant to complete.
+* Finally, every time the IDE is updated, this message will be displayed for you to see.
+
+`.trim()
+
+
+
+
 
 // GLOBAL VARS
 const D = document
@@ -988,7 +1060,7 @@ EP.getTextSelected = function() {
 		$temp.value = (typeof this == 'object' ? this.textContent : this)
 		$temp.select();
 		D.execCommand("copy")
-		$('body').removeChild($temp)
+		document.body.removeChild($temp)
 	}
 
 EP.clearLine = function(lineNumber) {
@@ -1008,6 +1080,19 @@ EP.clearLine = function(lineNumber) {
 
 
 //    DOM ELEMENTS
+const $body = document.body
+const $currentVersion = $('#current_version')
+
+const $fastSettings_input =
+  $("#fast_commandInput");
+const $fastSettings_processCommand =
+  $('#fast_processCommand')
+const $fastSettings_container =
+  $("#fast_commandContainer");
+const $fastSettings_suggestionsList =
+  $("#fast_suggestions");
+const $fastSettings_paramSuggestionsList =
+  $("#fast_paramSuggestions")
 
 const $itemsContainer = $('#items')
 const $addTextTabButton = $('#addTextTab')
@@ -1097,8 +1182,23 @@ const snippets = {
 
 //       ++++++++++++++++++
 
+$currentVersion.innerText = CURRENT_VERSION
+$fastSettings_processCommand.onclick=()=>processCommand();
 
 
+function toggleCommandInput() {
+  $fastSettings_container.class('~d-none')
+  
+  $fastSettings_input.value = "";
+  $fastSettings_suggestionsList.innerHTML = "";
+  $fastSettings_paramSuggestionsList.innerHTML = "";
+  $fastSettings_input.focus();
+  
+  if ( $fastSettings_container.class('!d-none'))
+    showSettingFast();
+    
+}
+        
 
 const resetView = (sinFx) => {
   let visible = null
@@ -1108,6 +1208,7 @@ const resetView = (sinFx) => {
   $documentation.class('+d-none')
   $debugHex.class('+d-none')
   $menuQuickKeys.class('+d-none')
+  $fastSettings_container.class('+d-none')
   
   $editorCounterLine.class('-d-none')
   $editorContainer.class('-w-50')
@@ -1118,6 +1219,11 @@ const resetView = (sinFx) => {
   }
   return sinFx ? sinFx.class() : null
 }
+
+$('[for=fast_settings]', e=>{e.onclick = () => {
+  closeMenu()
+  toggleCommandInput()
+}})
 
 $('[for=open_docu]', e=>{e.onclick = () =>{
   closeMenu()
@@ -1136,15 +1242,19 @@ $('[for="debug_hex"]', e=>{e.onclick = () =>{
   $highlighting.class('')
   $error.style.display = 'none'
 
-  if (!$debugHex.class('~d-none').i('d-none')){
-    syncDebugHex()
-    $settings.class('+d-none')
-    $documentation.class('+d-none')
-  }
+  if (!$debugHex.class('~d-none').i('d-none')) {
+  syncDebugHex()
+  $settings.class('+d-none')
+  $documentation.class('+d-none')
+}
 }})
 
+$currentDirectory.onclick = () => {
+  resetView()
+  closeMenu()
+}
 $quickClose.onclick = () => {
-  Tab_Remove(currentTabId)
+  if (currentTabId) Tab_Remove(currentTabId);
   $menuQuickKeys.class('+d-none')
 }
 $closeAll.onclick = () => {
@@ -8205,53 +8315,138 @@ function generarStringAleatorio(longitud, min = 0) {
 
 
 
-//  HISTORIAL DE VERSION
-const HISTORY = `
-# 1.4.8
 
-* add: support reverse arithmetic conditionals (1 == b).
-* fix: syntax high-level.
-* fix: support arithmetic operations.
+//  FAST SETTINGS 
+const LIST_SETTINGS = {
+            "/font-size": { desc: "Cambia el tamaño de fuente", aliases: ["/font", "/fs"], params: [12, 14, 16, 18, 20, 24] },
+            "/tab-size": { desc: "Cambia el tamaño de tabulación", aliases: ["/tab"], params: [2,3,4,5,6,7,8] },
+            "/search-engine": { desc: "Cambia el motor de búsqueda", aliases: ["/search", "/se"], params: ["default", "fuzzy", "akin"] },
+            "/search-order": { desc: "Cambia el motor de búsqueda", aliases: ["/order", "/so"], params: ["off", "simple", "similar"] }
+        };
 
-# 1.4.7
+        let history = [];
+        let historyIndex = -1;
+        let lastCommand = "";
 
-* add: All code is highlighted after 1s passes with no new keystrokes.
-* change: The highlighter no longer updates when the cursor is moved.
-* change: All downloadable files are moved from LocalStorage to IndexedDB.
-* change: All edited files are saved after 1s without new clicks.
-* fix: offline mode does not load properly.
-* fix: code is not highlighted if the last line is typed.
-* fix: the highlighter refreshes every time you scroll the screen, even if you have the documentation open.
+        function showSettingFast() {
+            $fastSettings_suggestionsList.innerHTML = "";
+            $fastSettings_paramSuggestionsList.innerHTML = "";
+            const value =$fastSettings_input.value.trim().toLowerCase();
+            let matchedCommands = [];
 
-# 1.4.6
+            for (let cmd in LIST_SETTINGS) {
+                if (cmd.includes(value) || LIST_SETTINGS[cmd].aliases.some(alias => alias.includes(value))) {
+                    matchedCommands.push({ name: cmd, desc: LIST_SETTINGS[cmd].desc });
+                }
+            }
 
-* fix: search opcode with a point at mid.
-* fix: a file/folder with same name at same url.
-* fix: scrolling archive.
-* add: support for upload multiple files.
+            if (!value && lastCommand) {
+                matchedCommands.unshift({ name: lastCommand, desc: LIST_SETTINGS[lastCommand].desc });
+            }
 
-# 1.4.5
+            matchedCommands.forEach(cmdObj => {
+                const item = document.createElement("li");
+                item.textContent = `${cmdObj.name} - ${cmdObj.desc}`;
+                item.onclick = () => {
+                    $fastSettings_input.value = cmdObj.name + " ";
+                    $fastSettings_input.focus();
+                    $fastSettings_suggestionsList.innerHTML = "";
+                    showParamSuggestions(cmdObj.name);
+                };
+                $fastSettings_suggestionsList.appendChild(item);
+            });
+        }
 
-* Integrated command finder with "IA". Just open a comment, write what you want and close the comment with '!!' or '??'. Both will give you different results.
-* Auto-register new opcodes at first use.
-* The number of real-time updates of the hex view was reduced.
-* Between PC and Android there are opcodes that change ID, NAME or number of parameters, now the IDE will try to adapt to your needs, so that the same opcode can be compiled in different configurations.
-* Small drop-down to close open tabs.
+        function showParamSuggestions(command) {
+            $fastSettings_paramSuggestionsList.innerHTML = "";
+            if (LIST_SETTINGS[command]) {
+                LIST_SETTINGS[command].params.forEach(param => {
+                    const item = document.createElement("li");
+                    item.textContent = param;
+                    item.onclick = () => {
+                        $fastSettings_input.value = `${command} ${param}`;
+                        $fastSettings_input.focus();
+                        $fastSettings_paramSuggestionsList.innerHTML = "";
+                        processCommand();
+                    };
+                    $fastSettings_paramSuggestionsList.appendChild(item);
+                });
+            }
+        }
 
-# 1.4.4
+        function processCommand() {
+            const $fastSettings_inputValue = $fastSettings_input.value.trim();
+            if (!$fastSettings_inputValue) return;
 
-* Variables can store the result of a condition.
-* If an opcode is missing parameters, you are told how many.
-* Constants are highlighted according to the type of data they store.
-* The IDE will try to auto-select the open files when you close one.
-* All command names are already highlighted.
-* If an open file is renamed, it is now closed or reopened.
-* New ways of declaring variables, operations and forcing the work of a data type.
-* You can see a preview of the object models.
-* The autocomplete now sorts the suggestions in order of the closest plant to complete.
-* Finally, every time the IDE is updated, this message will be displayed for you to see.
+            const parts = $fastSettings_inputValue.split(" ");
+            let command = parts[0];
+            const param = parts.slice(1).join(" ");
 
-`.trim()
+            for (let cmd in LIST_SETTINGS) {
+                if (cmd === command || LIST_SETTINGS[cmd].aliases.includes(command)) {
+                    command = cmd;
+                    break;
+                }
+            }
+
+            if (!LIST_SETTINGS[command]) {
+                alert("⚠️ Comando no válido.");
+                return;
+            }
+            if (!param) {
+                alert("⚠️ Falta el parámetro.");
+                return;
+            }
+
+            lastCommand = command;
+            history.unshift($fastSettings_inputValue);
+            historyIndex = -1;
+
+            switch (command) {
+                case "/font-size":
+                    changeFontSize(param);
+                    break;
+                case "/tab-size":
+                    changeTabSize(param);
+                    break;
+                case "/search-engine":
+                    changeSearchEngine(param);
+                    break;
+            }
+
+            $fastSettings_container.class('+d-none')
+        }
+
+        $fastSettings_input.addEventListener("input", showSettingFast);
+        $fastSettings_input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                processCommand();
+            } else if (event.key === "ArrowUp" && history.length > 0) {
+                historyIndex = Math.min(historyIndex + 1, history.length - 1);
+                $fastSettings_input.value = history[historyIndex];
+            } else if (event.key === "ArrowDown" && history.length > 0) {
+                historyIndex = Math.max(historyIndex - 1, -1);
+                $fastSettings_input.value = historyIndex >= 0 ? history[historyIndex] : "";
+            }
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.ctrlKey && event.shiftKey && event.key === "P") {
+                toggleCommandInput();
+            }
+            if (event.key === "Escape") {
+                 $fastSettings_container.style.display = "none";
+            }
+        });
+
+        function changeFontSize(size) { alert(`📏 Fuente: ${size}px`); }
+        function changeTabSize(size) { alert(`📏 Tabulación: ${size} espacios`); }
+        function changeSearchEngine(engine) { alert(`🔍 Buscador: ${engine}`); }
+        
+
+
+
+//   HISTORIAL DE CAMBIOS
 
 const VERSION_GUARDADA = LS.get("current_version") ?? ''
 
