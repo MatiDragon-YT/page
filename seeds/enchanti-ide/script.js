@@ -1241,12 +1241,13 @@ $('[for="debug_hex"]', e=>{e.onclick = () =>{
   $editorContainer.class('~w-50')
   $highlighting.class('')
   $error.style.display = 'none'
-
+  $menuQuickKeys.class('+d-none')
+  
   if (!$debugHex.class('~d-none').i('d-none')) {
-  syncDebugHex()
-  $settings.class('+d-none')
-  $documentation.class('+d-none')
-}
+    syncDebugHex()
+    $settings.class('+d-none')
+    $documentation.class('+d-none')
+  }
 }})
 
 $currentDirectory.onclick = () => {
@@ -1486,7 +1487,7 @@ $('[for=compile]', e=>{e.onclick = ()=>{
 			$tabButton.onclick = () => {
 				Item_Select(tab.id);
 				updateActiveTab(tab.id);
-        
+        $menuQuickKeys.class('+d-none')
 			};
 			$tabButton.className = 'upperTab'
 			
@@ -6401,6 +6402,32 @@ function detectarOpcode(operacion, _lineaInvocada = 0, _romperIntentos = false) 
     ? tipoVariable1
     : obtenerTipo(variable2)
   
+  if (Input.isVariable(variable1)){
+    if (Input.isInt(variable2)){
+      if (Input.isLocalVar(variable1))
+        tipoVariable1 = 'LVAR_INT'
+      else 
+        tipoVariable1 = 'GVAR_INT'
+    }
+    else if (Input.isFloat(variable2)){
+      if (Input.isLocalVar(variable1))
+        tipoVariable1 = 'LVAR_FLOAT'
+      else 
+        tipoVariable1 = 'GVAR_FLOAT'
+    }
+    else if (Input.isShort(variable2)) {
+      if (Input.isLocalVar(variable1))
+        tipoVariable1 = 'LVAR_SHORTSTRING'
+      else
+        tipoVariable1 = 'GVAR_SHORTSTRING'
+    }
+    else if (Input.isLong(variable2)) {
+      if (Input.isLocalVar(variable1))
+        tipoVariable1 = 'LVAR_LONGSTRING'
+      else
+        tipoVariable1 = 'GVAR_LONGSTRING'
+    }
+  }
   
   // Para establecer el tipo de variable, segun el tipo de dato primitivo INT o FLOAT.
   if (/INT/.test(tipoVariable1)
@@ -6452,25 +6479,6 @@ function detectarOpcode(operacion, _lineaInvocada = 0, _romperIntentos = false) 
   
   let opcode = opcodes[operador][combinacionTipos];
 
-  if (!opcode) {
-    log({variable1, operador, variable2})
-    if (Input.isValueConstant(variable1)
-      && Input.isOperation(operador)
-      && Input.isValueConstant(variable2)
-    ){
-      const reFormulado =
-        variable2+' '+operador+' '+variable1
-        
-      opcode = detectarOpcode(reFormulado, _lineaInvocada,true)
-      
-      if (!opcode) throw new Error('Invalid operation\n>>> '+operacion);
-      
-      return opcode+' '+reFormulado
-    } else{
-      throw new Error('Invalid operation\n>>> '+operacion)
-    }
-  }
-
   // Registrar solo las variables, no los números literales
   registrarTipo(variable1, tipoVariable1);
   registrarTipo(variable2, tipoVariable2);
@@ -6494,7 +6502,7 @@ SP.operationsToOpcodes = function () {
   
   const addition = /^(\d+@\w?|\w?[\$\&]\w+|\w+)(\([^\n\)]+\))\s*(\+\+|--)$/
   
-  const resultado = this.split('\n').map(linea => {
+  const resultado = this.split('\n').map((linea, numLinea)=> {
     linea = linea.trim()
     
     let parametros = linea.dividirCadena()
@@ -6506,10 +6514,22 @@ SP.operationsToOpcodes = function () {
       && Input.isValueConstant(parametros[2])
     ) {
       // Procesar la línea con la operación
-      const opcodeDetectado = detectarOpcode(linea)
+      let opcodeDetectado = detectarOpcode(linea, numLinea)
       
-      return opcodeDetectado.includes(' ')
-        ? opcodeDetectado : `${opcodeDetectado} ${linea}`
+      if (opcodeDetectado == null){
+        const reFormulado = parametros[2]+' '+parametros[1]+' '+parametros[0]
+        
+        opcodeDetectado = detectarOpcode(reFormulado, numLinea)
+        
+        linea = reFormulado
+        
+        if (opcodeDetectado == null){
+          throw new Error('Invalid operation\n>>> '+operacion+'\nat line:',numLinea)
+        }
+      }
+      
+      return opcodeDetectado + (opcodeDetectado.includes('_')
+        ? ' ' : ': ') + linea
     }
     else if (addition.test(linea)) {
       const operation = linea.i('++') ? '+=' : '-='
@@ -6524,7 +6544,7 @@ SP.operationsToOpcodes = function () {
         '1'
      
       linea = `${linea} ${operation} ${tipo}`
-      const opcodeDetectado = detectarOpcode(linea)
+      const opcodeDetectado = detectarOpcode(linea,numLinea)
       
       return `${opcodeDetectado}: ${linea}`
     }
