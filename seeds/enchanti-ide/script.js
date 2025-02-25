@@ -16,12 +16,16 @@
 */
 'use strict';
 
-
 //  VERSION ACTUAL
-const CURRENT_VERSION = '1.4.8 :: FEB/11/2024'
+const CURRENT_VERSION = '1.4.9 :: FEB/25/2024'
 
 //  HISTORIAL DE VERSION
 const HISTORY = `
+# 1.4.9
+
+* add: support for infinity variables.
+* change: resource optimization.
+
 # 1.4.8
 
 * add: support reverse arithmetic conditionals (1 == b).
@@ -4431,6 +4435,9 @@ classNamesReg =
 
 
 
+
+
+
 /*
 # SCM: State Machine Control
 (Maquina de Estados con Control)
@@ -4767,15 +4774,273 @@ NP.intToHex = function () {
 
 
 
+SP.refinarCodigo = function() {
+  const TIPO_DADO = { int: 'i', float: 'f' };
+  const DATO_DEFECTO = { int: '0', float: '0.0' };
+  const TAMANO_VAR = 4;
+  
+  let codigoFuente = this;
+  const lineas = codigoFuente.split('\n');
+  const validIdentifierRegex = /^[A-Za-z_][A-Za-z0-9_]*$/;
+  
+  let scopeStack = [{}]; // Pila de ámbitos, global inicial
+  let memoriaTotal = 0;
+  let tempVarCounter = 2;
+  
+  let salidaLines = [];
+  
+  function splitDeclarations(declRest) {
+    let depth = 0;
+    let currentPart = '';
+    const parts = [];
+    for (const char of declRest) {
+      if (char === '[') depth++;
+      else if (char === ']') depth--;
+      
+      if (char === ',' && depth === 0) {
+        parts.push(currentPart.trim());
+        currentPart = '';
+      } else {
+        currentPart += char;
+      }
+    }
+    if (currentPart.trim()) parts.push(currentPart.trim());
+    return parts;
+  }
+  
+  function obtenerTempVar() {
+    const tempVar = `${tempVarCounter}@`;
+    tempVarCounter = tempVarCounter === 32 ? 2 : tempVarCounter + 1;
+    return tempVar;
+  }
+
+  function buscarVariable(varName) {
+    for (let i = scopeStack.length - 1; i >= 0; i--) {
+      const scope = scopeStack[i];
+      if (scope.hasOwnProperty(varName)) {
+        return scope[varName];
+      }
+    }
+    return null;
+  }
+
+  function reemplazarIdentificadores(texto) {
+    const partes = texto.split(/(".*?"|'.*?')/);
+    const tempLines = [];
+    
+    for (let i = 0; i < partes.length; i++) {
+      if (i % 2 === 0) {
+        partes[i] = partes[i].replace(/([A-Za-z_][A-Za-z0-9_]*)(\[\s*([^\]]+)\s*\])?/g,
+          (match, varName, bracketPart, indexExpr, offset, fullStr) => {
+            const entry = buscarVariable(varName);
+            if (entry) {
+              const prevChar = fullStr[offset - 1];
+              const nextChar = fullStr[offset + varName.length];
+              if (prevChar === '.' || nextChar === '.') return match;
+              
+              let calculatedOffset = entry.offset;
+              
+              if (bracketPart) {
+                indexExpr = indexExpr.trim();
+                
+                if (/^\d+$/.test(indexExpr)) {
+                  calculatedOffset += parseInt(indexExpr, 10) * TAMANO_VAR;
+                  return `&${calculatedOffset}(0@,1${TIPO_DADO[entry.tipo]})`;
+                } else {
+                  const tempVar = obtenerTempVar();
+                  let indexValue;
+                  
+                  if (validIdentifierRegex.test(indexExpr)) {
+                    const indexEntry = buscarVariable(indexExpr);
+                    indexValue = indexEntry 
+                      ? `&${indexEntry.offset}(0@,1${TIPO_DADO[indexEntry.tipo]})`
+                      : indexExpr;
+                  } else {
+                    indexValue = indexExpr;
+                  }
+                  
+                  tempLines.push(`${tempVar} = 0@ + ${indexValue}`);
+                  return `&${entry.offset}(${tempVar},1${TIPO_DADO[entry.tipo]})`;
+                }
+              }
+              return `&${calculatedOffset}(0@,1${TIPO_DADO[entry.tipo]})`;
+            }
+            return match;
+          });
+      }
+    }
+    
+    return { modifiedText: partes.join(''), tempLines };
+  }
+  
+  for (const linea of lineas) {
+    let trimmed = linea.trim();
+    
+    // Manejo de bloques
+    if (/^(while|repeat|for|if|then|else)\b/i.test(trimmed)) {
+      scopeStack.push({});
+    } else if (/^\bend\b|\buntil\b/i.test(trimmed)) {
+      if (scopeStack.length > 1) scopeStack.pop();
+    }
+    
+    if (/^(int|float)\b/i.test(trimmed)) {
+      let m = trimmed.match(/^(int|float)\s+(.*)$/i);
+      if (m) {
+        let declTipo = m[1].toLowerCase();
+        let declRest = m[2];
+        let partesDecl = splitDeclarations(declRest);
+        
+        for (let parte of partesDecl) {
+          parte = parte.trim();
+          let eqIndex = parte.indexOf('=');
+          let varNamePart, expr;
+          
+          if (eqIndex >= 0) {
+            varNamePart = parte.substring(0, eqIndex).trim();
+            expr = parte.substring(eqIndex + 1).trim();
+          } else {
+            varNamePart = parte;
+            expr = DATO_DEFECTO[declTipo];
+          }
+          
+          const arrayDeclRegex = /^([A-Za-z_][A-Za-z0-9_]*)(\s*\[\s*(\d+)\s*\])?$/;
+          const arrayMatch = varNamePart.match(arrayDeclRegex);
+          let actualVarName, declaredSize;
+          
+          if (arrayMatch) {
+            actualVarName = arrayMatch[1];
+            declaredSize = arrayMatch[3] ? parseInt(arrayMatch[3], 10) : null;
+          } else {
+            actualVarName = varNamePart;
+            declaredSize = null;
+          }
+          
+          let isArrayLiteral = expr.startsWith('[') && expr.endsWith(']');
+          let elements = isArrayLiteral ?
+            expr.slice(1, -1).split(',').map(e => e.trim()) :
+            [];
+          
+          let arraySize = declaredSize !== null ?
+            declaredSize :
+            isArrayLiteral ?
+            elements.length :
+            1;
+          
+          if (!validIdentifierRegex.test(actualVarName)) {
+            salidaLines.push(parte);
+            continue;
+          }
+          
+          const currentScope = scopeStack[scopeStack.length - 1];
+          if (!currentScope[actualVarName]) {
+            currentScope[actualVarName] = {
+              offset: memoriaTotal,
+              tipo: declTipo,
+              size: arraySize
+            };
+            memoriaTotal += arraySize * TAMANO_VAR;
+          } else {
+            currentScope[actualVarName].tipo = declTipo;
+            currentScope[actualVarName].size = arraySize;
+          }
+          
+          if (isArrayLiteral) {
+            for (let i = 0; i < elements.length; i++) {
+              const elemResult = reemplazarIdentificadores(elements[i]);
+              salidaLines.push(...elemResult.tempLines);
+              const elemExpr = elemResult.modifiedText;
+              const elemOffset = currentScope[actualVarName].offset + (i * TAMANO_VAR);
+              salidaLines.push(`&${elemOffset}(0@,1${TIPO_DADO[declTipo]}) = ${elemExpr}`);
+            }
+          } else if (arraySize === 1) {
+            const exprResult = reemplazarIdentificadores(expr);
+            salidaLines.push(...exprResult.tempLines);
+            salidaLines.push(`&${currentScope[actualVarName].offset}(0@,1${TIPO_DADO[declTipo]}) = ${exprResult.modifiedText}`);
+          }
+        }
+      } else {
+        salidaLines.push(linea);
+      }
+    } else {
+      const resultado = reemplazarIdentificadores(linea);
+      salidaLines.push(...resultado.tempLines);
+      salidaLines.push(resultado.modifiedText);
+    }
+  }
+  
+  let header = [
+    `ALLOCATE_MEMORY ${memoriaTotal} 0@`,
+    '',
+    `33@ =& &0`,
+    `0@ -= 33@`,
+    `0@ /= 4`,
+    ''
+  ];
+  
+  return log(header.concat(salidaLines).join('\n'));
+};
+
+`int auto  
+auto  
+float auto = 2.2  
+auto
+
+auto.auto
+
+int pit = 3
+
+int arr[2]
+arr[0] = PI
+arr[1] = 78
+
+int perros = [beto, anclo]
+
+int coleccion = [10, 20, 30]
+int index = 0
+coleccion[index] = 50
+
+int leon = 2
+while true
+  int foca = 20
+  leon = 3
+  while true
+    leon = 4
+    foca = 8
+    int perro
+  end
+end
+while noping
+  int foca = 50
+  leon = 5
+end
+`.refinarCodigo();
 
 
 
 
-
-
-
-
-
+  
+  /*
+  let header = [
+    `0@ =& &0`,
+    `1@ =& @enchanti_ide_variables`,
+    `1@ -= 0@`,
+    `1@ /= 4`,
+    '0@ = 1@ + 64',
+    ''
+  ]
+  let footer = [
+    '',
+    ':enchanti_ide_variables',
+    'hex',
+    `00(${memoriaTotal})`,
+    'end'
+  ]
+  return log(header.concat(salidaLines, footer).join('\n'));
+  */
+  
+  
+  
+  
 SP.enumsGenerator = function() {
     // Eliminamos los saltos de línea y espacios innecesarios
     let str = this.replace(/\n\n/g, '').trim();
@@ -5284,38 +5549,15 @@ SP.hexToDec = function(){
 	return +('0x'+this)
 }
 
-SP.parseHigthLevelIfs = function() {
-    const lineas = this.split('\n');
-    const etiquetas = [];
-    let etiquetaCounter = 1;
-
-    const codigoTransformado = lineas.map((linea) => {
-        linea = linea.trim();
-        
-        if (/IF/i.test(linea)) {
-            return linea.replace(/IF/gi, 'if');
-        } else if (/THEN/i.test(linea)) {
-            etiquetas.push(`label_${etiquetaCounter}`);
-            etiquetaCounter++;
-            
-            return 'ELSE_JUMP @' + etiquetas[etiquetas.length - 1];
-        } else if (/ELSE/i.test(linea)) {
-            const etiqueta = etiquetas.pop();
-            const etiquetaElse = `label_${etiquetaCounter}`;
-            etiquetaCounter++;
-            etiquetas.push(etiquetaElse);
-            return `goto @${etiquetaElse}\n:${etiqueta}`;
-        } else if (/END/i.test(linea)) {
-            const etiqueta = etiquetas.pop();
-            return etiqueta ? ':' + etiqueta : 'END';
-        }
-        return linea;
-    }).join('\n');
-
-    return codigoTransformado;
-}
-
+/** parseHigthLevelLoops
+ * convierte generalmente todas las sintaxis de alto nivel a bajo nivel.
+ * 
+ * IF-THEN-END
+ * IF-THEN-ELSE-END
+ * WHILE, REPEAT, FOR, etc.
+*/
 SP.parseHigthLevelLoops = function(){
+  
     // Para abrir y cerrar un bucle, necesitamos saber
     // el nombre de la ultima etiqueta creada para este
     // fin, y una forma de saber cual hay que poner,
@@ -5499,10 +5741,10 @@ SP.parseHigthLevelLoops = function(){
             const condition = line.match(SYNTAX.REPEAT)[1]
             
             line = [
-              'if',
+              'IF',
               condition,
               'ELSE_JUMP @'+label,
-                'goto @'+label+'_return',
+                'GOTO @'+label+'_return',
               ':'+label +' // end-loop'
             ].join('\n')
           }
@@ -5801,13 +6043,13 @@ SP.preProcesar = function() {
     let lineaAnterior = ""
     let lineaSiguiente = ""
     
-    const patron1 = /(\d+@[a-z]?|[a-z]?(\$|&)\w+|[a-z_]\w*)/;
+    const patron1 = /(\d+@[ifsv]?|[ifsv]?[\$&]\w+|[a-z_]\w*)/;
     const patron2 = /([+-]{2})/;
     const patron3 = /([\+\-\*\/])([\w#$&@.]+)/;
     
     const patronEn = new RegExp(`^(${patron1.source + patron2.source}|${patron2.source + patron1.source})$`, 'mi')
     
-    const patronTemp = /(\d+@[a-z]?|[a-z]?[\$&]\w+|[a-z_]\w*)([\-+*\/])([\w#$&@.]+)/i
+    const patronTemp = /(\d+@[ifsv]?|[ifsv]?[\$&]\w+|[a-z_]\w*)([\-+*\/])([\w#$&@.]+)/i
   
     if (!/^\w+:/.test(linea) && !patronEn.test(linea)){
       if (patron2.test(linea)){
@@ -5858,7 +6100,7 @@ SP.preProcesar = function() {
     }
     nString += linea.trim() + '\n'
   })
-  
+
   nString = nString
     .r(/^(\w+):$/gm, ':$1')
     .r(/\btoHex\(([^)(]+)\)(\.offset\((\d+)\))?/gi, (...input) => {
@@ -5893,7 +6135,7 @@ SP.preProcesar = function() {
     .r(/^task (.+) =& (.+)/gim, 'GET_CHAR_TASK_POINTER_BY_ID $2 $1')
     .r(/^fx (.+) =& (.+)/gim, 'GET_FX_SYSTEM_POINTER $2 $1')
     .r(/^model (.+) =& (.+)/gim, 'GET_MODEL_NAME_POINTER $2 $1')
-    .r(/^(.+) =& @(.+)/gim, 'GET_LABEL_POINTER $2 @$1')
+    .r(/^(.+) =& (@.+)/gim, 'GET_LABEL_POINTER $2 $1')
     .r(/^(.+) =& (.+)/gim, 'GET_VAR_POINTER $2 $1')
   	// 0@ = 1@ == 1 ? 0 : 1
   	.r(/^(.+) ([\-\+\*\/%]?=) (.+) \? (.+) \: (.+)$/gm,
@@ -5957,7 +6199,7 @@ SP.preProcesar = function() {
   	.r(/^@(\w+)$/gm, 'GOTO @$1')
   	
   	
-    .r(/^\w+ = \d+ [\*\/\+\-] \d+( [\*\/\+\-] \d+)+$/gim,  input =>{
+    .r(/^(\w+|[^\s]+) = (\d+|\w+|[^\s]+) [\*\/\+\-] (\d+|\w+|[^\s]+)( [\*\/\+\-] (\d+|\w+|[^\s]+))*$/gim,  input =>{
       let i = input.split(' ')
       let code = i[0]+' '+i[1]+' '+i[2]
       let n = 0
@@ -5972,9 +6214,10 @@ SP.preProcesar = function() {
       })
       return code
     })
+    
   	// bitExp
   	// a = b & c
-  	.r(/^(.+) = (.+) (>>|<<|%|&|\^|\|\*|\/|\+|\-)\x20?(.+)$/m, (input, ...match) => {
+  	.r(/^(.+) = (.+) (>>|<<|%|&|\^|\|\*|\/|\+|\-) (.+)$/m, (input, ...match) => {
   	  let [var1, var2, operador, var3] = match
   	  
   	  if ((var1.startsWith('f@') || var1.endsWith('@f'))
@@ -5998,10 +6241,11 @@ SP.preProcesar = function() {
   	   "/":"INT_DIV",
   	  }[operador];
   	  
-  	  let res = op+": "+var2+' '+var3+' '+var1
+  	  let res = op+" "+var2+' '+var3+' '+var1
   	  
   	  return res
   	})
+  	
   	//0B1A: ~ 0@
   	.r(/^~(.+)/m, 'BIT_NOT_COMPOUND $1')
     // 7@ = !!7@
@@ -6559,9 +6803,10 @@ SP.operationsToOpcodes = function () {
 
 
 const regexVAR_ARRAY =
-  /(\.?)([a-z]?[\$\&]\w+|\d+@[a-z]?|\w+)\(([\$&]\w+|\d+@|\w+)\s*([,\s]+\w+)?\)(\w)?/gi;
+  /(\.?)([ifsv]?[\$\&]\w+|\d+@[ifsv]?|\w+)\(([ifsv]?[\$&]\w+|\d+@|\w+)\s*([,\s]+\w+)?\)(\w)?/gi;
 
 SP.normalizeArrays = function(){
+  
   const nString = this.split('\n')
   .map(line=>{
     
@@ -6811,7 +7056,6 @@ Current.Weapon(0@) > 34 //02D7: 0@ 34
 */
 
 SP.classesToOpcodes = function(){
-  //console.clear()
   const MATCH = {
     CLASSE_MEMBER: /(\w+)\.(\w+)\((.+)?\)/m,
     OPERATION: /(==|\+=|=|>)/,
@@ -7297,6 +7541,7 @@ SP.adaptarCodigo = function(){
   registroTipos = {}
   let result = this
     .removeComments()
+    .refinarCodigo()
     .transformTypeData()
     .parseHexEnd()
     .preProcesar()
@@ -7316,7 +7561,7 @@ SP.adaptarCodigo = function(){
     .keywordsToOpcodes()
     .fixOpcodes()
     .removeTrash()
-   return result
+   return log(result)
 }
 
 SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
@@ -8476,8 +8721,8 @@ updatePlaceholder()
 addCounterLine()
 $highlighting.innerHTML = syntaxHighlight($editor.value, null)
 
-if (VERSION_GUARDADA.length != HISTORY.length) {
+if (VERSION_GUARDADA != HISTORY.length) {
   updatedSMS();
-  LS.set("current_version", HISTORY)
+  LS.set("current_version", HISTORY.length)
 }
 

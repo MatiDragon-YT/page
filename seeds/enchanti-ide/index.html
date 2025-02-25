@@ -17,7 +17,7 @@
   </div>
   <div class="d-flex row">
     <button class="navbar-btn d-none" for="settings">⚙️</button>
-    <button class="navbar-btn d-none" for="fast_settings">🌹</button>
+    <button class="navbar-btn d-none" for="fast_settings">✨</button>
     <button class="navbar-btn" for="debug_hex" down tip='see code hexadecimal'>👀</button>
     <button class="navbar-btn" for="open_docu" down tip='learn about documentation'>📘</button>
     <button class="navbar-btn" for="compile" down tip='compile and launcher '>🚀</button>
@@ -433,6 +433,57 @@ a(b,20)f      = 1.3
 a(b,20i)      = 123
 float a(b,20) = 1.3
 </pre>
+
+<h4>Variables with names</h4>
+En todos los lenguajes pueden haber buenas y malas practicas. Y aqui las cosas pueden tomarse como un crimen de odio, por lo peligroso que pueden ser algunas acciones.
+<pre>
+int $var = 0 // ⚠️ Warning
+int var = 0 // 👍 Perfect
+</pre>
+La forma de declarar estas variables es simple:
+<b>Syntax</b>
+<pre>
+‹type› ‹name_var› [= ‹value›]
+</pre>
+<ul>
+  <li>type: cualquier tipo de variable [int|float|short|long]</li>
+  <li>name_var: cualquier nombre compuesto de letras, números o guiones bajos. (pero no pueden empezar por números)</li>
+  <li>value: opcional, el valor inicial. por defecto son 0, 0.0, '' o ""</li>
+</ul>
+<b>Examples</b>
+<pre>
+int index
+float accuracy= 100.0
+short gxt = 'CHEAT0'
+long anim = "IDLE_SEAT"
+</pre>
+tambien se puede usar para arrays.
+<b>Syntax</b>
+<pre>
+‹type› ‹name_var›[\[length\]] [= \[‹values›\]]
+</pre>
+<ul>
+  <li>length: opcional, la longitud del array. sino se define, se tomara el numero de elementos en `values`</li>
+  <li>values: opcional, todos los valores estan en blanco.</li>
+</ul>
+<b>Examples</b>
+<pre>
+int Integers = [true, false]
+float Floaters[5]
+Floaters[2] = 32
+</pre>
+<blockquote class="warning">
+este es un tipado semifuerte y el compilador las define todas en el cabezal del mod, es decir que no hay limites de scope.
+<pre>
+var // is bad
+
+while true
+int var = 0
+end
+
+var // is nice
+</pre>
+</blockquote>
 </details>
 
 <details>
@@ -702,10 +753,10 @@ The IDE limits some features for better performance.<br>
   <div id="tabsContainer" class="scroll-shadows"></div>
   <span id="button-quick-keys">⥅</span>
   <div id="menu-quick-keys" class="d-none">
-  <button id="quick-close"><b>-</b> Quick Close</button>
+  <button id="quick-close">✖ Quick Close</button>
   <hr/>
-  <button id="close-others"><b>-</b> Close Others</button>
-  <button id="close-all"><b>-</b> Close All</button>
+  <button id="close-others">✖ Close Others</button>
+  <button id="close-all">✖ Close All</button>
   </div>
 </div>
 
