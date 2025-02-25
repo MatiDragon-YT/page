@@ -4775,8 +4775,15 @@ NP.intToHex = function () {
 
 
 SP.refinarCodigo = function() {
-  const TIPO_DADO = { int: 'i', float: 'f' };
-  const DATO_DEFECTO = { int: '0', float: '0.0' };
+  const TIPO_DADO = { int: 'i', float: 'f', short: 's', long: 'v', string: 'v'};
+  const DATO_DEFECTO = {
+    int: '0',
+    float: '0.0',
+    short: "''",
+    long: '""',
+    string: '""'
+  };
+  const SIZE_VAR = {int:4,float:4,short:8,long:16,string:16}
   const TAMANO_VAR = 4;
   
   let codigoFuente = this;
@@ -4844,7 +4851,7 @@ SP.refinarCodigo = function() {
                 indexExpr = indexExpr.trim();
                 
                 if (/^\d+$/.test(indexExpr)) {
-                  calculatedOffset += parseInt(indexExpr, 10) * TAMANO_VAR;
+                  calculatedOffset += parseInt(indexExpr, 10) * SIZE_VAR[entry.tipo];
                   return `&${calculatedOffset}(0@,1${TIPO_DADO[entry.tipo]})`;
                 } else {
                   const tempVar = obtenerTempVar();
@@ -4883,8 +4890,8 @@ SP.refinarCodigo = function() {
       if (scopeStack.length > 1) scopeStack.pop();
     }
     
-    if (/^(int|float)\b/i.test(trimmed)) {
-      let m = trimmed.match(/^(int|float)\s+(.*)$/i);
+    if (/^(int|float|short|long|string)\b/i.test(trimmed)) {
+      let m = trimmed.match(/^(int|float|short|long|string)\s+(.*)$/i);
       if (m) {
         let declTipo = m[1].toLowerCase();
         let declRest = m[2];
@@ -4938,7 +4945,7 @@ SP.refinarCodigo = function() {
               tipo: declTipo,
               size: arraySize
             };
-            memoriaTotal += arraySize * TAMANO_VAR;
+            memoriaTotal += arraySize * SIZE_VAR[declTipo];
           } else {
             currentScope[actualVarName].tipo = declTipo;
             currentScope[actualVarName].size = arraySize;
@@ -4949,7 +4956,7 @@ SP.refinarCodigo = function() {
               const elemResult = reemplazarIdentificadores(elements[i]);
               salidaLines.push(...elemResult.tempLines);
               const elemExpr = elemResult.modifiedText;
-              const elemOffset = currentScope[actualVarName].offset + (i * TAMANO_VAR);
+              const elemOffset = currentScope[actualVarName].offset + (i * SIZE_VAR[declTipo]);
               salidaLines.push(`&${elemOffset}(0@,1${TIPO_DADO[declTipo]}) = ${elemExpr}`);
             }
           } else if (arraySize === 1) {

@@ -361,9 +361,9 @@ We do not need to declare variable types, or at least in most cases.
 You can define the type of a variable with a prefix or subfix; I, F, S and V.
 <table>
   <tr>
-    <th>Indication</th>
-    <th>Target</th>
-    <th>Use</th>
+    <th>ID</th>
+    <th>TARGET</th>
+    <th>USE</th>
   </tr>
   <tr>
     <td><code>I</code></td>
@@ -446,7 +446,7 @@ La forma de declarar estas variables es simple:
 ‹type› ‹name_var› [= ‹value›]
 </pre>
 <ul>
-  <li>type: cualquier tipo de variable [int|float|short|long]</li>
+  <li>type: cualquier tipo de variable [int|float|short|long|string]</li>
   <li>name_var: cualquier nombre compuesto de letras, números o guiones bajos. (pero no pueden empezar por números)</li>
   <li>value: opcional, el valor inicial. por defecto son 0, 0.0, '' o ""</li>
 </ul>
@@ -456,6 +456,7 @@ int index
 float accuracy= 100.0
 short gxt = 'CHEAT0'
 long anim = "IDLE_SEAT"
+string foo = `banana`
 </pre>
 tambien se puede usar para arrays.
 <b>Syntax</b>
@@ -472,18 +473,6 @@ int Integers = [true, false]
 float Floaters[5]
 Floaters[2] = 32
 </pre>
-<blockquote class="warning">
-este es un tipado semifuerte y el compilador las define todas en el cabezal del mod, es decir que no hay limites de scope.
-<pre>
-var // is bad
-
-while true
-int var = 0
-end
-
-var // is nice
-</pre>
-</blockquote>
 </details>
 
 <details>
