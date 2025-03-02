@@ -349,7 +349,59 @@ BODYPART.TORSO = 1
 </details>
 
 <details>
-<summary>Variable interpreter</summary>
+<summary>Decimals</summary>
+The compiler not only has a translator for Hexadecimal and Binary numbers. It can also look up the numerical IDs of the model names.
+<pre>
+DEC  -6272_48 -2936 -42 0 5 972 729_0_03
+HEX  -0X7FFFFF -0x8AFF 0x0 0x03 0X700000
+BIN  -0B011110 -0b1110 0b0 0b01 0B10000000000
+OCT  -0O7143 -0o1472 0o0 0o107 0O70523
+TIME -2h -2m 1s 3.33S 10M 1H 60fps 30FPS
+NAME -#JESTER #fam1 #FAM2 #mini_gun
+NOTE -12E5 -3e2 1e9 10e+2 16E-3
+</pre>
+
+there is also a syntax for filling color fields in this way.
+<pre>
+c#123        =>   11 22 33
+c#123f       =>   11 22 33 FF
+c#131377     =>   13 13 77
+c#131377CC   =>   13 13 77 CC
+</pre>
+Useful for when we smell colors from the Internet and, of course, well interpreted.
+<pre>
+draw_box 1f 1f 2f 2f c#2323ABFF
+// traslated to
+draw_box 1.0 1.0 2.0 2.0 35 35 171 255
+</pre>
+</details>
+
+<details>
+<summary>Floaters</summary>
+If you program in any language, you may be used to some of its syntax. Here you will be able to use it.
+<pre>
+CSS -.0025 -.97 .0 .42 .736
+JS  -2_823.2 0.6_608 48_386.93
+PY  -42.8362 -3.5 1.0 142.8638
+C#  -20F -13.7f 1f 27f 52.86F
+R   -1.2E7 5.1e8 7.1e+2 9.3E-2
+</pre>
+You can begin or end a number with a period (.) or end it with `f`. Scientific notation (e) and separators (_) are also available.
+</details>
+
+<details>
+<summary>Literals</summary>
+The editor supports the classic LONG and SHORT formats of SB, and the JS BACKSTICK.
+<pre>
+SHORT  'Abc'    09,41-62-63-00-00-00-00-00
+LONG   "Abc"    0E,03,41-62-63
+BACKS  `"Abc"`  0E,05,22-41-62-63-22
+</pre>
+Character escapes can also be made with the slash (\t, \n, \", \xff).
+</details>
+
+<details>
+<summary>Variables</summary>
 We do not need to declare variable types, or at least in most cases.
 <pre>
 0@ = 123 // INT
@@ -399,7 +451,69 @@ In this case, this function is expected to do a FLOAT operation, but since they 
 ret 1 0@ // return FLOAT : 👍
 </pre>
 The IDE remembers the last variable definitions and remembers if they went from INT to FLOAT and the other way around.
-<h4>Arrays</h4>
+
+<h4>Locals with names</h4>
+En todos los lenguajes pueden haber buenas y malas practicas. Y aqui las cosas pueden tomarse como un crimen de odio, por lo peligroso que pueden ser algunas acciones.
+<pre>
+int $var = 0 // ⚠️ Warning
+int var = 0 // 👍 Perfect
+</pre>
+La forma de declarar estas variables es simple:
+<b>Syntax</b>
+<pre>
+‹type› ‹name_var› [= ‹value›]
+</pre>
+<ul>
+  <li>type: cualquier tipo de variable [int|float|short|long|string]</li>
+  <li>name_var: cualquier nombre compuesto de letras, números o guiones bajos. (pero no pueden empezar por números)</li>
+  <li>value: opcional, el valor inicial. por defecto son 0, 0.0, '' o ""</li>
+</ul>
+<b>Examples</b>
+<pre>
+int index
+float accuracy= 100.0
+short gxt = 'CHEAT0'
+long anim = "IDLE_SEAT"
+string foo = `banana`
+</pre>
+</details>
+
+<details>
+<summary>Objects</summary>
+Este es un tipo de dato de variable, que sirve para almacenar una coleccion de datos dandoles atributos propios a cada propiedad.
+<b>Syntax</b>
+<pre>
+object ‹name› = {
+  ‹type› ‹name› [ = ‹value›],
+  ‹type› ‹name› [ = ‹value›],
+  ...
+}
+</pre>
+<ul>
+  <li>name: el nombre de la variable objeto.</li>
+  <li>type: tipo de dato que guarda una propiedad.</li>
+  <li>value: opcional, cualquier valor. por defecto son 0 o cadenas vacías.</li>
+</ul>
+<b>Examples</b>
+<pre>
+// initialization
+object Camera = {
+  int flags,
+  float speed = 1.5
+}
+
+// re assigned
+Camera.flags = 28
+
+// in constant
+const SPEED = Camera.speed
+SPEED = 2.0
+</pre>
+Esto multiplica su uso potencial es array con estas estructuras de datos.
+</details>
+
+<details>
+<summary>Arrays</summary>
 Everyone already knows the syntax for writing an ARRAY in Sanny Builder, and if you don't, I'll show it here with an example.
 <pre>
 var_main(var_index,size_and_type)
@@ -434,101 +548,82 @@ a(b,20i)      = 123
 float a(b,20) = 1.3
 </pre>
 
-<h4>Variables with names</h4>
-En todos los lenguajes pueden haber buenas y malas practicas. Y aqui las cosas pueden tomarse como un crimen de odio, por lo peligroso que pueden ser algunas acciones.
+<h4>Enhanti</h4>
+La forma mas bonita de codear.
+<b>Syntax definition</b>
 <pre>
-int $var = 0 // ⚠️ Warning
-int var = 0 // 👍 Perfect
-</pre>
-La forma de declarar estas variables es simple:
-<b>Syntax</b>
-<pre>
-‹type› ‹name_var› [= ‹value›]
+‹type› ‹name_var›[length] [= ‹values›]
 </pre>
 <ul>
-  <li>type: cualquier tipo de variable [int|float|short|long|string]</li>
-  <li>name_var: cualquier nombre compuesto de letras, números o guiones bajos. (pero no pueden empezar por números)</li>
-  <li>value: opcional, el valor inicial. por defecto son 0, 0.0, '' o ""</li>
-</ul>
-<b>Examples</b>
-<pre>
-int index
-float accuracy= 100.0
-short gxt = 'CHEAT0'
-long anim = "IDLE_SEAT"
-string foo = `banana`
-</pre>
-tambien se puede usar para arrays.
-<b>Syntax</b>
-<pre>
-‹type› ‹name_var›[\[length\]] [= \[‹values›\]]
-</pre>
-<ul>
+  <li>type: unico tipo de datos que guarda el array.</li>
+  <li>name_var: cualquier nombre de variable.</li>
   <li>length: opcional, la longitud del array. sino se define, se tomara el numero de elementos en `values`</li>
   <li>values: opcional, todos los valores estan en blanco.</li>
 </ul>
+<b>Syntax manipulation</b>
+<pre>
+‹name_var›‹index›
+</pre>
+<ul>
+  <li>name_var: cualquier variable array definida.</li>
+  <li>index: cualquier variable o numero del 0 al maximo del array.</li>
+</ul>
 <b>Examples</b>
 <pre>
+// method 1
 int Integers = [true, false]
+
+// method 2
 float Floaters[5]
 Floaters[2] = 32
+
+// method 3
+string Texts[2] = ["hello", "world"]
+
+// method 4
+int index = 1
+Texts[index] = "mati"
+</pre>
+La declaraciones y asignaciones son similares a lenguajes de programación reales. El numero de longitud empieza en el 0, y la ubicacion en 1, y la longitud no puede ser 0 o sera imvalida la inicialización.
+<h4>Matrixes</h4>
+Tambien hay soporte para arrays 2D y las mismas sintaxis se comparten.
+<pre>
+int Matrix[3][3] = [[1,2,3],[4,5,6],[7,8,9]]
+
+i = 2
+Matrix[i][2] = 5
+</pre>
+<h4>Objets</h4>
+No es posible hacer un array 2d al mismo tiempo que de objetos. Pero al menos si se puede hacer un array de Objetos.<br>
+<br />
+En lugar de usar la palabra clave `object` usaremos `class` para definir la estructura de nuestro array y no le pasamos ningun valor:
+<pre>
+class IEntity = {
+  int type,
+  int flags
+}
+</pre>
+y ahora solo escribimos el objeto como si fuese un tipo de dato y tampoco le pasamos valores:
+<pre>
+IEntity entities[10]
+</pre>
+Con esto ya tenemos una coleccion de objetos y podemos acceder facilmente a cada uno, escribiendolo de estas formas
+<pre>
+// method 1
+entities[3].type = PEDTYPE.CIVMALE
+
+// method 2
+const Pedro = entities[2]
+Pedro.flags = 0b1110
+
+// method 3
+index = 1
+actores[index].type = PEDTYPE.GANG1
 </pre>
 </details>
 
 <details>
-<summary>Decimal interpreter</summary>
-The compiler not only has a translator for Hexadecimal and Binary numbers. It can also look up the numerical IDs of the model names.
-<pre>
-DEC  -6272_48 -2936 -42 0 5 972 729_0_03
-HEX  -0X7FFFFF -0x8AFF 0x0 0x03 0X700000
-BIN  -0B011110 -0b1110 0b0 0b01 0B10000000000
-OCT  -0O7143 -0o1472 0o0 0o107 0O70523
-TIME -2h -2m 1s 3.33S 10M 1H 60fps 30FPS
-NAME -#JESTER #fam1 #FAM2 #mini_gun
-NOTE -12E5 -3e2 1e9 10e+2 16E-3
-</pre>
-
-there is also a syntax for filling color fields in this way.
-<pre>
-c#123        =>   11 22 33
-c#123f       =>   11 22 33 FF
-c#131377     =>   13 13 77
-c#131377CC   =>   13 13 77 CC
-</pre>
-Useful for when we smell colors from the Internet and, of course, well interpreted.
-<pre>
-draw_box 1f 1f 2f 2f c#2323ABFF
-// traslated to
-draw_box 1.0 1.0 2.0 2.0 35 35 171 255
-</pre>
-</details>
-
-<details>
-<summary>Floating interpreter</summary>
-If you program in any language, you may be used to some of its syntax. Here you will be able to use it.
-<pre>
-CSS -.0025 -.97 .0 .42 .736
-JS  -2_823.2 0.6_608 48_386.93
-PY  -42.8362 -3.5 1.0 142.8638
-C#  -20F -13.7f 1f 27f 52.86F
-R   -1.2E7 5.1e8 7.1e+2 9.3E-2
-</pre>
-You can begin or end a number with a period (.) or end it with `f`. Scientific notation (e) and separators (_) are also available.
-</details>
-
-<details>
-<summary>Literal interpreter</summary>
-The editor supports the classic LONG and SHORT formats of SB, and the JS BACKSTICK.
-<pre>
-SHORT  'Abc'    09,41-62-63-00-00-00-00-00
-LONG   "Abc"    0E,03,41-62-63
-BACKS  `"Abc"`  0E,05,22-41-62-63-22
-</pre>
-Character escapes can also be made with the slash (\t, \n, \", \xff).
-</details>
-
-<details>
-<summary>Hexadecimal interpreter</summary>
+<summary>Hexadecimals</summary>
 The IDE works with the same syntax as SB, with some limitations. You cannot insert variables yet, but you can use the hex multiplication operators :)
 <pre>
 HEX
@@ -550,7 +645,7 @@ end
 </details>
 
 <details>
-<summary>Expressions operative</summary>
+<summary>Operatives</summary>
 <h4>Sanny</h4>
 You have all the SB expressions and one extra.
 <pre>
@@ -633,7 +728,7 @@ And cascading operations can also be performed in this manner
 </details>
 
 <details>
-<summary>Parameters interpreter</summary>
+<summary>Parameters</summary>
 The IDE can identify when an opcode has extra or missing parameters.
 <pre>
 nop  // ok     ->  00 00

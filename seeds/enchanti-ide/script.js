@@ -17,13 +17,22 @@
 'use strict';
 
 //  VERSION ACTUAL
-const CURRENT_VERSION = '1.4.9 :: FEB/25/2024'
+const CURRENT_VERSION = '1.5.0 :: MAR/02/2025'
 
 //  HISTORIAL DE VERSION
 const HISTORY = `
+# 1.5.0
+
+* add: support for new data type:
+  * arrays
+  * matrixes.
+  * classes.
+  * objects.
+
 # 1.4.9
 
 * add: support for infinity variables.
+  * INT, FLOAT, SHORT, LONG
 * change: resource optimization.
 
 # 1.4.8
@@ -1406,7 +1415,8 @@ function getFileContent(path, currentDir = tabs, currentFolder = null, callingFi
 function processImports(content, currentDir, currentFolder, callingFile) {
     let directiveRegex = /\{\$I\s+([^\s]+)\}/ig;
 
-    return content.replace(directiveRegex, (match, path) => {
+    return content.replace(/\/\/.+/g,'')
+    .replace(directiveRegex, (match, path) => {
         // Usamos currentFolder para importar dentro de la misma carpeta
         let importedContent = getFileContent(path, currentDir, currentFolder, callingFile);
         
@@ -4762,9 +4772,6 @@ NP.intToHex = function () {
 
 
 
-
-
-
 //            PARSEADORES
 
 
@@ -4775,16 +4782,9 @@ NP.intToHex = function () {
 
 
 SP.refinarCodigo = function() {
-  const TIPO_DADO = { int: 'i', float: 'f', short: 's', long: 'v', string: 'v'};
-  const DATO_DEFECTO = {
-    int: '0',
-    float: '0.0',
-    short: "''",
-    long: '""',
-    string: '""'
-  };
-  const SIZE_VAR = {int:4,float:4,short:8,long:16,string:16}
-  const TAMANO_VAR = 4;
+  const TIPO_DADO = { int: 'i', float: 'f', short: 's', long: 'v', string: 'v' };
+  const DATO_DEFECTO = { int: '0', float: '0.0', short: "''", long: '""', string: '""' };
+  const SIZE_VAR = { int: 4, float: 4, short: 8, long: 16, string: 16 };
   
   let codigoFuente = this;
   const lineas = codigoFuente.split('\n');
@@ -4793,7 +4793,6 @@ SP.refinarCodigo = function() {
   let scopeStack = [{}]; // Pila de ámbitos, global inicial
   let memoriaTotal = 0;
   let tempVarCounter = 2;
-  
   let salidaLines = [];
   
   function splitDeclarations(declRest) {
@@ -4803,7 +4802,6 @@ SP.refinarCodigo = function() {
     for (const char of declRest) {
       if (char === '[') depth++;
       else if (char === ']') depth--;
-      
       if (char === ',' && depth === 0) {
         parts.push(currentPart.trim());
         currentPart = '';
@@ -4820,7 +4818,7 @@ SP.refinarCodigo = function() {
     tempVarCounter = tempVarCounter === 32 ? 2 : tempVarCounter + 1;
     return tempVar;
   }
-
+  
   function buscarVariable(varName) {
     for (let i = scopeStack.length - 1; i >= 0; i--) {
       const scope = scopeStack[i];
@@ -4830,60 +4828,95 @@ SP.refinarCodigo = function() {
     }
     return null;
   }
-
+  
+  function parseArrayInit(expr) {
+    if (expr.startsWith('[[') && expr.endsWith(']]')) {
+      const inner = expr.slice(2, -2);
+      return inner.split('],[').map(row => row.split(',').map(e => e.trim()));
+    } else if (expr.startsWith('[') && expr.endsWith(']')) {
+      const inner = expr.slice(1, -1);
+      return inner.split(',').map(e => e.trim());
+    }
+    return null;
+  }
+  
   function reemplazarIdentificadores(texto) {
     const partes = texto.split(/(".*?"|'.*?')/);
     const tempLines = [];
     
     for (let i = 0; i < partes.length; i++) {
       if (i % 2 === 0) {
-        partes[i] = partes[i].replace(/([A-Za-z_][A-Za-z0-9_]*)(\[\s*([^\]]+)\s*\])?/g,
-          (match, varName, bracketPart, indexExpr, offset, fullStr) => {
+        partes[i] = partes[i].replace(
+          /([A-Za-z_][A-Za-z0-9_]*)(\s*\[\s*([^\]]+)\s*\])?(\s*\[\s*([^\]]+)\s*\])?/g,
+          (match, varName, bracketPart1, indexExpr1, bracketPart2, indexExpr2, offset, fullStr) => {
             const entry = buscarVariable(varName);
-            if (entry) {
-              const prevChar = fullStr[offset - 1];
-              const nextChar = fullStr[offset + varName.length];
-              if (prevChar === '.' || nextChar === '.') return match;
+            if (!entry) return match;
+            
+            const prevChar = fullStr[offset - 1];
+            const nextChar = fullStr[offset + varName.length];
+            if (prevChar === '.' || nextChar === '.') return match;
+            
+            let calculatedOffset = entry.offset;
+            const tipo = entry.tipo;
+            const sizeVar = SIZE_VAR[tipo];
+            
+            if (bracketPart1 && bracketPart2) {
+              // Array bidimensional
+              const columnas = entry.dimensions[1];
+              const index1 = indexExpr1.trim();
+              const index2 = indexExpr2.trim();
               
-              let calculatedOffset = entry.offset;
-              
-              if (bracketPart) {
-                indexExpr = indexExpr.trim();
+              if (/^\d+$/.test(index1) && /^\d+$/.test(index2)) {
+                const i = parseInt(index1, 10);
+                const j = parseInt(index2, 10);
+                calculatedOffset += (i * columnas + j) * sizeVar;
+                return `&${calculatedOffset}(0@,1${TIPO_DADO[tipo]})`;
+              } else {
+                const tempVar = obtenerTempVar();
+                let indexValue1 = index1;
+                let indexValue2 = index2;
                 
-                if (/^\d+$/.test(indexExpr)) {
-                  calculatedOffset += parseInt(indexExpr, 10) * SIZE_VAR[entry.tipo];
-                  return `&${calculatedOffset}(0@,1${TIPO_DADO[entry.tipo]})`;
-                } else {
-                  const tempVar = obtenerTempVar();
-                  let indexValue;
-                  
-                  if (validIdentifierRegex.test(indexExpr)) {
-                    const indexEntry = buscarVariable(indexExpr);
-                    indexValue = indexEntry 
-                      ? `&${indexEntry.offset}(0@,1${TIPO_DADO[indexEntry.tipo]})`
-                      : indexExpr;
-                  } else {
-                    indexValue = indexExpr;
-                  }
-                  
-                  tempLines.push(`${tempVar} = 0@ + ${indexValue}`);
-                  return `&${entry.offset}(${tempVar},1${TIPO_DADO[entry.tipo]})`;
+                if (validIdentifierRegex.test(index1)) {
+                  const indexEntry = buscarVariable(index1);
+                  if (indexEntry) indexValue1 = `&${indexEntry.offset}(0@,1${TIPO_DADO[indexEntry.tipo]})`;
                 }
+                if (validIdentifierRegex.test(index2)) {
+                  const indexEntry = buscarVariable(index2);
+                  if (indexEntry) indexValue2 = `&${indexEntry.offset}(0@,1${TIPO_DADO[indexEntry.tipo]})`;
+                }
+                
+                tempLines.push(`${tempVar} = ${indexValue1} * ${columnas} + ${indexValue2} + 0@`);
+                return `&${entry.offset}(${tempVar},1${TIPO_DADO[tipo]})`;
               }
-              return `&${calculatedOffset}(0@,1${TIPO_DADO[entry.tipo]})`;
+            } else if (bracketPart1) {
+              // Array unidimensional
+              const indexExpr = indexExpr1.trim();
+              if (/^\d+$/.test(indexExpr)) {
+                calculatedOffset += parseInt(indexExpr, 10) * sizeVar;
+                return `&${calculatedOffset}(0@,1${TIPO_DADO[tipo]})`;
+              } else {
+                const tempVar = obtenerTempVar();
+                let indexValue = indexExpr;
+                if (validIdentifierRegex.test(indexExpr)) {
+                  const indexEntry = buscarVariable(indexExpr);
+                  if (indexEntry) indexValue = `&${indexEntry.offset}(0@,1${TIPO_DADO[indexEntry.tipo]})`;
+                }
+                tempLines.push(`${tempVar} = ${indexValue} + 0@`);
+                return `&${entry.offset}(${tempVar},1${TIPO_DADO[tipo]})`;
+              }
             }
-            return match;
-          });
+            // Variable simple
+            return `&${calculatedOffset}(0@,1${TIPO_DADO[tipo]})`;
+          }
+        );
       }
     }
-    
     return { modifiedText: partes.join(''), tempLines };
   }
   
   for (const linea of lineas) {
     let trimmed = linea.trim();
     
-    // Manejo de bloques
     if (/^(while|repeat|for|if|then|else)\b/i.test(trimmed)) {
       scopeStack.push({});
     } else if (/^\bend\b|\buntil\b/i.test(trimmed)) {
@@ -4900,42 +4933,33 @@ SP.refinarCodigo = function() {
         for (let parte of partesDecl) {
           parte = parte.trim();
           let eqIndex = parte.indexOf('=');
-          let varNamePart, expr;
+          let varNamePart = eqIndex >= 0 ? parte.substring(0, eqIndex).trim() : parte;
+          let expr = eqIndex >= 0 ? parte.substring(eqIndex + 1).trim() : DATO_DEFECTO[declTipo];
           
-          if (eqIndex >= 0) {
-            varNamePart = parte.substring(0, eqIndex).trim();
-            expr = parte.substring(eqIndex + 1).trim();
-          } else {
-            varNamePart = parte;
-            expr = DATO_DEFECTO[declTipo];
-          }
-          
-          const arrayDeclRegex = /^([A-Za-z_][A-Za-z0-9_]*)(\s*\[\s*(\d+)\s*\])?$/;
+          const arrayDeclRegex = /^([A-Za-z_][A-Za-z0-9_]*)(\s*\[\s*(\d+)\s*\])?(\s*\[\s*(\d+)\s*\])?$/;
           const arrayMatch = varNamePart.match(arrayDeclRegex);
-          let actualVarName, declaredSize;
-          
-          if (arrayMatch) {
-            actualVarName = arrayMatch[1];
-            declaredSize = arrayMatch[3] ? parseInt(arrayMatch[3], 10) : null;
-          } else {
-            actualVarName = varNamePart;
-            declaredSize = null;
+          if (!arrayMatch) {
+            salidaLines.push(parte);
+            continue;
           }
           
-          let isArrayLiteral = expr.startsWith('[') && expr.endsWith(']');
-          let elements = isArrayLiteral ?
-            expr.slice(1, -1).split(',').map(e => e.trim()) :
-            [];
-          
-          let arraySize = declaredSize !== null ?
-            declaredSize :
-            isArrayLiteral ?
-            elements.length :
-            1;
+          const actualVarName = arrayMatch[1];
+          const dim1 = arrayMatch[3] ? parseInt(arrayMatch[3], 10) : null;
+          const dim2 = arrayMatch[5] ? parseInt(arrayMatch[5], 10) : null;
           
           if (!validIdentifierRegex.test(actualVarName)) {
             salidaLines.push(parte);
             continue;
+          }
+          
+          let arraySize = 1;
+          let dimensions = [];
+          if (dim2 !== null) {
+            arraySize = dim1 * dim2;
+            dimensions = [dim1, dim2];
+          } else if (dim1 !== null) {
+            arraySize = dim1;
+            dimensions = [dim1];
           }
           
           const currentScope = scopeStack[scopeStack.length - 1];
@@ -4943,21 +4967,36 @@ SP.refinarCodigo = function() {
             currentScope[actualVarName] = {
               offset: memoriaTotal,
               tipo: declTipo,
-              size: arraySize
+              size: arraySize,
+              dimensions: dimensions
             };
             memoriaTotal += arraySize * SIZE_VAR[declTipo];
           } else {
             currentScope[actualVarName].tipo = declTipo;
             currentScope[actualVarName].size = arraySize;
+            currentScope[actualVarName].dimensions = dimensions;
           }
           
-          if (isArrayLiteral) {
-            for (let i = 0; i < elements.length; i++) {
-              const elemResult = reemplazarIdentificadores(elements[i]);
-              salidaLines.push(...elemResult.tempLines);
-              const elemExpr = elemResult.modifiedText;
-              const elemOffset = currentScope[actualVarName].offset + (i * SIZE_VAR[declTipo]);
-              salidaLines.push(`&${elemOffset}(0@,1${TIPO_DADO[declTipo]}) = ${elemExpr}`);
+          const initArray = parseArrayInit(expr);
+          if (initArray) {
+            if (dim2 !== null && Array.isArray(initArray[0])) {
+              for (let i = 0; i < dim1; i++) {
+                for (let j = 0; j < dim2; j++) {
+                  const elem = initArray[i][j];
+                  const elemResult = reemplazarIdentificadores(elem);
+                  salidaLines.push(...elemResult.tempLines);
+                  const elemOffset = currentScope[actualVarName].offset + (i * dim2 + j) * SIZE_VAR[declTipo];
+                  salidaLines.push(`&${elemOffset}(0@,1${TIPO_DADO[declTipo]}) = ${elemResult.modifiedText}`);
+                }
+              }
+            } else if (dim1 !== null && !dim2 && !Array.isArray(initArray[0])) {
+              for (let i = 0; i < dim1; i++) {
+                const elem = initArray[i];
+                const elemResult = reemplazarIdentificadores(elem);
+                salidaLines.push(...elemResult.tempLines);
+                const elemOffset = currentScope[actualVarName].offset + i * SIZE_VAR[declTipo];
+                salidaLines.push(`&${elemOffset}(0@,1${TIPO_DADO[declTipo]}) = ${elemResult.modifiedText}`);
+              }
             }
           } else if (arraySize === 1) {
             const exprResult = reemplazarIdentificadores(expr);
@@ -4974,27 +5013,281 @@ SP.refinarCodigo = function() {
       salidaLines.push(resultado.modifiedText);
     }
   }
-  
-  let header = [
+  let header = [];
+  if (memoriaTotal > 0){
+     header = [
     `ALLOCATE_MEMORY ${memoriaTotal} 0@`,
     '',
     `33@ =& &0`,
     `0@ -= 33@`,
     `0@ /= 4`,
     ''
-  ];
-  
+    ];
+  }
   return log(header.concat(salidaLines).join('\n'));
 };
 
-`int auto  
+
+
+function refinarObjetos(str) {
+  const lines = str.split('\n');
+  const output = [];
+  const objects = {};
+  const aliases = new Map();
+  let currentObject = null;
+  
+  for (let line of lines) {
+    const trimmed = line.trim();
+    let match;
+    
+    // Procesar definición de objetos
+    if (trimmed.startsWith('object')) {
+      match = trimmed.match(/object\s+(\w+)\s*=\s*\{/);
+      if (match) {
+        currentObject = match[1];
+        objects[currentObject] = [];
+      }
+      continue;
+    }
+    
+    // Cierre de objeto
+    if (trimmed === '}' && currentObject) {
+      currentObject = null;
+      continue;
+    }
+    
+    // Dentro de definición de objeto
+    if (currentObject) {
+      match = trimmed.match(/(int|float|string)\s+(\w+)(?:\s*=\s*(.+))?/);
+      if (match) {
+        const [_, type, name, value] = match;
+        const varName = `${currentObject}_${name}`;
+        objects[currentObject].push(varName);
+        output.push(value ? `${type} ${varName} = ${value}` : `${type} ${varName}`);
+      }
+      continue;
+    }
+    
+    // Asignaciones directas a propiedades
+    match = trimmed.match(/(\w+)\.(\w+)\s*=\s*(.+)/);
+    if (match) {
+      const [_, obj, prop, value] = match;
+      output.push(`${obj}_${prop} = ${value}`);
+      continue;
+    }
+    
+    // Definición de constantes alias
+    match = trimmed.match(/const\s+(\w+)\s*=\s*(\w+)\.(\w+)/);
+    if (match) {
+      const [_, alias, obj, prop] = match;
+      aliases.set(alias, `${obj}_${prop}`);
+      continue;
+    }
+    
+    // Asignaciones a alias
+    match = trimmed.match(/^(\w+)\s*=\s*(.+)/);
+    if (match) {
+      const [_, alias, value] = match;
+      if (aliases.has(alias)) {
+        output.push(`${aliases.get(alias)} = ${value}`);
+        continue;
+      }
+    }
+    
+    // Conservar líneas no procesadas
+    output.push(line);
+  }
+  
+  return output.join('\n');
+}
+
+function refinarClases(str) {
+    const originalLines = str.trim().split('\n');
+    let output = [];
+    let objects = {}; // { objectName: { prop: type } }
+    let arrays = {}; // { arrayName: { type: objType, size: string } }
+    let variables = {}; // { varName: { array: arrayName, index: string } }
+    let primitiveVariables = {}; // { varName: { type: string, declared: boolean } }
+
+    let i = 0;
+    while (i < originalLines.length) {
+        const originalLine = originalLines[i];
+        const trimmedLine = originalLine.trim();
+
+        // Process object definitions
+        if (trimmedLine.startsWith('class')) {
+  // Cambio 2: Regex actualizado para nuevo formato
+  const classMatch = trimmedLine.match(/class (\w+)\s*=/);
+  if (!classMatch) {
+    i++;
+    continue;
+  }
+  const objectName = classMatch[1];
+  i++;
+  const props = {};
+  while (i < originalLines.length) {
+    const currentTrimmed = originalLines[i].trim();
+    if (currentTrimmed === '}') break;
+    if (currentTrimmed) {
+      // Cambio 3: Procesar tipo y nombre invertidos
+      const cleanLine = currentTrimmed.replace(/,/g, '');
+      const parts = cleanLine.split(/\s+/).filter(p => p);
+      if (parts.length >= 2) {
+        const [type, ...keyParts] = parts;
+        const key = keyParts.join('_'); // Para nombres compuestos
+        props[key] = type;
+      }
+    }
+    i++;
+  }
+  objects[objectName] = props;
+  i++;
+  continue;
+}
+
+        // Process array declarations
+        const arrayDeclareRegex = /^(\w+)\s+(\w+)\[(\d+)\]$/;
+        const arrayDeclareMatch = trimmedLine.match(arrayDeclareRegex);
+        if (arrayDeclareMatch) {
+            const [, objType, arrayName, size] = arrayDeclareMatch;
+            if (objects[objType]) {
+                arrays[arrayName] = { type: objType, size };
+                Object.keys(objects[objType]).forEach(prop => {
+                    output.push(`${objects[objType][prop]} ${arrayName}_${prop}[${size}]`);
+                });
+            }
+            i++;
+            continue;
+        }
+
+        // Process multi-line array assignment with object literal
+        const arrayObjectStartRegex = /^(\w+)\[([^\]]+)\]\s*=\s*{/;
+        const arrayObjectStartMatch = trimmedLine.match(arrayObjectStartRegex);
+        if (arrayObjectStartMatch) {
+            const [, arrayName, index] = arrayObjectStartMatch;
+            if (arrays[arrayName]) {
+                const objType = arrays[arrayName].type;
+                const props = [];
+                i++;
+                while (i < originalLines.length) {
+                    const currentTrimmed = originalLines[i].trim();
+                    if (currentTrimmed === '}') break;
+                    if (currentTrimmed) {
+                        const propLine = currentTrimmed.replace(/,/g, '');
+                        const [key, value] = propLine.split(':').map(s => s.trim());
+                        if (key && value) props.push({ key, value });
+                    }
+                    i++;
+                }
+                i++;
+                props.forEach(({ key, value }) => {
+                    output.push(`${arrayName}_${key}[${index}] = ${value}`);
+                });
+            } else {
+                output.push(originalLine);
+            }
+            continue;
+        }
+
+        // Process array[index].prop = value
+        const propAssignRegex = /^(\w+)\[([^\]]+)\]\.(\w+)\s*=\s*(.+)$/;
+        const propAssignMatch = trimmedLine.match(propAssignRegex);
+        if (propAssignMatch) {
+            const [, arrayName, index, prop, value] = propAssignMatch;
+            if (arrays[arrayName] && objects[arrays[arrayName].type]?.[prop]) {
+                output.push(`${arrayName}_${prop}[${index}] = ${value.trim()}`);
+            } else {
+                output.push(originalLine);
+            }
+            i++;
+            continue;
+        }
+
+        // Process var.prop = value
+        const varPropAssignRegex = /^(\w+)\.(\w+)\s*=\s*(.+)$/;
+        const varPropAssignMatch = trimmedLine.match(varPropAssignRegex);
+        if (varPropAssignMatch) {
+            const [, varName, prop, value] = varPropAssignMatch;
+            if (variables[varName]) {
+                const { array, index } = variables[varName];
+                if (arrays[array] && objects[arrays[array].type]?.[prop]) {
+                    output.push(`${array}_${prop}[${index}] = ${value.trim()}`);
+                } else {
+                    output.push(originalLine);
+                }
+            } else {
+                output.push(originalLine);
+            }
+            i++;
+            continue;
+        }
+
+        // Process variable alias (var = array[index])
+        const processedVarLine = trimmedLine.replace(/^(const|let|var)\s+/, '');
+        const varAliasRegex = /^(\w+)\s*=\s*(\w+)\[([^\]]+)\]$/;
+        const varAliasMatch = processedVarLine.match(varAliasRegex);
+        if (varAliasMatch) {
+            const [, varName, arrayName, index] = varAliasMatch;
+            if (arrays[arrayName]) {
+                variables[varName] = { array: arrayName, index };
+            }
+            i++;
+            continue;
+        }
+
+        // Process primitive variable assignment
+        const varPrimitiveRegex = /^(\w+)\s*=\s*(.+)$/;
+        const varPrimitiveMatch = trimmedLine.match(varPrimitiveRegex);
+        if (varPrimitiveMatch) {
+            const [, varName, valuePart] = varPrimitiveMatch;
+            const value = valuePart.trim();
+            if (!variables[varName] && !arrays[varName]) {
+                let type = 'int';
+                if (/^".*"$/.test(value)) {
+                    type = 'string';
+                } else if (value.includes('.') && !isNaN(value)) {
+                    type = 'float';
+                }
+                if (!primitiveVariables[varName]) {
+                    primitiveVariables[varName] = { type, declared: false };
+                }
+                if (!primitiveVariables[varName].declared) {
+                    output.push(`${type} ${varName} = ${value}`);
+                    primitiveVariables[varName].declared = true;
+                } else {
+                    output.push(`${varName} = ${value}`);
+                }
+            } else {
+                output.push(originalLine);
+            }
+            i++;
+            continue;
+        }
+
+        // Preserve lines that don't match any pattern
+        output.push(originalLine);
+        i++;
+    }
+
+    return output.join('\n');
+}
+
+/*
+console.log(refinarClases(`
+====== VARIABLES COMUNES ======
+
+int auto  
 auto  
 float auto = 2.2  
 auto
+string str = "hello world"
+
+====== NO DEBE ACTIVARSE ======
 
 auto.auto
+"auto" 'auto'
 
-int pit = 3
+====== DECLARACION DE ARRAY DE 1 DIMENCION ======
 
 int arr[2]
 arr[0] = PI
@@ -5002,9 +5295,27 @@ arr[1] = 78
 
 int perros = [beto, anclo]
 
-int coleccion = [10, 20, 30]
+====== ACCEDER AL ELEMETO DE UN ARRAY ======
+
+int coleccion[3] = [10, 20, 30]
 int index = 0
 coleccion[index] = 50
+
+int colectivos = [1, 2, 3]
+int 7@ = 0
+colectivos[7@] = 5
+
+====== DECLARAE ARRAY 2D ======
+
+int Matrix[3][3] = [[1,2,3],[4,5,6],[7,8,9]]
+// como el 1D, los valores iniciales son opcionales.
+
+=====  ACEDER AL ELEMENTO DE ARRAY 2D =====
+
+i = 2
+Matrix[i][2] = 5
+
+====== SCOPE DE VARIABLES ======
 
 int leon = 2
 while true
@@ -5014,15 +5325,44 @@ while true
     leon = 4
     foca = 8
     int perro
+    int arreglo = [92]
   end
 end
 while noping
   int foca = 50
   leon = 5
+  arreglo[0] = 22
 end
-`.refinarCodigo();
+string text = "hola"
 
+========= OBJETOS ========
 
+object IActor = {
+  model: int,
+  angle: float,
+  name: string
+}
+
+IActor actores[3]
+
+actores[0] = {
+  model: 7,
+  angle: 90.7
+  name: "perro"
+}
+
+actores[1].model = 20
+
+const Pedro = actores[2]
+Pedro.angle = 180.0
+
+index = 50
+actores[index].name = "Carlos"
+
+linea a
+linea 42
+linso
+`))
 
 
   
@@ -7060,112 +7400,111 @@ Current.Weapon(0@) = 23 // 01B9: 0@ 23
 0@ = Current.Weapon(1@) // 0470: 0@ 1@
 Current.Weapon(0@) == 34 //02D8: 0@ 34
 Current.Weapon(0@) > 34 //02D7: 0@ 34
+Game.SetSpeed(1.0) // 015D: 1.0
 */
 
-SP.classesToOpcodes = function(){
+SP.classesToOpcodes = function() {
   const MATCH = {
-    CLASSE_MEMBER: /(\w+)\.(\w+)\((.+)?\)/m,
-    OPERATION: /(==|\+=|=|>)/,
-    VARIABLE: "(\d+@(\w|(\([\(\)]+\)))?|\w?($|&)\w+(\([\(\)]+\)))?)",
-    
-    SIMPLE: /^(\w+)\.(\w+)\(([^\n]*)\)$/mi,
-    CONTINUE: /^\.(\w+)\((.+)?\)$/mi,
-    METHOD: /^(\w+)?\.(\w+)$/mi,
-    
-    SET: /\.[^(]+\(.+=/,
-    GET: /=.+\.[^(]+\(/,
-    IS: /\.[^=]+==/,
-    UPPER: /\.[^>]+>/,
-  }
+  CLASSE_MEMBER: /(\w+)\.(\w+)\((.+)?\)/m,
+  OPERATION: /(==|\+=|=|>)/,
+  
+  SIMPLE: /^(\w+)\.(\w+)\(([^\n]*)\)$/mi,
+  CONTINUE: /^\.(\w+)\((.+)?\)$/mi,
+  METHOD: /^(\w+)?\.(\w+)$/mi,
+  
+  SET: /\.[^(]+\(.+=/,
+  GET: /=.+\.[^(]+\(/,
+  IS: /\.[^=]+==/,
+  UPPER: /\.[^>]+>/,
+}
   
   let ncode = ''
   let lastClass = null
   
-  this.split('\n').forEach(line =>{
+  this.split('\n').forEach(line => {
     line = line.trim()
     
     let isClass = false
-    if (/([a-z]\w+)?\.([a-z]\w+)/i.test(line)){
+    if (/([a-z]\w+)?\.([a-z]\w+)/i.test(line)) {
       line.match(/([a-z]\w+)?\.([a-z]\w+)/ig)
-      .forEach(c=>{
-        c = c.match(/([a-z]\w+)?\.([a-z]\w+)/i)
-        
-        if (!isClass){
-          if(c[1] == undefined){
-            if (lastClass){
-              c[1] = lastClass
+        .forEach(c => {
+          c = c.match(/([a-z]\w+)?\.([a-z]\w+)/i)
+          
+          if (!isClass) {
+            if (c[1] == undefined) {
+              if (lastClass) {
+                c[1] = lastClass
+              } else {
+                throw new Error("CLASS UNDEFINED:\n>> " + line)
+              }
             } else {
-              throw new Error("CLASS UNDEFINED:\n>> "+line)
+              lastClass = c[1]
             }
-          }else {
-            lastClass = c[1]
+            isClass = Input.isClass(c[1] + '.' + c[2])
           }
-          isClass = Input.isClass(c[1]+'.'+c[2])
-        }
-      })
+        })
     }
     
     
-    if (isClass){
-    let isNegative = line.startsWith('!');
-    if (isNegative) line = line.r('!');
-    
-    let opcode = null;
-    
-    let data = {}
-    let h
-    
-    if (MATCH.METHOD.test(line)){
-      let matching = [];
+    if (isClass) {
+      let isNegative = line.startsWith('!');
+      if (isNegative) line = line.r('!');
       
-      [line, ...matching] = line.match(MATCH.METHOD)
+      let opcode = null;
       
-      matching = matching.map(e=>{
-        return e ? e.toUpperCase() : ""
-      })
+      let data = {}
+      let h
       
-      if (matching[0] == ""){
-        matching[0] = lastClass
-      } else {
-        lastClass = matching[0]
-      }
-      
-      if (!(matching[0] in classes)) {
-        throw new Error("CLASS UNDEFINED:\n>> " + matching[0])
-      }
-      if (!(matching[1] in classes[matching[0]])) {
-        throw `MEMBER UNDEFINED:\n>> ${matching[0]}.${matching[1]}`
-      }
-      let opcode = classes[matching[0]][matching[1]]
-      
-      if (typeof opcode == "object") {
-        if (Object.keys(opcode).length >= 2) {
-          throw `METHOD NOT AVAILABLE:\nMethods must be written with their class.\n>> ${matching[1]}`
+      if (MATCH.METHOD.test(line)) {
+        let matching = [];
+        
+        [line, ...matching] = line.match(MATCH.METHOD)
+        
+        matching = matching.map(e => {
+          return e ? e.toUpperCase() : ""
+        })
+        
+        if (matching[0] == "") {
+          matching[0] = lastClass
+        } else {
+          lastClass = matching[0]
         }
-        else {
-          opcode = Object.values(opcode)[0]
+        
+        if (!(matching[0] in classes)) {
+          throw new Error("CLASS UNDEFINED:\n>> " + matching[0])
         }
+        if (!(matching[1] in classes[matching[0]])) {
+          throw `MEMBER UNDEFINED:\n>> ${matching[0]}.${matching[1]}`
+        }
+        let opcode = classes[matching[0]][matching[1]]
+        
+        if (typeof opcode == "object") {
+          if (Object.keys(opcode).length >= 2) {
+            throw `METHOD NOT AVAILABLE:\nMethods must be written with their class.\n>> ${matching[1]}`
+          } else {
+            opcode = Object.values(opcode)[0]
+          }
+        }
+        line = opcode + ':'
       }
-      line = opcode+':'
-    }
-    
-    if (MATCH.CONTINUE.test(line)){
-      line = lastClass+line
-    }
-    
-    if (MATCH.CLASSE_MEMBER.test(line)){
-      [h,data.clase, data.miembro, data.resto] = line.match(MATCH.CLASSE_MEMBER)
-      data.clase = data.clase.toUpperCase()
-      data.miembro = data.miembro.toUpperCase()
       
+      if (MATCH.CONTINUE.test(line)) {
+        line = lastClass + line
+      }
       
-      data.operador = "FUNC"
-      let iset;
-        if(MATCH.IS.test(line)) {
+      if (MATCH.CLASSE_MEMBER.test(line)) {
+        [h, data.clase, data.miembro, data.resto] = line.match(MATCH.CLASSE_MEMBER)
+        data.clase = data.clase.toUpperCase()
+        data.miembro = data.miembro.toUpperCase()
+        
+        
+        data.operador = "FUNC"
+        let iset;
+        if (MATCH.IS.test(line)) {
           iset = line.match(
             /\((.+)\)(.+)?[=!]=(.+)/
           )
-          if (line.i('!=')){
+          if (line.i('!=')) {
             isNegative = true
           }
           
@@ -7173,11 +7512,11 @@ SP.classesToOpcodes = function(){
           data.paramRear = iset[3]
           data.operador = "IS"
         }
-        else if(MATCH.UPPER.test(line)) {
+        else if (MATCH.UPPER.test(line)) {
           iset = line.match(
             /\((.+)\)(.+)?[><](.+)/
           )
-          if (line.i('<')){
+          if (line.i('<')) {
             isNegative = true
           }
           
@@ -7194,88 +7533,95 @@ SP.classesToOpcodes = function(){
           data.paramRear = iset[1]
           data.operador = "GET"
         }
-        else if(MATCH.SET.test(line)) {
+        else if (MATCH.SET.test(line)) {
           iset = line.match(
             /\((.+)\)(.+)?=(.+)/
           )
-          
           data.paramFront = iset[1]
           data.paramRear = iset[3]
           data.operador = "SET"
         }
-      
-      
-      if (!(data.clase in classes)) {
-        throw new Error("CLASS UNDEFINED:\n>> " + matching[0])
-      }
-      lastClass = data.clase
-      if (!(data.miembro in classes[data.clase])) {
-        throw `MEMBER UNDEFINED:\n>> ${matching[0]}.${matching[1]}`
-      }
-      
-      let queEs = classes[data.clase][data.miembro]
-      
-      if (data.operador == "FUNC"){
-        if (typeof queEs == "object") {
-          if (Object.keys(queEs).length >= 2) {
-            throw `METHOD NOT AVAILABLE:\nMethods must be written with their class.\n>> ${data.miembro}`
+        
+        
+        if (!(data.clase in classes)) {
+          throw new Error("CLASS UNDEFINED:\n>> " + matching[0])
+        }
+        lastClass = data.clase
+        if (!(data.miembro in classes[data.clase])) {
+          throw `MEMBER UNDEFINED:\n>> ${matching[0]}.${matching[1]}`
+        }
+        
+        let queEs = classes[data.clase][data.miembro]
+        
+        if (data.operador == "FUNC") {
+          if (typeof queEs == "object") {
+            if (Object.keys(queEs).length >= 2) {
+              throw `METHOD NOT AVAILABLE:\nMethods must be written with their class.\n>> ${data.miembro}`
+            } else {
+              queEs = Object.values(queEs)[0]
+            }
           }
-          else {
-            queEs = Object.values(queEs)[0]
+          line = queEs + ': ' + data.resto
+        }
+        else {
+          if (typeof queEs == "object") {
+            line = Object.values(queEs)[0]
+          } else {
+            line = queEs
           }
+          line += ': ' + data.paramFront + " " + data.paramRear
         }
-        line = queEs + ': ' + data.resto
-      }
-      else {
-        if (typeof queEs == "object") {
-          line = Object.values(queEs)[0]
-        } else {
-          line = queEs
-        }
-        line += ': ' + data.paramFront + " " + data.paramRear
-      }
-    }
-    
-    let depureLine = ''
-    let inString = false
-    for (let i = 0; i < line.length; i++){
-      if (
-        line[i] == '"'
-        || line[i] == "'"
-        || line[i] == '`'
-        || line[i] == '('
-        || line[i] == ')'
-      ){
-        inString = !inString
       }
       
-      if (line[i] == ','){
-        if (inString == true){
-          depureLine += line[i]
-        } else {
-          depureLine += ' '
+      // --- MODIFICACIÓN: Reemplazamos el proceso de “depuración” de comas
+      // usando un contador de paréntesis y control de comillas para que se
+      // respeten las estructuras internas como 0@($3,1f)
+      let depureLine = '';
+      let inQuote = false;
+      let quoteChar = '';
+      let parenDepth = 0;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        
+        // Manejo de comillas (solo si no estamos dentro de una cadena ya)
+        if ((ch === '"' || ch === "'" || ch === '`')) {
+          if (!inQuote) {
+            inQuote = true;
+            quoteChar = ch;
+          } else if (ch === quoteChar) {
+            inQuote = false;
+            quoteChar = '';
+          }
         }
-      }else{
-        depureLine += line[i]
+        // Manejo de paréntesis (solo si no estamos en una cadena)
+        else if (!inQuote) {
+          if (ch === '(') {
+            parenDepth++;
+          } else if (ch === ')') {
+            if (parenDepth > 0) parenDepth--;
+          }
+        }
+        
+        if (ch === ',' && !inQuote && parenDepth === 0) {
+          depureLine += ' ';
+        } else {
+          depureLine += ch;
+        }
+      }
+      line = depureLine;
+      
+      if (isNegative) {
+        line = line.r(/^([\w\d]+):/im, (input, mat) => {
+          let op = mat.setOpcodeNegative();
+          return op + ': ';
+        });
       }
     }
-    line = depureLine
     
-    
-    if (isNegative){
-      line = line
-      .r(/^([\w\d]+):/im, (input, mat)=>{
-        let op = mat.setOpcodeNegative()
-        return op+': '
-
-      })
-    }
-    }
-    
-    ncode += line + '\n'
-  })
+    ncode += line + '\n';
+  });
   
-  return ncode
+  return ncode;
 }
 
 
@@ -7546,7 +7892,7 @@ SP.parseHexEnd = function(){
 
 SP.adaptarCodigo = function(){
   registroTipos = {}
-  let result = this
+  let result = refinarClases(refinarObjetos(this))
     .removeComments()
     .refinarCodigo()
     .transformTypeData()
