@@ -611,40 +611,67 @@ function hasCommonCharacter(a, b) {
     return false;
 };
 
-SP.dividirCadena = function() {
-    const resultado = [];
-    let dentroComillas = false;
-    let subcadenaActual = '';
-    let comilla = 0
-
-    for (let i = 0; i < this.length; i++) {
-        const caracter = this[i];
-        const caracterAnterior = this[i-1];
-
-        if (caracter === '"' || caracter === "'"){
-          if (caracterAnterior != '\\') {
-             dentroComillas = !dentroComillas;
-          }
-          
-          subcadenaActual += caracter;
-        } else if (caracter === ' ' && !dentroComillas) {
-            // Si encontramos un espacio fuera de las comillas, guardamos la subcadena actual
-            if (subcadenaActual.trim() !== '') {
-                resultado.push(subcadenaActual);
-            }
-            subcadenaActual = '';
-        } else {
-            subcadenaActual += caracter;
-        }
+SP.dividirCadena = function(operadores = ['+=','-=','==','>>','<<','||','*=','/=','@+=','@-=','=','>=','<=','!=',"<>",'&=','^=','^','~','~=','*','-','+','/',':','?']) {
+  const resultado = [];
+  let dentroComillas = false;
+  let subcadenaActual = '';
+  
+  for (let i = 0; i < this.length; i++) {
+    const caracter = this[i];
+    const caracterAnterior = i > 0 ? this[i - 1] : null;
+    
+    // Detectar comillas (inicio o fin de string)
+    if (caracter === '"' || caracter === "'" || caracter === "`") {
+      if (caracterAnterior !== '\\') {
+        dentroComillas = !dentroComillas;
+      }
+      subcadenaActual += caracter;
+      continue; // Pasar al siguiente carácter
     }
-
-    // Al final, si hay una subcadena no vacía, la agregamos al resultado
-    if (subcadenaActual.trim() !== '') {
+    
+    // Si estamos dentro de comillas, simplemente acumulamos y continuamos
+    if (dentroComillas) {
+      subcadenaActual += caracter;
+      continue;
+    }
+    
+    // Detectar operadores fuera de comillas
+    let operadorDetectado = null;
+    for (const op of operadores) {
+      if (this.substr(i, op.length) === op && (caracterAnterior !== '\\')) {
+        operadorDetectado = op;
+        break;
+      }
+    }
+    
+    if (operadorDetectado && !dentroComillas) {
+      if (subcadenaActual.trim() !== '') {
         resultado.push(subcadenaActual);
+      }
+      resultado.push(operadorDetectado);
+      subcadenaActual = '';
+      i += operadorDetectado.length - 1; // Saltar la longitud del operador
     }
-
-    return resultado;
-}
+    // Detectar espacios en blanco fuera de comillas
+    else if (caracter === ' ' || caracter === '\n' || caracter === '\t') {
+      if (subcadenaActual.trim() !== '') {
+        resultado.push(subcadenaActual);
+      }
+      subcadenaActual = '';
+    }
+    // Cualquier otro carácter
+    else {
+      subcadenaActual += caracter;
+    }
+  }
+  
+  // Agregar la última subcadena si no está vacía
+  if (subcadenaActual.trim() !== '') {
+    resultado.push(subcadenaActual);
+  }
+  
+  return resultado;
+};
 
 
 let shared_db = JSON.parse(localStorage.getItem("shared_db") || "{}")
@@ -5025,12 +5052,12 @@ SP.refinarCodigo = function() {
     ''
     ];
   }
-  return log(header.concat(salidaLines).join('\n'));
+  return (header.concat(salidaLines).join('\n'));
 };
 
 
 
-function refinarObjetos(str) {
+SP.refinarObjetos = function(str = this) {
   const lines = str.split('\n');
   const output = [];
   const objects = {};
@@ -5099,10 +5126,10 @@ function refinarObjetos(str) {
     output.push(line);
   }
   
-  return output.join('\n');
+  return (output.join('\n'))
 }
 
-function refinarClases(str) {
+SP.refinarClases = function(str = this) {
     const originalLines = str.trim().split('\n');
     let output = [];
     let objects = {}; // { objectName: { prop: type } }
@@ -5235,7 +5262,7 @@ function refinarClases(str) {
             i++;
             continue;
         }
-
+/*
         // Process primitive variable assignment
         const varPrimitiveRegex = /^(\w+)\s*=\s*(.+)$/;
         const varPrimitiveMatch = trimmedLine.match(varPrimitiveRegex);
@@ -5264,13 +5291,13 @@ function refinarClases(str) {
             i++;
             continue;
         }
-
+*/
         // Preserve lines that don't match any pattern
         output.push(originalLine);
         i++;
     }
 
-    return output.join('\n');
+    return (output.join('\n'))
 }
 
 /*
@@ -7406,170 +7433,185 @@ Game.SetSpeed(1.0) // 015D: 1.0
 
 SP.classesToOpcodes = function() {
   const MATCH = {
-    CLASSE_MEMBER: /(\w+)\.(\w+)\((.+)?\)/m,
-    OPERATION: /(==|\+=|=|>)/,
-    SIMPLE: /^(\w+)\.(\w+)\(([^\n]*)\)$/mi,
-    CONTINUE: /^\.(\w+)\((.+)?\)$/mi,
-    METHOD: /^(\w+)?\.(\w+)$/mi,
-    SET: /\.[^(]+\(.+=/,
-    GET: /=.+\.[^(]+\(/,
-    IS: /\.[^=]+==/,
-    UPPER: /\.[^>]+>/,
-  }
+  CLASSE_MEMBER: /(\w+)\.(\w+)\((.+)?\)/m,
+  OPERATION: /(==|\+=|=|>)/,
   
-  let ncode = '';
-  let lastClass = null;
+  SIMPLE: /^(\w+)\.(\w+)\(([^\n]*)\)$/mi,
+  CONTINUE: /^\.(\w+)\((.+)?\)$/mi,
+  METHOD: /^(\w+)?\.(\w+)$/mi,
+  
+  SET: /\.[^(]+\(.+=/,
+  GET: /=.+\.[^(]+\(/,
+  IS: /\.[^=]+==/,
+  UPPER: /\.[^>]+>/,
+}
+  
+  let ncode = ''
+  let lastClass = null
   
   this.split('\n').forEach(line => {
-    line = line.trim();
+    line = line.trim()
     
-    let isClass = false;
+    let isClass = false
     if (/([a-z]\w+)?\.([a-z]\w+)/i.test(line)) {
       line.match(/([a-z]\w+)?\.([a-z]\w+)/ig)
         .forEach(c => {
-          c = c.match(/([a-z]\w+)?\.([a-z]\w+)/i);
+          c = c.match(/([a-z]\w+)?\.([a-z]\w+)/i)
+          
           if (!isClass) {
             if (c[1] == undefined) {
               if (lastClass) {
-                c[1] = lastClass;
+                c[1] = lastClass
               } else {
-                throw new Error("CLASS UNDEFINED:\n>> " + line);
+                throw new Error("CLASS UNDEFINED:\n>> " + line)
               }
             } else {
-              lastClass = c[1];
+              lastClass = c[1]
             }
-            isClass = Input.isClass(c[1] + '.' + c[2]);
+            isClass = Input.isClass(c[1] + '.' + c[2])
           }
-        });
+        })
     }
+    
     
     if (isClass) {
       let isNegative = line.startsWith('!');
-      if (isNegative) line = line.replace('!', '');
-      
-      let assignmentVar = null;
-      // Detectar si hay una asignación antes de la llamada al método
-      if (/^\s*(\S+)\s*=\s*(\w+\.\w+\(.*\))\s*$/.test(line)) {
-        let [_, varPart, methodCall] = line.match(/^\s*(\S+)\s*=\s*(\w+\.\w+\(.*\))\s*$/);
-        assignmentVar = varPart.trim();
-        line = methodCall;
-      }
+      if (isNegative) line = line.r('!');
       
       let opcode = null;
-      let data = {};
-      let h;
+      
+      let data = {}
+      let h
       
       if (MATCH.METHOD.test(line)) {
         let matching = [];
-        [line, ...matching] = line.match(MATCH.METHOD);
-        matching = matching.map(e => e ? e.toUpperCase() : "");
+        
+        [line, ...matching] = line.match(MATCH.METHOD)
+        
+        matching = matching.map(e => {
+          return e ? e.toUpperCase() : ""
+        })
         
         if (matching[0] == "") {
-          matching[0] = lastClass;
+          matching[0] = lastClass
         } else {
-          lastClass = matching[0];
+          lastClass = matching[0]
         }
         
         if (!(matching[0] in classes)) {
-          throw new Error("CLASS UNDEFINED:\n>> " + matching[0]);
+          throw new Error("CLASS UNDEFINED:\n>> " + matching[0])
         }
         if (!(matching[1] in classes[matching[0]])) {
-          throw `MEMBER UNDEFINED:\n>> ${matching[0]}.${matching[1]}`;
+          throw `MEMBER UNDEFINED:\n>> ${matching[0]}.${matching[1]}`
         }
-        opcode = classes[matching[0]][matching[1]];
+        let opcode = classes[matching[0]][matching[1]]
         
         if (typeof opcode == "object") {
           if (Object.keys(opcode).length >= 2) {
-            throw `METHOD NOT AVAILABLE:\nMethods must be written with their class.\n>> ${matching[1]}`;
+            throw `METHOD NOT AVAILABLE:\nMethods must be written with their class.\n>> ${matching[1]}`
           } else {
-            opcode = Object.values(opcode)[0];
+            opcode = Object.values(opcode)[0]
           }
         }
-        line = opcode + ':';
+        line = opcode + ':'
       }
       
       if (MATCH.CONTINUE.test(line)) {
-        line = lastClass + line;
+        line = lastClass + line
       }
       
       if (MATCH.CLASSE_MEMBER.test(line)) {
-        [h, data.clase, data.miembro, data.resto] = line.match(MATCH.CLASSE_MEMBER);
-        data.clase = data.clase.toUpperCase();
-        data.miembro = data.miembro.toUpperCase();
+        [h, data.clase, data.miembro, data.resto] = line.match(MATCH.CLASSE_MEMBER)
+        data.clase = data.clase.toUpperCase()
+        data.miembro = data.miembro.toUpperCase()
         
-        data.operador = "FUNC";
+        
+        data.operador = "FUNC"
         let iset;
         if (MATCH.IS.test(line)) {
-          iset = line.match(/\((.+)\)(.+)?[=!]=(.+)/);
-          if (line.includes('!=')) isNegative = true;
-          data.paramFront = iset[1];
-          data.paramRear = iset[3];
-          data.operador = "IS";
+          iset = line.match(
+            /\((.+)\)(.+)?[=!]=(.+)/
+          )
+          if (line.i('!=')) {
+            isNegative = true
+          }
+          
+          data.paramFront = iset[1]
+          data.paramRear = iset[3]
+          data.operador = "IS"
         }
         else if (MATCH.UPPER.test(line)) {
-          iset = line.match(/\((.+)\)(.+)?[><](.+)/);
-          if (line.includes('<')) isNegative = true;
-          data.paramFront = iset[1];
-          data.paramRear = iset[3];
-          data.operador = "UPPER";
+          iset = line.match(
+            /\((.+)\)(.+)?[><](.+)/
+          )
+          if (line.i('<')) {
+            isNegative = true
+          }
+          
+          data.paramFront = iset[1]
+          data.paramRear = iset[3]
+          data.operador = "UPPER"
         }
         else if (MATCH.GET.test(line)) {
-          iset = line.match(/(.+)=(.+)\((.*)\)/);
-          data.paramFront = iset[3];
-          data.paramRear = iset[1];
-          data.operador = "GET";
+          iset = line.match(
+            /(.+)=(.+)\((.*)\)/
+          )
+          
+          data.paramFront = iset[3]
+          data.paramRear = iset[1]
+          data.operador = "GET"
         }
         else if (MATCH.SET.test(line)) {
-          iset = line.match(/\((.+)\)(.+)?=(.+)/);
-          data.paramFront = iset[1];
-          data.paramRear = iset[3];
-          data.operador = "SET";
+          iset = line.match(
+            /\((.+)\)(.+)?=(.+)/
+          )
+          data.paramFront = iset[1]
+          data.paramRear = iset[3]
+          data.operador = "SET"
         }
+        
         
         if (!(data.clase in classes)) {
-          throw new Error("CLASS UNDEFINED:\n>> " + data.clase);
+          throw new Error("CLASS UNDEFINED:\n>> " + matching[0])
         }
-        lastClass = data.clase;
+        lastClass = data.clase
         if (!(data.miembro in classes[data.clase])) {
-          throw `MEMBER UNDEFINED:\n>> ${data.clase}.${data.miembro}`;
+          throw `MEMBER UNDEFINED:\n>> ${matching[0]}.${matching[1]}`
         }
         
-        let queEs = classes[data.clase][data.miembro];
+        let queEs = classes[data.clase][data.miembro]
         
         if (data.operador == "FUNC") {
           if (typeof queEs == "object") {
             if (Object.keys(queEs).length >= 2) {
-              throw `METHOD NOT AVAILABLE:\nMethods must be written with their class.\n>> ${data.miembro}`;
+              throw `METHOD NOT AVAILABLE:\nMethods must be written with their class.\n>> ${data.miembro}`
             } else {
-              queEs = Object.values(queEs)[0];
+              queEs = Object.values(queEs)[0]
             }
           }
-          line = queEs + ': ' + data.resto;
+          line = queEs + ': ' + data.resto
         }
         else {
           if (typeof queEs == "object") {
-            line = Object.values(queEs)[0];
+            line = Object.values(queEs)[0]
           } else {
-            line = queEs;
+            line = queEs
           }
-          line += ': ' + data.paramFront + " " + data.paramRear;
-        }
-        
-        // Añadir la variable de asignación al final si existe
-        if (assignmentVar) {
-          line += ' ' + assignmentVar;
+          line += ': ' + data.paramFront + " " + data.paramRear
         }
       }
       
-      // Procesar estructuras especiales solo en líneas transformadas
+      // --- MODIFICACIÓN: Reemplazamos el proceso de “depuración” de comas
+      // usando un contador de paréntesis y control de comillas para que se
+      // respeten las estructuras internas como 0@($3,1f)
       let depureLine = '';
       let inQuote = false;
       let quoteChar = '';
       let parenDepth = 0;
-      let insideSpecialStructure = false;
-      
       for (let i = 0; i < line.length; i++) {
         const ch = line[i];
+        
+        // Manejo de comillas (solo si no estamos dentro de una cadena ya)
         if ((ch === '"' || ch === "'" || ch === '`')) {
           if (!inQuote) {
             inQuote = true;
@@ -7579,6 +7621,7 @@ SP.classesToOpcodes = function() {
             quoteChar = '';
           }
         }
+        // Manejo de paréntesis (solo si no estamos en una cadena)
         else if (!inQuote) {
           if (ch === '(') {
             parenDepth++;
@@ -7586,34 +7629,28 @@ SP.classesToOpcodes = function() {
             if (parenDepth > 0) parenDepth--;
           }
         }
-        if (!inQuote && !insideSpecialStructure && (ch === '@' || ch === '&' || ch === '$')) {
-          insideSpecialStructure = true;
-        }
-        if (ch === ',' && !inQuote && parenDepth === 0 && insideSpecialStructure) {
+        
+        if (ch === ',' && !inQuote && parenDepth === 0) {
           depureLine += ' ';
         } else {
           depureLine += ch;
-        }
-        if (ch === ')' && insideSpecialStructure) {
-          insideSpecialStructure = false;
         }
       }
       line = depureLine;
       
       if (isNegative) {
-        line = line.replace(/^([\w\d]+):/im, (input, mat) => {
+        line = line.r(/^([\w\d]+):/im, (input, mat) => {
           let op = mat.setOpcodeNegative();
           return op + ': ';
         });
       }
     }
-    // Para líneas que no son clases, mantenerlas sin cambios
+    
     ncode += line + '\n';
   });
   
   return ncode;
 }
-
 
 SP.keywordsToOpcodes = function(){
   let nString = ''
@@ -7882,7 +7919,10 @@ SP.parseHexEnd = function(){
 
 SP.adaptarCodigo = function(){
   registroTipos = {}
-  let result = refinarClases(refinarObjetos(this))
+  let result = this
+    .classesToOpcodes()
+    .refinarObjetos()
+    .refinarClases()
     .removeComments()
     .refinarCodigo()
     .transformTypeData()
@@ -7895,7 +7935,6 @@ SP.adaptarCodigo = function(){
     .addNumbersToIfs()
     .removeComments()
     .r(/^not /gm, '!')
-    .classesToOpcodes()
     .constantsToValue()
     .transformTypeData()
     .normalizeArrays()
@@ -7904,7 +7943,7 @@ SP.adaptarCodigo = function(){
     .keywordsToOpcodes()
     .fixOpcodes()
     .removeTrash()
-   return log(result)
+   return (result)
 }
 
 SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
