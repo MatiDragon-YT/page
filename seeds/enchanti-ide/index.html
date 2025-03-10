@@ -105,6 +105,7 @@ pre {
 - Compiles for Android and PC.<br>
 - Connection with <a href="https://library.sannybuilder.com/">Library::SannyBuilder</a> and <a href="https://github.com/MatiDragon-YT/data/tree/master/sa_cp">data::CrossPlataform</a><br>
 <br>
+
 <details>
 <summary>Syntax for conditions</summary>
 <h4>Primitive</h4>
@@ -349,6 +350,30 @@ BODYPART.TORSO = 1
 </details>
 
 <details>
+<summary>Directives</summary>
+Directives allow you to configure the compiler for various things. Within Sanny builder, to specify how each opcode should be compiled, prevent the current script from compiling without leaving the source code, import files as extensions of the same, and other things that are not very important.
+
+In EIDE there is only one direct
+<pre>
+{$I ‹source›}
+or
+{$INCLUDE ‹source›}
+</pre>
+It is used to import files into the one we have open. The compiler replaces the text and copies the content of the file that we pass as a parameter and pastes it in the place where we invoke it.
+</details>
+
+<details>
+<summary>Comments</summary>
+Comments are lines or sections of code that are removed when compiling the code. They help us leave messages and information about where we are, what something does.Comments are lines or sections of code that are removed when compiling the code. They help us leave messages and information about where we are, what something does and also to decorate.
+<pre>
+// Only this line will be commented
+
+/* All the text in here will
+disappear in the compiled file */
+</pre>
+</details>
+
+<details>
 <summary>Decimals</summary>
 The compiler not only has a translator for Hexadecimal and Binary numbers. It can also look up the numerical IDs of the model names.
 <pre>
@@ -453,20 +478,20 @@ ret 1 0@ // return FLOAT : 👍
 The IDE remembers the last variable definitions and remembers if they went from INT to FLOAT and the other way around.
 
 <h4>Locals with names</h4>
-En todos los lenguajes pueden haber buenas y malas practicas. Y aqui las cosas pueden tomarse como un crimen de odio, por lo peligroso que pueden ser algunas acciones.
+In every language there can be good and bad practices. And here things can be considered a hate crime, because of how dangerous some actions can be.
 <pre>
 int $var = 0 // ⚠️ Warning
 int var = 0 // 👍 Perfect
 </pre>
-La forma de declarar estas variables es simple:
+The way to declare these variables is simple:
 <b>Syntax</b>
 <pre>
 ‹type› ‹name_var› [= ‹value›]
 </pre>
 <ul>
-  <li>type: cualquier tipo de variable [int|float|short|long|string]</li>
-  <li>name_var: cualquier nombre compuesto de letras, números o guiones bajos. (pero no pueden empezar por números)</li>
-  <li>value: opcional, el valor inicial. por defecto son 0, 0.0, '' o ""</li>
+  <li>type: any type of non-array variable [int|float|short|long|string]</li>
+  <li>name_var: Any name composed of letters, numbers, or underscores. (but they cannot begin with numbers)</li>
+  <li>value: optional, the initial value. defaults are 0, 0.0, '' or ""</li>
 </ul>
 <b>Examples</b>
 <pre>
@@ -476,18 +501,19 @@ short gxt = 'CHEAT0'
 long anim = "IDLE_SEAT"
 string foo = `banana`
 </pre>
-el tipo de dato de cada variable se lo podes cambair siempre, siempre qie se exprese esa intencion vomo aqui:
+You can always change the data type of each variable, as long as that intention is expressed like this:
 <pre>
 int variable
 float variable
 
 varible // is float
 </pre>
+It is important to know that these variables have a scope limit.
 </details>
 
 <details>
 <summary>Objects</summary>
-Este es un tipo de dato de variable, que sirve para almacenar una coleccion de datos dandoles atributos propios a cada propiedad.
+This is a type of variable data, which is used to store a collection of data, giving each property its own attributes.
 <b>Syntax</b>
 <pre>
 object ‹name› = {
@@ -497,9 +523,9 @@ object ‹name› = {
 }
 </pre>
 <ul>
-  <li>name: el nombre de la variable objeto.</li>
-  <li>type: tipo de dato que guarda una propiedad.</li>
-  <li>value: opcional, cualquier valor. por defecto son 0 o cadenas vacías.</li>
+  <li>name: The name of the object variable.</li>
+  <li>type: type of data that stores a property.</li>
+  <li>value: optional, any value. defaults to 0 or empty strings.</li>
 </ul>
 <b>Examples</b>
 <pre>
@@ -516,7 +542,7 @@ Camera.flags = 28
 const SPEED = Camera.speed
 SPEED = 2.0
 </pre>
-Esto multiplica su uso potencial es array con estas estructuras de datos.
+This multiplies its potential use as an array with these data structures. But you can't put arrays into objects.
 </details>
 
 <details>
@@ -556,24 +582,24 @@ float a(b,20) = 1.3
 </pre>
 
 <h4>Enhanti</h4>
-La forma mas bonita de codear.
+The most beautiful way to code.
 <b>Syntax definition</b>
 <pre>
 ‹type› ‹name_var›[length] [= ‹values›]
 </pre>
 <ul>
-  <li>type: unico tipo de datos que guarda el array.</li>
-  <li>name_var: cualquier nombre de variable.</li>
-  <li>length: opcional, la longitud del array. sino se define, se tomara el numero de elementos en `values`</li>
-  <li>values: opcional, todos los valores estan en blanco.</li>
+  <li>type: the only type of data that the array stores.</li>
+  <li>name_var: any variable name.</li>
+  <li>length: optional, the length of the array. if not defined, the number of elements in `values` will be taken</li>
+  <li>values: optional, all values are blank.</li>
 </ul>
 <b>Syntax manipulation</b>
 <pre>
 ‹name_var›‹index›
 </pre>
 <ul>
-  <li>name_var: cualquier variable array definida.</li>
-  <li>index: cualquier variable o numero del 0 al maximo del array.</li>
+  <li>name_var: any defined array variable.</li>
+  <li>index: any variable or number from 0 to the maximum of the array.</li>
 </ul>
 <b>Examples</b>
 <pre>
@@ -591,9 +617,9 @@ string Texts[2] = ["hello", "world"]
 int index = 1
 Texts[index] = "mati"
 </pre>
-La declaraciones y asignaciones son similares a lenguajes de programación reales. El numero de longitud empieza en el 0, y la ubicacion en 1, y la longitud no puede ser 0 o sera imvalida la inicialización.
+Declarations and assignments are similar to real programming languages. The length number starts at 0, and the location at 1, and the length cannot be 0 or it will be invalid.
 <h4>Matrixes</h4>
-Tambien hay soporte para arrays 2D y las mismas sintaxis se comparten.
+There is also support for 2D arrays and the same syntaxes are shared.
 <pre>
 int Matrix[3][3] = [[1,2,3],[4,5,6],[7,8,9]]
 
@@ -601,20 +627,20 @@ i = 2
 Matrix[i][2] = 5
 </pre>
 <h4>Objets</h4>
-No es posible hacer un array 2d al mismo tiempo que de objetos. Pero al menos si se puede hacer un array de Objetos.<br>
+It is not possible to make a 2d array at the same time as an array of objects. But at least you can make an array of Objects.<br>
 <br />
-En lugar de usar la palabra clave `object` usaremos `class` para definir la estructura de nuestro array y no le pasamos ningun valor:
+Instead of using the `object` keyword we will use `class` to define the structure of our array and we will not pass any value to it:
 <pre>
 class IEntity = {
   int type,
   int flags
 }
 </pre>
-y ahora solo escribimos el objeto como si fuese un tipo de dato y tampoco le pasamos valores:
+and now we just write the object as if it were a data type and we don't pass any values to it either:
 <pre>
 IEntity entities[10]
 </pre>
-Con esto ya tenemos una coleccion de objetos y podemos acceder facilmente a cada uno, escribiendolo de estas formas
+With this we already have a collection of objects and we can easily access each one, writing it in these ways
 <pre>
 // method 1
 entities[3].type = PEDTYPE.CIVMALE

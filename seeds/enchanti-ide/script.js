@@ -17,10 +17,14 @@
 'use strict';
 
 //  VERSION ACTUAL
-const CURRENT_VERSION = '1.5.0 :: MAR/02/2025'
+const CURRENT_VERSION = '1.5.1 :: MAR/02/2025'
 
 //  HISTORIAL DE VERSION
 const HISTORY = `
+# 1.5.1
+
+* Multiple fixes to high-level syntax to support new variable declarations.
+
 # 1.5.0
 
 * add: support for new data type:
@@ -113,9 +117,12 @@ NodeList.prototype.forEach = Array.prototype.forEach
 /** Console.log
  * @param {AnyTypeData} opciona
  */
-const log = (MESSAGE) => {
-  console.log(MESSAGE)
+const log = (MESSAGE, TITLE) => {
+  console.log((TITLE?'==========\n'+TITLE.toUpperCase()+'\n==========\n':'') + MESSAGE)
   return MESSAGE
+}
+SP.log = function(){
+  return log(this)
 }
 /** Smart selector for elements of the DOM
  * @param {DOMString}
@@ -901,17 +908,17 @@ const Input = {
     || Input.isEnum(x))
   },
   isLocalVar: x => {
-    return /^\d+@[a-z]?$/im.test(x)
+    return /^(\!)?\d+@[a-z]?$/im.test(x)
   },
   isGlobalVar: x => {
-    return /^[a-z]?\$\w+$/im.test(x)
+    return /^(\!)?[a-z]?\$\w+$/im.test(x)
   },
   isAdmaVar: x => {
-    return /^[a-z]?&\d+$/im.test(x)
+    return /^(\!)?[a-z]?&\d+$/im.test(x)
   },
-  isLocalVarArray: x => /^\d+@[a-z]?(\(.+(,\d+[a-z]?)?\))$/im.test(x),
-  isGlobalVarArray: x => /^[a-z]?\$\w+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
-  isAdmaVarArray: x => /^[a-z]?&\d+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
+  isLocalVarArray: x => /^(\!)?\d+@[a-z]?(\(.+(,\d+[a-z]?)?\))$/im.test(x),
+  isGlobalVarArray: x => /^(\!)?[a-z]?\$\w+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
+  isAdmaVarArray: x => /^(\!)?[a-z]?&\d+(\(.+(,\d+[a-z]?)?\))$/im.test(x),
   isNegate: x => /^\!.+/m.test(x),
   isNegative: x => /^\-.+/m.test(x),
   isPositive: x => /^\+.+/m.test(x),
@@ -4808,13 +4815,56 @@ NP.intToHex = function () {
 
 
 
-
-SP.refinarCodigo = function() {
+/** Converts the code we pass with named variables into its global pointer-offset equivalent.
+ * 
+ * Example:
+ * 'int a = 2' → '&0(0@,1i) = 2'
+ * 
+ * Single-value variables, arrays and matrices must be translated here.
+ */
+SP.refinarVariables = function() {
   const TIPO_DADO = { int: 'i', float: 'f', short: 's', long: 'v', string: 'v' };
   const DATO_DEFECTO = { int: '0', float: '0.0', short: "''", long: '""', string: '""' };
   const SIZE_VAR = { int: 4, float: 4, short: 8, long: 16, string: 16 };
   
   let codigoFuente = this;
+  
+  // Función de preprocesamiento para autocorregir declaraciones
+  function preprocessCode(source) {
+    const lines = source.split('\n');
+    const correctedLines = [];
+    const arrayDeclRegex = /^(int|float|short|long|string)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*\[(\d+)\])?(?:\s*=\s*(\[.*?\]))?$/i;
+    
+    for (let line of lines) {
+      const trimmed = line.trim();
+      const match = trimmed.match(arrayDeclRegex);
+      if (match) {
+        const tipo = match[1].toLowerCase();
+        const varName = match[2];
+        const size = match[3]; // Tamaño del array, si existe
+        const init = match[4]; // Inicialización, si existe
+        
+        /*
+        if (size && !init) {
+          // Caso: int autos[4] → int autos[4] = [0,0,0,0]
+          const defaultValues = Array(parseInt(size)).fill(DATO_DEFECTO[tipo]).join(',');
+          line = `${tipo} ${varName}[${size}] = [${defaultValues}]`;
+        } else*/ if (init && !size) {
+        
+          // Caso: int autos = [0,0,0,0] → int autos[4] = [0,0,0,0]
+          const initValues = init.slice(1, -1).split(',').map(v => v.trim());
+          line = `${tipo} ${varName}[${initValues.length}] = ${init}`;
+        }
+        // Si ya tiene tamaño e inicialización, no se modifica
+      }
+      correctedLines.push(line);
+    }
+    return correctedLines.join('\n');
+  }
+  
+  // Preprocesar el código fuente
+  codigoFuente = preprocessCode(codigoFuente);
+  
   const lineas = codigoFuente.split('\n');
   const validIdentifierRegex = /^[A-Za-z_][A-Za-z0-9_]*$/;
   
@@ -5052,7 +5102,7 @@ SP.refinarCodigo = function() {
     ''
     ];
   }
-  return (header.concat(salidaLines).join('\n'));
+  return log(header.concat(salidaLines).join('\n'), 'Refinar variable');
 };
 
 
@@ -5060,77 +5110,103 @@ SP.refinarCodigo = function() {
 SP.refinarObjetos = function(str = this) {
   const lines = str.split('\n');
   const output = [];
-  const objects = {};
-  const aliases = new Map();
+  const objects = {}; // Mapa global de objetos y sus propiedades
+  const replacements = {}; // Mapa de reemplazos: 'objeto.propiedad' -> 'objeto_propiedad'
   let currentObject = null;
+  let scopeStack = [{ aliases: new Map() }]; // Pila de scopes para aliases
   
+  // Primera pasada: procesar definiciones de objetos y construir el mapa de reemplazos
   for (let line of lines) {
     const trimmed = line.trim();
-    let match;
-    
-    // Procesar definición de objetos
     if (trimmed.startsWith('object')) {
-      match = trimmed.match(/object\s+(\w+)\s*=\s*\{/);
+      const match = trimmed.match(/object\s+(\w+)\s*=\s*\{/);
       if (match) {
         currentObject = match[1];
         objects[currentObject] = [];
       }
-      continue;
-    }
-    
-    // Cierre de objeto
-    if (trimmed === '}' && currentObject) {
+    } else if (trimmed === '}' && currentObject) {
       currentObject = null;
-      continue;
-    }
-    
-    // Dentro de definición de objeto
-    if (currentObject) {
-      match = trimmed.match(/(int|float|string)\s+(\w+)(?:\s*=\s*(.+))?/);
+    } else if (currentObject) {
+      const match = trimmed.match(/(int|float|string)\s+(\w+)(\[\d*\])?(?:\s*=\s*(.+))?/);
       if (match) {
-        const [_, type, name, value] = match;
+        const [_, type, name, arraySize, value] = match;
         const varName = `${currentObject}_${name}`;
-        objects[currentObject].push(varName);
-        output.push(value ? `${type} ${varName} = ${value}` : `${type} ${varName}`);
+        objects[currentObject].push(name);
+        replacements[`${currentObject}.${name}`] = varName;
+        const size = arraySize || ''; // Incluye el tamaño si existe
+        output.push(value ? `${type} ${varName}${size} = ${value}` : `${type} ${varName}${size}`);
       }
+    } else {
+      output.push(line); // Guardar temporalmente las líneas no procesadas
+    }
+  }
+  
+  // Segunda pasada: procesar el resto del código y reemplazar referencias
+  const finalOutput = [];
+  for (let line of output) {
+    const trimmed = line.trim();
+    let match;
+    
+    // Manejar entrada y salida de bloques
+    if (/^(while|repeat|for|if|then|else)\b/i.test(trimmed)) {
+      scopeStack.push({ aliases: new Map() });
+      finalOutput.push(line);
+      continue;
+    } else if (/^\bend\b|\buntil\b/i.test(trimmed)) {
+      if (scopeStack.length > 1) scopeStack.pop();
+      finalOutput.push(line);
       continue;
     }
     
-    // Asignaciones directas a propiedades
-    match = trimmed.match(/(\w+)\.(\w+)\s*=\s*(.+)/);
-    if (match) {
-      const [_, obj, prop, value] = match;
-      output.push(`${obj}_${prop} = ${value}`);
-      continue;
-    }
-    
-    // Definición de constantes alias
+    // Procesar definición de constantes alias
     match = trimmed.match(/const\s+(\w+)\s*=\s*(\w+)\.(\w+)/);
     if (match) {
       const [_, alias, obj, prop] = match;
-      aliases.set(alias, `${obj}_${prop}`);
-      continue;
-    }
-    
-    // Asignaciones a alias
-    match = trimmed.match(/^(\w+)\s*=\s*(.+)/);
-    if (match) {
-      const [_, alias, value] = match;
-      if (aliases.has(alias)) {
-        output.push(`${aliases.get(alias)} = ${value}`);
-        continue;
+      if (objects[obj] && objects[obj].includes(prop)) {
+        const currentScope = scopeStack[scopeStack.length - 1];
+        currentScope.aliases.set(alias, `${obj}_${prop}`);
       }
+      continue; // No agregar al output, es solo definición de alias
     }
     
-    // Conservar líneas no procesadas
-    output.push(line);
+    // Reemplazar referencias a propiedades (incluyendo accesos a arreglos)
+    let processedLine = line;
+    for (const [key, value] of Object.entries(replacements)) {
+      // Reemplazar 'objeto.propiedad' seguido opcionalmente por '[algo]'
+      const regex = new RegExp(`\\b${key.replace('.', '\\.')}(\\[.*?\\])?\\b`, 'g');
+      processedLine = processedLine.replace(regex, (match, arrayIndex) => {
+        return arrayIndex ? `${value}${arrayIndex}` : value;
+      });
+    }
+    
+    // Procesar asignaciones a alias con cualquier operador
+    match = processedLine.match(/^(\w+)\s*([=+\-*/%]=|==|!=|<=|>=|<|>|\|\||&&)\s*(.+)/);
+    if (match) {
+      const [_, alias, operator, value] = match;
+      let found = false;
+      for (let i = scopeStack.length - 1; i >= 0; i--) {
+        const scope = scopeStack[i];
+        if (scope.aliases.has(alias)) {
+          const variable = scope.aliases.get(alias);
+          finalOutput.push(`${variable} ${operator} ${value}`);
+          found = true;
+          break;
+        }
+      }
+      if (found) continue;
+    }
+    
+    // Agregar la línea procesada si no fue manejada como alias
+    finalOutput.push(processedLine);
   }
   
-  return (output.join('\n'))
-}
+  return log(finalOutput.join('\n'),'refinaar objetos');
+};
 
 SP.refinarClases = function(str = this) {
     const originalLines = str.trim().split('\n');
+    
+    
     let output = [];
     let objects = {}; // { objectName: { prop: type } }
     let arrays = {}; // { arrayName: { type: objType, size: string } }
@@ -5173,20 +5249,22 @@ SP.refinarClases = function(str = this) {
   continue;
 }
 
-        // Process array declarations
-        const arrayDeclareRegex = /^(\w+)\s+(\w+)\[(\d+)\]$/;
-        const arrayDeclareMatch = trimmedLine.match(arrayDeclareRegex);
-        if (arrayDeclareMatch) {
-            const [, objType, arrayName, size] = arrayDeclareMatch;
-            if (objects[objType]) {
-                arrays[arrayName] = { type: objType, size };
-                Object.keys(objects[objType]).forEach(prop => {
-                    output.push(`${objects[objType][prop]} ${arrayName}_${prop}[${size}]`);
-                });
-            }
-            i++;
-            continue;
-        }
+// Process array declarations
+const arrayDeclareRegex = /^(\w+)\s+(\w+)\[(\d+)\]$/;
+const arrayDeclareMatch = trimmedLine.match(arrayDeclareRegex);
+if (arrayDeclareMatch) {
+  const [, objType, arrayName, size] = arrayDeclareMatch;
+  if (objects[objType]) {
+    arrays[arrayName] = { type: objType, size };
+    Object.keys(objects[objType]).forEach(prop => {
+      output.push(`${objects[objType][prop]} ${arrayName}_${prop}[${size}]`);
+    });
+  } else {
+    output.push(originalLine); // Preservar arrays primitivos como int array[20]
+  }
+  i++;
+  continue;
+}
 
         // Process multi-line array assignment with object literal
         const arrayObjectStartRegex = /^(\w+)\[([^\]]+)\]\s*=\s*{/;
@@ -5297,7 +5375,7 @@ SP.refinarClases = function(str = this) {
         i++;
     }
 
-    return (output.join('\n'))
+    return log(output.join('\n'),'refinar clases')
 }
 
 /*
@@ -6332,7 +6410,6 @@ SP.removeComments = function() {
   let result = this
     .r(/\/\/.*$/gm, '')
 		.r(/(\s*)\/\*([^\/]*)?\*\//gm, '')
-		.r(/(\s*)\{([^\$][^\}]*(\})?)?/gm, '')
 	
 	return result
     .split('\n')
@@ -6402,6 +6479,8 @@ function encontrarTemporales(texto){
 let CLEO_FUNCTIONS
 
 SP.preProcesar = function() {
+  let codigoTotal = this
+  
   CLEO_FUNCTIONS = {
     MATH : {
       INT_IS_INT : false,
@@ -6413,8 +6492,18 @@ SP.preProcesar = function() {
   }
   let nString = ''
   
-  this.formatScript().split('\n').forEach(linea =>{
+  codigoTotal = codigoTotal.split('\n').map(e => {
+    e = e.trim()
+    if (e.includes(' ')) return e;
+    
+    return Input.isVariable(e)
+      ? e.determineOperations()
+      : e
+  }).join('\n')
+  
+  codigoTotal.formatScript().split('\n').forEach(linea =>{
     linea = linea.trim()
+    
     let lineaAnterior = ""
     let lineaSiguiente = ""
     
@@ -7433,18 +7522,18 @@ Game.SetSpeed(1.0) // 015D: 1.0
 
 SP.classesToOpcodes = function() {
   const MATCH = {
-  CLASSE_MEMBER: /(\w+)\.(\w+)\((.+)?\)/m,
-  OPERATION: /(==|\+=|=|>)/,
-  
-  SIMPLE: /^(\w+)\.(\w+)\(([^\n]*)\)$/mi,
-  CONTINUE: /^\.(\w+)\((.+)?\)$/mi,
-  METHOD: /^(\w+)?\.(\w+)$/mi,
-  
-  SET: /\.[^(]+\(.+=/,
-  GET: /=.+\.[^(]+\(/,
-  IS: /\.[^=]+==/,
-  UPPER: /\.[^>]+>/,
-}
+    CLASSE_MEMBER: /(\w+)\.(\w+)\((.+)?\)/m,
+    OPERATION: /(==|\+=|=|>)/,
+    
+    SIMPLE: /^(\w+)\.(\w+)\(([^\n]*)\)$/mi,
+    CONTINUE: /^\.(\w+)\((.+)?\)$/mi,
+    METHOD: /^(\w+)?\.(\w+)$/mi,
+    
+    SET: /\.[^(]+\(.+=/,
+    GET: /=.+\.[^(]+\(/,
+    IS: /\.[^=]+==/,
+    UPPER: /\.[^>]+>/,
+  }
   
   let ncode = ''
   let lastClass = null
@@ -7453,22 +7542,23 @@ SP.classesToOpcodes = function() {
     line = line.trim()
     
     let isClass = false
+    
     if (/([a-z]\w+)?\.([a-z]\w+)/i.test(line)) {
       line.match(/([a-z]\w+)?\.([a-z]\w+)/ig)
         .forEach(c => {
-          c = c.match(/([a-z]\w+)?\.([a-z]\w+)/i)
-          
-          if (!isClass) {
-            if (c[1] == undefined) {
-              if (lastClass) {
-                c[1] = lastClass
+          if (Input.isClass(c)){
+            c = c.match(/([a-z]\w+)?\.([a-z]\w+)/i)
+            
+            if (!isClass) {
+              if (c[1] == undefined) {
+                if (lastClass) {
+                  c[1] = lastClass
+                }
               } else {
-                throw new Error("CLASS UNDEFINED:\n>> " + line)
+                lastClass = c[1]
               }
-            } else {
-              lastClass = c[1]
+              isClass = Input.isClass(c[1] + '.' + c[2])
             }
-            isClass = Input.isClass(c[1] + '.' + c[2])
           }
         })
     }
@@ -7795,25 +7885,26 @@ SP.fixOpcodes = function(){
 }
 
 SP.determineOperations = function(){
-  let h = this.split('\n')
-  let n = ''
+  let linesOfCode = this.split('\n')
+  let newLinesOfCode = ''
     
-  h.forEach(s => {
-    let o = s
-    s = s.trim()
+  linesOfCode.forEach(source => {
+    let originalLine = source
+    source = source.trim()
     
-    let negado = /^\!/m.test(s) ? 0 : 1
-    s = s.r(/^\!/m)
+    let negado = Input.isNegate(source)
     
-    if (Input.isVariable(s)) {
-      s = s +' == '+ negado
+    source = source.r(/^\!/m)
+    
+    if (Input.isVariable(source)) {
+      source = source +' == '+ negado
     }else{
-      s = o
+      source = originalLine
     }
     
-    n += s + '\n'
+    newLinesOfCode += source + '\n'
   })
-  return n
+  return newLinesOfCode
 }
 
 SP.removeTrash = function(){
@@ -7921,13 +8012,16 @@ SP.adaptarCodigo = function(){
   registroTipos = {}
   let result = this
     .classesToOpcodes()
+    
     .refinarObjetos()
     .refinarClases()
     .removeComments()
-    .refinarCodigo()
+    .refinarVariables()
+    
     .transformTypeData()
     .parseHexEnd()
     .preProcesar()
+    
     .formatScript()
     .autoAddCleoFunction()
     .parseHigthLevelLoops()
@@ -7938,12 +8032,12 @@ SP.adaptarCodigo = function(){
     .constantsToValue()
     .transformTypeData()
     .normalizeArrays()
-    .determineOperations()
     .operationsToOpcodes()
     .keywordsToOpcodes()
     .fixOpcodes()
     .removeTrash()
-   return (result)
+    .log()
+   return result
 }
 
 SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
