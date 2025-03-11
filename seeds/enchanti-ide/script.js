@@ -17,13 +17,15 @@
 'use strict';
 
 //  VERSION ACTUAL
-const CURRENT_VERSION = '1.5.1 :: MAR/02/2025'
+const CURRENT_VERSION = '1.5.1 :: MAR/10/2025'
 
 //  HISTORIAL DE VERSION
 const HISTORY = `
 # 1.5.1
 
-* Multiple fixes to high-level syntax to support new variable declarations.
+* Multiple fixes to high-level syntax to support new declarations.
+* Console logs will now only be on LocalHost.
+* Loops no longer require you to check if a variable is TRUE or not equal to 0.
 
 # 1.5.0
 
@@ -118,7 +120,16 @@ NodeList.prototype.forEach = Array.prototype.forEach
  * @param {AnyTypeData} opciona
  */
 const log = (MESSAGE, TITLE) => {
-  console.log((TITLE?'==========\n'+TITLE.toUpperCase()+'\n==========\n':'') + MESSAGE)
+  if (
+    ['localhost', '127.0.0.1']
+    .includes(window.location.hostname)
+  ){
+    console.log((TITLE?
+      '==========\n'+
+      TITLE.toUpperCase()+
+      '\n==========\n':''
+    ) + MESSAGE)
+  }
   return MESSAGE
 }
 SP.log = function(){
@@ -6476,8 +6487,18 @@ function encontrarTemporales(texto){
     return texto.match(new RegExp(patronTemp.source, 'ig'))
 }
 
-let CLEO_FUNCTIONS
+SP.simpleVarFormat = function(){
+  return this.split('\n').map(e => {
+    e = e.trim()
+    if (e.includes(' ')) return e;
+    
+    return Input.isVariable(e) ?
+      e.determineOperations() :
+      e
+  }).join('\n')
+}
 
+let CLEO_FUNCTIONS
 SP.preProcesar = function() {
   let codigoTotal = this
   
@@ -6492,16 +6513,7 @@ SP.preProcesar = function() {
   }
   let nString = ''
   
-  codigoTotal = codigoTotal.split('\n').map(e => {
-    e = e.trim()
-    if (e.includes(' ')) return e;
-    
-    return Input.isVariable(e)
-      ? e.determineOperations()
-      : e
-  }).join('\n')
-  
-  codigoTotal.formatScript().split('\n').forEach(linea =>{
+  codigoTotal.formatScript().simpleVarFormat().split('\n').forEach(linea =>{
     linea = linea.trim()
     
     let lineaAnterior = ""
@@ -6603,16 +6615,17 @@ SP.preProcesar = function() {
     .r(/^(.+) =& (.+)/gim, 'GET_VAR_POINTER $2 $1')
   	// 0@ = 1@ == 1 ? 0 : 1
   	.r(/^(.+) ([\-\+\*\/%]?=) (.+) \? (.+) \: (.+)$/gm,
-  	  `if\n$3\nthen\n$1 $2 $4\nelse\n$1 $2 $5\nend\n`)
+  	  `if\n$3 != 0\nthen\n$1 $2 $4\nelse\n$1 $2 $5\nend\n`)
     .r(/^(.+) => (.+);/gim, 'if $1\nthen $1 end')
   	  
   	// 0@ == 1 ? 0 : 1
-  	.r(/^(.+) \? (.+) \: (.+)$/gm, input =>{
+  	.r(/^([^\n]+) \? (.+) \: (.+)$/gm, input =>{
   	  let vars = input.match(/^(.+)\?(.+)\:(.+)$/)
   	                  .map(e=> e.trim())
   	  
   	  vars[1] = vars[1].determineOperations()
   	  
+  	  // condicionals
   	  let operators = '==,!=,<=,>=,>,<,<>'
   	  
   	  operators.split(',').forEach(operador => {
@@ -8017,6 +8030,7 @@ SP.adaptarCodigo = function(){
     .refinarClases()
     .removeComments()
     .refinarVariables()
+    .constantsToValue()
     
     .transformTypeData()
     .parseHexEnd()
@@ -8027,6 +8041,8 @@ SP.adaptarCodigo = function(){
     .parseHigthLevelLoops()
     .addBreaksToLoops()
     .addNumbersToIfs()
+    .simpleVarFormat()
+    
     .removeComments()
     .r(/^not /gm, '!')
     .constantsToValue()
@@ -8036,7 +8052,6 @@ SP.adaptarCodigo = function(){
     .keywordsToOpcodes()
     .fixOpcodes()
     .removeTrash()
-    .log()
    return result
 }
 
