@@ -23,7 +23,7 @@ const CURRENT_VERSION = '1.5.1 :: MAR/10/2025'
 const HISTORY = `
 # 1.5.1
 
-* Multiple fixes to high-level syntax to support new declarations.
+* Multiple fixes to high-level syntax to support new declarations and additions.
 * Console logs will now only be on LocalHost.
 * Loops no longer require you to check if a variable is TRUE or not equal to 0.
 
@@ -7267,7 +7267,7 @@ SP.operationsToOpcodes = function () {
       linea = `${linea} ${operation} ${tipo}`
       const opcodeDetectado = detectarOpcode(linea,numLinea)
       
-      return `${opcodeDetectado}: ${linea}`
+      return `${opcodeDetectado} ${linea}`
     }
     else {
       // Mantener la línea original si no es una operación
