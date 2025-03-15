@@ -1475,6 +1475,7 @@ window.importFileInFile = function() {
     let openTab = findTabById(currentTabId, tabs);
     if (!openTab) {
         showToast('Current file not found.', 'fail', 5000);
+        $debugHex.innerText = ''
         return;
     }
 
@@ -6091,7 +6092,7 @@ SP.parseHigthLevelLoops = function(){
         stacks.if[stacks.if.length - 1] = labelElse
       }
       else if (/^while /im.test(line)){
-        if (/^while true$/im.test(line)){
+        if (/^while (true|1)$/im.test(line)){
           stacks.general.push('true')
           
           label = `while_true_${++counts.while}`
@@ -6099,7 +6100,7 @@ SP.parseHigthLevelLoops = function(){
           
           stacks.while.push(label)
         }
-        else if (/^while false$/im.test(line)){
+        else if (/^while (false|0)$/im.test(line)){
           stacks.general.push('false')
           
           label = `while_false_${++counts.reverse}`
@@ -6183,7 +6184,7 @@ SP.parseHigthLevelLoops = function(){
           throw new Error(`pila sintactica: vacia`)
         }
         else{
-          if (/^until true$/im.test(line)) {
+          if (/^until (true|1)$/im.test(line)) {
             label = stacks.repeat.pop()
             stacks.until.pop()
             
@@ -6216,7 +6217,7 @@ SP.parseHigthLevelLoops = function(){
       }
       else if(/^end$/im.test(line)) {
         if (stacks.general.length == 0) {
-          throw new Error(`>>> ERROR: The loops and conditionals were all closed. you are trying to put one too many.`)
+          throw new Error(`>>> ERROR: The loops and conditionals were all closed. you are trying to put one too many.\n This message could also have been caused by the lack of a 'then, else, while, etc'\n${JSON.stringify(stacks)}`)
         }
         else {
           let closed = stacks.general.pop()
@@ -6263,7 +6264,7 @@ SP.parseHigthLevelLoops = function(){
     })
     if (stacks.general.length > 0){
       
-      throw new Error(`>>> ERROR: there is an unclosed loop or condicional: ${stacks.general}\nWrite the closing with 'END'`)
+      throw new Error(`>>> ERROR: there is an unclosed loop or condicional:\nStack general:${stacks.general}\nWrite the closing with 'END'`)
     }
     return outputText;
 }
@@ -6829,7 +6830,7 @@ end
     
     nString = nString.trim()
     if (nString.length != 0){
-      nString = 'NOP\n'+ nString + '\nTERMINATE_THIS_SCRIPT';
+      nString = 'NOP\nWAIT 200\n'+ nString + '\nTERMINATE_THIS_SCRIPT';
     }
   
   	return nString
