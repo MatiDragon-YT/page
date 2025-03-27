@@ -17,10 +17,15 @@
 'use strict';
 
 //  VERSION ACTUAL
-const CURRENT_VERSION = '1.5.1 :: MAR/10/2025'
+const CURRENT_VERSION = '1.5.2 :: MAR/10/2025'
 
 //  HISTORIAL DE VERSION
 const HISTORY = `
+# 1.5.2
+
+* Infinite variables are now declared at the end of local variables, depending on the platform. 33@ on PC, 41@ on Android.
+* fix: Conditionals and loops are case and space sensitive.
+
 # 1.5.1
 
 * Multiple fixes to high-level syntax to support new declarations and additions.
@@ -1144,8 +1149,6 @@ const $currentVersion = $('#current_version')
 
 const $fastSettings_input =
   $("#fast_commandInput");
-const $fastSettings_processCommand =
-  $('#fast_processCommand')
 const $fastSettings_container =
   $("#fast_commandContainer");
 const $fastSettings_suggestionsList =
@@ -1242,8 +1245,6 @@ const snippets = {
 //       ++++++++++++++++++
 
 $currentVersion.innerText = CURRENT_VERSION
-$fastSettings_processCommand.onclick=()=>processCommand();
-
 
 function toggleCommandInput() {
   $fastSettings_container.class('~d-none')
@@ -4094,16 +4095,17 @@ window.syncHighlighting = ()=>{
 
 
 window.syncDebugHex = ()=>{
-  if (!$debugHex.class('?d-none')){
-  try {
-    $debugHex.innerText =
-      importFileInFile().Translate(true, true);
-    $error.style.display = 'none'
-  } catch (error) {
-    $error.style.display = 'flex'
-    $error.innerText = error.message
-    console.error(error.message)
-  }}
+  if (!$debugHex.class('?d-none') && currentTabId){
+    try {
+      $debugHex.innerText =
+        importFileInFile().Translate(true, true);
+      $error.style.display = 'none'
+    } catch (error) {
+      $error.style.display = 'flex'
+      $error.innerText = error.message
+      console.error(error.message)
+    }
+  }
 }
 
 $editor.addEventListener("click", syncHighlighting);
@@ -4991,7 +4993,7 @@ SP.refinarVariables = function() {
                   const indexEntry = buscarVariable(indexExpr);
                   if (indexEntry) indexValue = `&${indexEntry.offset}(0@,1${TIPO_DADO[indexEntry.tipo]})`;
                 }
-                tempLines.push(`${tempVar} = ${indexValue} + 0@`);
+                tempLines.push(`${tempVar} = 0@ + ${indexValue}`);
                 return `&${entry.offset}(${tempVar},1${TIPO_DADO[tipo]})`;
               }
             }
@@ -5108,8 +5110,16 @@ SP.refinarVariables = function() {
      header = [
     `ALLOCATE_MEMORY ${memoriaTotal} 0@`,
     '',
-    `33@ =& &0`,
-    `0@ -= 33@`,
+    'GET_PLATFORM 1@',
+    'IF',
+    '1@ == 1',
+    'THEN',
+      `41@ =& &0`,
+      `0@ -= 41@`,
+    'ELSE',
+      `33@ =& &0`,
+      `0@ -= 33@`,
+    'END',
     `0@ /= 4`,
     ''
     ];
@@ -6057,66 +6067,66 @@ SP.parseHigthLevelLoops = function(){
     //1@(2@, 123i)
     
     const SYNTAX = {
-      FOR: /^FOR (.+)=(.+) (TODOWN|TO) (.+)STEP(.+)/im,
-      FORIN: /^FORIN (.+\((.+),(\d+)\w\))/im,
-      WHILE: /^WHILE (.+)/im,
-      REPEAT: /^UNTIL (.+)/im,
-      IF: /^IF (.+)/im
+      FOR: /^FOR\s+(.+)=(.+)\s+(TODOWN|TO)\s+(.+)STEP\s+(.+)/im,
+      FORIN: /^FORIN\s+(.+\((.+),(\d+)\w\))/im,
+      WHILE: /^WHILE\s+(.+)/im,
+      REPEAT: /^UNTIL\s+(.+)/im,
+      IF: /^IF\s+(.+)/im
     };
     
     lines.forEach(line => {
       line = line.trim()
       
-      if (/^then$/im.test(line)) {
-        stacks.general.push('then');
+      if (/^THEN$/im.test(line)) {
+        stacks.general.push('THEN');
         
-        label = `if_${++counts.if}`
+        label = `IF_${++counts.if}`
         line = [
           'ELSE_JUMP @'+label+''
         ].join('\n')
         
         stacks.if.push(label);
       }
-      else if (/^else$/im.test(line)) {
-        if (stacks.general.slice(-1) != 'then'){
+      else if (/^ELSE$/im.test(line)) {
+        if (stacks.general.slice(-1) != 'THEN'){
           throw new Error('cierre de pila inconclusa :'+stacks.general)
         }
         
         label = stacks.if.slice(-1);
-        let labelElse = `if_${++counts.if}`
+        let labelElse = `IF_${++counts.if}`
         line = [
-          'goto @'+labelElse,
+          'GOTO @'+labelElse,
           ':'+label
         ].join('\n')
         
         stacks.if[stacks.if.length - 1] = labelElse
       }
-      else if (/^while /im.test(line)){
-        if (/^while (true|1)$/im.test(line)){
-          stacks.general.push('true')
+      else if (/^WHILE /im.test(line)){
+        if (/^WHILE (TRUE|1)$/im.test(line)){
+          stacks.general.push('TRUE')
           
-          label = `while_true_${++counts.while}`
-          line = ':'+label+'_return // begin-loop'
+          label = `WHILE_TRUE_${++counts.while}`
+          line = ':'+label+'_RETURN // begin-loop'
           
           stacks.while.push(label)
         }
-        else if (/^while (false|0)$/im.test(line)){
-          stacks.general.push('false')
+        else if (/^WHILE (FALSE|0)$/im.test(line)){
+          stacks.general.push('FALSE')
           
-          label = `while_false_${++counts.reverse}`
-          line = `goto @`+label
+          label = `WHILE_FALSE_${++counts.reverse}`
+          line = `GOTO @`+label
           
           stacks.reverse.push(label)
         }
         else {
-          stacks.general.push('custom')
+          stacks.general.push('CUSTOM')
           
           const values = line.match(SYNTAX.WHILE)
           
-          label = `while_custom_${++counts.custom}`
+          label = `WHILE_CUSTOM_${++counts.custom}`
           line = [
-            ':'+label+'_return // begin-loop',
-            'if',
+            ':'+label+'_RETURN // begin-loop',
+            'IF',
             values[1],
             'ELSE_JUMP @' + label
           ].join('\n')
@@ -6124,8 +6134,8 @@ SP.parseHigthLevelLoops = function(){
           stacks.custom.push(label)
         }
       }
-      else if(/^forin .+/im.test(line)) {
-        stacks.general.push('forin')
+      else if(/^FORIN .+/im.test(line)) {
+        stacks.general.push('FORIN')
         
         const VALUES = line.match(SYNTAX.FORIN)
         
@@ -6133,13 +6143,13 @@ SP.parseHigthLevelLoops = function(){
               INDEX = VALUES[2],
               SIZE = VALUES[3]
         
-        label = `loop_forin_${++counts.forin}`
+        label = `LOOP_FORIN_${++counts.forin}`
         
         line = [
           INDEX+' = -1',
-          ':'+label+'_return // begin-loop',
+          ':'+label+'_RETURN // begin-loop',
           INDEX+' += 1',
-          'if',
+          'IF',
           INDEX+' >= '+SIZE,
           'ELSE_JUMP @'+label
         ].join('\n')
@@ -6147,53 +6157,53 @@ SP.parseHigthLevelLoops = function(){
         
         stacks.forin.push(label)
       }
-      else if(/^for .+/im.test(line)) {
-        stacks.general.push('for')
+      else if(/^FOR .+/im.test(line)) {
+        stacks.general.push('FOR')
         
         const values = line.match(SYNTAX.FOR)
         const variable = values[1].trim()
         const start = values[2].trim()
-        const forUp = /down/i.test(values[3])
+        const forUp = /DOWN/i.test(values[3])
         const end = values[4]
         const step = values[6] || 1
         
-        label = `loop_for_${++counts.for}`
+        label = `LOOP_FOR_${++counts.for}`
         
   			line =[
   			  variable+' = '+start,
   			  variable+' '+(forUp?'+=':'-=')+' '+step,
-          ':'+label+'_return // begin-loop',
+          ':'+label+'_RETURN // begin-loop',
           variable+' '+(forUp?'-=':'+=')+' '+step,
-          'if',
+          'IF',
           variable+' '+(forUp?'<=':'>=')+' '+end,
           'ELSE_JUMP @'+label
         ].join('\n')
         
         stacks.for.push(label)
       }
-      else if (/^repeat$/im.test(line)){
-        stacks.until.push('repeat')
+      else if (/^REPEAT$/im.test(line)){
+        stacks.until.push('REPEAT')
           
-        label = `repeat_${++counts.repeat}`
-        line = `:`+label+'_return // begin-loop'
+        label = `REPEAT_${++counts.repeat}`
+        line = `:`+label+'_RETURN // begin-loop'
           
         stacks.repeat.push(label)
       }
-      else if(/^until.+$/im.test(line)){
+      else if(/^UNTIL.+$/im.test(line)){
         if (stacks.until.length == 0){
           throw new Error(`pila sintactica: vacia`)
         }
         else{
-          if (/^until (true|1)$/im.test(line)) {
+          if (/^UNTIL (TRUE|1)$/im.test(line)) {
             label = stacks.repeat.pop()
             stacks.until.pop()
             
             line = [
-              'goto @'+label+'_return',
+              'GOTO @'+label+'_RETURN',
               ':'+label +' // end-loop'
             ].join('\n')
           }
-          else if (/^until false$/im.test(line)) {
+          else if (/^UNTIL FALSE$/im.test(line)) {
             stacks.repeat.pop()
             stacks.until.pop()
             
@@ -6209,51 +6219,51 @@ SP.parseHigthLevelLoops = function(){
               'IF',
               condition,
               'ELSE_JUMP @'+label,
-                'GOTO @'+label+'_return',
+                'GOTO @'+label+'_RETURN',
               ':'+label +' // end-loop'
             ].join('\n')
           }
         }
       }
-      else if(/^end$/im.test(line)) {
+      else if(/^END$/im.test(line)) {
         if (stacks.general.length == 0) {
           throw new Error(`>>> ERROR: The loops and conditionals were all closed. you are trying to put one too many.\n This message could also have been caused by the lack of a 'then, else, while, etc'\n${JSON.stringify(stacks)}`)
         }
         else {
           let closed = stacks.general.pop()
           
-          if (closed == 'true') {
+          if (closed == 'TRUE') {
             label = stacks.while.pop()
             line = [
-              'goto @'+label+'_return',
+              'GOTO @'+label+'_RETURN',
               ':'+label +' // end-loop'
             ].join('\n')
           }
-          else if (closed == 'false') {
+          else if (closed == 'FALSE') {
             line = ':' + stacks.reverse.pop()
           }
-          else if (closed == 'custom') {
+          else if (closed == 'CUSTOM') {
             label = stacks.custom.pop()
             line = [
-              'goto @'+label+'_return',
+              'GOTO @'+label+'_RETURN',
               ':' + label +' // end-loop'
             ].join('\n')
           }
-          else if(closed == 'forin'){
+          else if(closed == 'FORIN'){
             label = stacks.forin.pop()
             line = [
-              'goto @'+label+'_return',
+              'GOTO @'+label+'_RETURN',
               ':' + label +' // end-loop'
             ].join('\n')
           }
-          else if(closed == 'for'){
+          else if(closed == 'FOR'){
             label = stacks.for.pop()
             line = [
-              'goto @'+label+'_return',
+              'GOTO @'+label+'_RETURN',
               ':' + label +' // end-loop'
             ].join('\n')
           }
-          else if (closed == 'then'){
+          else if (closed == 'THEN'){
             label = stacks.if.pop()
             line = ':' + label +' // end-condition'
           }
@@ -6288,13 +6298,13 @@ SP.addBreaksToLoops = function(){
         loopEnd = null
       } 
       
-      if (/^continue$/im.test(line)) {
+      if (/^CONTINUE$/im.test(line)) {
         if (!loopBehin) {
           throw new Error('>>> ERROR: continue - not found loop init')
         }else{
-          result += 'goto @'+loopBehin+'\n'
+          result += 'GOTO @'+loopBehin+'\n'
         }
-      } else if (/^break$/im.test(line)) {
+      } else if (/^BREAK$/im.test(line)) {
         if (!loopBehin) {
           throw new Error('>>> ERROR: break -  not found loop init')
         }else {
@@ -6309,7 +6319,7 @@ SP.addBreaksToLoops = function(){
           if (!loopEnd) {
             throw new Error('>>> ERROR: break -  not found loop init')
           }else{
-            result += 'goto @' + loopEnd + '\n'
+            result += 'GOTO @' + loopEnd + '\n'
           }
         }
       } else {
@@ -6323,21 +6333,21 @@ SP.addBreaksToLoops = function(){
 SP.addNumbersToIfs = function() {
 	let lineas = this.split('\n');
 	let nLineas = ''
-	let tReg = /^if .+/im
+	let tReg = /^IF\s+.+/im
 	
 	// aca solo se arreglan los cuerpos para
 	// que se ajusten a un solo fomando por linea.
 	lineas.forEach(line =>{
 	  if (tReg.test(line)){
-	    let vars = line.match(/^if (.+)/mi)
+	    let vars = line.match(/^IF\s+(.+)/im)
 	    let cond = vars[1].trim()
-	    if (!/^(and|or)$/im.test(cond)){
-	      nLineas += 'if\n'+cond+'\n'
+	    if (!/^(AND|OR)$/im.test(cond)){
+	      nLineas += 'IF\n'+cond+'\n'
 	    }else{
 	      nLineas += line+'\n'
 	    }
-	  }else if (/^(then|else) .+/im.test(line)){
-	    let vars = line.match(/^(then|else) (.+)/im)
+	  }else if (/^(THEN|ELSE)\s+.+/im.test(line)){
+	    let vars = line.match(/^(THEN|ELSE)\s*(.+)/im)
 	    
 	    let cond = vars[2].trim()
 	    if (cond == ''){
@@ -6361,19 +6371,19 @@ SP.addNumbersToIfs = function() {
 
 	for (let linea of lineas) {
 	  linea = linea.trim()
-		if (/^if/im.test(linea)) {
+		if (/^IF/im.test(linea)) {
 			iniciar = true
 			real = 0
 			contador = 0
-			if (/\s+(or|and)$/i.test(linea)) {
+			if (/\s+(OR|AND)$/im.test(linea)) {
 				multiCondicion = true
-				if (/or/i.test(linea)) {
+				if (/OR/i.test(linea)) {
 					contador += 20;
 				} else {
 					contador += 1;
 				}
 			}
-		} else if (/^(then|goto_if_false|else_jump|else_goto|jf|004D)/im.test(linea)) {
+		} else if (/^(THEN|GOTO_IF_FALSE|ELSE_JUMP|ELSE_GOTO|JF|004D)/im.test(linea)) {
 		  //real--;
 		  
 			if (real > 1 && multiCondicion == false)
@@ -6399,23 +6409,23 @@ SP.addNumbersToIfs = function() {
 	let counter = 0
 	for (let linea of lineas) {
 	  linea = linea.trim()
-		if (linea.startsWith('if')) {
-		  if (/^if .+/im.test(linea)){
-			const param = linea.match(/^if (.+)/im)
+		if (/^IF/im.test(linea)) {
+		  if (/^IF\s+.+/im.test(linea)){
+			const param = linea.match(/^IF\s+(.+)/im)
 			lineas[counter] = 
-			  "if "
+			  "IF "
 			  +numeros[number]
 			  +"\n"
-			  +(param[1].replace(/^(and|or)/im, ''))
+			  +(param[1].replace(/^(AND|OR)/im, ''))
 		  }else{
-			lineas[counter] = linea +" "+numeros[number]
+			  lineas[counter] = linea +" "+numeros[number]
 		  }
 		  number++
 		}
 		counter++
 	}
 	
-	return lineas.join('\n');
+	return lineas.clear().join('\n')
 }
 
 SP.removeComments = function() {
@@ -6440,12 +6450,12 @@ SP.formatScript = function() {
   code = code.join('\n')
   
   code = code
-    .r(/^(if and|if or|if )?/mgi, "$1\n")
-    .r(/^hex /mgi, "hex\n")
-    .r(/^then /mgi, "then\n")
-    .r(/^else /gmi, "else\n")
-    .r(/ (endif|endwhile|endforin|endfor|end)$/mgi, "\nend\n")
-    .r(/^repeat /mgi, "repeat\n")
+    .r(/^(IF AND|IF OR|IF )?/mgi, "$1\n")
+    .r(/^HEX /mgi, "HEX\n")
+    .r(/^THEN /mgi, "THEN\n")
+    .r(/^ELSE /gmi, "ELSE\n")
+    .r(/ (ENDIF|ENDWHILE|ENDFORIN|ENDFOR|END)$/mgi, "\nEND\n")
+    .r(/^REPEAT /mgi, "REPEAT\n")
   return code
 }
 
@@ -6501,7 +6511,7 @@ SP.simpleVarFormat = function(){
 
 let CLEO_FUNCTIONS
 SP.preProcesar = function() {
-  let codigoTotal = this
+  let codigoTotal = this.log()
   
   CLEO_FUNCTIONS = {
     MATH : {
@@ -6598,10 +6608,11 @@ SP.preProcesar = function() {
       input = input.r(/^forEach\s*/im,'')
       
       let n = input.match(/(([^\(]+)\((.+),(\d+[isfv]?)\)) => (.+)/i)
-      return `for ${n[3]} = 0 to ${n[4]} step 1\n`+
+      return `FOR ${n[3]} = 0 TO ${n[4]} STEP 1\n`+
         n[5]+' = '+n[1]
     })
     .r(/^END(IF|WHILE|FORIN|FOR)$/gim, 'END')
+    .r(/^log\(([^)]+)\)$/gim, '\nprintf "$1" 1s\nwait 1.2s\n')
     .r(/^(\+\+|--)(.*)$/gm, '$2$1')
     .r(/(.+) = (\d+@b|b[\$&]\w+)/gim, '$2 == 0 ? $1 = 0 : $1 = 1')
     // char VAR1 =& VAR2
@@ -6616,8 +6627,8 @@ SP.preProcesar = function() {
     .r(/^(.+) =& (.+)/gim, 'GET_VAR_POINTER $2 $1')
   	// 0@ = 1@ == 1 ? 0 : 1
   	.r(/^(.+) ([\-\+\*\/%]?=) (.+) \? (.+) \: (.+)$/gm,
-  	  `if\n$3 != 0\nthen\n$1 $2 $4\nelse\n$1 $2 $5\nend\n`)
-    .r(/^(.+) => (.+);/gim, 'if $1\nthen $1 end')
+  	  `IF\n$3 != 0\nTHEN\n$1 $2 $4\nELSE\n$1 $2 $5\nEND\n`)
+    .r(/^(.+) => (.+);/gim, 'IF $1\NTHEN $1 END')
   	  
   	// 0@ == 1 ? 0 : 1
   	.r(/^([^\n]+) \? (.+) \: (.+)$/gm, input =>{
@@ -6653,9 +6664,9 @@ SP.preProcesar = function() {
   	  operators.split(',').forEach(operador => {
   	    if (RegExp(operador).test(vars[1])){
   	      input =
-  	        'if\n'+vars[1]+'\n'+
-  	        'then\n'+vars[2].determineOperations()+'\n'+
-  	        'end\n'
+  	        'IF\n'+vars[1]+'\n'+
+  	        'THEN\n'+vars[2].determineOperations()+'\n'+
+  	        'END\n'
   	    }
   	  })
   	  
@@ -6665,11 +6676,11 @@ SP.preProcesar = function() {
   	.r(/^([^\s]+) \? ([^\s]+)$/gm, (i, ...m) => {
   	  
   	  let r = 
-  	    'if\n'+
+  	    'IF\n'+
   	    m[0].determineOperations()+
-  	    '\nthen\n'+
+  	    '\nTHEN\n'+
   	    m[1].determineOperations()+
-  	    '\nend\n'
+  	    '\nEND\n'
   	    
   	  
   	  return r
@@ -6677,8 +6688,11 @@ SP.preProcesar = function() {
   	.r(/^@(\w+)$/gm, 'GOTO @$1')
   	
   	
-    .r(/^(\w+|[^\s]+) = (\d+|\w+|[^\s]+) [\*\/\+\-] (\d+|\w+|[^\s]+)( [\*\/\+\-] (\d+|\w+|[^\s]+))*$/gim,  input =>{
+    .r(/^([^\s]+) = (\d+|\w+|[^\s]+) [\*\/\+\-] (\d+|\w+|[^\s]+)( [\*\/\+\-] (\d+|\w+|[^\s]+))*$/gim,  input =>{
       let i = input.split(' ')
+      
+      if(i.length == 5)return input;
+      
       let code = i[0]+' '+i[1]+' '+i[2]
       let n = 0
       
@@ -6695,11 +6709,12 @@ SP.preProcesar = function() {
     
   	// bitExp
   	// a = b & c
-  	.r(/^(.+) = (.+) (>>|<<|%|&|\^|\|\*|\/|\+|\-) (.+)$/m, (input, ...match) => {
+  	.r(/^(.+)\s+=\s+(.+)\s+(>>|<<|%|&|\^|\|\*|\/|\+|\-)\s+(.+)$/gm, (input, ...match) => {
   	  let [var1, var2, operador, var3] = match
   	  
-  	  if ((var1.startsWith('f@') || var1.endsWith('@f'))
-  	  || (var2.i('.') || var3.i('.'))){
+  	  if (/(@f$|^f\$|f\)|\.)/.test(var1)
+  	  || /(@f$|^f\$|f\)|\.)/.test(var2)
+  	  || /(@f$|^f\$|f\)|\.)/.test(var3)){
   	    let res = `${var1} ${operador}= ${var2}\n`
   	      + `${var1} ${operador}= ${var3}`
   	      return res
@@ -6827,13 +6842,14 @@ end
     })
     // subrutine() | GOSUB
     .r(/^(\w+)\(\)$/gm, '\nGOSUB @$1\n')
+    .r(/\n\n/g, '\n')
     
     nString = nString.trim()
     if (nString.length != 0){
       nString = 'NOP\nWAIT 200\n'+ nString + '\nTERMINATE_THIS_SCRIPT';
     }
   
-  	return nString
+  	return log(nString)
 }
 
 let registroTipos = {};
@@ -7323,7 +7339,8 @@ SP.normalizeArrays = function(){
           Input.isVariable(index)) {
           output = arr + '(' + index + size
         } else {
-          throw new Error('>>> ILL-DEFINED ARRAY:\nYou misspelled some ARRAY constant you are trying to use.\n\t`' + input + '`')
+          output = input
+          //throw new Error('>>> ILL-DEFINED ARRAY:\nYou misspelled some ARRAY constant you are trying to use.\n\t`' + input + '`')
         }
         
         return output != '' ? output : input
