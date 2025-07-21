@@ -272,6 +272,7 @@ textarea{
 	font-size: 1rem !important;
 	padding: 0.5rem !important;
 	tab-size: 4;
+	user-select: auto;
 }
 
 img {
@@ -454,7 +455,7 @@ input[type='checkbox']{
 .h-100-auto {height: calc(100vh - 3.375rem - 1.5vw - 4px)}
 .o-auto{overflow:auto}
 
-.pre {white-space: pre}
+.pre, pre {white-space: pre; user-select: auto;}
 
 .white, .white *, .white-dm, .white-dm * {color: var(--co)}
 .bg-white, .bg-white *, .bg-white-dm {background: var(--co)}

