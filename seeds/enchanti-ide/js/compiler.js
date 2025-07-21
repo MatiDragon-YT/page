@@ -139,7 +139,6 @@ AP.last = function(pos = 0){
 AP.first = function(){
   return this[this.length-1]
 }
-
 // Para insertar cualquier dato, antes se coloca
 //   uno de estos codigos para saber como se debe
 //   leer, cada parametro siguiente. Sino se define
@@ -2648,60 +2647,31 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 	
 	function translateLvar(dataInput){
   	dataInput = 
-  		Number(dataInput.r(/@[a-z]?/,''))
+  		Number(dataInput.r(/@(\w)?/,''))
   		.toString(16)
   		.padStart(4,'0')
   		.toBigEndian();
   
   	return dataInput
   }
-  
-  function translateAvar(dataInput) {
-    let tempNumber = dataInput
-    dataInput = Number(dataInput.r(/[a-z]?\&/i, ''))
-
-    if (isNaN(dataInput)) throw new SyntaxError(`NAN parameter\n\tparameter ${tempNumber}\n\tat line ${numLine}\n\t\topcode ${setOp == '0000' ? 'autodefined' : setOp} ${command.toUpperCase()}`);
+  function translateAvar(dataInput){
+    dataInput = 
+      (Number(dataInput.r(/(\w)?&/,'')) * 4)
+      .toString(16)
+			.padStart(4,'0')
+			.toBigEndian()
+	
+		return dataInput
   }
-
-  dataInput = dataInput.toString(16)
-    .substring(0, 4)
-    .padStart(4, '0')
-    .toBigEndian()
-
-  return dataInput
+  function translateGvar(dataInput){
+    dataInput = 
+      (Number(dataInput.r(/(\w)?&/,'')) * 4)
+      .toString(16)
+			.padStart(4,'0')
+			.toBigEndian()
+	
+		return dataInput
   }
-  
-  function translateGvar(dataInput) {
-  dataInput = dataInput.r(/[a-z]?\$/i, '')
-
-  if (/[a-z]/i.test(dataInput)) {
-    let coincide = false
-
-    if (CUSTOM_VARIABLES[dataInput.toUpperCase()] != undefined) {
-      coincide = CUSTOM_VARIABLES[dataInput.toUpperCase()] * 4
-    }
-
-    if (!coincide) {
-      dataInput = parseInt(Number(String(parseInt(dataInput, 35)).substring(0, 4) / 2))
-      if (dataInput > 1000) dataInput /= 5
-      if (dataInput > 500) dataInput /= 2
-      dataInput = parseInt(dataInput)
-    }
-    else {
-      dataInput = coincide
-    }
-  }
-  else {
-    dataInput = dataInput * 4
-  }
-
-  dataInput = dataInput.toString(16)
-    .substring(0, 4)
-    .padStart(4, '0')
-    .toBigEndian()
-
-  return dataInput
-}
 
   LineComand = LineComand
   .adaptarCodigo()
