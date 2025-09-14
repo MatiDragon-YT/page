@@ -773,12 +773,15 @@ a|Sultan con Rampa  |1.4|   Inspirado en Rapido y Furioso 6. Este mod nos permit
                 };
             }
             
-            // Búsqueda que no depende del orden de palabras
+            // Búsqueda que no depende del orden de palabras, con tolerancia a errores tipográficos (distancia <=1) y matches parciales
             let filteredData = data.filter(item => {
                 const searchText = normalizeText(`${item.title} ${item.description}`);
+                const textTerms = searchText.split(/\s+/);
                 
-                // Verificar que todos los términos de búsqueda estén presentes
-                return queryTerms.every(term => searchText.includes(term));
+                // Verificar que todos los términos de búsqueda tengan una coincidencia (parcial o aproximada)
+                return queryTerms.every(qTerm => {
+                    return searchText.includes(qTerm) || textTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1);
+                });
             });
             
             // Aplicar filtros de campo de búsqueda
@@ -791,15 +794,18 @@ a|Sultan con Rampa  |1.4|   Inspirado en Rapido y Furioso 6. Este mod nos permit
                     let match = false;
                     if (searchTitle) {
                         const title = normalizeText(item.title);
-                        match = match || queryTerms.every(term => title.includes(term));
+                        const titleTerms = title.split(/\s+/);
+                        match = match || queryTerms.every(qTerm => title.includes(qTerm) || titleTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1));
                     }
                     if (searchDescription) {
                         const description = normalizeText(item.description);
-                        match = match || queryTerms.every(term => description.includes(term));
+                        const descriptionTerms = description.split(/\s+/);
+                        match = match || queryTerms.every(qTerm => description.includes(qTerm) || descriptionTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1));
                     }
                     if (searchId) {
                         const id = normalizeText(item.id);
-                        match = match || queryTerms.every(term => id.includes(term));
+                        const idTerms = id.split(/\s+/);
+                        match = match || queryTerms.every(qTerm => id.includes(qTerm) || idTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1));
                     }
                     return match;
                 });
@@ -808,25 +814,35 @@ a|Sultan con Rampa  |1.4|   Inspirado en Rapido y Furioso 6. Este mod nos permit
             // Calcular puntuación para cada elemento
             const scoredData = filteredData.map(item => {
                 const textToSearch = normalizeText(item.title + ' ' + item.description);
+                const textTerms = textToSearch.split(/\s+/);
                 
                 let score = 0;
                 
-                // Verificar coincidencias exactas
-                queryTerms.forEach(term => {
-                    if (textToSearch.includes(term)) {
-                        score += 5;
+                // Puntuación unificada por término de búsqueda
+                queryTerms.forEach(qTerm => {
+                    let maxTermScore = 0;
+                    
+                    // Verificar coincidencias parciales o exactas vía substring
+                    if (textToSearch.includes(qTerm)) {
+                        maxTermScore = 5;
                     }
-                });
-                
-                // Verificar coincidencias aproximadas con Levenshtein
-                const textTerms = textToSearch.split(/\s+/);
-                queryTerms.forEach(queryTerm => {
-                    textTerms.forEach(textTerm => {
-                        const distance = levenshteinDistance(queryTerm, textTerm);
-                        if (distance <= 2 && distance > 0) {
-                            score += (3 - distance);
+                    
+                    // Verificar coincidencias aproximadas con Levenshtein y calcular similitud
+                    textTerms.forEach(tTerm => {
+                        const distance = levenshteinDistance(qTerm, tTerm);
+                        if (distance <= 2) {
+                            const sim = 1 - (distance / Math.max(qTerm.length, tTerm.length));
+                            maxTermScore = Math.max(maxTermScore, sim * 5);
+                        }
+                        
+                        // Puntuación adicional para matches parciales (prefix/suffix)
+                        if (tTerm.includes(qTerm) || qTerm.includes(tTerm)) {
+                            const ratio = Math.min(qTerm.length, tTerm.length) / Math.max(qTerm.length, tTerm.length);
+                            maxTermScore = Math.max(maxTermScore, ratio * 5);
                         }
                     });
+                    
+                    score += maxTermScore;
                 });
                 
                 // Añadir puntuación por favoritos
@@ -1129,21 +1145,24 @@ a|Sultan con Rampa  |1.4|   Inspirado en Rapido y Furioso 6. Este mod nos permit
             
             allData.forEach(item => {
                 const text = normalizeText(item.title + ' ' + item.description + ' ' + item.tags.join(' '));
-                if (queryTerms.every(term => text.includes(term))) {
+                const textTerms = text.split(/\s+/);
+                
+                if (queryTerms.every(qTerm => text.includes(qTerm) || textTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1))) {
                     // Añadir el título como sugerencia
                     suggestionsSet.add(item.title);
                     
                     // Añadir palabras de la descripción que coincidan
                     item.description.split(/\s+/).forEach(word => {
                         const normalizedWord = normalizeText(word);
-                        if (queryTerms.every(term => normalizedWord.includes(term))) {
+                        if (queryTerms.every(qTerm => normalizedWord.includes(qTerm) || levenshteinDistance(qTerm, normalizedWord) <= 1)) {
                             suggestionsSet.add(word);
                         }
                     });
                     
                     // Añadir etiquetas que coincidan
                     item.tags.forEach(tag => {
-                        if (queryTerms.every(term => normalizeText(tag).includes(term))) {
+                        const normalizedTag = normalizeText(tag);
+                        if (queryTerms.every(qTerm => normalizedTag.includes(qTerm) || levenshteinDistance(qTerm, normalizedTag) <= 1)) {
                             suggestionsSet.add(tag);
                         }
                     });
