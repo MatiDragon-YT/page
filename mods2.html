@@ -670,6 +670,9 @@ a|Sultan con Rampa  |1.4|   Inspirado en Rapido y Furioso 6. Este mod nos permit
         function incrementClickCount(itemId) {
             const currentClicks = getClickCount(itemId);
             localStorage.setItem(`clicks_${itemId}`, currentClicks + 1);
+            if (currentClicks+1 > 2) {
+                addToFavorites(itemId)
+            }
             return currentClicks + 1;
         }
 
@@ -1303,7 +1306,7 @@ a|Sultan con Rampa  |1.4|   Inspirado en Rapido y Furioso 6. Este mod nos permit
             const card = document.createElement('div');
             card.className = 'result-card';
             card.innerHTML = `
-                <a href="${item.id}.html" class="result-link">
+                <a href="mods/${item.id}.html" class="result-link">
                     <div class="result-content">
                         <div class="result-id">${item.id}</div>
                         <div class="result-title">${item.title} ${isFav ? '<span class="favorite-badge">Favorito</span>' : ''}</div>
