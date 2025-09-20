@@ -1,28 +1,23 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" style="
+    background: linear-gradient(135deg, #1e0229, #410240);
+">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador Inteligente por Etiquetas</title>
+    <title>Mods</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="./css/main.css">
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        #nav {
+            background: #1a00199c;
         }
-        
-        body {
-            background-color: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
-            padding: 20px;
+        #navbar {
+            background: #3209359c;
         }
-        
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
         }
         
         header {
@@ -38,30 +33,14 @@
         .search-container {
             display: flex;
             justify-content: center;
-            margin-bottom: 30px;
             position: relative;
         }
         
-        #search-input {
-            width: 100%;
-            max-width: 600px;
-            padding: 12px 20px;
-            border: 2px solid #ddd;
-            border-radius: 30px;
-            font-size: 16px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-        
-        #search-input:focus {
-            border-color: #3498db;
-        }
         
         .controls {
             display: flex;
             justify-content: center;
             gap: 10px;
-            margin-bottom: 20px;
             flex-wrap: wrap;
         }
         
@@ -83,10 +62,8 @@
             background: #2c3e50;
         }
         
-        .sort-select {
-            padding: 8px 15px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
+        .sort-select {background: #3498db;
+            color: white;
         }
         
         .filters-toggle {
@@ -124,7 +101,7 @@
         .filter-group {
             display: flex;
             flex-direction: column;
-            background: white;
+            background: #00000052;
             padding: 15px;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -185,7 +162,7 @@
         }
         
         .result-card {
-            background: white;
+            background: #00000052;
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
@@ -273,7 +250,6 @@
             justify-content: center;
             align-items: center;
             gap: 10px;
-            margin: 20px 0;
         }
         
         .pagination button {
@@ -326,7 +302,6 @@
         
         .results-info {
             text-align: center;
-            margin-bottom: 20px;
             color: #7f8c8d;
         }
         
@@ -393,7 +368,7 @@
             top: 100%;
             left: 0;
             right: 0;
-            background: white;
+            background: #00000052;
             border: 1px solid #ddd;
             border-radius: 0 0 5px 5px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
@@ -418,51 +393,49 @@
             }
             
             .controls {
-                flex-direction: column;
-                align-items: center;
+                flex-direction: row;
+                align-items: stretch;
             }
             
-            .control-btn, .sort-select {
-                width: 100%;
-                max-width: 250px;
-            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Buscador Inteligente por Etiquetas</h1>
-            <p>Haz clic en cualquier etiqueta para filtrar los resultados</p>
-        </header>
-        
-        <div class="search-container">
-            <div class="autocomplete-container">
-                <input type="text" id="search-input" placeholder="Escribe para buscar..." autocomplete="off">
-                <div class="autocomplete-suggestions" id="autocomplete-suggestions"></div>
-            </div>
-        </div>
-        
-        <div class="controls">
-            <button id="clear-filters" class="control-btn">Limpiar Filtros</button>
-            <button id="reverse-order" class="control-btn">Invertir Orden</button>
-            <select id="sort-order" class="sort-select">
-                <option value="default">Orden por defecto</option>
-                <option value="az">Orden A-Z</option>
-                <option value="za">Orden Z-A</option>
-                <option value="id-asc">ID Ascendente</option>
-                <option value="id-desc">ID Descendente</option>
-            </select>
-        </div>
-        
         <div class="tags-cloud" id="tags-cloud">
             <!-- Las etiquetas se generarán dinámicamente -->
         </div>
-        
-        <div class="filters-toggle">
+    <div class="container">
+        <div style="
+        display: flex;
+        justify-content: space-between;
+        align-items: stretch;
+        flex-direction: row;
+        ">
+            <div class="search-container">
+                <div class="autocomplete-container">
+                    <input type="text" name="search-input" id="search-input" placeholder="Moto, armas, dyos..." autocomplete="off" class="update"><label for="search-input" style="font-size: 1em;
+                        display: inline;
+                        right: .7rem;
+                        position: absolute;
+                        align-self: center;" class=":pointer" title="Buscar">🔍</label>
+                    <div class="autocomplete-suggestions" id="autocomplete-suggestions"></div>
+                </div>
+            </div>
+            <div class="controls">
+                <button id="clear-filters" class="control-btn">✕</button>
+                <button id="reverse-order" class="control-btn">⇅</button>
+                <select id="sort-order" class="sort-select">
+                    <option value="default">Orden</option>
+                    <option value="az">Orden A-Z</option>
+                    <option value="za">Orden Z-A</option>
+                    <option value="id-asc">ID Ascendente</option>
+                    <option value="id-desc">ID Descendente</option>
+                </select>
+            </div>
+        </div>
+        <div class="filters-toggle" style="display: none;">
             <button id="toggle-filters">Mostrar Filtros</button>
         </div>
-        
         <div class="filters-container" id="filters-container">
             <div class="filter-group">
                 <div class="filter-title">Buscar en:</div>
@@ -479,24 +452,26 @@
                 </div>
             </div>
         </div>
-        
-        <div id="results-info" class="results-info"></div>
-        
-        <!-- Paginación superior -->
-        <div id="pagination-top" class="pagination"></div>
-        
+        <div style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-direction: row;
+        margin: 1rem 0;
+        ">
+            <div id="results-info" class="results-info"></div>
+            <div id="pagination-top" class="pagination"></div>
+        </div>
+
         <div id="favorites-container" class="favorites-section" style="display: none;">
             <h2 class="section-title">Favoritos</h2>
             <div class="results-container" id="favorites-results"></div>
         </div>
-        
         <div id="results-container" class="results-container">
             <div class="loading">Cargando...</div>
         </div>
-        
         <!-- Paginación inferior -->
         <div id="pagination-bottom" class="pagination"></div>
-        
         <div id="related-container" class="related-section">
             <h2 class="section-title">Resultados relacionados</h2>
             <div id="related-results" class="related-results"></div>
@@ -507,14 +482,18 @@
         </div>
     </div>
 
+<script src="./js/main.js"></script>
     <script>
         // Base de datos
         const DATA_BASE = 
-`g|Resaltar codigo   |1.2|  Extención visual para Sublime Text 4 que nos permitira resaltar codigo de Sanny Builder 3.8,...
-n|DYOS              |1.3.0| La mejor alternativa a DYOM con soporte multi-plataforma, multi-lenguaje y con decenas de ca...
+`
+p|Variable cars     |1.2|   Agrega una gran variedad de vehiculos sin la necesidad de reemplazar nada, solo con un cleo ...
+g|Resaltar codigo   |1.2|   Extención visual para Sublime Text 4 que nos permitira resaltar codigo de Sanny Builder 3.8,...
+o|DYOS 2            |2.0.1| Una distribución que agrega una cantidad significantes de cambios, caracteristicas nuevas y ...
+n|DYOS 1            |1.5.1| Alternativa a DYOM para Android y PC, para crear contenido de entretinimiento, facil y rapid...
 m|Velocimeter       |1.0|   Simple y elegante, un velocimetro 2.5D que se adapta al gameplay, dando un efecto de inmerci...
 l|Aquatic Sanchez   |1.0|   Cruza rios, lagos e incluso oceanos en tu motocross como moto acuatica, al estilo papu maste...
-k|Stay On The Bike  |10|    Adelante! agarra tu bici o tu moto y ponte a hacer piruetas mortales, sin el miedo de caerte...
+k|Stay On The Bike  |1.0|   Adelante! agarra tu bici o tu moto y ponte a hacer piruetas mortales, sin el miedo de caerte...
 j|Turn In Air       |1.0|   Enciende tu moto y comienza a hacer giros y maniobras increibles mientras te suspendes en el...
 i|Saltar en Moto    |1.0|   Salta a los techos de los autos de policias con este magnifico mod, que se adapta a sus cont...
 h|Doc. Oficial      |1.4|   Ademas de mejoras de optimizacion para los colaboradores y los usuarios, esta trae herramien...
@@ -1452,10 +1431,7 @@ a|Sultan con Rampa  |1.4|   Inspirado en Rapido y Furioso 6. Este mod nos permit
             generateRelatedResults(currentResultsList.results);
             
             // Scroll suave al campo de búsqueda
-            document.getElementById('search-input').scrollIntoView({ 
-                behavior: 'smooth',
-                block: 'center'
-            });
+            document.getElementById('tags-cloud').scrollIntoView();
         }
 
         // Manejar input de página

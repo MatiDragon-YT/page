@@ -709,7 +709,11 @@ $('body').innerHTML = `
 	<div class="cont"></div>
 	<hr>
 	<footer id="credits">
-		© 2017-${(new Date).getFullYear()} MatiDragon, All rights reserved with love.
+		© 2017-${(new Date).getFullYear()} MatiDragon, All rights reserved with love.<br>
+📢 <a title="La Loquendo House" href="https://matidragon-yt.github.io/page/reddit.html" target="_blank" onclick="">Discord</a>
+😺 <a title="Repositorios" href="https://github.com/MatiDragon-YT" target="_blank" onclick="">GitHub</a>
+📺 <a title="Canal" href="https://youtube.com/@MatiDragon" target="_blank" onclick="">YouTube</a>
+🐦 <a title="Perfil" href="https://twitter.com/@mati_dragon" target="_blank" onclick="">Twitter</a>
 	</footer>
 </div></div><style id="STYLES"></style>`
 
