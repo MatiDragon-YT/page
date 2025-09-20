@@ -272,6 +272,7 @@ textarea{
 	font-size: 1rem !important;
 	padding: 0.5rem !important;
 	tab-size: 4;
+	user-select: auto;
 }
 
 img {
@@ -356,13 +357,17 @@ input[type='text'], input[type='search'], input[type='number'], textarea {
 	background: #161b22;
 	color: var(--co);
   padding: 0.4em 0.6em;
-	border-bottom: #0000 solid 0px;
-	transition: border-bottom .2s;
+	border-bottom: #0000 solid 1px;
+	transition: .2s;
 }
 
-input[type='text']:focus, input[type='search']:focus, input[type='number']:focus {
-	border-bottom: #30363d solid 1px;
+input[type='text'], input[type='search'], input[type='number'] {
 	&.update {
+		&:hover {
+			border-bottom: #30363d solid 1px;
+	}
+	&.update {
+		&:focus {
 		border-bottom: #00a2e8 solid 1px;
 		box-shadow: #36b3ff57 0px 3px 5px -1px;
 	}
@@ -454,7 +459,7 @@ input[type='checkbox']{
 .h-100-auto {height: calc(100vh - 3.375rem - 1.5vw - 4px)}
 .o-auto{overflow:auto}
 
-.pre {white-space: pre}
+.pre, pre {white-space: pre; user-select: auto;}
 
 .white, .white *, .white-dm, .white-dm * {color: var(--co)}
 .bg-white, .bg-white *, .bg-white-dm {background: var(--co)}
