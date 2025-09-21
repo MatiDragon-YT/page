@@ -1,491 +1,526 @@
 <!DOCTYPE html>
 <html lang="es" style="
-    background: linear-gradient(135deg, #1e0229, #410240);
+	background: linear-gradient(135deg, #1e0229, #6b0069);
+	min-height: 100vh;
 ">
 <head>
-    <title>Mods</title>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" type="text/css" href="./css/main.css">
-    <style>
-        #nav {
-            background: #1a00199c;
-        }
-        #navbar {
-            background: #3209359c;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-        
-        .search-container {
-            display: flex;
-            justify-content: center;
-            position: relative;
-        }
-        
-        
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .control-btn {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        
-        .control-btn:hover {
-            background: #2980b9;
-        }
-        
-        .control-btn.active {
-            background: #2c3e50;
-        }
-        
-        .sort-select {background: #3498db;
-            color: white;
-        }
-        
-        .filters-toggle {
-            text-align: center;
-            margin-bottom: 15px;
-        }
-        
-        .filters-toggle button {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        
-        .filters-toggle button:hover {
-            background: #2980b9;
-        }
-        
-        .filters-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 20px;
-            justify-content: center;
-            display: none;
-        }
-        
-        .filters-container.visible {
-            display: flex;
-        }
-        
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            background: #00000052;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            min-width: 200px;
-        }
-        
-        .filter-title {
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #2c3e50;
-        }
-        
-        .filter-options {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        .filter-checkbox {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .tags-cloud {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-        
-        .tag {
-            background: #e7f4ff;
-            color: #3498db;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .tag:hover {
-            background: #3498db;
-            color: white;
-        }
-        
-        .active-search-tag {
-            background: #3498db;
-            color: white;
-        }
-        
-        .results-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .result-card {
-            background: #00000052;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            transition: transform 0.3s;
-            position: relative;
-        }
-        
-        .result-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .result-id {
-            display: inline-block;
-            background: #3498db;
-            color: white;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            text-align: center;
-            line-height: 30px;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-        
-        .result-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #2c3e50;
-        }
-        
-        .result-description {
-            color: #7f8c8d;
-            font-size: 14px;
-            margin-bottom: 15px;
-        }
-        
-        .result-version {
-            font-size: 12px;
-            color: #3498db;
-            margin-bottom: 10px;
-        }
-        
-        .result-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-top: 10px;
-        }
-        
-        .result-tag {
-            background: #e7f4ff;
-            color: #3498db;
-            padding: 3px 8px;
-            border-radius: 15px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .result-tag:hover {
-            background: #3498db;
-            color: white;
-        }
-        
-        .favorite-btn {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: #ddd;
-            transition: color 0.3s;
-            z-index: 10;
-        }
-        
-        .favorite-btn.active {
-            color: #f1c40f;
-        }
-        
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .pagination button {
-            padding: 8px 15px;
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        
-        .pagination button:hover:not(:disabled) {
-            background: #2980b9;
-        }
-        
-        .pagination button:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
-        }
-        
-        .pagination input {
-            width: 40px;
-            text-align: center;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        
-        .page-btn {
-            padding: 8px 12px;
-        }
-        
-        .current-page {
-            background: #2c3e50 !important;
-        }
-        
-        .no-results {
-            text-align: center;
-            grid-column: 1 / -1;
-            padding: 40px;
-            color: #7f8c8d;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #3498db;
-        }
-        
-        .results-info {
-            text-align: center;
-            color: #7f8c8d;
-        }
-        
-        .favorite-badge {
-            display: inline-block;
-            background: #f1c40f;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-        
-        .result-link {
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            height: 100%;
-        }
-        
-        .result-content {
-            height: 100%;
-        }
-        
-        .favorites-section {
-            margin-bottom: 30px;
-        }
-        
-        .section-title {
-            font-size: 20px;
-            color: #2c3e50;
-            margin-bottom: 15px;
-            padding-bottom: 5px;
-            border-bottom: 2px solid #3498db;
-        }
-        
-        .related-section {
-            margin-top: 30px;
-            display: none;
-        }
-        
-        .related-results {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 15px;
-        }
+	<title>Mods</title>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" type="text/css" href="./css/main.css">
+	<style>
+		#nav {
+			background: #1a00199c;
+		}
+		#navbar {
+			background: #3209359c;
+		}
+		.container {
+			max-width: 1400px;
+			margin: 0 auto;
+		}
+		
+		header {
+			text-align: center;
+			margin-bottom: 30px;
+		}
+		
+		h1 {
+			color: #2c3e50;
+			margin-bottom: 10px;
+		}
+		
+		.search-container {
+			display: flex;
+			justify-content: center;
+			position: relative;
+		}
+		
+		
+		.controls {
+			display: flex;
+			justify-content: center;
+			gap: 10px;
+			flex-wrap: wrap;
+		}
+		
+		.control-btn {
+			background: #00000052;
+			color: white;
+			border: none;
+			padding: 8px 15px;
+			border-radius: 0;
+			cursor: pointer;
+			transition: background 0.3s;
+		}
+		
+		.control-btn:hover {
+			background: #954f9d;
+		}
+		
+		.control-btn.active {
+			background: #2c3e50;
+		}
+		
+		.sort-select {background: #00000052;
+			color: white;
+		}
+		
+		.filters-toggle {
+			text-align: center;
+			margin-bottom: 15px;
+		}
+		
+		.filters-toggle button {
+			background: #00000052;
+			color: white;
+			border: none;
+			padding: 8px 15px;
+			border-radius: 5px;
+			cursor: pointer;
+			transition: background 0.3s;
+		}
+		
+		.filters-toggle button:hover {
+			background: #954f9d;
+		}
+		
+		.filters-container {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 15px;
+			margin-bottom: 20px;
+			justify-content: center;
+			display: none;
+		}
+		
+		.filters-container.visible {
+			display: flex;
+		}
+		
+		.filter-group {
+			display: flex;
+			flex-direction: column;
+			background: #00000052;
+			padding: 15px;
+			border-radius: 10px;
+			box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+			min-width: 200px;
+		}
+		
+		.filter-title {
+			font-weight: bold;
+			margin-bottom: 10px;
+			color: #2c3e50;
+		}
+		
+		.filter-options {
+			display: flex;
+			flex-direction: column;
+			gap: 5px;
+		}
+		
+		.filter-checkbox {
+			display: flex;
+			align-items: center;
+			gap: 5px;
+		}
+		
+		.tags-cloud {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 6px;
+			justify-content: center;
+			margin-bottom: 20px;
+		}
+		
+		.tag {
+			background: #00000052;
+			color: white;
+			padding: 5px 12px;
+			border-radius: 20px 7px 20px 7px;
+			font-size: 14px;
+			cursor: pointer;
+			transition: all 0.3s;
+		}
+		
+		.tag:hover {
+			background: #954f9d;
+			color: white;
+		}
+		
+		.active-search-tag {
+			background: #7d2587 !important;
+			color: white;
+		}
+		
+		.results-container {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+			gap: 20px;
+			margin-bottom: 30px;
+		}
+		
+		@keyframes show {
+			from {
+				opacity: 0;
+				scale: 25%;
+			}
+			to {
+				opacity: 1;
+				scale: 100%;
+			}
+		}
+		.result-card {
+			background: #00000052;
+			border-radius: 10px;
+			box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+			padding: 20px;
+			transition: transform 0.3s;
+			position: relative;
 
-        .keyboard-hint {
-            text-align: center;
-            margin-top: 10px;
-            font-size: 12px;
-            color: #7f8c8d;
-        }
 
-        /* Estilos para el autocompletado */
-        .autocomplete-container {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-        }
+			view-timeline-name: --image;
+			view-timeline-axis: block;
 
-        .autocomplete-suggestions {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: #00000052;
-            border: 1px solid #ddd;
-            border-radius: 0 0 5px 5px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
-        }
+			animation-timeline: --image;
+			animation-name: show;
 
-        .autocomplete-suggestion {
-            padding: 10px;
-            cursor: pointer;
-        }
+			animation-range: entry 0% cover 20%;
+			animation-fill-mode: both;
 
-        .autocomplete-suggestion:hover {
-            background-color: #f0f0f0;
-        }
+			transition: all .3s;
+		}
+		
+		.result-card:hover {
+			transform: translateY(-5px);
+		}
+		
+		.result-id {
+			display: inline-block;
+			background: #00000052;
+			color: white;
+			width: 30px;
+			height: 30px;
+			border-radius: 50%;
+			text-align: center;
+			line-height: 30px;
+			margin-bottom: 10px;
+			font-weight: bold;
+		}
+		
+		.result-title {
+			font-size: 18px;
+			font-weight: bold;
+			margin-bottom: 10px;
+			color: #2c3e50;
+		}
+		
+		.result-description {
+			color: #7f8c8d;
+			font-size: 14px;
+			margin-bottom: 15px;
+		}
+		
+		.result-version {
+			font-size: 12px;
+			color: #00000052;
+			margin-bottom: 10px;
+		}
+		
+		.result-tags {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 5px;
+			margin-top: 10px;
+		}
+		
+		.result-tag {
+			background: #e7f4ff;
+			color: #00000052;
+			padding: 3px 8px;
+			border-radius: 15px;
+			font-size: 12px;
+			cursor: pointer;
+			transition: all 0.3s;
+		}
+		
+		.result-tag:hover {
+			background: #00000052;
+			color: white;
+		}
+		
+		.favorite-btn {
+			position: absolute;
+			top: 15px;
+			right: 15px;
+			background: none;
+			border: none;
+			font-size: 20px;
+			cursor: pointer;
+			color: #ddd;
+			transition: color 0.3s;
+			z-index: 10;
+		}
+		
+		.favorite-btn.active {
+			color: #f1c40f;
+		}
+		
+		.pagination {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			gap: 3px;
+		}
+		
+		.pagination button {
+			padding: 8px 13px;
+			background: none;
+			color: white;
+			font-weight: 800;
+			border: 0;
+			border-radius: 0;
+			cursor: pointer;
+			transition: background 0.3s;
+		}
+		
+		.pagination button:hover:not(:disabled) {
+			background: #954f9d;
+		}
+		
+		.pagination button:disabled {
+			background: none;
+			color: #696969;
+			cursor: not-allowed;
+		}
+		
+		.pagination input {
+			width: 40px;
+			text-align: center;
+			padding: 8px;
+			border: 1px solid #ddd;
+			border-radius: 5px;
+		}
+		
+		.page-btn {
+			padding: 8px 12px;
+		}
+		
+		.current-page {
+			background: #7d2587 !important;
+			cursor: text !important;
+		}
+		
+		.no-results {
+			text-align: center;
+			grid-column: 1 / -1;
+			padding: 40px;
+			color: #7f8c8d;
+		}
+		
+		.loading {
+			text-align: center;
+			padding: 20px;
+			color: #00000052;
+		}
+		
+		.results-info {
+			text-align: center;
+			color: #7f8c8d;
+		}
+		
+		.favorite-badge {
+			display: inline-block;
+			background: #f1c40f;
+			color: white;
+			padding: 2px 8px;
+			border-radius: 10px;
+			font-size: 12px;
+			margin-left: 10px;
+		}
+		
+		.result-link {
+			text-decoration: none;
+			color: inherit;
+			display: block;
+			height: 100%;
+		}
+		
+		.result-content {
+			height: 100%;
+		}
+		
+		.favorites-section {
+			margin-bottom: 30px;
+		}
+		
+		.section-title {
+			font-size: 20px;
+			color: #2c3e50;
+			margin-bottom: 15px;
+			padding-bottom: 5px;
+			border-bottom: 2px solid #00000052;
+		}
+		
+		.related-section {
+			margin-top: 30px;
+			display: none;
+		}
+		
+		.related-results {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+			gap: 15px;
+		}
 
-        @media (max-width: 768px) {
-            .pagination {
-                flex-wrap: wrap;
-            }
-            
-            .controls {
-                flex-direction: row;
-                align-items: stretch;
-            }
-            
-        }
-    </style>
+		.keyboard-hint {
+			text-align: center;
+			margin-top: 10px;
+			font-size: 12px;
+			color: #7f8c8d;
+		}
+
+		/* Estilos para el autocompletado */
+		.autocomplete-container {
+			position: relative;
+			width: 100%;
+			max-width: 600px;
+		}
+
+		.autocomplete-suggestions {
+			position: absolute;
+			top: 100%;
+			left: 0;
+			right: 0;
+			background: #00000052;
+			border: 1px solid #ddd;
+			border-radius: 0 0 5px 5px;
+			box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+			max-height: 200px;
+			overflow-y: auto;
+			z-index: 1000;
+			display: none;
+		}
+
+		.autocomplete-suggestion {
+			padding: 10px;
+			cursor: pointer;
+			&.active {
+				background: red;
+			}
+		}
+
+		.autocomplete-suggestion:hover {
+			background-color: #f0f0f0;
+		}
+
+		@media (max-width: 768px) {
+			.pagination {
+				flex-wrap: wrap;
+			}
+			
+			.controls {
+				flex-direction: row;
+				align-items: stretch;
+			}
+			
+		}
+		#sort-order {
+			border: 0;
+			&:hover, &:focus {
+				background: #954f9d;
+			}
+		}
+	</style>
 </head>
 <body>
-        <div class="tags-cloud" id="tags-cloud">
-            <!-- Las etiquetas se generarán dinámicamente -->
-        </div>
-    <div class="container">
-        <div style="
-        display: flex;
-        justify-content: space-between;
-        align-items: stretch;
-        flex-direction: row;
-        ">
-            <div class="search-container">
-                <div class="autocomplete-container">
-                    <input type="text" name="search-input" id="search-input" placeholder="Moto, armas, dyos..." autocomplete="off" class="update"><label for="search-input" style="font-size: 1em;
-                        display: inline;
-                        right: .7rem;
-                        position: absolute;
-                        align-self: center;" class=":pointer" title="Buscar">🔍</label>
-                    <div class="autocomplete-suggestions" id="autocomplete-suggestions"></div>
-                </div>
-            </div>
-            <div class="controls">
-                <button id="clear-filters" class="control-btn">✕</button>
-                <button id="reverse-order" class="control-btn">⇅</button>
-                <select id="sort-order" class="sort-select">
-                    <option value="default">Orden</option>
-                    <option value="az">Orden A-Z</option>
-                    <option value="za">Orden Z-A</option>
-                    <option value="id-asc">ID Ascendente</option>
-                    <option value="id-desc">ID Descendente</option>
-                </select>
-            </div>
-        </div>
-        <div class="filters-toggle" style="display: none;">
-            <button id="toggle-filters">Mostrar Filtros</button>
-        </div>
-        <div class="filters-container" id="filters-container">
-            <div class="filter-group">
-                <div class="filter-title">Buscar en:</div>
-                <div class="filter-options">
-                    <label class="filter-checkbox">
-                        <input type="checkbox" id="filter-title" checked> Títulos
-                    </label>
-                    <label class="filter-checkbox">
-                        <input type="checkbox" id="filter-description" checked> Descripciones
-                    </label>
-                    <label class="filter-checkbox">
-                        <input type="checkbox" id="filter-id"> IDs
-                    </label>
-                </div>
-            </div>
-        </div>
-        <div style="
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-direction: row;
-        margin: 1rem 0;
-        ">
-            <div id="results-info" class="results-info"></div>
-            <div id="pagination-top" class="pagination"></div>
-        </div>
+		<div class="tags-cloud" id="tags-cloud">
+			<!-- Las etiquetas se generarán dinámicamente -->
+		</div>
+	<div class="container">
+		<div style="
+		display: flex;
+		justify-content: space-between;
+		align-items: stretch;
+		flex-direction: row;
+		">
+			<div class="search-container">
+				<div class="autocomplete-container">
+					<input type="text" name="search-input" id="search-input" placeholder="Moto, armas, dyos..." autocomplete="off" class="update"><label for="search-input" style="font-size: 1em;
+						display: inline;
+						right: .7rem;
+						position: absolute;
+						align-self: center;" class=":pointer" title="Buscar">🔍</label>
+					<div class="autocomplete-suggestions" id="autocomplete-suggestions"></div>
+				</div>
+			</div>
+			<div class="controls">
+				<button id="clear-filters" class="control-btn">✕</button>
+				<button id="reverse-order" class="control-btn">⇅</button>
+				<select id="sort-order" class="sort-select">
+					<option value="default">Orden</option>
+					<option value="az">Orden A-Z</option>
+					<option value="za">Orden Z-A</option>
+					<option value="id-asc">ID Ascendente</option>
+					<option value="id-desc">ID Descendente</option>
+				</select>
+			</div>
+		</div>
+		<div class="filters-toggle" style="display: none;">
+			<button id="toggle-filters">Mostrar Filtros</button>
+		</div>
+		<div class="filters-container" id="filters-container">
+			<div class="filter-group">
+				<div class="filter-title">Buscar en:</div>
+				<div class="filter-options">
+					<label class="filter-checkbox">
+						<input type="checkbox" id="filter-title" checked> Títulos
+					</label>
+					<label class="filter-checkbox">
+						<input type="checkbox" id="filter-description" checked> Descripciones
+					</label>
+					<label class="filter-checkbox">
+						<input type="checkbox" id="filter-id"> IDs
+					</label>
+				</div>
+			</div>
+		</div>
+		<div style="
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-direction: row;
+		margin: 1rem 0;
+		">
+			<div id="results-info" class="results-info"></div>
+			<div id="pagination-top" class="pagination"></div>
+		</div>
 
-        <div id="favorites-container" class="favorites-section" style="display: none;">
-            <h2 class="section-title">Favoritos</h2>
-            <div class="results-container" id="favorites-results"></div>
-        </div>
-        <div id="results-container" class="results-container">
-            <div class="loading">Cargando...</div>
-        </div>
-        <!-- Paginación inferior -->
-        <div id="pagination-bottom" class="pagination"></div>
-        <div id="related-container" class="related-section">
-            <h2 class="section-title">Resultados relacionados</h2>
-            <div id="related-results" class="related-results"></div>
-        </div>
+		<div id="favorites-container" class="favorites-section" style="display: none;">
+			<h2 class="section-title">Favoritos</h2>
+			<div class="results-container" id="favorites-results"></div>
+		</div>
+		<div id="results-container" class="results-container">
+			<div class="loading">Cargando...</div>
+		</div>
+		<!-- Paginación inferior -->
+		<div id="pagination-bottom" class="pagination"></div>
+		<div id="related-container" class="related-section">
+			<h2 class="section-title">Resultados relacionados</h2>
+			<div id="related-results" class="related-results"></div>
+		</div>
 
-        <div class="keyboard-hint">
-            💡 Usa las flechas ← → del teclado para navegar entre páginas
-        </div>
-    </div>
+		<div class="keyboard-hint">
+			💡 Usa las flechas ← → del teclado para navegar entre páginas
+		</div>
+	</div>
 
 <script src="./js/main.js"></script>
-    <script>
-        // Base de datos
-        const DATA_BASE = 
+	<script>
+		// Base de datos
+		const DATA_BASE = 
 `
 p|Variable cars     |1.2|   Mas variedad de vehiculos en gameplay! sin necesidad de instalar skins, con el cleo es sufis...
 g|Resaltar codigo   |1.2|   Extención visual para Sublime Text 4 que nos permitira resaltar codigo de Sanny Builder 3.8,...
@@ -513,1036 +548,1038 @@ a|Sultan con Rampa  |1.4|   Inspirado en Rapido y Furioso 6. Este mod nos permit
 2|Doc. Clasica      |1.1.5| La documentación original de Sanny Builder, traducida al español con nuevo contenido para tu...
 1|Entrar al Garaje  |1.7|   Con este grandioso mod, podremos acceder al interior del Garaje de Doherty sin la necesidad ...`
 
-        // Palabras insignificantes (stopwords)
-        const stopwords = new Set(['a', 'an', 'the', 'and', 'or', 'for', 'to', 'in', 'on', 'at', 'of', 'with', 'by', 'as', 'is', 'are', 'de', 'en', 'la', 'el', 'que', 'y', 'los', 'las', 'del', 'un', 'una', 'su', 'sus']);
+		// Palabras insignificantes (stopwords)
+		const stopwords = new Set(['a', 'an', 'the', 'and', 'or', 'for', 'to', 'in', 'on', 'at', 'of', 'with', 'by', 'as', 'is', 'are', 'de', 'en', 'la', 'el', 'que', 'y', 'los', 'las', 'del', 'un', 'una', 'su', 'sus']);
 
-        // Categorías predefinidas para los mods
-        const categories = {
-            'vehiculos': ['vehiculo', 'coche', 'moto', 'auto', 'conduccion', 'conducir', 'manejar', 'ruedas', 'motor'],
-            'visuales': ['grafico', 'visual', 'efecto', 'textura', 'resolucion', 'fps', 'cuadro', 'aspecto', 'skin'],
-            'gameplay': ['jugabilidad', 'mecanica', 'habilidad', 'accion', 'control', 'movimiento', 'fisica', 'gameplay'],
-            'utilidades': ['herramienta', 'utilidad', 'funcion', 'practico', 'productividad', 'eficiencia', 'optimizacion'],
-            'armas': ['arma', 'pistola', 'disparar', 'proyectil', 'munition', 'recarga', 'mira'],
-            'misiones': ['mision', 'objetivo', 'tarea', 'obligacion', 'encargo', 'comision', 'busqueda'],
-            'documentacion': ['documentacion', 'doc', 'manual', 'guia', 'ayuda', 'referencia'],
-            'modificacion': ['mod', 'modificacion', 'script', 'personalizacion', 'cambio']
-        };
+		// Categorías predefinidas para los mods
+		const categories = {
+			'vehiculos': ['vehiculo', 'coche', 'moto', 'auto', 'conduccion', 'conducir', 'manejar', 'ruedas', 'motor'],
+			'visuales': ['grafico', 'visual', 'efecto', 'textura', 'resolucion', 'fps', 'cuadro', 'aspecto', 'skin'],
+			'gameplay': ['jugabilidad', 'mecanica', 'habilidad', 'accion', 'control', 'movimiento', 'fisica', 'gameplay'],
+			'utilidades': ['herramienta', 'utilidad', 'funcion', 'practico', 'productividad', 'eficiencia', 'optimizacion'],
+			'armas': ['arma', 'pistola', 'disparar', 'proyectil', 'munition', 'recarga', 'mira'],
+			'misiones': ['mision', 'objetivo', 'tarea', 'obligacion', 'encargo', 'comision', 'busqueda'],
+			'documentacion': ['documentacion', 'doc', 'manual', 'guia', 'ayuda', 'referencia'],
+			'modificacion': ['mod', 'modificacion', 'script', 'personalizacion', 'cambio']
+		};
 
-        // Parsear base de datos
-        const parseDatabase = (dbString) => {
-            return dbString.split('\n')
-                .map(line => line.trim())
-                .filter(line => line.length > 0)
-                .map(line => {
-                    const parts = line.split('|').map(part => part.trim());
-                    return {
-                        id: parts[0],
-                        title: parts[1],
-                        version: parts[2],
-                        description: parts[3] || '',
-                        tags: []
-                    };
-                });
-        };
+		// Parsear base de datos
+		const parseDatabase = (dbString) => {
+			return dbString.split('\n')
+				.map(line => line.trim())
+				.filter(line => line.length > 0)
+				.map(line => {
+					const parts = line.split('|').map(part => part.trim());
+					return {
+						id: parts[0],
+						title: parts[1],
+						version: parts[2],
+						description: parts[3] || '',
+						tags: []
+					};
+				});
+		};
 
-        // Asignar categorías a los elementos
-        function assignCategories(data) {
-            return data.map(item => {
-                const text = `${item.title} ${item.description}`.toLowerCase();
-                const itemTags = [];
-                
-                // Asignar categorías basadas en palabras clave
-                for (const [category, keywords] of Object.entries(categories)) {
-                    if (keywords.some(keyword => text.includes(keyword))) {
-                        itemTags.push(category);
-                    }
-                }
-                
-                // Si no tiene categorías, asignar "otros"
-                if (itemTags.length === 0) {
-                    itemTags.push('otros');
-                }
-                
-                return {
-                    ...item,
-                    tags: itemTags
-                };
-            });
-        }
+		// Asignar categorías a los elementos
+		function assignCategories(data) {
+			return data.map(item => {
+				const text = `${item.title} ${item.description}`.toLowerCase();
+				const itemTags = [];
+				
+				// Asignar categorías basadas en palabras clave
+				for (const [category, keywords] of Object.entries(categories)) {
+					if (keywords.some(keyword => text.includes(keyword))) {
+						itemTags.push(category);
+					}
+				}
+				
+				// Si no tiene categorías, asignar "otros"
+				if (itemTags.length === 0) {
+					itemTags.push('otros');
+				}
+				
+				return {
+					...item,
+					tags: itemTags
+				};
+			});
+		}
 
-        // Normalizar texto
-        function normalizeText(text) {
-            return text
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^\w\s]/g, ' ')
-                .replace(/(_|\.|\,)/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
-        }
+		// Normalizar texto
+		function normalizeText(text) {
+			return text
+				.toLowerCase()
+				.normalize('NFD')
+				.replace(/[\u0300-\u036f]/g, '')
+				.replace(/[^\w\s]/g, ' ')
+				.replace(/(_|\.|\,)/g, ' ')
+				.replace(/\s+/g, ' ')
+				.trim();
+		}
 
-        // Distancia de Levenshtein
-        function levenshteinDistance(a, b) {
-            const matrix = [];
-            let i, j;
+		// Distancia de Levenshtein
+		function levenshteinDistance(a, b) {
+			const matrix = [];
+			let i, j;
 
-            if (a.length === 0) return b.length;
-            if (b.length === 0) return a.length;
+			if (a.length === 0) return b.length;
+			if (b.length === 0) return a.length;
 
-            for (i = 0; i <= b.length; i++) {
-                matrix[i] = [i];
-            }
+			for (i = 0; i <= b.length; i++) {
+				matrix[i] = [i];
+			}
 
-            for (j = 0; j <= a.length; j++) {
-                matrix[0][j] = j;
-            }
+			for (j = 0; j <= a.length; j++) {
+				matrix[0][j] = j;
+			}
 
-            for (i = 1; i <= b.length; i++) {
-                for (j = 1; j <= a.length; j++) {
-                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
-                        matrix[i][j] = matrix[i - 1][j - 1];
-                    } else {
-                        matrix[i][j] = Math.min(
-                            matrix[i - 1][j - 1] + 1,
-                            matrix[i][j - 1] + 1,
-                            matrix[i - 1][j] + 1
-                        );
-                    }
-                }
-            }
+			for (i = 1; i <= b.length; i++) {
+				for (j = 1; j <= a.length; j++) {
+					if (b.charAt(i - 1) === a.charAt(j - 1)) {
+						matrix[i][j] = matrix[i - 1][j - 1];
+					} else {
+						matrix[i][j] = Math.min(
+							matrix[i - 1][j - 1] + 1,
+							matrix[i][j - 1] + 1,
+							matrix[i - 1][j] + 1
+						);
+					}
+				}
+			}
 
-            return matrix[b.length][a.length];
-        }
+			return matrix[b.length][a.length];
+		}
 
-        // Implementación de debounce
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
+		// Implementación de debounce
+		function debounce(func, wait) {
+			let timeout;
+			return function executedFunction(...args) {
+				const later = () => {
+					clearTimeout(timeout);
+					func(...args);
+				};
+				clearTimeout(timeout);
+				timeout = setTimeout(later, wait);
+			};
+		}
 
-        // Implementación de throttle
-        function throttle(func, limit) {
-            let inThrottle;
-            return function(...args) {
-                if (!inThrottle) {
-                    func.apply(this, args);
-                    inThrottle = true;
-                    setTimeout(() => inThrottle = false, limit);
-                }
-            };
-        }
+		// Implementación de throttle
+		function throttle(func, limit) {
+			let inThrottle;
+			return function(...args) {
+				if (!inThrottle) {
+					func.apply(this, args);
+					inThrottle = true;
+					setTimeout(() => inThrottle = false, limit);
+				}
+			};
+		}
 
-        // Funciones para manejar favoritos y clics
-        function getClickCount(itemId) {
-            const clicks = localStorage.getItem(`clicks_${itemId}`);
-            return clicks ? parseInt(clicks) : 0;
-        }
+		// Funciones para manejar favoritos y clics
+		function getClickCount(itemId) {
+			const clicks = localStorage.getItem(`clicks_${itemId}`);
+			return clicks ? parseInt(clicks) : 0;
+		}
 
-        function incrementClickCount(itemId) {
-            const currentClicks = getClickCount(itemId);
-            localStorage.setItem(`clicks_${itemId}`, currentClicks + 1);
-            if (currentClicks+1 > 2) {
-                addToFavorites(itemId)
-            }
-            return currentClicks + 1;
-        }
+		function incrementClickCount(itemId) {
+			const currentClicks = getClickCount(itemId);
+			localStorage.setItem(`clicks_${itemId}`, currentClicks + 1);
+			if (currentClicks+1 > 2) {
+				addToFavorites(itemId)
+			}
+			return currentClicks + 1;
+		}
 
-        function getFavorites() {
-            const favorites = localStorage.getItem('favorites');
-            return favorites ? JSON.parse(favorites) : [];
-        }
+		function getFavorites() {
+			const favorites = localStorage.getItem('favorites');
+			return favorites ? JSON.parse(favorites) : [];
+		}
 
-        function isFavorite(itemId) {
-            const favorites = getFavorites();
-            return favorites.includes(itemId);
-        }
+		function isFavorite(itemId) {
+			const favorites = getFavorites();
+			return favorites.includes(itemId);
+		}
 
-        function addToFavorites(itemId) {
-            const favorites = getFavorites();
-            if (!favorites.includes(itemId)) {
-                favorites.push(itemId);
-                localStorage.setItem('favorites', JSON.stringify(favorites));
-            }
-        }
+		function addToFavorites(itemId) {
+			const favorites = getFavorites();
+			if (!favorites.includes(itemId)) {
+				favorites.push(itemId);
+				localStorage.setItem('favorites', JSON.stringify(favorites));
+			}
+		}
 
-        function removeFromFavorites(itemId) {
-            let favorites = getFavorites();
-            favorites = favorites.filter(id => id !== itemId);
-            localStorage.setItem('favorites', JSON.stringify(favorites));
-        }
+		function removeFromFavorites(itemId) {
+			let favorites = getFavorites();
+			favorites = favorites.filter(id => id !== itemId);
+			localStorage.setItem('favorites', JSON.stringify(favorites));
+		}
 
-        function toggleFavorite(itemId) {
-            const currentlyFavorite = isFavorite(itemId);
-            if (!currentlyFavorite) {
-                addToFavorites(itemId);
-            } else {
-                removeFromFavorites(itemId);
-                localStorage.setItem(`clicks_${itemId}`, '0');
-            }
-            return !currentlyFavorite;
-        }
+		function toggleFavorite(itemId) {
+			const currentlyFavorite = isFavorite(itemId);
+			if (!currentlyFavorite) {
+				addToFavorites(itemId);
+			} else {
+				removeFromFavorites(itemId);
+				localStorage.setItem(`clicks_${itemId}`, '0');
+			}
+			return !currentlyFavorite;
+		}
 
-        // Función de búsqueda que no depende del orden de palabras
-        function searchSmart(query, data, maxItems = 12, currentPage = 1) {
-            // Si la consulta está vacía, devolver todos los elementos
-            if (!query || query.trim() === '') {
-                const startIndex = (currentPage - 1) * maxItems;
-                const endIndex = startIndex + maxItems;
-                
-                // Primero ordenar por favoritos (los favoritos primero)
-                let sortedData = [...data].sort((a, b) => {
-                    const aFavorite = isFavorite(a.id);
-                    const bFavorite = isFavorite(b.id);
-                    
-                    if (aFavorite && !bFavorite) return -1;
-                    if (!aFavorite && bFavorite) return 1;
-                    
-                    // Para los favoritos, ordenar por número de clics (mayor a menor)
-                    if (aFavorite && bFavorite) {
-                        const aClicks = getClickCount(a.id) || 0;
-                        const bClicks = getClickCount(b.id) || 0;
-                        return bClicks - aClicks;
-                    }
-                    
-                    // Para los no favoritos, mantener el orden original (por ID)
-                    return 0;
-                });
-                
-                // Aplicar orden alfabético si está seleccionado
-                const sortOrder = document.getElementById('sort-order').value;
-                if (sortOrder === 'az') {
-                    sortedData = sortedData.sort((a, b) => a.title.localeCompare(b.title));
-                } else if (sortOrder === 'za') {
-                    sortedData = sortedData.sort((a, b) => b.title.localeCompare(a.title));
-                } else if (sortOrder === 'id-asc') {
-                    sortedData = sortedData.sort((a, b) => a.id.localeCompare(b.id));
-                } else if (sortOrder === 'id-desc') {
-                    sortedData = sortedData.sort((a, b) => b.id.localeCompare(a.id));
-                }
-                
-                // Aplicar orden inverso si está activo
-                if (window.isReversed) {
-                    sortedData = sortedData.reverse();
-                }
-                
-                return {
-                    results: sortedData.slice(startIndex, endIndex),
-                    total: data.length,
-                    page: currentPage,
-                    totalPages: Math.ceil(data.length / maxItems)
-                };
-            }
+		// Función de búsqueda que no depende del orden de palabras
+		function searchSmart(query, data, maxItems = 12, currentPage = 1) {
+			// Si hay una etiqueta seleccionada, filtrar los datos por esa etiqueta primero
+			let filteredData = data;
+			if (currentTag) {
+				filteredData = data.filter(item => item.tags.includes(currentTag));
+			}
+			
+			// Si la consulta está vacía, devolver todos los elementos (ya filtrados por etiqueta si hay una seleccionada)
+			if (!query || query.trim() === '') {
+				const startIndex = (currentPage - 1) * maxItems;
+				const endIndex = startIndex + maxItems;
+				
+				// Primero ordenar por favoritos (los favoritos primero)
+				let sortedData = [...filteredData].sort((a, b) => {
+					const aFavorite = isFavorite(a.id);
+					const bFavorite = isFavorite(b.id);
+					
+					if (aFavorite && !bFavorite) return -1;
+					if (!aFavorite && bFavorite) return 1;
+					
+					// Para los favoritos, ordenar por número de clics (mayor a menor)
+					if (aFavorite && bFavorite) {
+						const aClicks = getClickCount(a.id) || 0;
+						const bClicks = getClickCount(b.id) || 0;
+						return bClicks - aClicks;
+					}
+					
+					// Para los no favoritos, mantener el orden original (por ID)
+					return 0;
+				});
+				
+				// Aplicar orden alfabético si está seleccionado
+				const sortOrder = document.getElementById('sort-order').value;
+				if (sortOrder === 'az') {
+					sortedData = sortedData.sort((a, b) => a.title.localeCompare(b.title));
+				} else if (sortOrder === 'za') {
+					sortedData = sortedData.sort((a, b) => b.title.localeCompare(a.title));
+				} else if (sortOrder === 'id-asc') {
+					sortedData = sortedData.sort((a, b) => a.id.localeCompare(b.id));
+				} else if (sortOrder === 'id-desc') {
+					sortedData = sortedData.sort((a, b) => b.id.localeCompare(a.id));
+				}
+				
+				// Aplicar orden inverso si está activo
+				if (window.isReversed) {
+					sortedData = sortedData.reverse();
+				}
+				
+				return {
+					results: sortedData.slice(startIndex, endIndex),
+					total: filteredData.length,
+					page: currentPage,
+					totalPages: Math.ceil(filteredData.length / maxItems)
+				};
+			}
 
-            // Normalizar la consulta y dividir en términos
-            const normalizedQuery = normalizeText(query);
-            const queryTerms = normalizedQuery.split(/\s+/).filter(term => term.length > 1 && !stopwords.has(term));
-            
-            // Si no hay términos válidos después de la normalización, devolver resultados vacíos
-            if (queryTerms.length === 0) {
-                return {
-                    results: [],
-                    total: 0,
-                    page: currentPage,
-                    totalPages: 0
-                };
-            }
-            
-            // Búsqueda que no depende del orden de palabras, con tolerancia a errores tipográficos (distancia <=1) y matches parciales
-            let filteredData = data.filter(item => {
-                const searchText = normalizeText(`${item.title} ${item.description}`);
-                const textTerms = searchText.split(/\s+/);
-                
-                // Verificar que todos los términos de búsqueda tengan una coincidencia (parcial o aproximada)
-                return queryTerms.every(qTerm => {
-                    return searchText.includes(qTerm) || textTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1);
-                });
-            });
-            
-            // Aplicar filtros de campo de búsqueda
-            const searchTitle = document.getElementById('filter-title').checked;
-            const searchDescription = document.getElementById('filter-description').checked;
-            const searchId = document.getElementById('filter-id').checked;
-            
-            if (!searchTitle || !searchDescription || !searchId) {
-                filteredData = filteredData.filter(item => {
-                    let match = false;
-                    if (searchTitle) {
-                        const title = normalizeText(item.title);
-                        const titleTerms = title.split(/\s+/);
-                        match = match || queryTerms.every(qTerm => title.includes(qTerm) || titleTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1));
-                    }
-                    if (searchDescription) {
-                        const description = normalizeText(item.description);
-                        const descriptionTerms = description.split(/\s+/);
-                        match = match || queryTerms.every(qTerm => description.includes(qTerm) || descriptionTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1));
-                    }
-                    if (searchId) {
-                        const id = normalizeText(item.id);
-                        const idTerms = id.split(/\s+/);
-                        match = match || queryTerms.every(qTerm => id.includes(qTerm) || idTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1));
-                    }
-                    return match;
-                });
-            }
-            
-            // Calcular puntuación para cada elemento
-            const scoredData = filteredData.map(item => {
-                const textToSearch = normalizeText(item.title + ' ' + item.description);
-                const textTerms = textToSearch.split(/\s+/);
-                
-                let score = 0;
-                
-                // Puntuación unificada por término de búsqueda
-                queryTerms.forEach(qTerm => {
-                    let maxTermScore = 0;
-                    
-                    // Verificar coincidencias parciales o exactas vía substring
-                    if (textToSearch.includes(qTerm)) {
-                        maxTermScore = 5;
-                    }
-                    
-                    // Verificar coincidencias aproximadas con Levenshtein y calcular similitud
-                    textTerms.forEach(tTerm => {
-                        const distance = levenshteinDistance(qTerm, tTerm);
-                        if (distance <= 2) {
-                            const sim = 1 - (distance / Math.max(qTerm.length, tTerm.length));
-                            maxTermScore = Math.max(maxTermScore, sim * 5);
-                        }
-                        
-                        // Puntuación adicional para matches parciales (prefix/suffix)
-                        if (tTerm.includes(qTerm) || qTerm.includes(tTerm)) {
-                            const ratio = Math.min(qTerm.length, tTerm.length) / Math.max(qTerm.length, tTerm.length);
-                            maxTermScore = Math.max(maxTermScore, ratio * 5);
-                        }
-                    });
-                    
-                    score += maxTermScore;
-                });
-                
-                // Añadir puntuación por favoritos
-                if (isFavorite(item.id)) {
-                    const clickCount = getClickCount(item.id) || 0;
-                    score += Math.min(clickCount, 5);
-                }
-                
-                return { ...item, score };
-            }).filter(item => item.score > 0)
-            .sort((a, b) => b.score - a.score);
+			// Normalizar la consulta y dividir en términos
+			const normalizedQuery = normalizeText(query);
+			const queryTerms = normalizedQuery.split(/\s+/).filter(term => term.length > 1 && !stopwords.has(term));
+			
+			// Si no hay términos válidos después de la normalización, devolver resultados vacíos
+			if (queryTerms.length === 0) {
+				return {
+					results: [],
+					total: 0,
+					page: currentPage,
+					totalPages: 0
+				};
+			}
+			
+			// Búsqueda que no depende del orden de palabras, con tolerancia a errores tipográficos (distancia <=1) y matches parciales
+			let searchData = filteredData.filter(item => {
+				const searchText = normalizeText(`${item.title} ${item.description}`);
+				const textTerms = searchText.split(/\s+/);
+				
+				// Verificar que todos los términos de búsqueda tengan una coincidencia (parcial o aproximada)
+				return queryTerms.every(qTerm => {
+					return searchText.includes(qTerm) || textTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1);
+				});
+			});
+			
+			// Aplicar filtros de campo de búsqueda
+			const searchTitle = document.getElementById('filter-title').checked;
+			const searchDescription = document.getElementById('filter-description').checked;
+			const searchId = document.getElementById('filter-id').checked;
+			
+			if (!searchTitle || !searchDescription || !searchId) {
+				searchData = searchData.filter(item => {
+					let match = false;
+					if (searchTitle) {
+						const title = normalizeText(item.title);
+						const titleTerms = title.split(/\s+/);
+						match = match || queryTerms.every(qTerm => title.includes(qTerm) || titleTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1));
+					}
+					if (searchDescription) {
+						const description = normalizeText(item.description);
+						const descriptionTerms = description.split(/\s+/);
+						match = match || queryTerms.every(qTerm => description.includes(qTerm) || descriptionTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1));
+					}
+					if (searchId) {
+						const id = normalizeText(item.id);
+						const idTerms = id.split(/\s+/);
+						match = match || queryTerms.every(qTerm => id.includes(qTerm) || idTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1));
+					}
+					return match;
+				});
+			}
+			
+			// Calcular puntuación para cada elemento
+			const scoredData = searchData.map(item => {
+				const textToSearch = normalizeText(item.title + ' ' + item.description);
+				const textTerms = textToSearch.split(/\s+/);
+				
+				let score = 0;
+				
+				// Puntuación unificada por término de búsqueda
+				queryTerms.forEach(qTerm => {
+					let maxTermScore = 0;
+					
+					// Verificar coincidencias parciales o exactas vía substring
+					if (textToSearch.includes(qTerm)) {
+						maxTermScore = 5;
+					}
+					
+					// Verificar coincidencias aproximadas con Levenshtein y calcular similitud
+					textTerms.forEach(tTerm => {
+						const distance = levenshteinDistance(qTerm, tTerm);
+						if (distance <= 2) {
+							const sim = 1 - (distance / Math.max(qTerm.length, tTerm.length));
+							maxTermScore = Math.max(maxTermScore, sim * 5);
+						}
+						
+						// Puntuación adicional para matches parciales (prefix/suffix)
+						if (tTerm.includes(qTerm) || qTerm.includes(tTerm)) {
+							const ratio = Math.min(qTerm.length, tTerm.length) / Math.max(qTerm.length, tTerm.length);
+							maxTermScore = Math.max(maxTermScore, ratio * 5);
+						}
+					});
+					
+					score += maxTermScore;
+				});
+				
+				// Añadir puntuación por favoritos
+				if (isFavorite(item.id)) {
+					const clickCount = getClickCount(item.id) || 0;
+					score += Math.min(clickCount, 5);
+				}
+				
+				return { ...item, score };
+			}).filter(item => item.score > 0)
+			.sort((a, b) => b.score - a.score);
 
-            // Aplicar orden alfabético si está seleccionado
-            const sortOrder = document.getElementById('sort-order').value;
-            if (sortOrder === 'az') {
-                scoredData.sort((a, b) => a.title.localeCompare(b.title));
-            } else if (sortOrder === 'za') {
-                scoredData.sort((a, b) => b.title.localeCompare(a.title));
-            } else if (sortOrder === 'id-asc') {
-                scoredData.sort((a, b) => a.id.localeCompare(b.id));
-            } else if (sortOrder === 'id-desc') {
-                scoredData.sort((a, b) => b.id.localeCompare(a.id));
-            }
-            
-            // Aplicar orden inverso si está activo
-            if (window.isReversed) {
-                scoredData.reverse();
-            }
+			// Aplicar orden alfabético si está seleccionado
+			const sortOrder = document.getElementById('sort-order').value;
+			if (sortOrder === 'az') {
+				scoredData.sort((a, b) => a.title.localeCompare(b.title));
+			} else if (sortOrder === 'za') {
+				scoredData.sort((a, b) => b.title.localeCompare(a.title));
+			} else if (sortOrder === 'id-asc') {
+				scoredData.sort((a, b) => a.id.localeCompare(b.id));
+			} else if (sortOrder === 'id-desc') {
+				scoredData.sort((a, b) => b.id.localeCompare(a.id));
+			}
+			
+			// Aplicar orden inverso si está activo
+			if (window.isReversed) {
+				scoredData.reverse();
+			}
 
-            const startIndex = (currentPage - 1) * maxItems;
-            const endIndex = startIndex + maxItems;
-            
-            return {
-                results: scoredData.slice(startIndex, endIndex),
-                total: scoredData.length,
-                page: currentPage,
-                totalPages: Math.ceil(scoredData.length / maxItems)
-            };
-        }
+			const startIndex = (currentPage - 1) * maxItems;
+			const endIndex = startIndex + maxItems;
+			
+			return {
+				results: scoredData.slice(startIndex, endIndex),
+				total: scoredData.length,
+				page: currentPage,
+				totalPages: Math.ceil(scoredData.length / maxItems)
+			};
+		}
 
-        // Filtrar por etiqueta
-        function filterByTag(tag, data, maxItems = 12, currentPage = 1) {
-            const filteredData = data.filter(item => 
-                item.tags.includes(tag)
-            );
-            
-            // Aplicar orden alfabético si está seleccionado
-            const sortOrder = document.getElementById('sort-order').value;
-            let sortedData = [...filteredData];
-            
-            if (sortOrder === 'az') {
-                sortedData = sortedData.sort((a, b) => a.title.localeCompare(b.title));
-            } else if (sortOrder === 'za') {
-                sortedData = sortedData.sort((a, b) => b.title.localeCompare(a.title));
-            } else if (sortOrder === 'id-asc') {
-                sortedData = sortedData.sort((a, b) => a.id.localeCompare(b.id));
-            } else if (sortOrder === 'id-desc') {
-                sortedData = sortedData.sort((a, b) => b.id.localeCompare(a.id));
-            }
-            
-            // Aplicar orden inverso si está activo
-            if (window.isReversed) {
-                sortedData = sortedData.reverse();
-            }
-            
-            const startIndex = (currentPage - 1) * maxItems;
-            const endIndex = startIndex + maxItems;
-            
-            return {
-                results: sortedData.slice(startIndex, endIndex),
-                total: filteredData.length,
-                page: currentPage,
-                totalPages: Math.ceil(filteredData.length / maxItems)
-            };
-        }
+		// Filtrar por etiqueta
+		function filterByTag(tag, data, maxItems = 12, currentPage = 1) {
+			const filteredData = data.filter(item => 
+				item.tags.includes(tag)
+			);
+			
+			// Aplicar orden alfabético si está seleccionado
+			const sortOrder = document.getElementById('sort-order').value;
+			let sortedData = [...filteredData];
+			
+			if (sortOrder === 'az') {
+				sortedData = sortedData.sort((a, b) => a.title.localeCompare(b.title));
+			} else if (sortOrder === 'za') {
+				sortedData = sortedData.sort((a, b) => b.title.localeCompare(a.title));
+			} else if (sortOrder === 'id-asc') {
+				sortedData = sortedData.sort((a, b) => a.id.localeCompare(b.id));
+			} else if (sortOrder === 'id-desc') {
+				sortedData = sortedData.sort((a, b) => b.id.localeCompare(a.id));
+			}
+			
+			// Aplicar orden inverso si está activo
+			if (window.isReversed) {
+				sortedData = sortedData.reverse();
+			}
+			
+			const startIndex = (currentPage - 1) * maxItems;
+			const endIndex = startIndex + maxItems;
+			
+			return {
+				results: sortedData.slice(startIndex, endIndex),
+				total: filteredData.length,
+				page: currentPage,
+				totalPages: Math.ceil(filteredData.length / maxItems)
+			};
+		}
 
-        // Generar resultados relacionados
-        function generateRelatedResults(currentResults) {
-            const relatedContainer = document.getElementById('related-container');
-            const relatedResults = document.getElementById('related-results');
-            
-            // Ocultar si no hay búsqueda o no hay resultados
-            const query = document.getElementById('search-input').value;
-            if (!query || query.trim() === '' || currentResults.length === 0) {
-                relatedContainer.style.display = 'none';
-                return;
-            }
-            
-            // Obtener todas las etiquetas de los resultados actuales
-            const allTags = new Set();
-            currentResults.forEach(item => {
-                item.tags.forEach(tag => allTags.add(tag));
-            });
-            
-            // Convertir a array y seleccionar hasta 2 etiquetas
-            const tagsArray = Array.from(allTags);
-            const selectedTags = tagsArray.slice(0, 2);
-            
-            if (selectedTags.length === 0) {
-                relatedContainer.style.display = 'none';
-                return;
-            }
-            
-            // Buscar elementos que tengan al menos una de las etiquetas seleccionadas
-            // y que no estén en los resultados actuales
-            const currentIds = new Set(currentResults.map(item => item.id));
-            const relatedItems = allData.filter(item => {
-                if (currentIds.has(item.id)) return false;
-                return selectedTags.some(tag => item.tags.includes(tag));
-            }).slice(0, 6); // Limitar a 6 resultados
-            
-            if (relatedItems.length === 0) {
-                relatedContainer.style.display = 'none';
-                return;
-            }
-            
-            // Mostrar resultados relacionados
-            relatedContainer.style.display = 'block';
-            relatedResults.innerHTML = '';
-            
-            relatedItems.forEach(item => {
-                const card = createResultCard(item);
-                relatedResults.appendChild(card);
-            });
-        }
+		// Generar resultados relacionados
+		function generateRelatedResults(currentResults) {
+			const relatedContainer = document.getElementById('related-container');
+			const relatedResults = document.getElementById('related-results');
+			
+			// Ocultar si no hay búsqueda o no hay resultados
+			const query = document.getElementById('search-input').value;
+			if (!query || query.trim() === '' || currentResults.length === 0) {
+				relatedContainer.style.display = 'none';
+				return;
+			}
+			
+			// Obtener todas las etiquetas de los resultados actuales
+			const allTags = new Set();
+			currentResults.forEach(item => {
+				item.tags.forEach(tag => allTags.add(tag));
+			});
+			
+			// Convertir a array y seleccionar hasta 2 etiquetas
+			const tagsArray = Array.from(allTags);
+			const selectedTags = tagsArray.slice(0, 2);
+			
+			if (selectedTags.length === 0) {
+				relatedContainer.style.display = 'none';
+				return;
+			}
+			
+			// Buscar elementos que tengan al menos una de las etiquetas seleccionadas
+			// y que no estén en los resultados actuales
+			const currentIds = new Set(currentResults.map(item => item.id));
+			const relatedItems = allData.filter(item => {
+				if (currentIds.has(item.id)) return false;
+				return selectedTags.some(tag => item.tags.includes(tag));
+			}).slice(0, 6); // Limitar a 6 resultados
+			
+			if (relatedItems.length === 0) {
+				relatedContainer.style.display = 'none';
+				return;
+			}
+			
+			// Mostrar resultados relacionados
+			relatedContainer.style.display = 'block';
+			relatedResults.innerHTML = '';
+			
+			relatedItems.forEach(item => {
+				const card = createResultCard(item);
+				relatedResults.appendChild(card);
+			});
+		}
 
-        // Variables globales
-        let allData = [];
-        let currentResultsList = { results: [], total: 0, page: 1, totalPages: 0 };
-        let currentTag = '';
-        const resultsPerPage = 12;
-        window.isReversed = false;
+		// Variables globales
+		let allData = [];
+		let currentResultsList = { results: [], total: 0, page: 1, totalPages: 0 };
+		let currentTag = '';
+		const resultsPerPage = 12;
+		window.isReversed = false;
 
-        // Inicialización
-        document.addEventListener('DOMContentLoaded', function() {
-            // Parsear base de datos
-            allData = parseDatabase(DATA_BASE);
-            allData = assignCategories(allData);
-            
-            // Generar nube de etiquetas
-            generateTagsCloud();
-            
-            // Configurar el buscador con debounce
-            const searchInput = document.getElementById('search-input');
-            const searchHandler = debounce(function() {
-                const query = searchInput.value;
-                currentTag = '';
-                updateActiveTag();
-                // Siempre reiniciar a página 1 al buscar
-                currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
-                displayResults(currentResultsList);
-                updatePagination(currentResultsList);
-                updateURLParams(query, 1);
-                generateRelatedResults(currentResultsList.results);
-            }, 200);
-            
-            // Configurar autocompletado
-            setupAutocomplete();
-            
-            // Toggle para filtros
-            document.getElementById('toggle-filters').addEventListener('click', function() {
-                const filtersContainer = document.getElementById('filters-container');
-                filtersContainer.classList.toggle('visible');
-                this.textContent = filtersContainer.classList.contains('visible') ? 'Ocultar Filtros' : 'Mostrar Filtros';
-            });
-            
-            searchInput.addEventListener('input', function() {
-                // Mostrar sugerencias de autocompletado
-                showAutocompleteSuggestions(this.value);
-                // Reiniciar siempre a página 1 al escribir
-                currentResultsList.page = 1;
-                throttle(searchHandler, 86)();
-            });
-            
-            // Añadir event listeners a los filtros
-            document.querySelectorAll('.filters-container input').forEach(input => {
-                input.addEventListener('change', () => {
-                    refreshSearch();
-                });
-            });
+		// Inicialización
+		document.addEventListener('DOMContentLoaded', function() {
+			// Parsear base de datos
+			allData = parseDatabase(DATA_BASE);
+			allData = assignCategories(allData);
+			
+			// Generar nube de etiquetas
+			generateTagsCloud();
+			
+			// Configurar el buscador con debounce
+			const searchInput = document.getElementById('search-input');
+			const searchHandler = debounce(function() {
+				const query = searchInput.value;
+				// Siempre reiniciar a página 1 al buscar
+				currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
+				displayResults(currentResultsList);
+				updatePagination(currentResultsList);
+				updateURLParams(query, 1);
+				generateRelatedResults(currentResultsList.results);
+			}, 200);
+			
+			// Configurar autocompletado
+			setupAutocomplete();
+			
+			// Toggle para filtros
+			document.getElementById('toggle-filters').addEventListener('click', function() {
+				const filtersContainer = document.getElementById('filters-container');
+				filtersContainer.classList.toggle('visible');
+				this.textContent = filtersContainer.classList.contains('visible') ? 'Ocultar Filtros' : 'Mostrar Filtros';
+			});
+			
+			searchInput.addEventListener('input', function() {
+				// Mostrar sugerencias de autocompletado
+				showAutocompleteSuggestions(this.value);
+				// Reiniciar siempre a página 1 al escribir
+				currentResultsList.page = 1;
+				throttle(searchHandler, 86)();
+			});
+			
+			// Añadir event listeners a los filtros
+			document.querySelectorAll('.filters-container input').forEach(input => {
+				input.addEventListener('change', () => {
+					refreshSearch();
+				});
+			});
 
-            // Botón de limpiar filtros
-            document.getElementById('clear-filters').addEventListener('click', function() {
-                searchInput.value = '';
-                currentTag = '';
-                updateActiveTag();
-                document.getElementById('sort-order').value = 'default';
-                window.isReversed = false;
-                document.getElementById('reverse-order').classList.remove('active');
-                currentResultsList = searchSmart('', allData, resultsPerPage, 1);
-                displayResults(currentResultsList);
-                updatePagination(currentResultsList);
-                updateURLParams('', 1);
-                generateRelatedResults(currentResultsList.results);
-                // Ocultar sugerencias de autocompletado
-                document.getElementById('autocomplete-suggestions').style.display = 'none';
-            });
+			// Botón de limpiar filtros
+			document.getElementById('clear-filters').addEventListener('click', function() {
+				searchInput.value = '';
+				currentTag = '';
+				updateActiveTag();
+				document.getElementById('sort-order').value = 'default';
+				window.isReversed = false;
+				document.getElementById('reverse-order').classList.remove('active');
+				currentResultsList = searchSmart('', allData, resultsPerPage, 1);
+				displayResults(currentResultsList);
+				updatePagination(currentResultsList);
+				updateURLParams('', 1);
+				generateRelatedResults(currentResultsList.results);
+				// Ocultar sugerencias de autocompletado
+				document.getElementById('autocomplete-suggestions').style.display = 'none';
+			});
 
-            // Botón de invertir orden
-            document.getElementById('reverse-order').addEventListener('click', function() {
-                window.isReversed = !window.isReversed;
-                this.classList.toggle('active', window.isReversed);
-                refreshSearch();
-            });
+			// Botón de invertir orden
+			document.getElementById('reverse-order').addEventListener('click', function() {
+				window.isReversed = !window.isReversed;
+				this.classList.toggle('active', window.isReversed);
+				refreshSearch();
+			});
 
-            // Selector de orden alfabético
-            document.getElementById('sort-order').addEventListener('change', function() {
-                refreshSearch();
-            });
-            
-            // Navegación por teclado
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'ArrowLeft') {
-                    changePage(currentResultsList.page - 1);
-                } else if (e.key === 'ArrowRight') {
-                    changePage(currentResultsList.page + 1);
-                }
-            });
-            
-            // Comprobar parámetros de URL al cargar
-            checkURLParams();
-        });
+			// Selector de orden alfabético
+			document.getElementById('sort-order').addEventListener('change', function() {
+				refreshSearch();
+			});
+			
+			// Navegación por teclado
+			document.addEventListener('keydown', function(e) {
+				if (e.key === 'ArrowLeft') {
+					changePage(currentResultsList.page - 1);
+				} else if (e.key === 'ArrowRight') {
+					changePage(currentResultsList.page + 1);
+				}
+			});
+			
+			// Comprobar parámetros de URL al cargar
+			checkURLParams();
+		});
 
-        // Configurar autocompletado
-        function setupAutocomplete() {
-            const searchInput = document.getElementById('search-input');
-            const suggestionsContainer = document.getElementById('autocomplete-suggestions');
-            
-            // Ocultar sugerencias al hacer clic fuera
-            document.addEventListener('click', function(e) {
-                if (e.target !== searchInput && !suggestionsContainer.contains(e.target)) {
-                    suggestionsContainer.style.display = 'none';
-                }
-            });
-            
-            // Manejar teclas en el input de búsqueda
-            searchInput.addEventListener('keydown', function(e) {
-                const suggestions = suggestionsContainer.querySelectorAll('.autocomplete-suggestion');
-                const activeSuggestion = suggestionsContainer.querySelector('.autocomplete-suggestion.active');
-                
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    if (suggestions.length > 0) {
-                        if (!activeSuggestion) {
-                            suggestions[0].classList.add('active');
-                        } else {
-                            const next = activeSuggestion.nextElementSibling;
-                            if (next) {
-                                activeSuggestion.classList.remove('active');
-                                next.classList.add('active');
-                            }
-                        }
-                    }
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    if (suggestions.length > 0 && activeSuggestion) {
-                        const prev = activeSuggestion.previousElementSibling;
-                        if (prev) {
-                            activeSuggestion.classList.remove('active');
-                            prev.classList.add('active');
-                        } else {
-                            activeSuggestion.classList.remove('active');
-                        }
-                    }
-                } else if (e.key === 'Enter' && activeSuggestion) {
-                    e.preventDefault();
-                    searchInput.value = activeSuggestion.textContent;
-                    suggestionsContainer.style.display = 'none';
-                    // Disparar la búsqueda
-                    const searchHandler = debounce(function() {
-                        const query = searchInput.value;
-                        currentTag = '';
-                        updateActiveTag();
-                        currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
-                        displayResults(currentResultsList);
-                        updatePagination(currentResultsList);
-                        updateURLParams(query, 1);
-                        generateRelatedResults(currentResultsList.results);
-                    }, 200);
-                    searchHandler();
-                }
-            });
-        }
+		// Configurar autocompletado
+		function setupAutocomplete() {
+			const searchInput = document.getElementById('search-input');
+			const suggestionsContainer = document.getElementById('autocomplete-suggestions');
+			
+			// Ocultar sugerencias al hacer clic fuera
+			document.addEventListener('click', function(e) {
+				if (e.target !== searchInput && !suggestionsContainer.contains(e.target)) {
+					suggestionsContainer.style.display = 'none';
+				}
+			});
+			
+			// Manejar teclas en el input de búsqueda
+			searchInput.addEventListener('keydown', function(e) {
+				const suggestions = suggestionsContainer.querySelectorAll('.autocomplete-suggestion');
+				const activeSuggestion = suggestionsContainer.querySelector('.autocomplete-suggestion.active');
+				
+				$('#tags-cloud').scrollIntoView();
 
-        // Mostrar sugerencias de autocompletado
-        function showAutocompleteSuggestions(query) {
-            const suggestionsContainer = document.getElementById('autocomplete-suggestions');
-            suggestionsContainer.innerHTML = '';
-            
-            if (!query || query.length < 2) {
-                suggestionsContainer.style.display = 'none';
-                return;
-            }
-            
-            const normalizedQuery = normalizeText(query);
-            const queryTerms = normalizedQuery.split(/\s+/);
-            
-            // Recolectar sugerencias de títulos, descripciones y etiquetas
-            const suggestionsSet = new Set();
-            
-            allData.forEach(item => {
-                const text = normalizeText(item.title + ' ' + item.description + ' ' + item.tags.join(' '));
-                const textTerms = text.split(/\s+/);
-                
-                if (queryTerms.every(qTerm => text.includes(qTerm) || textTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1))) {
-                    // Añadir el título como sugerencia
-                    suggestionsSet.add(item.title);
-                    
-                    // Añadir palabras de la descripción que coincidan
-                    item.description.split(/\s+/).forEach(word => {
-                        const normalizedWord = normalizeText(word);
-                        if (queryTerms.every(qTerm => normalizedWord.includes(qTerm) || levenshteinDistance(qTerm, normalizedWord) <= 1)) {
-                            suggestionsSet.add(word);
-                        }
-                    });
-                    
-                    // Añadir etiquetas que coincidan
-                    item.tags.forEach(tag => {
-                        const normalizedTag = normalizeText(tag);
-                        if (queryTerms.every(qTerm => normalizedTag.includes(qTerm) || levenshteinDistance(qTerm, normalizedTag) <= 1)) {
-                            suggestionsSet.add(tag);
-                        }
-                    });
-                }
-            });
-            
-            const suggestions = Array.from(suggestionsSet).slice(0, 5); // Limitar a 5 sugerencias
-            
-            if (suggestions.length === 0) {
-                suggestionsContainer.style.display = 'none';
-                return;
-            }
-            
-            suggestions.forEach(suggestion => {
-                const div = document.createElement('div');
-                div.className = 'autocomplete-suggestion';
-                div.textContent = suggestion;
-                div.addEventListener('click', () => {
-                    document.getElementById('search-input').value = suggestion;
-                    suggestionsContainer.style.display = 'none';
-                    // Disparar la búsqueda
-                    const searchHandler = debounce(function() {
-                        const query = document.getElementById('search-input').value;
-                        currentTag = '';
-                        updateActiveTag();
-                        currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
-                        displayResults(currentResultsList);
-                        updatePagination(currentResultsList);
-                        updateURLParams(query, 1);
-                        generateRelatedResults(currentResultsList.results);
-                    }, 200);
-                    searchHandler();
-                });
-                suggestionsContainer.appendChild(div);
-            });
-            
-            suggestionsContainer.style.display = 'block';
-        }
+				if (e.key === 'ArrowDown') {
+					e.preventDefault();
+					if (suggestions.length > 0) {
+						if (!activeSuggestion) {
+							suggestions[0].classList.add('active');
+						} else {
+							const next = activeSuggestion.nextElementSibling;
+							if (next) {
+								activeSuggestion.classList.remove('active');
+								next.classList.add('active');
+							}
+						}
+					}
+				} else if (e.key === 'ArrowUp') {
+					e.preventDefault();
+					if (suggestions.length > 0 && activeSuggestion) {
+						const prev = activeSuggestion.previousElementSibling;
+						if (prev) {
+							activeSuggestion.classList.remove('active');
+							prev.classList.add('active');
+						} else {
+							activeSuggestion.classList.remove('active');
+						}
+					}
+				} else if (e.key === 'Enter' && activeSuggestion) {
+					e.preventDefault();
+					searchInput.value = activeSuggestion.textContent;
+					suggestionsContainer.style.display = 'none';
+					// Disparar la búsqueda
+					const searchHandler = debounce(function() {
+						const query = searchInput.value;
+						currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
+						displayResults(currentResultsList);
+						updatePagination(currentResultsList);
+						updateURLParams(query, 1);
+						generateRelatedResults(currentResultsList.results);
+					}, 200);
+					searchHandler();
+				}
+			});
+		}
 
-        // Generar nube de etiquetas
-        function generateTagsCloud() {
-            const tagsCloud = document.getElementById('tags-cloud');
-            tagsCloud.innerHTML = '';
-            
-            const allTags = new Set();
-            allData.forEach(item => {
-                item.tags.forEach(tag => allTags.add(tag));
-            });
-            
-            allTags.forEach(tag => {
-                const tagElement = document.createElement('div');
-                tagElement.className = 'tag';
-                tagElement.textContent = tag;
-                tagElement.addEventListener('click', () => {
-                    if (currentTag === tag) {
-                        currentTag = '';
-                        updateActiveTag();
-                        const query = document.getElementById('search-input').value;
-                        currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
-                        updateURLParams(query, 1);
-                    } else {
-                        currentTag = tag;
-                        updateActiveTag();
-                        currentResultsList = filterByTag(tag, allData, resultsPerPage, 1);
-                        updateURLParams('', 1, tag);
-                    }
-                    displayResults(currentResultsList);
-                    updatePagination(currentResultsList);
-                    generateRelatedResults(currentResultsList.results);
-                });
-                tagsCloud.appendChild(tagElement);
-            });
-        }
+		// Mostrar sugerencias de autocompletado
+		function showAutocompleteSuggestions(query) {
+			const suggestionsContainer = document.getElementById('autocomplete-suggestions');
+			suggestionsContainer.innerHTML = '';
+			
+			if (!query || query.length < 2) {
+				suggestionsContainer.style.display = 'none';
+				return;
+			}
+			
+			const normalizedQuery = normalizeText(query);
+			const queryTerms = normalizedQuery.split(/\s+/);
+			
+			// Recolectar sugerencias de títulos, descripciones y etiquetas
+			const suggestionsSet = new Set();
+			
+			allData.forEach(item => {
+				const text = normalizeText(item.title + ' ' + item.description + ' ' + item.tags.join(' '));
+				const textTerms = text.split(/\s+/);
+				
+				if (queryTerms.every(qTerm => text.includes(qTerm) || textTerms.some(tTerm => levenshteinDistance(qTerm, tTerm) <= 1))) {
+					// Añadir el título como sugerencia
+					suggestionsSet.add(item.title);
+					
+					// Añadir palabras de la descripción que coincidan
+					item.description.split(/\s+/).forEach(word => {
+						const normalizedWord = normalizeText(word);
+						if (queryTerms.every(qTerm => normalizedWord.includes(qTerm) || levenshteinDistance(qTerm, normalizedWord) <= 1)) {
+							suggestionsSet.add(word);
+						}
+					});
+					
+					// Añadir etiquetas que coincidan
+					item.tags.forEach(tag => {
+						const normalizedTag = normalizeText(tag);
+						if (queryTerms.every(qTerm => normalizedTag.includes(qTerm) || levenshteinDistance(qTerm, normalizedTag) <= 1)) {
+							suggestionsSet.add(tag);
+						}
+					});
+				}
+			});
+			
+			const suggestions = Array.from(suggestionsSet).slice(0, 5); // Limitar a 5 sugerencias
+			
+			if (suggestions.length === 0) {
+				suggestionsContainer.style.display = 'none';
+				return;
+			}
+			
+			suggestions.forEach(suggestion => {
+				const div = document.createElement('div');
+				div.className = 'autocomplete-suggestion';
+				div.textContent = suggestion;
+				div.addEventListener('click', () => {
+					document.getElementById('search-input').value = suggestion;
+					suggestionsContainer.style.display = 'none';
+					// Disparar la búsqueda
+					const searchHandler = debounce(function() {
+						const query = document.getElementById('search-input').value;
+						currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
+						displayResults(currentResultsList);
+						updatePagination(currentResultsList);
+						updateURLParams(query, 1);
+						generateRelatedResults(currentResultsList.results);
+					}, 200);
+					searchHandler();
+				});
+				suggestionsContainer.appendChild(div);
+			});
+			
+			suggestionsContainer.style.display = 'block';
+		}
 
-        // Actualizar etiqueta activa
-        function updateActiveTag() {
-            document.querySelectorAll('.tag').forEach(tag => {
-                if (tag.textContent === currentTag) {
-                    tag.classList.add('active-search-tag');
-                } else {
-                    tag.classList.remove('active-search-tag');
-                }
-            });
-        }
+		// Generar nube de etiquetas
+		function generateTagsCloud() {
+			const tagsCloud = document.getElementById('tags-cloud');
+			tagsCloud.innerHTML = '';
+			
+			const allTags = new Set();
+			allData.forEach(item => {
+				item.tags.forEach(tag => allTags.add(tag));
+			});
+			
+			allTags.forEach(tag => {
+				const tagElement = document.createElement('div');
+				tagElement.className = 'tag';
+				tagElement.textContent = tag;
+				tagElement.addEventListener('click', () => {
+					if (currentTag === tag) {
+						currentTag = '';
+						updateActiveTag();
+						const query = document.getElementById('search-input').value;
+						currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
+						updateURLParams(query, 1);
+					} else {
+						currentTag = tag;
+						updateActiveTag();
+						currentResultsList = filterByTag(tag, allData, resultsPerPage, 1);
+						updateURLParams('', 1, tag);
+					}
+					displayResults(currentResultsList);
+					updatePagination(currentResultsList);
+					generateRelatedResults(currentResultsList.results);
+				});
+				tagsCloud.appendChild(tagElement);
+			});
+		}
 
-        // Mostrar resultados
-        function displayResults(results) {
-            const resultsContainer = document.getElementById('results-container');
-            const resultsInfo = document.getElementById('results-info');
-            const favoritesContainer = document.getElementById('favorites-container');
-            const favoritesResults = document.getElementById('favorites-results');
-            
-            // Mostrar u ocultar sección de favoritos
-            const favorites = getFavorites();
-            const favoriteItems = allData.filter(item => favorites.includes(item.id));
-            
-            if (favoriteItems.length > 0) {
-                favoritesContainer.style.display = 'block';
-                favoritesResults.innerHTML = '';
-                
-                favoriteItems.forEach(item => {
-                    const card = createResultCard(item);
-                    favoritesResults.appendChild(card);
-                });
-            } else {
-                favoritesContainer.style.display = 'none';
-            }
-            
-            if (results.results.length === 0) {
-                resultsContainer.innerHTML = '<div class="no-results">No se encontraron resultados</div>';
-                resultsInfo.textContent = '0 resultados encontrados';
-                return;
-            }
-            
-            let infoText = `${results.total} resultado${results.total !== 1 ? 's' : ''} encontrado${results.total !== 1 ? 's' : ''}`;
-            if (currentTag) {
-                infoText += ` para la etiqueta "${currentTag}"`;
-            }
-            resultsInfo.textContent = infoText;
-            
-            resultsContainer.innerHTML = '';
-            results.results.forEach(item => {
-                if (!favorites.includes(item.id)) {
-                    const card = createResultCard(item);
-                    resultsContainer.appendChild(card);
-                }
-            });
-            
-            if (resultsContainer.innerHTML === '' && results.total > 0) {
-                resultsContainer.innerHTML = '<div class="no-results">Todos los resultados están en tus favoritos</div>';
-            }
-        }
+		// Actualizar etiqueta activa
+		function updateActiveTag() {
+			document.querySelectorAll('.tag').forEach(tag => {
+				if (tag.textContent === currentTag) {
+					tag.classList.add('active-search-tag');
+				} else {
+					tag.classList.remove('active-search-tag');
+				}
+			});
+		}
 
-        // Crear tarjeta de resultado
-        function createResultCard(item) {
-            const isFav = isFavorite(item.id);
-            
-            const card = document.createElement('div');
-            card.className = 'result-card';
-            card.innerHTML = `
-                <a href="mods/${item.id}.html" class="result-link">
-                    <div class="result-content">
-                        <div class="result-id">${item.id}</div>
-                        <div class="result-title">${item.title} ${isFav ? '<span class="favorite-badge">Favorito</span>' : ''}</div>
-                        <div class="result-version">Versión: ${item.version}</div>
-                        <div class="result-description">${item.description}</div>
-                        <div class="result-tags">
-                            ${item.tags.map(tag => `<span class="result-tag" data-tag="${tag}">${tag}</span>`).join('')}
-                        </div>
-                    </div>
-                </a>
-                <button class="favorite-btn ${isFav ? 'active' : ''}" onclick="toggleFavoriteHandler('${item.id}', event)">★</button>
-            `;
-            
-            card.querySelectorAll('.result-tag').forEach(tagElement => {
-                tagElement.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const tag = tagElement.getAttribute('data-tag');
-                    
-                    if (currentTag === tag) {
-                        currentTag = '';
-                        updateActiveTag();
-                        const query = document.getElementById('search-input').value;
-                        currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
-                        updateURLParams(query, 1);
-                    } else {
-                        currentTag = tag;
-                        updateActiveTag();
-                        currentResultsList = filterByTag(tag, allData, resultsPerPage, 1);
-                        updateURLParams('', 1, tag);
-                    }
-                    displayResults(currentResultsList);
-                    updatePagination(currentResultsList);
-                    generateRelatedResults(currentResultsList.results);
-                });
-            });
-            
-            card.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('favorite-btn') && !e.target.classList.contains('result-tag')) {
-                    incrementClickCount(item.id);
-                }
-            });
-            
-            return card;
-        }
+		// Mostrar resultados
+		function displayResults(results) {
+			const resultsContainer = document.getElementById('results-container');
+			const resultsInfo = document.getElementById('results-info');
+			const favoritesContainer = document.getElementById('favorites-container');
+			const favoritesResults = document.getElementById('favorites-results');
+			
+			// Mostrar u ocultar sección de favoritos
+			const favorites = getFavorites();
+			const favoriteItems = allData.filter(item => favorites.includes(item.id));
+			
+			if (favoriteItems.length > 0) {
+				favoritesContainer.style.display = 'block';
+				favoritesResults.innerHTML = '';
+				
+				favoriteItems.forEach(item => {
+					const card = createResultCard(item);
+					favoritesResults.appendChild(card);
+				});
+			} else {
+				favoritesContainer.style.display = 'none';
+			}
+			
+			if (results.results.length === 0) {
+				resultsContainer.innerHTML = '<div class="no-results">No se encontraron resultados</div>';
+				resultsInfo.textContent = '0 resultados encontrados';
+				return;
+			}
+			
+			let infoText = `${results.total} resultado${results.total !== 1 ? 's' : ''} encontrado${results.total !== 1 ? 's' : ''}`;
+			if (currentTag) {
+				infoText += ` para la etiqueta "${currentTag}"`;
+			}
+			resultsInfo.textContent = infoText;
+			
+			resultsContainer.innerHTML = '';
+			results.results.forEach(item => {
+				if (!favorites.includes(item.id)) {
+					const card = createResultCard(item);
+					resultsContainer.appendChild(card);
+				}
+			});
+			
+			if (resultsContainer.innerHTML === '' && results.total > 0) {
+				resultsContainer.innerHTML = '<div class="no-results">Todos los resultados están en tus favoritos</div>';
+			}
+		}
 
-        // Manejador para toggle de favoritos
-        function toggleFavoriteHandler(itemId, event) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            const isNowFavorite = toggleFavorite(itemId);
-            const btn = event.target;
-            const card = btn.parentElement;
-            
-            if (isNowFavorite) {
-                btn.classList.add('active');
-                const titleElement = card.querySelector('.result-title');
-                if (!titleElement.innerHTML.includes('favorite-badge')) {
-                    titleElement.innerHTML += ' <span class="favorite-badge">Favorito</span>';
-                }
-            } else {
-                btn.classList.remove('active');
-                const titleElement = card.querySelector('.result-title');
-                titleElement.innerHTML = titleElement.innerHTML.replace('<span class="favorite-badge">Favorito</span>', '');
-            }
-            
-            refreshSearch();
-        }
+		// Crear tarjeta de resultado
+		function createResultCard(item) {
+			const isFav = isFavorite(item.id);
+			
+			const card = document.createElement('div');
+			card.className = 'result-card';
+			card.innerHTML = `
+				<a href="mods/${item.id}.html" class="result-link">
+					<div class="result-content">
+						<div class="result-id">${item.id}</div>
+						<div class="result-title">${item.title} ${isFav ? '<span class="favorite-badge">Favorito</span>' : ''}</div>
+						<div class="result-version">Versión: ${item.version}</div>
+						<div class="result-description">${item.description}</div>
+						<div class="result-tags">
+							${item.tags.map(tag => `<span class="result-tag" data-tag="${tag}">${tag}</span>`).join('')}
+						</div>
+					</div>
+				</a>
+				<button class="favorite-btn ${isFav ? 'active' : ''}" onclick="toggleFavoriteHandler('${item.id}', event)">★</button>
+			`;
+			
+			card.querySelectorAll('.result-tag').forEach(tagElement => {
+				tagElement.addEventListener('click', (e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					const tag = tagElement.getAttribute('data-tag');
+					
+					if (currentTag === tag) {
+						currentTag = '';
+						updateActiveTag();
+						const query = document.getElementById('search-input').value;
+						currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
+						updateURLParams(query, 1);
+					} else {
+						currentTag = tag;
+						updateActiveTag();
+						currentResultsList = filterByTag(tag, allData, resultsPerPage, 1);
+						updateURLParams('', 1, tag);
+					}
+					displayResults(currentResultsList);
+					updatePagination(currentResultsList);
+					generateRelatedResults(currentResultsList.results);
+				});
+			});
+			
+			card.addEventListener('click', (e) => {
+				if (!e.target.classList.contains('favorite-btn') && !e.target.classList.contains('result-tag')) {
+					incrementClickCount(item.id);
+				}
+			});
+			
+			return card;
+		}
 
-        // Refrescar la búsqueda actual
-        function refreshSearch() {
-            const query = document.getElementById('search-input').value;
-            if (currentTag) {
-                currentResultsList = filterByTag(currentTag, allData, resultsPerPage, currentResultsList.page);
-            } else {
-                currentResultsList = searchSmart(query, allData, resultsPerPage, currentResultsList.page);
-            }
-            displayResults(currentResultsList);
-            updatePagination(currentResultsList);
-            generateRelatedResults(currentResultsList.results);
-            updateURLParams(query, currentResultsList.page, currentTag);
-        }
+		// Manejador para toggle de favoritos
+		function toggleFavoriteHandler(itemId, event) {
+			event.preventDefault();
+			event.stopPropagation();
+			
+			const isNowFavorite = toggleFavorite(itemId);
+			const btn = event.target;
+			const card = btn.parentElement;
+			
+			if (isNowFavorite) {
+				btn.classList.add('active');
+				const titleElement = card.querySelector('.result-title');
+				if (!titleElement.innerHTML.includes('favorite-badge')) {
+					titleElement.innerHTML += ' <span class="favorite-badge">Favorito</span>';
+				}
+			} else {
+				btn.classList.remove('active');
+				const titleElement = card.querySelector('.result-title');
+				titleElement.innerHTML = titleElement.innerHTML.replace('<span class="favorite-badge">Favorito</span>', '');
+			}
+			
+			refreshSearch();
+		}
 
-        // Actualizar paginación
-        function updatePagination(results) {
-            const paginationTop = document.getElementById('pagination-top');
-            const paginationBottom = document.getElementById('pagination-bottom');
-            
-            if (results.totalPages <= 1) {
-                paginationTop.innerHTML = '';
-                paginationBottom.innerHTML = '';
-                return;
-            }
-            
-            let paginationHTML = '';
-            const currentPage = results.page;
-            const totalPages = results.totalPages;
-            
-            paginationHTML += `<button class="page-btn" onclick="changePage(1)" ${currentPage === 1 ? 'disabled' : ''}>&lt;&lt;</button>`;
-            paginationHTML += `<button class="page-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>&lt;</button>`;
-            
-            let startPage = Math.max(1, currentPage - 1);
-            let endPage = Math.min(totalPages, currentPage + 1);
-            
-            if (currentPage <= 2) {
-                endPage = Math.min(totalPages, 3);
-            }
-            
-            if (currentPage >= totalPages - 1) {
-                startPage = Math.max(1, totalPages - 2);
-            }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                if (i === currentPage) {
-                    paginationHTML += `<button class="page-btn current-page" onclick="handlePageInput(${i})">${i}</button>`;
-                } else {
-                    paginationHTML += `<button class="page-btn" onclick="changePage(${i})">${i}</button>`;
-                }
-            }
-            
-            paginationHTML += `<button class="page-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>&gt;</button>`;
-            paginationHTML += `<button class="page-btn" onclick="changePage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>&gt;&gt;</button>`;
-            
-            paginationTop.innerHTML = paginationHTML;
-            paginationBottom.innerHTML = paginationHTML;
-        }
+		// Refrescar la búsqueda actual
+		function refreshSearch() {
+			const query = document.getElementById('search-input').value;
+			if (currentTag) {
+				currentResultsList = filterByTag(currentTag, allData, resultsPerPage, currentResultsList.page);
+			} else {
+				currentResultsList = searchSmart(query, allData, resultsPerPage, currentResultsList.page);
+			}
+			displayResults(currentResultsList);
+			updatePagination(currentResultsList);
+			generateRelatedResults(currentResultsList.results);
+			updateURLParams(query, currentResultsList.page, currentTag);
+		}
 
-        // Cambiar página
-        function changePage(page) {
-            if (page < 1 || page > currentResultsList.totalPages) return;
-            
-            const query = document.getElementById('search-input').value;
-            if (currentTag) {
-                currentResultsList = filterByTag(currentTag, allData, resultsPerPage, page);
-            } else {
-                currentResultsList = searchSmart(query, allData, resultsPerPage, page);
-            }
-            
-            displayResults(currentResultsList);
-            updatePagination(currentResultsList);
-            updateURLParams(query, page, currentTag);
-            generateRelatedResults(currentResultsList.results);
-            
-            // Scroll suave al campo de búsqueda
-            document.getElementById('tags-cloud').scrollIntoView();
-        }
+		// Actualizar paginación
+		function updatePagination(results) {
+			const paginationTop = document.getElementById('pagination-top');
+			const paginationBottom = document.getElementById('pagination-bottom');
+			
+			if (results.totalPages <= 1) {
+				paginationTop.innerHTML = '';
+				paginationBottom.innerHTML = '';
+				return;
+			}
+			
+			let paginationHTML = '';
+			const currentPage = results.page;
+			const totalPages = results.totalPages;
+			
+			paginationHTML += `<button class="page-btn" onclick="changePage(1)" ${currentPage === 1 ? 'disabled' : ''}>◀◀</button>`;
+			paginationHTML += `<button class="page-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>◀</button>`;
+			
+			let startPage = Math.max(1, currentPage - 1);
+			let endPage = Math.min(totalPages, currentPage + 1);
+			
+			if (currentPage <= 2) {
+				endPage = Math.min(totalPages, 3);
+			}
+			
+			if (currentPage >= totalPages - 1) {
+				startPage = Math.max(1, totalPages - 2);
+			}
+			
+			for (let i = startPage; i <= endPage; i++) {
+				if (i === currentPage) {
+					paginationHTML += `<button class="page-btn current-page" onclick="handlePageInput(${i})">${i}</button>`;
+				} else {
+					paginationHTML += `<button class="page-btn" onclick="changePage(${i})">${i}</button>`;
+				}
+			}
+			
+			paginationHTML += `<button class="page-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>▶</button>`;
+			paginationHTML += `<button class="page-btn" onclick="changePage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>▶▶</button>`;
+			
+			paginationTop.innerHTML = paginationHTML;
+			paginationBottom.innerHTML = paginationHTML;
+		}
 
-        // Manejar input de página
-        function handlePageInput(page) {
-            const button = event.target;
-            button.innerHTML = `<input type="number" value="${page}" min="1" max="${currentResultsList.totalPages}" onblur="submitPageInput(this)">`;
-            const input = button.querySelector('input');
-            input.focus();
-            input.select();
-            
-            input.addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') {
-                    input.blur();
-                }
-            });
-        }
+		// Cambiar página
+		function changePage(page) {
+			if (page < 1 || page > currentResultsList.totalPages) return;
+			
+			const query = document.getElementById('search-input').value;
+			if (currentTag) {
+				currentResultsList = filterByTag(currentTag, allData, resultsPerPage, page);
+			} else {
+				currentResultsList = searchSmart(query, allData, resultsPerPage, page);
+			}
+			
+			displayResults(currentResultsList);
+			updatePagination(currentResultsList);
+			updateURLParams(query, page, currentTag);
+			generateRelatedResults(currentResultsList.results);
+			
+			// Scroll suave al campo de búsqueda
+			document.getElementById('tags-cloud').scrollIntoView();
+		}
 
-        // Enviar input de página
-        function submitPageInput(input) {
-            const page = parseInt(input.value);
-            if (!isNaN(page) && page >= 1 && page <= currentResultsList.totalPages) {
-                changePage(page);
-            } else {
-                updatePagination(currentResultsList);
-            }
-        }
+		// Manejar input de página
+		function handlePageInput(page) {
+			const button = event.target;
+			button.innerHTML = `<input type="number" value="${page}" min="1" max="${currentResultsList.totalPages}" onblur="submitPageInput(this)">`;
+			const input = button.querySelector('input');
+			input.focus();
+			input.select();
+			
+			input.addEventListener('keyup', function(e) {
+				if (e.key === 'Enter') {
+					input.blur();
+				}
+			});
+		}
 
-        // Actualizar parámetros URL
-        function updateURLParams(query, page, tag = '') {
-            const url = new URL(window.location);
-            if (query) {
-                url.searchParams.set('search', query);
-            } else {
-                url.searchParams.delete('search');
-            }
-            
-            if (page && page > 1) {
-                url.searchParams.set('page', page);
-            } else {
-                url.searchParams.delete('page');
-            }
-            
-            if (tag) {
-                url.searchParams.set('tag', tag);
-            } else {
-                url.searchParams.delete('tag');
-            }
-            
-            const sortOrder = document.getElementById('sort-order').value;
-            if (sortOrder !== 'default') {
-                url.searchParams.set('sort', sortOrder);
-            } else {
-                url.searchParams.delete('sort');
-            }
-            
-            if (window.isReversed) {
-                url.searchParams.set('reverse', 'true');
-            } else {
-                url.searchParams.delete('reverse');
-            }
-            
-            window.history.replaceState({}, '', url);
-        }
+		// Enviar input de página
+		function submitPageInput(input) {
+			const page = parseInt(input.value);
+			if (!isNaN(page) && page >= 1 && page <= currentResultsList.totalPages) {
+				changePage(page);
+			} else {
+				updatePagination(currentResultsList);
+			}
+		}
 
-        // Comprobar parámetros URL al cargar
-        function checkURLParams() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const searchParam = urlParams.get('search');
-            const pageParam = urlParams.get('page');
-            const tagParam = urlParams.get('tag');
-            const sortParam = urlParams.get('sort');
-            const reverseParam = urlParams.get('reverse');
-            
-            if (searchParam) {
-                document.getElementById('search-input').value = searchParam;
-            }
-            
-            if (tagParam) {
-                currentTag = tagParam;
-                updateActiveTag();
-            }
-            
-            if (sortParam) {
-                document.getElementById('sort-order').value = sortParam;
-            }
-            
-            if (reverseParam === 'true') {
-                window.isReversed = true;
-                document.getElementById('reverse-order').classList.add('active');
-            }
-            
-            const query = searchParam || '';
-            if (tagParam) {
-                currentResultsList = filterByTag(tagParam, allData, resultsPerPage, 1);
-            } else {
-                currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
-            }
-            displayResults(currentResultsList);
-            updatePagination(currentResultsList);
-            generateRelatedResults(currentResultsList.results);
-            
-            if (pageParam) {
-                setTimeout(() => changePage(parseInt(pageParam)), 100);
-            }
-        }
+		// Actualizar parámetros URL
+		function updateURLParams(query, page, tag = '') {
+			const url = new URL(window.location);
+			if (query) {
+				url.searchParams.set('search', query);
+			} else {
+				url.searchParams.delete('search');
+			}
+			
+			if (page && page > 1) {
+				url.searchParams.set('page', page);
+			} else {
+				url.searchParams.delete('page');
+			}
+			
+			if (tag) {
+				url.searchParams.set('tag', tag);
+			} else {
+				url.searchParams.delete('tag');
+			}
+			
+			const sortOrder = document.getElementById('sort-order').value;
+			if (sortOrder !== 'default') {
+				url.searchParams.set('sort', sortOrder);
+			} else {
+				url.searchParams.delete('sort');
+			}
+			
+			if (window.isReversed) {
+				url.searchParams.set('reverse', 'true');
+			} else {
+				url.searchParams.delete('reverse');
+			}
+			
+			window.history.replaceState({}, '', url);
+		}
 
-        // Hacer funciones globales para los eventos onclick
-        window.changePage = changePage;
-        window.handlePageInput = handlePageInput;
-        window.submitPageInput = submitPageInput;
-        window.toggleFavoriteHandler = toggleFavoriteHandler;
-    </script>
+		// Comprobar parámetros URL al cargar
+		function checkURLParams() {
+			const urlParams = new URLSearchParams(window.location.search);
+			const searchParam = urlParams.get('search');
+			const pageParam = urlParams.get('page');
+			const tagParam = urlParams.get('tag');
+			const sortParam = urlParams.get('sort');
+			const reverseParam = urlParams.get('reverse');
+			
+			if (searchParam) {
+				document.getElementById('search-input').value = searchParam;
+			}
+			
+			if (tagParam) {
+				currentTag = tagParam;
+				updateActiveTag();
+			}
+			
+			if (sortParam) {
+				document.getElementById('sort-order').value = sortParam;
+			}
+			
+			if (reverseParam === 'true') {
+				window.isReversed = true;
+				document.getElementById('reverse-order').classList.add('active');
+			}
+			
+			const query = searchParam || '';
+			if (tagParam) {
+				currentResultsList = filterByTag(tagParam, allData, resultsPerPage, 1);
+			} else {
+				currentResultsList = searchSmart(query, allData, resultsPerPage, 1);
+			}
+			displayResults(currentResultsList);
+			updatePagination(currentResultsList);
+			generateRelatedResults(currentResultsList.results);
+			
+			if (pageParam) {
+				setTimeout(() => changePage(parseInt(pageParam)), 100);
+			}
+		}
+
+		// Hacer funciones globales para los eventos onclick
+		window.changePage = changePage;
+		window.handlePageInput = handlePageInput;
+		window.submitPageInput = submitPageInput;
+		window.toggleFavoriteHandler = toggleFavoriteHandler;
+	</script>
 </body>
 </html>
