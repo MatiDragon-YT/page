@@ -250,7 +250,7 @@ function ModeLight(){
 			background: #fff!important;
 			color: #0d1117!important;
 		}
-		::-webkit-scrollbar { width: 1rem;}
+		::-webkit-scrollbar {  }
 		::-webkit-scrollbar-track { background: #ddd }
 		::-webkit-scrollbar-thumb { background: #aaa; border: 1px #ddd solid; }
 		::-webkit-scrollbar-corner {background: #ddd}

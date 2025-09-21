@@ -365,11 +365,11 @@ input[type='text'], input[type='search'], input[type='number'] {
 	&.update {
 		&:hover {
 			border-bottom: #30363d solid 1px;
-	}
-	&.update {
+		}
 		&:focus {
-		border-bottom: #00a2e8 solid 1px;
-		box-shadow: #36b3ff57 0px 3px 5px -1px;
+			border-bottom: #dae800 solid 1px;
+			box-shadow: #e6ff3657 0px 3px 5px -1px;
+		}
 	}
 }
 
@@ -420,7 +420,7 @@ input[type='checkbox']{
 	.markdown { max-width: 87.7% }
 }
 @media (min-width:768px) {
-	::-webkit-scrollbar { width: 1rem;}
+	
 }
 @media (min-width:992px) {
 }
@@ -496,8 +496,8 @@ input[type='checkbox']{
 }
 
 #CHANGE {
-	background: none;
-	border: none;
+	background: none!important;
+	border: none!important;
 	cursor: pointer;
     max-height: 48px;
 }
