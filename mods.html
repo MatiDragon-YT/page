@@ -214,7 +214,7 @@
 			font-size: 18px;
 			font-weight: bold;
 			margin-bottom: 10px;
-			color: #2c3e50;
+			color: #b9b1bf;
 		}
 		
 		.result-description {
@@ -225,7 +225,7 @@
 		
 		.result-version {
 			font-size: 12px;
-			color: #00000052;
+			color: #FFFFFF52;
 			margin-bottom: 10px;
 		}
 		
@@ -237,8 +237,7 @@
 		}
 		
 		.result-tag {
-			background: #e7f4ff;
-			color: #00000052;
+			color: #ffeb3b;
 			padding: 3px 8px;
 			border-radius: 15px;
 			font-size: 12px;
@@ -248,7 +247,6 @@
 		
 		.result-tag:hover {
 			background: #00000052;
-			color: white;
 		}
 		
 		.favorite-btn {
@@ -259,13 +257,16 @@
 			border: none;
 			font-size: 20px;
 			cursor: pointer;
-			color: #ddd;
+			color: #bbb;
 			transition: color 0.3s;
 			z-index: 10;
+			&:hover {
+				color: #ffeb3b77;
+			}
 		}
 		
 		.favorite-btn.active {
-			color: #f1c40f;
+			color: #ffeb3b;
 		}
 		
 		.pagination {
@@ -342,7 +343,7 @@
 		}
 		
 		.result-link {
-			text-decoration: none;
+			text-decoration: none!important;
 			color: inherit;
 			display: block;
 			height: 100%;
@@ -521,10 +522,10 @@
 	<script>
 		// Base de datos
 		const DATA_BASE = 
+//p|Variable cars     |1.2|   Mas variedad de vehiculos en gameplay! sin necesidad de instalar skins, con el cleo es sufis...
+//o|DYOS 2            |2.0.1| Una distribución que agrega una cantidad significantes de cambios, caracteristicas nuevas y ...
 `
-p|Variable cars     |1.2|   Mas variedad de vehiculos en gameplay! sin necesidad de instalar skins, con el cleo es sufis...
 g|Resaltar codigo   |1.2|   Extención visual para Sublime Text 4 que nos permitira resaltar codigo de Sanny Builder 3.8,...
-o|DYOS 2            |2.0.1| Una distribución que agrega una cantidad significantes de cambios, caracteristicas nuevas y ...
 n|DYOS 1            |1.5.1| Alternativa a DYOM para Android y PC, para crear contenido de entretinimiento, facil y rapid...
 m|Velocimeter       |1.0|   Simple y elegante, un velocimetro 2.5D que se adapta al gameplay, dando un efecto de inmerci...
 l|Aquatic Sanchez   |1.0|   Cruza rios, lagos e incluso oceanos en tu motocross como moto acuatica, al estilo papu maste...

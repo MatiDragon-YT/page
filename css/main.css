@@ -296,7 +296,7 @@ a, a *{
 	font-weight: 500;
 }
 a:hover, a:focus {
-	text-decoration: underline
+	text-decoration: none
 }
 a.button, label.button {
     background: var(--c-blue);
