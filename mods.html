@@ -11,8 +11,11 @@
 	<link rel="stylesheet" type="text/css" href="./css/main.css">
 	<style>
 		@view-transition {
-  navigation: auto;
-}
+			navigation: auto;
+		}
+		input {
+			background: #1a00199c!important;
+		}
 		#nav {
 			background: #1a00199c;
 		}
@@ -437,8 +440,7 @@
 			top: 100%;
 			left: 0;
 			right: 0;
-			background: #00000052;
-			border: 1px solid #ddd;
+			background: #1a031cf0;
 			border-radius: 0 0 5px 5px;
 			box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 			max-height: 200px;
@@ -451,12 +453,12 @@
 			padding: 10px;
 			cursor: pointer;
 			&.active {
-				background: red;
+				background: #f0f0f022;
 			}
 		}
 
 		.autocomplete-suggestion:hover {
-			background-color: #f0f0f0;
+			background-color: #f0f0f022;
 		}
 
 		@media (max-width: 768px) {
