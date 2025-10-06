@@ -47,11 +47,13 @@
 html {
 	font-family: sans-serif;
 	line-height: 1.15;
-	background: var(--bg);
+	background: linear-gradient(135deg, #1e0229, #6b0069);
+	min-height: 100vh;
 	color: var(--co);
 	scroll-behavior: smooth;
 	transition: background 0.24s;
 	transition-timing-function: ease-out;
+	overflow-y: scroll;
 }
 
 body {
@@ -87,7 +89,7 @@ body {
 ::-webkit-resizer               
 */
 #navbar {
-	background: #161b22;
+	background: #3209359c;
 	color: #fff;
 	font-weight: 700;
 	overflow: hidden;
@@ -96,9 +98,9 @@ body {
 	padding: 9px 33px;
 	border-bottom: none;
 	margin-bottom: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 }
 
 #navbar h1 a{
@@ -119,10 +121,10 @@ body {
 }
 
 #nav {
-  justify-content: space-between;
-  align-items: center;
+	justify-content: space-between;
+	align-items: center;
 	padding: 0 33px;
-	background: #11161c;
+	background: #1a00199c;
 
 	& section {
 		gap: .7em;
@@ -134,7 +136,7 @@ body {
 			transition: all .2s;
 			height: 2.5rem;
 			justify-content: center;
-	outline: none;
+			outline: none;
 
 			&:hover, &:focus {
 				text-decoration: none;
@@ -143,9 +145,9 @@ body {
 				transform: translate(0px, -2px);
 			}
 
-			&:hover::before, &:focus::before {
-		    width: 100%;
-		    height: 2px;
+			&:hover::before {
+				width: 100%;
+				height: 2px;
 			}
 
 			&::before {
@@ -232,7 +234,7 @@ h6, .h6, .h6\* * { font-size: 1rem }
 
 hr {
 	border: 0;
-	border-bottom: solid #30363d 1px;
+	border-bottom: solid #999814 1px;
 	margin: 15px 0;
 }
 
@@ -356,9 +358,9 @@ input[type='text'], input[type='search'], input[type='number'], textarea {
 	border: none;
 	outline: none;
 	font-size: 1em;
-	background: #161b22;
+	background: #1a00199c;
 	color: var(--co);
-  padding: 0.4em 0.6em;
+	padding: 0.4em 0.6em;
 	border-bottom: #0000 solid 1px;
 	transition: .2s;
 }

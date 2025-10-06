@@ -1,8 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" style="
-	background: linear-gradient(135deg, #1e0229, #6b0069);
-	min-height: 100vh;
-">
+<html lang="es">
 <head>
 	<title>Mods</title>
 	<meta charset="utf-8">
@@ -13,15 +10,7 @@
 		@view-transition {
 			navigation: auto;
 		}
-		input {
-			background: #1a00199c!important;
-		}
-		#nav {
-			background: #1a00199c;
-		}
-		#navbar {
-			background: #3209359c;
-		}
+
 		.container {
 			max-width: 1400px;
 			margin: 0 auto;
@@ -42,7 +31,6 @@
 			justify-content: center;
 			position: relative;
 		}
-		
 		
 		.controls {
 			display: flex;
@@ -198,6 +186,22 @@
 
 			transition: all .3s;
 			border: 1px solid #00000000;
+
+			&:hover {
+				transform: translateY(-5px) scale(1.01);
+				border: 1px solid #ffeb3b;
+				box-shadow: 0 3px 21px 6px rgba(0, 0, 0, 0.3);
+				
+				& .img-background {
+					filter: blur(5px) brightness(0.8);
+					clip-path:  polygon(100% 0, 100% 0, 100% 0, 100% 0, 0 100%, 0 100%, 0 100%, 0 100%);
+
+					&::after {
+						opacity: '1';
+						background: none;
+					}
+				}
+			}
 		}
 		
 		.img-background {
@@ -224,21 +228,6 @@
 				background: linear-gradient(0deg, transparent 0%, transparent 70%);
 				opacity: 1;
 				transition: all .3s;
-			}
-		}
-
-		.result-card:hover {
-			transform: translateY(-5px) scale(1.01);
-			border: 1px solid #ffeb3b;
-			
-			& .img-background {
-				filter: blur(5px) brightness(0.8);
-				clip-path:  polygon(100% 0, 100% 0, 100% 0, 100% 0, 0 100%, 0 100%, 0 100%, 0 100%);
-
-				&::after {
-					opacity: '1';
-					background: none;
-				}
 			}
 		}
 		
@@ -543,10 +532,6 @@
 			<div id="pagination-top" class="pagination"></div>
 		</div>
 
-		<div id="favorites-container" class="favorites-section" style="display: none;">
-			<h2 class="section-title">Favoritos</h2>
-			<div class="results-container" id="favorites-results"></div>
-		</div>
 		<div id="results-container" class="results-container">
 			<div class="loading">Cargando...</div>
 		</div>
@@ -569,7 +554,8 @@
 //p|Variable cars     |1.2|   Mas variedad de vehiculos en gameplay! sin necesidad de instalar skins, con el cleo es sufis...
 //o|DYOS 2            |2.0.1| Una distribución que agrega una cantidad significantes de cambios, caracteristicas nuevas y ...
 `
-g|Resaltar codigo   |1.2|   Extención visual para Sublime Text 4 que nos permitira resaltar codigo de Sanny Builder 3.8,...
+p|DYOS 3            |3.0.0-alpha.1| Alternativa a DYOM para Android y PC, para crear contenido de entretinimiento, facil y rapid...
+o|DYOS 2            |2.0.1| Alternativa a DYOM para Android y PC, para crear contenido de entretinimiento, facil y rapid...
 n|DYOS 1            |1.5.1| Alternativa a DYOM para Android y PC, para crear contenido de entretinimiento, facil y rapid...
 m|Velocimeter       |1.0|   Simple y elegante, un velocimetro 2.5D que se adapta al gameplay, dando un efecto de inmerci...
 l|Aquatic Sanchez   |1.0|   Cruza rios, lagos e incluso oceanos en tu motocross como moto acuatica, al estilo papu maste...
@@ -577,6 +563,7 @@ k|Stay On The Bike  |1.0|   Adelante! agarra tu bici o tu moto y ponte a hacer p
 j|Turn In Air       |1.0|   Enciende tu moto y comienza a hacer giros y maniobras increibles mientras te suspendes en el...
 i|Saltar en Moto    |1.0|   Salta a los techos de los autos de policias con este magnifico mod, que se adapta a sus cont...
 h|Doc. Oficial      |1.4|   Ademas de mejoras de optimizacion para los colaboradores y los usuarios, esta trae herramien...
+g|Resaltar codigo   |1.2|   Extención visual para Sublime Text 4 que nos permitira resaltar codigo de Sanny Builder 3.8,...
 f|Teleports         |1.0|   Viaje a cualquier parte del mundo y dele retorno al viaje cuando lo desees con un unico boto...
 e|Car Controller    |1.1|   Como Zeti's Car Control pero con algo más de control, y creado con sintaxis de alto nivel, p...
 d|SCMTool           |1.9|   Este es un pequeño paquete que recopila mis modificasiones para SB3, agregando 1 documentaci...
@@ -1316,24 +1303,11 @@ a|Sultan con Rampa  |1.4|   Inspirado en Rapido y Furioso 6. Este mod nos permit
 		function displayResults(results) {
 			const resultsContainer = document.getElementById('results-container');
 			const resultsInfo = document.getElementById('results-info');
-			const favoritesContainer = document.getElementById('favorites-container');
-			const favoritesResults = document.getElementById('favorites-results');
 			
 			// Mostrar u ocultar sección de favoritos
 			const favorites = getFavorites();
 			const favoriteItems = allData.filter(item => favorites.includes(item.id));
 			
-			if (favoriteItems.length > 0) {
-				favoritesContainer.style.display = 'block';
-				favoritesResults.innerHTML = '';
-				
-				favoriteItems.forEach(item => {
-					const card = createResultCard(item);
-					favoritesResults.appendChild(card);
-				});
-			} else {
-				favoritesContainer.style.display = 'none';
-			}
 			
 			if (results.results.length === 0) {
 				resultsContainer.innerHTML = '<div class="no-results">No se encontraron resultados</div>';
@@ -1357,6 +1331,13 @@ a|Sultan con Rampa  |1.4|   Inspirado en Rapido y Furioso 6. Este mod nos permit
 			
 			if (resultsContainer.innerHTML === '' && results.total > 0) {
 				resultsContainer.innerHTML = '<div class="no-results">Todos los resultados están en tus favoritos</div>';
+			}
+			
+			if (favoriteItems.length > 0) {
+				favoriteItems.forEach(item => {
+					const card = createResultCard(item);
+					resultsContainer.prepend(card);
+				});
 			}
 		}
 
