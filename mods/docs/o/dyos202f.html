@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <title>DYOS 2.0.2 Fix</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" href="../../../css/main.css">
+</head>
+<body>
+:::loading#sms1
+# Analizando usuario...
+Se ve si cumples con los terminos y condiciones de uso.
+
+Esta penado resubir el material descargable. Cualquiera que cometa esta infraccion sera motivo suficiente para iniciar un reporte y tirar el material del sitio alojado.
+
+Por favor, espere 5 segundos.
+:::
+:::d-none#sms2
+# ACCESO DENEGADO!!! >:(
+No tienes permiso de estar aqui.
+:::
+:::d-none#sms3
+# DYOS 2.0.2 :)
+## Terminos y condiciones
+Esta prohibida la venta de este software, como resubirla a sitios de alojamientos de archivo.\
+Aunque su descarga es gratuita, yo (matidragon) soy el unico autor del scritp cleo. La manipulacion de los derechos de autor y sus creditos sera penalizada sin piedad.
+Si estas pensando en cometer una de estas atrocidades o conoces a alguien, este sera reportado y dado de baja del canal de youtube.
+
+Estas acciones fueron tomadas por las comunidades de India e Indonecia, que se dedican al robo de materiales.\
+\
+Ahora en fin, gracias por su atencion.\
+\
+[DESCARGAR 6,86 MB](https://drive.google.com/file/d/1ptdzoqYAb7MxBa454IfPNeQJSLKIn64r/view?usp=sharing)\
+LINK ARREGLADO\
+</body>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>const $j = $</script>
+<script src="../../../js/main.min.js"></script>
+<script>
+function analizando(){
+    // Las funciones encryptFile y decryptFile deben estar definidas aquí (como se mostró en respuestas anteriores).
+  let pt = false
+  let dm = ()=> {
+    $('#sms1').classList.add('d-none') 
+    $('#sms2').classList.remove('d-none')
+    pt = true
+  }
+  let ln = navigator.language || navigator.userLanguage;
+  if (ln.includes("id") || ln.includes("hi")) {
+    dm()
+  }
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(position) {
+      let lat = position.coords.latitude;
+      let lon = position.coords.longitude;
+      if (lat >= 5.5 && lat <= 20.5 && lon >= 95.3 && lon <= 106.7) {
+        dm();
+      }
+    }, function(error) {
+      if (error.code === error.PERMISSION_DENIED) {
+        
+      }
+    });
+  }
+  $j.getJSON("https://api.ipify.org?format=json", function(data) {
+    $j.getJSON("https://ipapi.co/" + data.ip + "/country/", function(country) {
+      if (country === "IN" || country === "ID") {
+        dm();
+      }
+    });
+  });
+
+  if (!pt){
+    $('#sms1').classList.add('d-none') 
+    $('#sms3').classList.remove('d-none')
+  }
+}
+setTimeout(analizando, 5000)
+</script>
+<style>
+#password {
+  user-select: none;
+}
+</style>
+</html>
