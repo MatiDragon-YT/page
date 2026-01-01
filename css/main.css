@@ -408,6 +408,7 @@ input[type='checkbox']{
 .d-flex {
 	&.wrap {flex-wrap: wrap}
 	&.column {flex-direction: column}
+	&.row {flex-direction: row}
 	&.reverse {flex-direction: row-reverse}
 	&.end {justify-content: flex-end}
 	&.between {justify-content: space-between}
@@ -423,7 +424,16 @@ input[type='checkbox']{
 	.markdown { max-width: 87.7% }
 }
 @media (min-width:768px) {
-	
+	.d-flex {
+		&.lg-wrap {flex-wrap: wrap}
+		&.lg-column {flex-direction: column}
+		&.lg-row {flex-direction: row}
+		&.lg-reverse {flex-direction: row-reverse}
+		&.lg-end {justify-content: flex-end}
+		&.lg-between {justify-content: space-between}
+		&.lg-button {align-items: flex-end}
+		&.lg-center {justify-content: center}
+	}
 }
 @media (min-width:992px) {
 }
