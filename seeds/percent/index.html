@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计算器 - Calculadora de Porcentaje</title>
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#8B0000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Porcentaje">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #8B0000 0%, #B22222 50%, #8B0000 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            font-family: 'Microsoft YaHei', 'SimHei', 'STHeiti', sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        /* Patrones chinos decorativos */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(255, 215, 0, 0.05) 2px, transparent 3px),
+                radial-gradient(circle at 80% 20%, rgba(255, 215, 0, 0.05) 2px, transparent 3px),
+                radial-gradient(circle at 40% 40%, rgba(192, 192, 192, 0.05) 2px, transparent 3px);
+            background-size: 100px 100px, 150px 150px, 200px 200px;
+            pointer-events: none;
+        }
+        
+        .container {
+            background: linear-gradient(145deg, #FFFAF0, #FFF5EE);
+            border-radius: 20px;
+            box-shadow: 
+                0 15px 35px rgba(139, 0, 0, 0.4),
+                0 0 0 5px #8B0000,
+                0 0 0 10px rgba(255, 215, 0, 0.3),
+                inset 0 0 20px rgba(255, 215, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+            padding: 40px 30px;
+            position: relative;
+            z-index: 1;
+            border: 3px solid #8B0000;
+        }
+        
+        /* Bordes decorativos */
+        .container::before {
+            content: "";
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            border-radius: 12px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        /* Diseño de nubes chinas en las esquinas */
+        .corner-decoration {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, #8B0000, #B22222);
+            border-radius: 50% 0 50% 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFD700;
+            font-size: 20px;
+        }
+        
+        .corner-top-left {
+            top: -10px;
+            left: -10px;
+            transform: rotate(-45deg);
+            box-shadow: 0 0 10px #FFD700;
+        }
+        
+        .corner-top-right {
+            top: -10px;
+            right: -10px;
+            transform: rotate(45deg);
+            box-shadow: 0 0 10px #FFD700;
+        }
+        
+        .corner-bottom-left {
+            bottom: -10px;
+            left: -10px;
+            transform: rotate(45deg);
+            box-shadow: 0 0 10px #C0C0C0;
+        }
+        
+        .corner-bottom-right {
+            bottom: -10px;
+            right: -10px;
+            transform: rotate(-45deg);
+            box-shadow: 0 0 10px #C0C0C0;
+        }
+        
+        h1 {
+            color: #8B0000;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 2px 2px 3px rgba(139, 0, 0, 0.2);
+            position: relative;
+            padding-bottom: 15px;
+        }
+        
+        h1::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 25%;
+            right: 25%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #FFD700, #C0C0C0, #FFD700, transparent);
+            border-radius: 3px;
+        }
+        
+        .chinese-title {
+            text-align: center;
+            color: #8B0000;
+            font-size: 26px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+            text-shadow: 1px 1px 2px rgba(255, 215, 0, 0.5);
+        }
+        
+        .input-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #8B0000;
+            font-size: 18px;
+            padding-left: 10px;
+            position: relative;
+        }
+        
+        label::before {
+            content: "•";
+            color: #FFD700;
+            position: absolute;
+            left: -5px;
+            font-size: 24px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 18px 20px;
+            border: 2px solid #8B0000;
+            border-radius: 12px;
+            font-size: 18px;
+            transition: all 0.3s;
+            background-color: #FFF8F0;
+            color: #333;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #FFD700;
+            box-shadow: 
+                0 0 0 3px rgba(255, 215, 0, 0.3),
+                inset 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .currency-symbol {
+            position: absolute;
+            right: 20px;
+            top: 48px;
+            color: #8B0000;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .btn {
+            background: linear-gradient(to bottom, #8B0000, #B22222);
+            color: #FFD700;
+            border: none;
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 5px 15px rgba(139, 0, 0, 0.4);
+        }
+        
+        .btn::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.3), transparent);
+            transition: left 0.7s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(139, 0, 0, 0.6);
+            color: #FFF;
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 3px 10px rgba(139, 0, 0, 0.4);
+        }
+        
+        .result {
+            margin-top: 35px;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+            position: relative;
+            border: 2px solid;
+            background: linear-gradient(145deg, #FFF8F0, #FFF5EE);
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .result::before {
+            content: "结果";
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(to bottom, #FFD700, #E6B800);
+            color: #8B0000;
+            padding: 5px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 18px;
+            border: 2px solid #8B0000;
+        }
+        
+        .discount {
+            border-color: #4CAF50;
+        }
+        
+        .discount::before {
+            background: linear-gradient(to bottom, #4CAF50, #388E3C);
+            color: #FFD700;
+        }
+        
+        .increase {
+            border-color: #F44336;
+        }
+        
+        .increase::before {
+            background: linear-gradient(to bottom, #F44336, #D32F2F);
+            color: #FFD700;
+        }
+        
+        .no-change {
+            border-color: #9E9E9E;
+        }
+        
+        .no-change::before {
+            background: linear-gradient(to bottom, #C0C0C0, #A9A9A9);
+            color: #8B0000;
+        }
+        
+        .percentage {
+            font-size: 52px;
+            font-weight: bold;
+            margin: 15px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .discount .percentage {
+            color: #2E7D32;
+            background: linear-gradient(45deg, #2E7D32, #4CAF50);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+        }
+        
+        .increase .percentage {
+            color: #C62828;
+            background: linear-gradient(45deg, #C62828, #F44336);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+        }
+        
+        .no-change .percentage {
+            color: #616161;
+            background: linear-gradient(45deg, #616161, #9E9E9E);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+        }
+        
+        .details {
+            font-size: 18px;
+            margin-top: 15px;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .history {
+            margin-top: 35px;
+            border-top: 3px dashed #8B0000;
+            padding-top: 25px;
+            position: relative;
+        }
+        
+        .history h3 {
+            color: #8B0000;
+            margin-bottom: 20px;
+            font-size: 22px;
+            text-align: center;
+            position: relative;
+            display: inline-block;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0 20px;
+            background-color: #FFF8F0;
+        }
+        
+        .history h3::before,
+        .history h3::after {
+            content: "❖";
+            color: #FFD700;
+            margin: 0 10px;
+        }
+        
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            background: linear-gradient(to right, #FFF8F0, #FFF5EE);
+            border-left: 5px solid;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+        
+        .history-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .discount-history {
+            border-left-color: #4CAF50;
+        }
+        
+        .increase-history {
+            border-left-color: #F44336;
+        }
+        
+        .no-change-history {
+            border-left-color: #9E9E9E;
+        }
+        
+        .history-percentage {
+            font-weight: bold;
+            font-size: 20px;
+            padding: 5px 15px;
+            border-radius: 20px;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .discount-percentage {
+            background: linear-gradient(to right, #4CAF50, #2E7D32);
+        }
+        
+        .increase-percentage {
+            background: linear-gradient(to right, #F44336, #C62828);
+        }
+        
+        .no-change-percentage {
+            background: linear-gradient(to right, #9E9E9E, #616161);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 26px;
+            }
+            
+            .chinese-title {
+                font-size: 22px;
+            }
+            
+            input, .btn {
+                padding: 16px;
+            }
+        }
+        
+        /* Elementos decorativos chinos */
+        .chinese-symbols {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        
+        .symbol {
+            font-size: 24px;
+            color: #8B0000;
+        }
+        
+        .footer-note {
+            text-align: center;
+            margin-top: 25px;
+            color: #8B0000;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+    <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js');
+}
+</script>
+
+</head>
+<body>
+    <!-- Decoraciones de esquina -->
+    <div class="corner-decoration corner-top-left">福</div>
+    <div class="corner-decoration corner-top-right">財</div>
+    <div class="corner-decoration corner-bottom-left">喜</div>
+    <div class="corner-decoration corner-bottom-right">吉</div>
+    
+    <!-- Símbolos chinos decorativos -->
+    <div class="chinese-symbols">
+        <div class="symbol">囍</div>
+        <div class="symbol">龍</div>
+        <div class="symbol">福</div>
+        <div class="symbol">壽</div>
+        <div class="symbol">財</div>
+    </div>
+    
+    <div class="container">
+        <h1>Calculadora de Porcentaje</h1>
+        <div class="chinese-title">价格百分比计算器</div>
+        
+        <div class="input-group">
+            <label for="oldPrice">Precio Anterior</label>
+            <input type="number" id="oldPrice" placeholder="Ejemplo: 1200" min="0" step="0.01">
+            <div class="currency-symbol">$</div>
+        </div>
+        
+        <div class="input-group">
+            <label for="newPrice">Precio Actual</label>
+            <input type="number" id="newPrice" placeholder="Ejemplo: 900" min="0" step="0.01">
+            <div class="currency-symbol">$</div>
+        </div>
+        
+        <button class="btn" id="calculateBtn">计算 Calcular</button>
+        
+        <div class="result" id="result">
+            <div class="result-type" id="resultType"></div>
+            <div class="percentage" id="percentage"></div>
+            <div class="details" id="details"></div>
+        </div>
+        
+        <div class="history" id="historySection">
+            <h3>Cálculos recientes</h3>
+            <div id="historyList"></div>
+        </div>
+        
+        <div class="footer-note">
+            计算准确 • 财富繁荣 • 精确百分比 • Accurate Calculation • Wealth & Prosperity
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const oldPriceInput = document.getElementById('oldPrice');
+            const newPriceInput = document.getElementById('newPrice');
+            const calculateBtn = document.getElementById('calculateBtn');
+            const resultDiv = document.getElementById('result');
+            const resultType = document.getElementById('resultType');
+            const percentageDiv = document.getElementById('percentage');
+            const detailsDiv = document.getElementById('details');
+            const historyList = document.getElementById('historyList');
+            const historySection = document.getElementById('historySection');
+            
+            // Cargar historial desde localStorage
+            let calculationHistory = JSON.parse(localStorage.getItem('priceCalcHistory')) || [];
+            
+            // Función para guardar el historial en localStorage
+            function saveHistory() {
+                localStorage.setItem('priceCalcHistory', JSON.stringify(calculationHistory));
+            }
+            
+            // Renderizar el historial
+            function renderHistory() {
+                if (calculationHistory.length === 0) {
+                    historySection.style.display = 'none';
+                    return;
+                }
+                
+                historySection.style.display = 'block';
+                historyList.innerHTML = '';
+                
+                calculationHistory.forEach(item => {
+                    const historyItem = document.createElement('div');
+                    
+                    let itemClass = '';
+                    let percentageClass = '';
+                    
+                    if (item.percentage < 0) {
+                        itemClass = 'discount-history';
+                        percentageClass = 'discount-percentage';
+                    } else if (item.percentage > 0) {
+                        itemClass = 'increase-history';
+                        percentageClass = 'increase-percentage';
+                    } else {
+                        itemClass = 'no-change-history';
+                        percentageClass = 'no-change-percentage';
+                    }
+                    
+                    historyItem.className = `history-item ${itemClass}`;
+                    
+                    historyItem.innerHTML = `
+                        <div>
+                            <div style="font-weight: bold; color: #8B0000;">$${item.oldPrice.toFixed(2)} → $${item.newPrice.toFixed(2)}</div>
+                            <div style="font-size: 14px; color: #666;">${item.timestamp}</div>
+                        </div>
+                        <div class="history-percentage ${percentageClass}">
+                            ${item.percentage < 0 ? '' : '+'}${item.percentage.toFixed(2)}%
+                        </div>
+                    `;
+                    
+                    historyList.appendChild(historyItem);
+                });
+            }
+            
+            // Función para calcular el porcentaje
+            function calculatePercentage() {
+                // Obtener valores
+                const oldPrice = parseFloat(oldPriceInput.value);
+                const newPrice = parseFloat(newPriceInput.value);
+                
+                // Validar entrada
+                if (isNaN(oldPrice) || isNaN(newPrice)) {
+                    alert('请输入有效的数值 / Por favor, ingresa valores numéricos válidos en ambos campos.');
+                    return;
+                }
+                
+                if (oldPrice <= 0) {
+                    alert('原价必须大于零 / El precio anterior debe ser mayor que cero.');
+                    return;
+                }
+                
+                // Calcular porcentaje
+                const percentageChange = ((newPrice - oldPrice) / oldPrice) * 100;
+                const roundedPercentage = Math.round(percentageChange * 100) / 100;
+                
+                // Determinar tipo de cambio
+                let changeType, changeText, resultClass;
+                
+                if (roundedPercentage < 0) {
+                    changeType = '折扣 Descuento';
+                    changeText = 'disminución';
+                    resultClass = 'discount';
+                } else if (roundedPercentage > 0) {
+                    changeType = '加价 Aumento';
+                    changeText = 'aumento';
+                    resultClass = 'increase';
+                } else {
+                    changeType = '无变化 Sin cambio';
+                    changeText = 'sin cambio';
+                    resultClass = 'no-change';
+                }
+                
+                // Calcular diferencia
+                const difference = Math.abs(newPrice - oldPrice);
+                
+                // Mostrar resultado
+                resultType.textContent = changeType;
+                percentageDiv.textContent = `${Math.abs(roundedPercentage)}%`;
+                
+                if (changeType.includes('Sin cambio')) {
+                    detailsDiv.textContent = `价格保持不变 $${oldPrice.toFixed(2)} / El precio se mantiene igual en $${oldPrice.toFixed(2)}.`;
+                } else {
+                    const changeVerb = roundedPercentage < 0 ? '下降' : '上升';
+                    detailsDiv.textContent = `价格${changeVerb} $${difference.toFixed(2)} ($${oldPrice.toFixed(2)} → $${newPrice.toFixed(2)}) / El precio ${changeText} $${difference.toFixed(2)} (de $${oldPrice.toFixed(2)} a $${newPrice.toFixed(2)}).`;
+                }
+                
+                // Aplicar estilo apropiado
+                resultDiv.className = `result ${resultClass}`;
+                resultDiv.style.display = 'block';
+                
+                // Guardar en historial
+                const calculation = {
+                    oldPrice,
+                    newPrice,
+                    percentage: roundedPercentage,
+                    type: changeType,
+                    timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                };
+                
+                calculationHistory.unshift(calculation); // Agregar al principio
+                if (calculationHistory.length > 5) {
+                    calculationHistory = calculationHistory.slice(0, 5); // Mantener solo los últimos 5
+                }
+                
+                // Guardar en localStorage
+                saveHistory();
+                
+                // Actualizar historial
+                renderHistory();
+            }
+            
+            // Evento para el botón de calcular
+            calculateBtn.addEventListener('click', calculatePercentage);
+            
+            // Calcular al presionar Enter en cualquier campo
+            oldPriceInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') calculatePercentage();
+            });
+            
+            newPriceInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') calculatePercentage();
+            });
+            
+            // Inicializar la página
+            renderHistory();
+            
+            // Poner valores de ejemplo en los campos
+            oldPriceInput.value = "";
+            newPriceInput.value = "";
+            
+            // Si el historial está vacío, agregar un ejemplo
+            if (calculationHistory.length === 0) {
+                const exampleCalculation = {
+                    oldPrice: 1200,
+                    newPrice: 900,
+                    percentage: -25,
+                    type: '折扣 Descuento',
+                    timestamp: 'Ejemplo / 例子'
+                };
+                calculationHistory.push(exampleCalculation);
+                saveHistory();
+                renderHistory();
+            }
+        });
+    </script>
+</body>
+</html>
