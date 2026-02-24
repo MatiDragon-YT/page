@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To High Syntax</title>
+    <meta name="theme-color" content="#e4e6f0">
+    <style>
+    /* Importar fuentes modernas */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap');
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: linear-gradient(135deg, #1a1f2e 0%, #232837 100%);
+        min-height: 100vh;
+        padding: 20px;
+        color: #e4e6f0;
+        line-height: 1.6;
+    }
+
+    h1 {
+        font-size: 2.2rem;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(120deg, #64b5f6, #81c784);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+        text-align: center;
+        color: #a0a7c0;
+        margin-bottom: 2rem;
+        font-size: 1rem;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .subtitle code {
+        background: #2d3440;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-family: 'Fira Code', monospace;
+        color: #81c784;
+    }
+
+    .examples {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    .example-btn {
+        background: #2d3440;
+        border: 1px solid #3f4758;
+        color: #c5cbe0;
+        padding: 10px 24px;
+        border-radius: 30px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .example-btn:hover {
+        background: #3f4758;
+        border-color: #64b5f6;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(100, 181, 246, 0.3);
+    }
+
+    .container {
+        display: flex;
+        gap: 25px;
+        margin: 30px 0;
+        flex-wrap: wrap;
+    }
+
+    .panel {
+        flex: 1 1 400px;
+        display: flex;
+        flex-direction: column;
+        background: #232837;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        border: 1px solid #2f3647;
+        transition: transform 0.2s;
+    }
+
+    .panel:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    }
+
+    .panel label {
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: #b3c7ff;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .panel label i {
+        font-size: 1.2rem;
+        color: #64b5f6;
+    }
+
+    textarea {
+        width: 100%;
+        height: 500px;
+        background: #1a1f2e;
+        border: 1px solid #2f3647;
+        border-radius: 12px;
+        padding: 18px;
+        font-family: 'Fira Code', 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #e0e4f0;
+        resize: vertical;
+        white-space: pre;
+        overflow: auto;
+        transition: border 0.2s, box-shadow 0.2s;
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    textarea:focus {
+        outline: none;
+        border-color: #64b5f6;
+        box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.2), inset 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    textarea[readonly] {
+        background: #1e2333;
+        color: #c0c8e0;
+    }
+
+    #convert-btn {
+        display: block;
+        width: 260px;
+        margin: 20px auto;
+        padding: 16px 28px;
+        background: linear-gradient(135deg, #64b5f6, #42a5f5);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 5px 20px rgba(66, 165, 245, 0.4);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    #convert-btn:hover {
+        background: linear-gradient(135deg, #42a5f5, #1e88e5);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(66, 165, 245, 0.6);
+    }
+
+    #convert-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 5px 15px rgba(66, 165, 245, 0.4);
+    }
+
+    #error-message {
+        text-align: center;
+        margin: 15px auto;
+        max-width: 600px;
+    }
+
+    .error {
+        color: #ffb3b3;
+        background: rgba(255, 107, 107, 0.15);
+        border: 1px solid #ff6b6b;
+        padding: 14px 20px;
+        border-radius: 50px;
+        font-size: 0.95rem;
+        backdrop-filter: blur(5px);
+    }
+
+    footer {
+        text-align: center;
+        margin-top: 40px;
+        padding: 20px 0;
+        color: #6e7891;
+        font-size: 0.9rem;
+        border-top: 1px solid #2f3647;
+    }
+
+    footer code {
+        background: #2d3440;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-family: 'Fira Code', monospace;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        body {
+            padding: 10px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+        }
+
+        .container {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .panel {
+            flex: 1 1 auto;
+            padding: 15px;
+        }
+
+        textarea {
+            height: 350px;
+        }
+
+        .examples {
+            gap: 8px;
+        }
+
+        .example-btn {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+
+        #convert-btn {
+            width: 100%;
+            max-width: 300px;
+            padding: 14px 20px;
+            font-size: 1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        h1 {
+            font-size: 1.5rem;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+        }
+
+        textarea {
+            height: 300px;
+            font-size: 13px;
+            padding: 12px;
+        }
+
+        .example-btn {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+    }
+
+    /* Scrollbar personalizada (opcional) */
+    textarea::-webkit-scrollbar {
+        width: 12px;
+    }
+
+    textarea::-webkit-scrollbar-track {
+        background: #1a1f2e;
+        border-radius: 8px;
+    }
+
+    textarea::-webkit-scrollbar-thumb {
+        background: #3f4758;
+        border-radius: 8px;
+        border: 2px solid #1a1f2e;
+    }
+
+    textarea::-webkit-scrollbar-thumb:hover {
+        background: #64b5f6;
+    }
+</style>
+</head>
+<body>
+    <h1>🔄 Converter of SB:<br/>To High Syntax</h1>
+    <p style="text-align: center;">Transforma etiquetas y saltos en estructuras <code>IF</code>, <code>WHILE</code>, <code>REPEAT</code> y <code>FOR</code>.</p>
+
+    <div class="examples">
+        <button id="example-if" class="example-btn">Ex. IF</button>
+        <button id="example-while" class="example-btn">Ex. WHILE</button>
+        <button id="example-repeat" class="example-btn">Ex. REPEAT</button>
+        <button id="example-for" class="example-btn">Ex. FOR</button>
+        <button id="example-all" class="example-btn">Ex. Combine</button>
+    </div>
+
+    <div class="container">
+        <div class="panel">
+            <label for="input">Code in low-level (with labels and jumps):</label>
+            <textarea id="input" placeholder="Pega aquí tu código Sanny Builder..."></textarea>
+        </div>
+        <div class="panel">
+            <label for="output">Code in high-level (with structures):</label>
+            <textarea id="output" readonly placeholder="El resultado aparecerá aquí..."></textarea>
+        </div>
+    </div>
+
+    <button id="convert-btn">Convert</button>
+    <div id="error-message" style="text-align: center; margin-top: 10px;"></div>
+
+    <footer>
+        ⚠️ No es un parser completo. Detecta patrones comunes de IF, WHILE, REPEAT y FOR.<br>
+        Para resultados óptimos, asegúrate de que las etiquetas sean únicas y las estructuras estén bien formadas.
+    </footer>
+
+ <script>
+    // Capturar errores globales
+    window.onerror = function(msg, url, line) {
+        document.getElementById('error-message').innerHTML = '<div class="error">Error: ' + msg + ' en línea ' + line + '</div>';
+        return false;
+    };
+
+    // ------------------------------------------------------------
+    // Funciones auxiliares para limpiar líneas (opcodes, comentarios)
+    // ------------------------------------------------------------
+    function stripOpcode(line) {
+        // Elimina prefijos como "XXXX:" o "XXXX: " al inicio de la línea
+        return line.replace(/^\s*\w+:\s*/, '');
+    }
+
+    function stripComments(line) {
+        // Elimina comentarios (;) pero conserva el resto
+        return line.split(';')[0];
+    }
+
+    function cleanLine(line) {
+        return stripComments(stripOpcode(line)).trim();
+    }
+
+    // ------------------------------------------------------------
+    // Detección de tipos de línea (usando línea limpia)
+    // ------------------------------------------------------------
+    function isLabel(line) {
+        return /^:\w+$/.test(cleanLine(line));
+    }
+
+    function getLabel(line) {
+        const match = cleanLine(line).match(/^:(\w+)$/);
+        return match ? match[1] : null;
+    }
+
+    function isGoto(line) {
+        return /^(GOTO|JUMP)\s+@\w+$/im.test(cleanLine(line));
+    }
+
+    function getGoto(line) {
+        const match = cleanLine(line).match(/^(GOTO|JUMP)\s+@(\w+)$/i);
+        return match ? match[2] : null;
+    }
+
+    function isElseGoto(line) {
+        return /^(ELSE_GOTO|ELSE_JUMP)\s+@\w+$/im.test(cleanLine(line));
+    }
+
+    function getElseGoto(line) {
+        const match = cleanLine(line).match(/^(ELSE_GOTO|ELSE_JUMP)\s+@(\w+)$/mi);
+        return match ? match[2] : null;
+    }
+
+    function isIf(line) {
+        return /^IF( AND| OR)?$/im.test(cleanLine(line));
+    }
+
+    function getIfOperator(line) {
+        const match = cleanLine(line).match(/^IF\s+(AND|OR)$/im);
+        return match ? match[1].toUpperCase() : null;
+    }
+
+    function isAssignment(line) {
+        return /^\s*[\w@]+\s*=\s*\S+/.test(cleanLine(line));
+    }
+
+    function isIncrement(line) {
+        return /^\s*[\w@]+\s*(\+=|-=|\*=|\/=)\s*\S+/.test(cleanLine(line));
+    }
+
+    // ------------------------------------------------------------
+    // Funciones de búsqueda de patrones
+    // ------------------------------------------------------------
+    function findForInLines(lines) {
+        for (let i = 0; i < lines.length; i++) {
+            // 1. Asignación inicial
+            if (!isAssignment(lines[i])) continue;
+            if (i + 1 >= lines.length) continue;
+            const startLabel = getLabel(lines[i + 1]);
+            if (!startLabel) continue;
+
+            // 2. Buscar un IF después (puede haber cuerpo de por medio)
+            let ifIdx = -1;
+            for (let j = i + 2; j < lines.length; j++) {
+                if (isIf(lines[j])) {
+                    ifIdx = j;
+                    break;
+                }
+            }
+            if (ifIdx === -1) continue;
+
+            // 3. Buscar ELSE_GOTO después del IF
+            let elseIdx = -1;
+            let exitLabel = null;
+            for (let j = ifIdx + 1; j < lines.length; j++) {
+                const dest = getElseGoto(lines[j]);
+                if (dest) {
+                    elseIdx = j;
+                    exitLabel = dest;
+                    break;
+                }
+            }
+            if (elseIdx === -1) continue;
+
+            // 4. Las líneas entre ifIdx+1 y elseIdx-1 son las condiciones
+            const conditionLines = lines.slice(ifIdx + 1, elseIdx);
+            if (conditionLines.length === 0) continue;
+
+            // 5. Después del ELSE_GOTO debe haber un incremento
+            let incIdx = -1;
+            let incVar = null, incOp = null, incVal = null;
+            for (let j = elseIdx + 1; j < lines.length; j++) {
+                if (isIncrement(lines[j])) {
+                    const incClean = cleanLine(lines[j]);
+                    const incMatch = incClean.match(/^([\w@]+)\s*(\+=|-=|\*=|\/=)\s*(.+)$/);
+                    if (incMatch) {
+                        incVar = incMatch[1];
+                        incOp = incMatch[2];
+                        incVal = incMatch[3].trim();
+                        incIdx = j;
+                        break;
+                    }
+                }
+            }
+            if (incIdx === -1) continue;
+
+            // 6. Después del incremento debe haber un GOTO a la etiqueta de inicio
+            let gotoIdx = -1;
+            for (let j = incIdx + 1; j < lines.length; j++) {
+                const dest = getGoto(lines[j]);
+                if (dest === startLabel) {
+                    gotoIdx = j;
+                    break;
+                }
+            }
+            if (gotoIdx === -1) continue;
+
+            // 7. Después del GOTO debe haber una etiqueta de salida
+            let exitIdx = -1;
+            for (let j = gotoIdx + 1; j < lines.length; j++) {
+                const l = getLabel(lines[j]);
+                if (l === exitLabel) {
+                    exitIdx = j;
+                    break;
+                }
+            }
+            if (exitIdx === -1) continue;
+
+            // 8. Extraer cuerpo (entre la etiqueta de inicio y el IF)
+            const body = lines.slice(i + 2, ifIdx);
+
+            // 9. Analizar la primera condición
+            const firstCond = conditionLines[0];
+            const condClean = cleanLine(firstCond);
+            const condMatch = condClean.match(/^([\w@]+)\s*(<|>|<=|>=|==|<>)\s*(.+)$/);
+            if (!condMatch) continue;
+            const condVar = condMatch[1];
+            const op = condMatch[2];
+            const finalVal = condMatch[3].trim();
+
+            // 10. Analizar la asignación inicial
+            const assignClean = cleanLine(lines[i]);
+            const assignMatch = assignClean.match(/^([\w@]+)\s*=\s*(.+)$/);
+            if (!assignMatch) continue;
+            const assignVar = assignMatch[1];
+            const startVal = assignMatch[2].trim();
+
+            // 11. Verificar consistencia
+            if (assignVar !== condVar || assignVar !== incVar) continue;
+
+            // 12. Determinar dirección
+            let direction = "TO";
+            if ((op === '<' && incOp === '+=') || (op === '>' && incOp === '-=')) {
+                direction = "TO";
+            } else if ((op === '>' && incOp === '+=') || (op === '<' && incOp === '-=')) {
+                direction = "TODOWN";
+            }
+
+            // 13. Construir bloque FOR
+            const forBlock = [
+                `FOR ${assignVar} = ${startVal} ${direction} ${finalVal} STEP ${incVal}`,
+                ...body.map(l => "  " + l),
+                "END\n"
+            ];
+
+            return { start: i, end: exitIdx, replacement: forBlock };
+        }
+        return null;
+    }
+
+    function findWhileInLines(lines) {
+        // Buscar patrón condicional (con IF y ELSE_GOTO) pero asegurando que no sea un FOR
+        for (let i = 0; i < lines.length; i++) {
+            const label = getLabel(lines[i]);
+            if (!label) continue;
+            let ifIdx = -1;
+            for (let j = i + 1; j < lines.length; j++) {
+                if (isIf(lines[j])) {
+                    ifIdx = j;
+                    break;
+                }
+            }
+            if (ifIdx === -1) continue;
+            let elseIdx = -1;
+            let elseDest = null;
+            for (let j = ifIdx + 1; j < lines.length; j++) {
+                const dest = getElseGoto(lines[j]);
+                if (dest) {
+                    elseIdx = j;
+                    elseDest = dest;
+                    break;
+                }
+            }
+            if (elseIdx === -1) continue;
+            let gotoIdx = -1;
+            for (let j = elseIdx + 1; j < lines.length; j++) {
+                const dest = getGoto(lines[j]);
+                if (dest === label) {
+                    gotoIdx = j;
+                    break;
+                }
+            }
+            if (gotoIdx === -1) continue;
+            let exitIdx = -1;
+            for (let j = gotoIdx + 1; j < lines.length; j++) {
+                const l = getLabel(lines[j]);
+                if (l === elseDest) {
+                    exitIdx = j;
+                    break;
+                }
+            }
+            if (exitIdx === -1) continue;
+
+            // Para evitar que un FOR sea capturado aquí, comprobamos si después del ELSE_GOTO hay un incremento
+            // que coincida con la variable de la condición. Si es así, es un FOR y lo dejamos para esa función.
+            // Pero como FOR tiene prioridad, esto no debería ejecutarse si FOR ya funcionó.
+            // No obstante, por si acaso, podemos añadir una comprobación:
+            let possibleInc = false;
+            for (let j = elseIdx + 1; j < gotoIdx; j++) {
+                if (isIncrement(lines[j])) {
+                    possibleInc = true;
+                    break;
+                }
+            }
+            if (possibleInc) {
+                // Podría ser un FOR, así que lo ignoramos aquí
+                continue;
+            }
+
+            const conditions = lines.slice(ifIdx + 1, elseIdx);
+            const body = lines.slice(elseIdx + 1, gotoIdx);
+            const operator = getIfOperator(lines[ifIdx]);
+            const whileHeader = operator ? `WHILE ${operator}` : "WHILE";
+            const whileBlock = [
+                whileHeader,
+                ...conditions.map(l => "  " + l),
+                ...body.map(l => "  " + l),
+                "END\n"
+            ];
+            return { start: i, end: exitIdx, replacement: whileBlock };
+        }
+
+        // Bucle infinito
+        for (let i = 0; i < lines.length; i++) {
+            const label = getLabel(lines[i]);
+            if (!label) continue;
+            let gotoIdx = -1;
+            for (let j = i + 1; j < lines.length; j++) {
+                const dest = getGoto(lines[j]);
+                if (dest === label) {
+                    gotoIdx = j;
+                    break;
+                }
+            }
+            if (gotoIdx === -1) continue;
+            const body = lines.slice(i + 1, gotoIdx);
+            const whileBlock = [
+                "WHILE TRUE",
+                ...body.map(l => "  " + l),
+                "END\n"
+            ];
+            return { start: i, end: gotoIdx, replacement: whileBlock };
+        }
+        return null;
+    }
+
+    function findRepeatInLines(lines) {
+        for (let i = 0; i < lines.length; i++) {
+            const elseGoto = getElseGoto(lines[i]);
+            if (!elseGoto) continue;
+            let ifIdx = -1;
+            for (let j = i - 1; j >= 0; j--) {
+                if (isIf(lines[j])) {
+                    ifIdx = j;
+                    break;
+                }
+            }
+            if (ifIdx === -1) continue;
+            let labelIdx = -1;
+            for (let j = ifIdx - 1; j >= 0; j--) {
+                const label = getLabel(lines[j]);
+                if (label === elseGoto) {
+                    labelIdx = j;
+                    break;
+                }
+            }
+            if (labelIdx === -1) continue;
+            let duplicate = false;
+            for (let j = labelIdx + 1; j < i; j++) {
+                if (getLabel(lines[j]) === elseGoto) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (duplicate) continue;
+            const body = lines.slice(labelIdx + 1, ifIdx);
+            const conditions = lines.slice(ifIdx + 1, i);
+            const operator = getIfOperator(lines[ifIdx]);
+            const repeatBlock = [
+                "REPEAT",
+                ...body.map(l => "  " + l),
+                "UNTIL",
+                ...conditions.map(c => "  " + c)
+            ];
+            return { start: labelIdx, end: i, replacement: repeatBlock };
+        }
+        return null;
+    }
+
+    function findIfInLines(lines) {
+        for (let i = 0; i < lines.length; i++) {
+            const elseDest = getElseGoto(lines[i]);
+            if (!elseDest) continue;
+            let ifIdx = -1;
+            for (let j = i - 1; j >= 0; j--) {
+                if (isIf(lines[j])) {
+                    ifIdx = j;
+                    break;
+                }
+            }
+            if (ifIdx === -1) continue;
+            let falseIdx = -1;
+            for (let j = i + 1; j < lines.length; j++) {
+                const l = getLabel(lines[j]);
+                if (l === elseDest) {
+                    falseIdx = j;
+                    break;
+                }
+            }
+            if (falseIdx === -1) continue;
+            let gotoIdx = -1;
+            let gotoDest = null;
+            for (let j = i + 1; j < lines.length; j++) {
+                const dest = getGoto(lines[j]);
+                if (dest) {
+                    gotoIdx = j;
+                    gotoDest = dest;
+                    break;
+                }
+            }
+            const conditions = lines.slice(ifIdx + 1, i);
+            const operator = getIfOperator(lines[ifIdx]);
+            if (gotoIdx !== -1) {
+                let endIdx = -1;
+                for (let j = gotoIdx + 1; j < lines.length; j++) {
+                    const l = getLabel(lines[j]);
+                    if (l === gotoDest) {
+                        endIdx = j;
+                        break;
+                    }
+                }
+                if (endIdx === -1) continue;
+                if (falseIdx > endIdx) continue;
+                const trueBody = lines.slice(i + 1, gotoIdx);
+                const falseBody = lines.slice(falseIdx + 1, endIdx);
+                const ifBlock = [
+                    "IF" + (operator ? " " + operator : ""),
+                    ...conditions.map(c => "  " + c),
+                    "THEN",
+                    ...trueBody.map(l => "  " + l),
+                    "ELSE",
+                    ...falseBody.map(l => "  " + l),
+                    "END\n"
+                ];
+                return { start: ifIdx, end: endIdx, replacement: ifBlock };
+            } else {
+                const trueBody = lines.slice(i + 1, falseIdx);
+                const ifBlock = [
+                    "IF" + (operator ? " " + operator : ""),
+                    ...conditions.map(c => "  " + c),
+                    "THEN",
+                    ...trueBody.map(l => "  " + l),
+                    "END\n"
+                ];
+                return { start: ifIdx, end: falseIdx, replacement: ifBlock };
+            }
+        }
+        return null;
+    }
+
+    // ------------------------------------------------------------
+    // Función principal de conversión
+    // ------------------------------------------------------------
+    function convertSCM(code) {
+        let lines = code
+            .split('\n').map(l => l.trimRight());
+        let changed = true;
+        let iterations = 0;
+        const maxIter = 1000;
+
+        while (changed && iterations < maxIter) {
+            changed = false;
+            iterations++;
+
+            // Prioridad: FOR (el más específico) > REPEAT > WHILE > IF
+            let result = findForInLines(lines);
+            if (result) {
+                lines.splice(result.start, result.end - result.start + 1, ...result.replacement);
+                changed = true;
+                continue;
+            }
+
+            result = findRepeatInLines(lines);
+            if (result) {
+                lines.splice(result.start, result.end - result.start + 1, ...result.replacement);
+                changed = true;
+                continue;
+            }
+
+            result = findWhileInLines(lines);
+            if (result) {
+                lines.splice(result.start, result.end - result.start + 1, ...result.replacement);
+                changed = true;
+                continue;
+            }
+
+            result = findIfInLines(lines);
+            if (result) {
+                lines.splice(result.start, result.end - result.start + 1, ...result.replacement);
+                changed = true;
+                continue;
+            }
+        }
+        return lines.join('\n');
+    }
+
+    // ------------------------------------------------------------
+    // Funciones de interfaz
+    // ------------------------------------------------------------
+    function convert() {
+        try {
+            document.getElementById('error-message').innerHTML = '';
+            const input = document.getElementById('input').value;
+            const output = convertSCM(input);
+            document.getElementById('output').value = output
+                .replace(/WHILE\n  /g, "WHILE ")
+                .replace(/UNTIL\n  (.+)/g, "UNTIL $1\n")
+                .replace(/GOSUB @(\w+)/g, "$1()");
+        } catch (e) {
+            document.getElementById('error-message').innerHTML = '<div class="error">Error durante la conversión: ' + e.message + '</div>';
+            console.error(e);
+        }
+    }
+
+    function getRandomValueFromObject(obj) {
+        if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
+            throw new Error("El argumento debe ser un objeto válido.");
+        }
+        const values = Object.values(obj);
+        if (values.length === 0) {
+            throw new Error("El objeto está vacío.");
+        }
+        const randomIndex = Math.floor(Math.random() * values.length);
+        return values[randomIndex];
+    }
+
+    function loadExample(type) {
+        try {
+            document.getElementById('error-message').innerHTML = '';
+            const examples = {
+                if: `; Ejemplo de IF con ELSE
+IF 0@ == 1
+ELSE_GOTO @false
+0@ = 2
+GOTO @end
+:false
+0@ = 3
+:end
+
+; IF sin ELSE
+IF 0@ == 5
+ELSE_GOTO @fin
+0@ = 6
+:fin
+
+; IF con opcodes
+XXXX: if
+XXXX: 0@ == 6
+XXXX: else_goto @finazo
+XXXX: 0@ = 7
+:finazo
+
+; IF-ELSE con opcodes
+XXXX: IF
+XXXX: 0@ == 1
+XXXX: ELSE_GOTO @falsooo
+XXXX: 0@ = 2
+XXXX: GOTO @carambolines
+:falsooo
+XXXX: 0@ = 3
+:carambolines`,
+                while: `; Ejemplo de WHILE
+:while_start
+XXXX: body
+GOTO @while_start
+
+; WHILE con opcodes
+:WHILE_START_22
+XXXX: IF
+XXXX: condition
+XXXX: ELSE_GOTO @WHILE_END_22
+XXXX: body
+XXXX: GOTO @WHILE_START_22
+:WHILE_END_22`,
+                repeat: `; Ejemplo de REPEAT
+:repeat_loop
+0@ += 1
+IF 0@ == 10
+ELSE_GOTO @repeat_loop
+
+; Ejemplo con opcodes
+:repeat_loop_222
+XXXX: 0@ += 1
+XXXX: IF
+XXXX: 0@ == 10
+XXXX: ELSE_GOTO @repeat_loop_222`,
+                for: `; Ejemplo de FOR (incremento) - patrón correcto
+0@ = 0
+:for_loop
+IF 0@ < 5
+ELSE_GOTO @for_exit
+0@ += 1
+GOTO @for_loop
+:for_exit
+
+; Ejemplo con opcodes
+XXXX: 0@ = 0
+:for_looping
+XXXX: body
+XXXX: IF
+XXXX: 0@ < 5
+XXXX: ELSE_GOTO @for_exit
+XXXX: 0@ += 1
+XXXX: GOTO @for_looping
+:for_exit`
+            };
+            if (type == "all") {
+                document.getElementById('input').value = (getRandomValueFromObject(examples)) + "\n\n" + (getRandomValueFromObject(examples));
+            } else {
+                document.getElementById('input').value = examples[type] || '';
+            }
+        } catch (e) {
+            document.getElementById('error-message').innerHTML = '<div class="error">Error al cargar el ejemplo: ' + e.message + '</div>';
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('example-if').addEventListener('click', function() { loadExample('if'); convert(); });
+        document.getElementById('example-while').addEventListener('click', function() { loadExample('while'); convert(); });
+        document.getElementById('example-repeat').addEventListener('click', function() { loadExample('repeat'); convert(); });
+        document.getElementById('example-for').addEventListener('click', function() { loadExample('for'); convert(); });
+        document.getElementById('example-all').addEventListener('click', function() { loadExample('all'); convert(); });
+        document.getElementById('convert-btn').addEventListener('click', convert);
+        loadExample('if');
+    });
+</script>
+</body>
+</html>
