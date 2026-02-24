@@ -476,7 +476,7 @@
             if (exitIdx === -1) continue;
 
             // 8. Extraer cuerpo (entre la etiqueta de inicio y el IF)
-            const body = lines.slice(i + 2, ifIdx);
+            const body = lines.slice(i + 2, ifIdx).map(l => "  " + l);
 
             // 9. Analizar la primera condición
             const firstCond = conditionLines[0];
@@ -507,9 +507,9 @@
 
             // 13. Construir bloque FOR
             const forBlock = [
-                `FOR ${assignVar} = ${startVal} ${direction} ${finalVal} STEP ${incVal}`,
-                ...body.map(l => "  " + l),
-                "END\n"
+                `FOR ${assignVar} = ${startVal} ${direction} ${finalVal} STEP ${incVal} // :${startLabel}`,
+                ...body,
+                `END // :${exitLabel}\n`
             ];
 
             return { start: i, end: exitIdx, replacement: forBlock };
@@ -560,10 +560,7 @@
             }
             if (exitIdx === -1) continue;
 
-            // Para evitar que un FOR sea capturado aquí, comprobamos si después del ELSE_GOTO hay un incremento
-            // que coincida con la variable de la condición. Si es así, es un FOR y lo dejamos para esa función.
-            // Pero como FOR tiene prioridad, esto no debería ejecutarse si FOR ya funcionó.
-            // No obstante, por si acaso, podemos añadir una comprobación:
+            // Evitar FOR
             let possibleInc = false;
             for (let j = elseIdx + 1; j < gotoIdx; j++) {
                 if (isIncrement(lines[j])) {
@@ -571,21 +568,35 @@
                     break;
                 }
             }
-            if (possibleInc) {
-                // Podría ser un FOR, así que lo ignoramos aquí
-                continue;
-            }
+            if (possibleInc) continue;
 
+            const preIfBody = lines.slice(i + 1, ifIdx).map(l => "  " + l);
+            let operator = getIfOperator(lines[ifIdx]);
             const conditions = lines.slice(ifIdx + 1, elseIdx);
-            const body = lines.slice(elseIdx + 1, gotoIdx);
-            const operator = getIfOperator(lines[ifIdx]);
-            const whileHeader = operator ? `WHILE ${operator}` : "WHILE";
-            const whileBlock = [
-                whileHeader,
-                ...conditions.map(l => "  " + l),
-                ...body.map(l => "  " + l),
-                "END\n"
-            ];
+            if (conditions.length > 1 && !operator) operator = "AND"; // Asumir AND si múltiples sin operador
+
+            const body = lines.slice(elseIdx + 1, gotoIdx).map(l => "    " + l);
+            let whileBlock = [];
+            if (conditions.length === 1 && !operator && preIfBody.length === 0) {
+                whileBlock = [
+                    `WHILE ${conditions[0]} // :${label}`,
+                    ...lines.slice(elseIdx + 1, gotoIdx).map(l => "  " + l),
+                    `END // :${elseDest}\n`
+                ];
+            } else {
+                whileBlock = [
+                    `WHILE TRUE // :${label}`,
+                    ...preIfBody,
+                    `  IF ${operator || ""}`,
+                    ...conditions.map(l => "    " + l),
+                    "  THEN",
+                    ...body,
+                    "  ELSE",
+                    "    BREAK",
+                    "  END",
+                    `END // :${elseDest}\n`
+                ];
+            }
             return { start: i, end: exitIdx, replacement: whileBlock };
         }
 
@@ -602,13 +613,30 @@
                 }
             }
             if (gotoIdx === -1) continue;
+            let hasBreak = false;
+            let exitLabel = null;
+            let end = gotoIdx;
+            if (gotoIdx + 1 < lines.length && isLabel(lines[gotoIdx + 1])) {
+                const possibleExit = getLabel(lines[gotoIdx + 1]);
+                for (let j = i + 1; j < gotoIdx; j++) {
+                    if (isGoto(lines[j]) && getGoto(lines[j]) === possibleExit) {
+                        hasBreak = true;
+                        break;
+                    }
+                }
+                if (hasBreak) {
+                    exitLabel = possibleExit;
+                    end = gotoIdx + 1;
+                }
+            }
             const body = lines.slice(i + 1, gotoIdx);
+            const whileHeader = `WHILE TRUE // :${label}`;
             const whileBlock = [
-                "WHILE TRUE",
+                whileHeader,
                 ...body.map(l => "  " + l),
-                "END\n"
+                exitLabel ? `END // :${exitLabel}\n` : "END\n"
             ];
-            return { start: i, end: gotoIdx, replacement: whileBlock };
+            return { start: i, end: end, replacement: whileBlock };
         }
         return null;
     }
@@ -642,16 +670,49 @@
                 }
             }
             if (duplicate) continue;
+            let hasBreak = false;
+            let exitLabel = null;
+            let end = i;
+            if (i + 1 < lines.length && isLabel(lines[i + 1])) {
+                const possibleExit = getLabel(lines[i + 1]);
+                for (let j = labelIdx + 1; j < ifIdx; j++) {
+                    if (isGoto(lines[j]) && getGoto(lines[j]) === possibleExit) {
+                        hasBreak = true;
+                        break;
+                    }
+                }
+                if (hasBreak) {
+                    exitLabel = possibleExit;
+                    end = i + 1;
+                }
+            }
             const body = lines.slice(labelIdx + 1, ifIdx);
             const conditions = lines.slice(ifIdx + 1, i);
-            const operator = getIfOperator(lines[ifIdx]);
-            const repeatBlock = [
-                "REPEAT",
-                ...body.map(l => "  " + l),
-                "UNTIL",
-                ...conditions.map(c => "  " + c)
-            ];
-            return { start: labelIdx, end: i, replacement: repeatBlock };
+            let operator = getIfOperator(lines[ifIdx]);
+            if (conditions.length > 1 && !operator) operator = "AND";
+
+            const repeatHeader = `REPEAT // :${elseGoto}`;
+            let repeatBlock = [];
+            if (!operator && conditions.length === 1) {
+                const untilLine = exitLabel ? `UNTIL ${conditions[0]} // :${exitLabel}` : `UNTIL ${conditions[0]}`;
+                repeatBlock = [
+                    repeatHeader,
+                    ...body.map(l => "  " + l),
+                    untilLine
+                ];
+            } else {
+                repeatBlock = [
+                    `WHILE TRUE // :${elseGoto}`,
+                    ...body.map(l => "  " + l),
+                    `  IF ${operator || ""}`,
+                    ...conditions.map(l => "    " + l),
+                    "  THEN",
+                    "    BREAK",
+                    "  END",
+                    exitLabel ? `END // :${exitLabel}\n` : "END\n"
+                ];
+            }
+            return { start: labelIdx, end: end, replacement: repeatBlock };
         }
         return null;
     }
@@ -689,6 +750,12 @@
             }
             const conditions = lines.slice(ifIdx + 1, i);
             const operator = getIfOperator(lines[ifIdx]);
+            let ifHeader = "IF" + (operator ? " " + operator : "");
+            let conditionLines = conditions.map(c => "  " + c);
+            if (!operator && conditions.length === 1) {
+                ifHeader = `IF ${conditions[0]}`;
+                conditionLines = [];
+            }
             if (gotoIdx !== -1) {
                 let endIdx = -1;
                 for (let j = gotoIdx + 1; j < lines.length; j++) {
@@ -700,31 +767,108 @@
                 }
                 if (endIdx === -1) continue;
                 if (falseIdx > endIdx) continue;
-                const trueBody = lines.slice(i + 1, gotoIdx);
-                const falseBody = lines.slice(falseIdx + 1, endIdx);
+                const trueBody = lines.slice(i + 1, gotoIdx).map(l => "  " + l);
+                const falseBody = lines.slice(falseIdx + 1, endIdx).map(l => "  " + l);
                 const ifBlock = [
-                    "IF" + (operator ? " " + operator : ""),
-                    ...conditions.map(c => "  " + c),
+                    ifHeader,
+                    ...conditionLines,
                     "THEN",
-                    ...trueBody.map(l => "  " + l),
+                    ...trueBody,
                     "ELSE",
-                    ...falseBody.map(l => "  " + l),
+                    ...falseBody,
                     "END\n"
                 ];
                 return { start: ifIdx, end: endIdx, replacement: ifBlock };
             } else {
-                const trueBody = lines.slice(i + 1, falseIdx);
+                const trueBody = lines.slice(i + 1, falseIdx).map(l => "  " + l);
                 const ifBlock = [
-                    "IF" + (operator ? " " + operator : ""),
-                    ...conditions.map(c => "  " + c),
+                    ifHeader,
+                    ...conditionLines,
                     "THEN",
-                    ...trueBody.map(l => "  " + l),
+                    ...trueBody,
                     "END\n"
                 ];
                 return { start: ifIdx, end: falseIdx, replacement: ifBlock };
             }
         }
         return null;
+    }
+
+    // ------------------------------------------------------------
+    // Procesamiento de BREAK y CONTINUE
+    // ------------------------------------------------------------
+    function processBreaksContinues(lines) {
+        const INDENT = "  ";
+        let newLines = [];
+        let loopStack = [];
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            let trimmed = line.replace(/^\s+/, '');
+            let indentLevel = (line.length - trimmed.length) / INDENT.length;
+            if (trimmed.startsWith("WHILE") || trimmed.startsWith("FOR") || trimmed.startsWith("REPEAT")) {
+                let parts = trimmed.split('//');
+                let header = parts[0].trim();
+                let start = null;
+                if (parts[1]) {
+                    let comment = parts[1].trim();
+                    if (comment.startsWith(':')) {
+                        start = comment.substring(1);
+                    }
+                }
+                loopStack.push({ start: start, exit: null });
+                newLines.push(line);
+            } else if (trimmed.startsWith("END") || trimmed.startsWith("UNTIL")) {
+                let parts = trimmed.split('//');
+                let header = parts[0].trim();
+                let exit = null;
+                if (parts[1]) {
+                    let comment = parts[1].trim();
+                    if (comment.startsWith(':')) {
+                        exit = comment.substring(1);
+                    }
+                }
+                if (loopStack.length > 0) {
+                    loopStack[loopStack.length - 1].exit = exit;
+                }
+                newLines.push(line);
+                if (header === "END" || header.startsWith("UNTIL ")) {
+                    if (loopStack.length > 0) {
+                        loopStack.pop();
+                    }
+                } else if (header === "UNTIL") {
+                    let conditionIndent = INDENT.repeat(indentLevel + 1);
+                    i++;
+                    while (i < lines.length && lines[i].startsWith(conditionIndent)) {
+                        newLines.push(lines[i]);
+                        i++;
+                    }
+                    i--;
+                    if (loopStack.length > 0) {
+                        loopStack.pop();
+                    }
+                }
+            } else if (isGoto(trimmed)) {
+                let dest = getGoto(trimmed);
+                let replaced = false;
+                for (let k = loopStack.length - 1; k >= 0; k--) {
+                    if (dest === loopStack[k].start) {
+                        newLines.push(line.replace(trimmed, "CONTINUE"));
+                        replaced = true;
+                        break;
+                    } else if (loopStack[k].exit && dest === loopStack[k].exit) {
+                        newLines.push(line.replace(trimmed, "BREAK"));
+                        replaced = true;
+                        break;
+                    }
+                }
+                if (!replaced) {
+                    newLines.push(line);
+                }
+            } else {
+                newLines.push(line);
+            }
+        }
+        return newLines;
     }
 
     // ------------------------------------------------------------
@@ -741,7 +885,7 @@
             changed = false;
             iterations++;
 
-            // Prioridad: FOR (el más específico) > REPEAT > WHILE > IF
+            // Prioridad: FOR > REPEAT > WHILE > IF
             let result = findForInLines(lines);
             if (result) {
                 lines.splice(result.start, result.end - result.start + 1, ...result.replacement);
@@ -770,6 +914,7 @@
                 continue;
             }
         }
+        lines = processBreaksContinues(lines);
         return lines.join('\n');
     }
 
@@ -782,8 +927,6 @@
             const input = document.getElementById('input').value;
             const output = convertSCM(input);
             document.getElementById('output').value = output
-                .replace(/WHILE\n  /g, "WHILE ")
-                .replace(/UNTIL\n  (.+)/g, "UNTIL $1\n")
                 .replace(/GOSUB @(\w+)/g, "$1()");
         } catch (e) {
             document.getElementById('error-message').innerHTML = '<div class="error">Error durante la conversión: ' + e.message + '</div>';
