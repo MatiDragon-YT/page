@@ -1,0 +1,269 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valentine's Dice 💘</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff00aa">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Porcentaje">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+    <style>
+        html {
+            background: black;
+        }
+        body {
+            margin: 0;
+            height: 100vh;
+            background: linear-gradient(to bottom, rgba(255, 0, 120, 0.2), rgba(255, 102, 204, 0.1));
+            box-shadow: inset 0 0 50px #ff00aa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Roboto', sans-serif;
+            color: white;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .container {
+            text-align: center;
+            padding: 30px;
+            border-radius: 25px;
+            width: 90%;
+            max-width: 450px;
+            display: flex;
+            flex-direction: column;
+            gap: 4rem;
+        }
+
+        h1 {
+            font-family: 'Pacifico', cursive;
+            font-size: 2.5rem;
+            text-shadow: 0 0 15px #ff00aa;
+        }
+
+        .scene {
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            perspective: 1000px;
+            margin: 25px 0;
+        }
+
+        .cube {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: all 2s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+
+        .face {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: #ff0077;
+            border: 2px solid #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.1rem;
+            box-shadow: 0 0 25px #ff00cc;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .front  { transform: rotateY(0deg) translateZ(50px); }
+        .back   { transform: rotateY(180deg) translateZ(50px); }
+        .right  { transform: rotateY(90deg) translateZ(50px); }
+        .left   { transform: rotateY(-90deg) translateZ(50px); }
+        .top    { transform: rotateX(90deg) translateZ(50px); }
+        .bottom { transform: rotateX(-90deg) translateZ(50px); }
+
+        button {
+            margin-top: 3rem;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 35px;
+            font-size: 20px;
+            background: #ff0077;
+            color: white;
+            box-shadow: 0 0 25px #ff00aa;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            animation: pulse 2s infinite;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 35px #ff66cc;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .result {
+            margin-top: 25px;
+            font-size: 22px;
+            min-height: 60px;
+            text-shadow: 0 0 12px #ff66ff;
+            background: rgba(255, 0, 120, 0.1);
+            padding: 15px;
+            border-radius: 15px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .result.show {
+            opacity: 1;
+        }
+
+        /* Partículas de corazones */
+        .heart {
+            position: absolute;
+            color: #ff66cc;
+            font-size: 20px;
+            animation: float 3s ease-in-out infinite;
+            opacity: 0.8;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0); opacity: 0.8; }
+            100% { transform: translateY(-100px); opacity: 0; }
+        }
+
+        /* Animación de rodado */
+        @keyframes spin {
+            0% { transform: rotateX(0deg) rotateY(0deg); }
+            100% { transform: rotateX(720deg) rotateY(1440deg); }
+        }
+
+        .cube.rolling {
+            animation: spin 1.5s ease-in-out;
+        }
+
+        /* Media queries para responsividad */
+        @media (max-width: 480px) {
+            .cube {
+                width: 80px;
+                height: 80px;
+            }
+            .face {
+                width: 80px;
+                height: 80px;
+                font-size: 1rem;
+                translateZ: 40px; /* Ajustar translateZ */
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            button {
+                padding: 12px 25px;
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>🎲 San Valentín 💘</h1>
+
+    <div class="scene">
+        <div class="cube" id="cube1" aria-label="Dado de acciones">
+            <div class="face front">besá suavemente</div>
+            <div class="face back">susurrá algo sexy en</div>
+            <div class="face right">dale un beso apasionado en</div>
+            <div class="face left">rozá con tu cosita</div>
+            <div class="face top">rozá con tus labios</div>
+            <div class="face bottom">mordé suavemente</div>
+        </div>
+
+        <div class="cube" id="cube2" aria-label="Dado de partes del cuerpo">
+            <div class="face front">el cuello</div>
+            <div class="face back">la espalda</div>
+            <div class="face right">las manos</div>
+            <div class="face left">las piernas</div>
+            <div class="face top">el pecho</div>
+            <div class="face bottom">los labios</div>
+        </div>
+    </div>
+
+    <button id="rollButton" onclick="rollDice()" aria-label="Lanzar dados">Lanzar Dados 🔥</button>
+
+</div>
+
+<script>
+
+    const rotations = [
+        {x: 0, y: 0},       // 0: front
+        {x: 0, y: 180},     // 1: back
+        {x: 0, y: -90},     // 2: left
+        {x: 0, y: 90},      // 3: right
+        {x: -90, y: 0},     // 4: bottom
+        {x: 90, y: 0}       // 5: top
+    ];
+
+    function rollDice() {
+        const cube1 = document.getElementById("cube1");
+        const cube2 = document.getElementById("cube2");
+        
+        const button = document.getElementById("rollButton");
+
+        button.disabled = true;
+        button.innerHTML = "Rodando...";
+        
+
+        // Animación de rodado
+        cube1.classList.add("rolling");
+        cube2.classList.add("rolling");
+
+        setTimeout(() => {
+            const roll1 = Math.floor(Math.random() * 6);
+            const roll2 = Math.floor(Math.random() * 6);
+
+            cube1.classList.remove("rolling");
+            cube2.classList.remove("rolling");
+
+            cube1.style.transform = `rotateX(${rotations[roll1].x}deg) rotateY(${rotations[roll1].y}deg)`;
+            cube2.style.transform = `rotateX(${rotations[roll2].x}deg) rotateY(${rotations[roll2].y}deg)`;
+
+            
+
+            // Agregar partículas de corazones
+            createHearts(10);
+
+            button.disabled = false;
+            button.innerHTML = "Lanzar Dados 🔥";
+        }, 1500); // Duración de la animación de spin
+    }
+
+    function createHearts(count) {
+        for (let i = 0; i < count; i++) {
+            const heart = document.createElement("div");
+            heart.classList.add("heart");
+            heart.innerHTML = "💖";
+            heart.style.left = `${Math.random() * 100}vw`;
+            heart.style.top = `${Math.random() * 100}vh`;
+            heart.style.animationDelay = `${Math.random() * 2}s`;
+            document.body.appendChild(heart);
+
+            setTimeout(() => {
+                heart.remove();
+            }, 3000);
+        }
+    }
+</script>
+
+</body>
+</html>

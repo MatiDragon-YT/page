@@ -1,4 +1,4 @@
-const CACHE_NAME = 'toHighSyntax_matidragon';
+const CACHE_NAME = 'valentine-s-dice';
 const FILES_TO_CACHE = [
   './',
   './index.html',

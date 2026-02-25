@@ -15,7 +15,8 @@
 <script>
 const DB = 
 `
-To High Syntax|0.5| Pasa cualquier codigo descompilado en Sanny Builder de baja a alta sintaxis.
+To High Syntax|1.0| Pasa cualquier codigo descompilado en Sanny Builder de baja a alta sintaxis.
+Valentine's Dice|1.0| Dados +18. SOLO PARA CASADOS, es ilegal entrar si eres menor.
 Percent|1.0| Una simple herramienta para usar en supermercados y saber cuanto bajo.
 Enchanti IDE|3.1| Enchanti IDE es una potente herramienta para hacer CLEO Scripts multi-plataforma para GTA San Andreas, con una syntaxis basada en SB4 y JS.
 Arcane Editor|1.0| Un simple esitor de texto con gerarquia de archivos.
@@ -25,7 +26,7 @@ Mystical Unicode|1.6| Mystical Unicode es una potente herramienta para tener tex
 let template = ''
 DB.forEach((e, i) => {
     e = e.split('|')
-    let folder = e[0].rA(' ', '-').toLowerCase()
+    let folder = e[0].toLowerCase().r(/(\x20|')/g, '-')
     template += `
 :::col-12 col-md-6 col-xl-4 p-2
 <a href='seeds/${folder}/index.html' class='d-flex w-100 no-decoration white-dm' style="height: 100%;">
