@@ -27,7 +27,7 @@ DB.forEach((e, i) => {
     e = e.split('|')
     let folder = e[0].rA(' ', '-').toLowerCase()
     template += `
-:::col-12 col-md-6 col-xl-3 p-2
+:::col-12 col-md-6 col-xl-4 p-2
 <a href='seeds/${folder}/index.html' class='d-flex w-100 no-decoration white-dm' style="height: 100%;">
 :::p-2 bg-black-2-dm w-100
 <div class='d-flex end button grid-item' id='#${folder}' style='opacity: 0;'>\n
@@ -84,7 +84,7 @@ diagonalFade()
     }
 }
 
-.col-12.col-md-6.col-lg-3.p-2 {
+.col-12.col-md-6.col-xl-4.p-2 {
     view-timeline-name: --image;
     view-timeline-axis: block;
 
@@ -111,7 +111,7 @@ diagonalFade()
     }
 }
 @media (min-width:576px) {
-    .col-12.col-md-6.col-lg-3.p-2 {
+    .col-12.col-md-6.col-xl-4.p-2 {
         animation-range: entry 0% cover 30%;
     }
 }
