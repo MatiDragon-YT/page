@@ -6,263 +6,496 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Valentine's Dice 💘</title>
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#ff00aa">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Porcentaje">
-<link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="theme-color" content="#ff00aa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Porcentaje">
+    <link rel="apple-touch-icon" href="icon-192.png">
 
-    <style>
-        html {
-            background: black;
-        }
-        body {
-            margin: 0;
-            height: 100vh;
-            background: linear-gradient(to bottom, rgba(255, 0, 120, 0.2), rgba(255, 102, 204, 0.1));
-            box-shadow: inset 0 0 50px #ff00aa;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Roboto', sans-serif;
-            color: white;
-            overflow: hidden;
-            position: relative;
-        }
 
-        .container {
-            text-align: center;
-            padding: 30px;
-            border-radius: 25px;
-            width: 90%;
-            max-width: 450px;
-            display: flex;
-            flex-direction: column;
-            gap: 4rem;
-        }
+<style>
 
-        h1 {
-            font-family: 'Pacifico', cursive;
-            font-size: 2.5rem;
-            text-shadow: 0 0 15px #ff00aa;
-        }
+* {
+    -webkit-tap-highlight-color: transparent;
+}
 
-        .scene {
-            display: flex;
-            justify-content: center;
-            gap: 4rem;
-            perspective: 1000px;
-            margin: 25px 0;
-        }
+html { background: black; }
 
-        .cube {
-            width: 100px;
-            height: 100px;
-            position: relative;
-            transform-style: preserve-3d;
-            transition: all 2s cubic-bezier(0.25, 0.1, 0.25, 1);
-        }
+body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Roboto', sans-serif;
+    color: white;
+    overflow: hidden;
+    transition: background 0.6s;
+}
 
-        .face {
-            position: absolute;
-            width: 100px;
-            height: 100px;
-            background: #ff0077;
-            border: 2px solid #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.1rem;
-            box-shadow: 0 0 25px #ff00cc;
-            text-align: center;
-            padding: 10px;
-        }
+body.sutil {
+    background: linear-gradient(to bottom, rgba(255, 0, 120, 0.2), rgba(255, 102, 204, 0.1));
+    box-shadow: inset 0 0 50px #ff00aa;
+}
 
-        .front  { transform: rotateY(0deg) translateZ(50px); }
-        .back   { transform: rotateY(180deg) translateZ(50px); }
-        .right  { transform: rotateY(90deg) translateZ(50px); }
-        .left   { transform: rotateY(-90deg) translateZ(50px); }
-        .top    { transform: rotateX(90deg) translateZ(50px); }
-        .bottom { transform: rotateX(-90deg) translateZ(50px); }
+body.intenso {
+    background: linear-gradient(to bottom, rgba(200, 0, 0, 0.4), rgba(100, 0, 0, 0.6));
+    box-shadow: inset 0 0 80px #ff0000;
+}
 
-        button {
-            margin-top: 3rem;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 35px;
-            font-size: 20px;
-            background: #ff0077;
-            color: white;
-            box-shadow: 0 0 25px #ff00aa;
-            cursor: pointer;
-            transition: transform 0.3s, box-shadow 0.3s;
-            animation: pulse 2s infinite;
-        }
+body.salvaje {
+    background: linear-gradient(to bottom, rgba(80, 0, 0, 0.9), black);
+    box-shadow: inset 0 0 120px #990000;
+}
+body.activo {
+    background: linear-gradient(to bottom, #000000, #222);
+    box-shadow: inset 0 0 150px #ffffff22;
+}
+body.pasivo {
+    background: linear-gradient(to bottom, rgba(60, 0, 120, 0.6), black);
+    box-shadow: inset 0 0 100px #6600ff;
+}
 
-        button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 35px #ff66cc;
-        }
+body.random {
+    background: linear-gradient(45deg, #ff0077, #6600ff, #ff0000);
+    box-shadow: inset 0 0 120px white;
+}
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
-        }
+.container {
+    text-align: center;
+    width: 90%;
+    max-width: 450px;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
 
-        .result {
-            margin-top: 25px;
-            font-size: 22px;
-            min-height: 60px;
-            text-shadow: 0 0 12px #ff66ff;
-            background: rgba(255, 0, 120, 0.1);
-            padding: 15px;
-            border-radius: 15px;
-            opacity: 0;
-            transition: opacity 0.5s;
-        }
+h1 {
+    font-family: 'Pacifico', cursive;
+    font-size: 2.4rem;
+    margin: 5rem 0 0 0;
+}
+h2 {
+    font-family: 'Pacifico', cursive;
+    font-size: 1rem;
+    color: #ccc;
+    margin: 0 0 0 0;
+}
 
-        .result.show {
-            opacity: 1;
-        }
+.scene {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    perspective: 1000px;
+    margin: 30px 0;
+    cursor: pointer;
+    transition: filter 300ms ease-in-out;
+}
 
-        /* Partículas de corazones */
-        .heart {
-            position: absolute;
-            color: #ff66cc;
-            font-size: 20px;
-            animation: float 3s ease-in-out infinite;
-            opacity: 0.8;
-        }
+.scene.rolling {
+    filter: blur(1px) brightness(1.1);
+}
 
-        @keyframes float {
-            0% { transform: translateY(0); opacity: 0.8; }
-            100% { transform: translateY(-100px); opacity: 0; }
-        }
+.cube {
+    width: 100px;
+    height: 100px;
+    position: relative;
+    font-weight: bold;
+    transform-style: preserve-3d;
+    transition: transform 1.2s cubic-bezier(.15, .85, .25, 1),
+        scale 300ms ease-in-out;
+}
 
-        /* Animación de rodado */
-        @keyframes spin {
-            0% { transform: rotateX(0deg) rotateY(0deg); }
-            100% { transform: rotateX(720deg) rotateY(1440deg); }
-        }
+/* Escala mientras gira */
+.cube.rolling {
+    scale: 1.2;
+}
 
-        .cube.rolling {
-            animation: spin 1.5s ease-in-out;
-        }
+.face {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    background: #ff0077;
+    border: 2px solid #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 8px;
+    box-shadow: 0 0 20px #ff00cc;
+    font-size: 0.9rem;
+}
 
-        /* Media queries para responsividad */
-        @media (max-width: 480px) {
-            .cube {
-                width: 80px;
-                height: 80px;
-            }
-            .face {
-                width: 80px;
-                height: 80px;
-                font-size: 1rem;
-                translateZ: 40px; /* Ajustar translateZ */
-            }
-            h1 {
-                font-size: 2rem;
-            }
-            button {
-                padding: 12px 25px;
-                font-size: 18px;
-            }
-        }
-    </style>
+.front  { transform: rotateY(0deg) translateZ(60px); }
+.back   { transform: rotateY(180deg) translateZ(60px); }
+.right  { transform: rotateY(90deg) translateZ(60px); }
+.left   { transform: rotateY(-90deg) translateZ(60px); }
+.top    { transform: rotateX(90deg) translateZ(60px); }
+.bottom { transform: rotateX(-90deg) translateZ(60px); }
+
+button {
+    padding: 12px 25px;
+    margin: 5rem 0;
+    border: none;
+    border-radius: 30px;
+    font-size: 18px;
+    cursor: pointer;
+    background: #ff0077;
+    color: white;
+    box-shadow: 0 0 20px #ff00aa;
+    z-index: -1;
+}
+
+button:hover { transform: scale(1.05); }
+
+/* Partículas de corazones */
+.heart {
+    position: absolute;
+    font-size: 20px;
+    opacity: 0.8;
+    user-select: none;
+    pointer-events: none;
+    
+    /* Rotación fija */
+    transform: translateY(0) rotate(var(--rot)) scale(0);
+    
+    /* Solo animamos el movimiento */
+    animation: float 2s ease-in-out;
+}
+
+@keyframes float {
+    0% { 
+        transform: translateY(0) rotate(var(--rot)) scale(0); 
+        opacity: 0.8;
+    }
+    100% { 
+        transform: translateY(-100px) rotate(var(--rot)) scale(2); 
+        opacity: 0; 
+    }
+}
+</style>
 </head>
 
-<body>
+<body class="sutil">
 
 <div class="container">
-    <h1>🎲 San Valentín 💘</h1>
+    <div>
+    <h1>Valentine's Dice</h1>
+    <h2>roll the dice</h2>  
+    </div>
 
-    <div class="scene">
-        <div class="cube" id="cube1" aria-label="Dado de acciones">
-            <div class="face front">besá suavemente</div>
-            <div class="face back">susurrá algo sexy en</div>
-            <div class="face right">dale un beso apasionado en</div>
-            <div class="face left">rozá con tu cosita</div>
-            <div class="face top">rozá con tus labios</div>
-            <div class="face bottom">mordé suavemente</div>
+    <div class="scene" id="scene" onclick="rollDice()">
+        <div class="cube" id="cube1">
+            <div class="face front"></div>
+            <div class="face back"></div>
+            <div class="face right"></div>
+            <div class="face left"></div>
+            <div class="face top"></div>
+            <div class="face bottom"></div>
         </div>
 
-        <div class="cube" id="cube2" aria-label="Dado de partes del cuerpo">
-            <div class="face front">el cuello</div>
-            <div class="face back">la espalda</div>
-            <div class="face right">las manos</div>
-            <div class="face left">las piernas</div>
-            <div class="face top">el pecho</div>
-            <div class="face bottom">los labios</div>
+        <div class="cube" id="cube2">
+            <div class="face front"></div>
+            <div class="face back"></div>
+            <div class="face right"></div>
+            <div class="face left"></div>
+            <div class="face top"></div>
+            <div class="face bottom"></div>
         </div>
     </div>
 
-    <button id="rollButton" onclick="rollDice()" aria-label="Lanzar dados">Lanzar Dados 🔥</button>
+     <div>
+         <button onclick="toggleMode()" id="modeBtn">Sutil 💕</button>
+     </div>
 
 </div>
 
 <script>
 
-    const rotations = [
-        {x: 0, y: 0},       // 0: front
-        {x: 0, y: 180},     // 1: back
-        {x: 0, y: -90},     // 2: left
-        {x: 0, y: 90},      // 3: right
-        {x: -90, y: 0},     // 4: bottom
-        {x: 90, y: 0}       // 5: top
-    ];
+let currentMode = "sutil";
 
-    function rollDice() {
-        const cube1 = document.getElementById("cube1");
-        const cube2 = document.getElementById("cube2");
+const rotations = [
+    { x: 0, y: 0 },       // front
+    { x: 0, y: 180 },     // back
+    { x: 0, y: -90 },     // left
+    { x: 0, y: 90 },      // right
+    { x: -90, y: 0 },     // bottom
+    { x: 90, y: 0 }       // top
+];
+
+const texts = {
+    sutil: {
+        actions: [
+            "besá suavemente",
+            "acariciá lento",
+            "susurrá dulce",
+            "rozá con tus labios",
+            "mordé suave",
+            "abrazá fuerte"
+        ],
+        parts: [
+            "el cuello",
+            "la espalda",
+            "las manos",
+            "las piernas",
+            "el pecho",
+            "los labios"
+        ]
+    },
+    intenso: {
+        actions: [
+            "besá con hambre",
+            "lamé lentamente",
+            "agarrá firme",
+            "mordé sin aviso",
+            "dominá con tu boca",
+            "apretá fuerte"
+        ],
+        parts: [
+            "el cuello",
+            "la cintura",
+            "los muslos",
+            "el culo",
+            "el pecho",
+            "los labios"
+        ]
+    },
+salvaje: {
+    actions: [
+        "marcá territorio en",
+        "ordená que no se mueva y besá",
+        "agarrá fuerte y acercá",
+        "apretá sin pedir permiso",
+        "di que es tuyo",
+        "mordé lento y mirá fijo"
+    ],
+    parts: [
+        "el cuello",
+        "la cintura",
+        "los muslos",
+        "el culo",
+        "el pecho",
+        "los labios"
+    ]
+},
+activo: {
+    actions: [
+        "chupar con deseo",
+        "pasar cintura por",
+        "pasar manos por",
+        "masajea y frota",
+        "agarra y lame",
+        "mordé y succiona"
+    ],
+    parts: [
+        "el cuello",
+        "la cintura",
+        "los muslos",
+        "el culo",
+        "los pechos",
+        "las orejas"
+    ]
+},
+pasivo: {
+    actions: [
+        "dejá que te besen",
+        "permití que te muerdan suave",
+        "cerrá los ojos y sentí",
+        "dejate llevar mientras te tocan",
+        "recibí lento",
+        "esperá sin moverte"
+    ],
+    parts: [
+        "el cuello",
+        "la espalda",
+        "las piernas",
+        "la cintura",
+        "los labios",
+        "el pecho"
+    ]
+},
+};
+
+let cubeState = {
+    cube1: { x: 0, y: 0, z: 0 },
+    cube2: { x: 0, y: 0, z: 0 }
+};
+function updateFaces() {
+    
+    const cube1Faces = document.querySelectorAll("#cube1 .face");
+    const cube2Faces = document.querySelectorAll("#cube2 .face");
+    
+    let modeToUse = currentMode;
+    
+    if (currentMode === "random") {
+        const modes = ["sutil", "intenso", "salvaje", "activo", "pasivo"];
+        modeToUse = modes[Math.floor(Math.random() * modes.length)];
+    }
+    
+    texts[modeToUse].actions.forEach((text, i) => {
+        cube1Faces[i].innerText = text;
+    });
+    
+    texts[modeToUse].parts.forEach((text, i) => {
+        cube2Faces[i].innerText = text;
+    });
+}
+
+function toggleMode() {
+    
+    const modeBtn = document.getElementById("modeBtn");
+    
+    if (currentMode === "sutil") {
+        currentMode = "intenso";
+        document.body.className = "intenso";
+        modeBtn.innerText = "Intenso 🔥";
+    }
+    else if (currentMode === "intenso") {
+        currentMode = "salvaje";
+        document.body.className = "salvaje";
+        modeBtn.innerText = "Salvaje 😈";
+    }
+    else if (currentMode === "salvaje") {
+        currentMode = "activo";
+        document.body.className = "activo";
+        modeBtn.innerText = "Activo 🫦";
+    }
+    else if (currentMode === "activo") {
+        currentMode = "pasivo";
+        document.body.className = "pasivo";
+        modeBtn.innerText = "Pasivo 👅";
+    }
+    else if (currentMode === "pasivo") {
+        currentMode = "random";
+        document.body.className = "random";
+        modeBtn.innerText = "Random 🎲";
+    }
+    else {
+        currentMode = "sutil";
+        document.body.className = "sutil";
+        modeBtn.innerText = "Sutil 💕";
+    }
+    
+    updateFaces();
+}
+
+function rollDice() {
+    if (currentMode === "random") {
+    updateFaces();
+}
+    const cube1 = document.getElementById("cube1");
+    const cube2 = document.getElementById("cube2");
+    const scene = document.getElementById("scene");
+    
+    cube1.classList.add("rolling");
+    cube2.classList.add("rolling");
+    scene.classList.add("rolling");
+    
+    const r1 = Math.floor(Math.random() * 6);
+    const r2 = Math.floor(Math.random() * 6);
+    
+    const extraSpinsX = 720;
+    const extraSpinsY = 1080;
+    
+    applyRotation(cube1, r1, extraSpinsX, extraSpinsY);
+    applyRotation(cube2, r2, extraSpinsX, extraSpinsY);
+    
+    if (navigator.vibrate) navigator.vibrate([0, 50, 100, 50, 100]);
+    
+    // Cuando termina la animación
+    setTimeout(() => {
+        cube1.classList.remove("rolling");
+        cube2.classList.remove("rolling");
+        scene.classList.remove("rolling");
         
-        const button = document.getElementById("rollButton");
-
-        button.disabled = true;
-        button.innerHTML = "Rodando...";
+        triggerParticles();
         
+    }, 600); // igual al transition
+}
 
-        // Animación de rodado
-        cube1.classList.add("rolling");
-        cube2.classList.add("rolling");
-
-        setTimeout(() => {
-            const roll1 = Math.floor(Math.random() * 6);
-            const roll2 = Math.floor(Math.random() * 6);
-
-            cube1.classList.remove("rolling");
-            cube2.classList.remove("rolling");
-
-            cube1.style.transform = `rotateX(${rotations[roll1].x}deg) rotateY(${rotations[roll1].y}deg)`;
-            cube2.style.transform = `rotateX(${rotations[roll2].x}deg) rotateY(${rotations[roll2].y}deg)`;
-
+function applyRotation(cube, faceIndex, spinX, spinY) {
+    
+    const id = cube.id;
+    const state = cubeState[id];
+    
+    const baseX = rotations[faceIndex].x;
+    const baseY = rotations[faceIndex].y;
+    
+    const twist = (Math.random() * 10 - 5);
+    
+    // 🔥 acumulamos SOLO spins grandes
+    state.x += spinX;
+    state.y += spinY;
+    
+    let finalX = state.x + baseX;
+    let finalY = state.y + baseY;
+    let finalZ = 0;
+    
+    // Mantener tu lógica original de eje perpendicular
+    switch (faceIndex) {
+        case 0:
+        case 1:
+            finalZ = twist;
+            break;
             
-
-            // Agregar partículas de corazones
-            createHearts(10);
-
-            button.disabled = false;
-            button.innerHTML = "Lanzar Dados 🔥";
-        }, 1500); // Duración de la animación de spin
+        case 2:
+        case 3:
+            finalX += twist;
+            break;
+            
+        case 4:
+        case 5:
+            finalY += twist;
+            break;
     }
+    
+    cube.style.transform =
+        `rotateX(${finalX}deg)
+         rotateY(${finalY}deg)
+         rotateZ(${finalZ}deg)`;
+}
 
-    function createHearts(count) {
-        for (let i = 0; i < count; i++) {
-            const heart = document.createElement("div");
-            heart.classList.add("heart");
-            heart.innerHTML = "💖";
-            heart.style.left = `${Math.random() * 100}vw`;
-            heart.style.top = `${Math.random() * 100}vh`;
-            heart.style.animationDelay = `${Math.random() * 2}s`;
-            document.body.appendChild(heart);
-
-            setTimeout(() => {
-                heart.remove();
-            }, 3000);
-        }
+function createParticles(count, emoji) {
+    
+    for (let i = 0; i < count; i++) {
+        
+        const particle = document.createElement("div");
+        particle.classList.add("heart");
+        particle.innerHTML = emoji;
+        
+        particle.style.left = `${Math.random() * 100}vw`;
+        particle.style.top = `${Math.random() * 100}vh`;
+        particle.style.animationDelay = `${Math.random() * 1.5}s`;
+        particle.style.fontSize = `${Math.random() * 20 + 20}px`;
+        
+        // 🔥 Rotación aleatoria entre -30 y 30 grados
+        const randomRotation = (Math.random() * 60) - 30;
+        particle.style.setProperty('--rot', `${randomRotation}deg`);
+        
+        document.body.appendChild(particle);
+        
+        setTimeout(() => {
+            particle.remove();
+        }, 3000);
     }
+}
+function triggerParticles() {
+    
+    let emoji;
+    
+    if (currentMode === "sutil") emoji = "💕";
+    else if (currentMode === "intenso") emoji = "🔥";
+    else if (currentMode === "salvaje") emoji = "😈";
+    else if (currentMode === "activo") emoji = "🫦";
+    else if (currentMode === "pasivo") emoji = "👄";
+    else emoji = "🎲"; // random
+    
+    createParticles(12, emoji);
+}
+
+updateFaces();
+
 </script>
 
 </body>
