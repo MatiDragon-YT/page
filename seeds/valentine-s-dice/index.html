@@ -156,9 +156,12 @@ button:hover { transform: scale(1.05); }
     opacity: 0.8;
     user-select: none;
     pointer-events: none;
+
+    --rot: 0deg;
+    --flip: 1;
     
     /* Rotación fija */
-    transform: translateY(0) rotate(var(--rot)) scale(0);
+    transform: translateY(0) rotate(var(--rot)) scaleX(var(--flip)) scale(0);
     
     /* Solo animamos el movimiento */
     animation: float 2s ease-in-out;
@@ -166,11 +169,11 @@ button:hover { transform: scale(1.05); }
 
 @keyframes float {
     0% { 
-        transform: translateY(0) rotate(var(--rot)) scale(0); 
+        transform: translateY(0) rotate(var(--rot)) scaleX(var(--flip)) scale(0); 
         opacity: 0.8;
     }
     100% { 
-        transform: translateY(-100px) rotate(var(--rot)) scale(2); 
+        transform: translateY(-100px) rotate(var(--rot)) scaleX(var(--flip)) scale(2); 
         opacity: 0; 
     }
 }
@@ -473,6 +476,13 @@ function createParticles(count, emoji) {
         const randomRotation = (Math.random() * 60) - 30;
         particle.style.setProperty('--rot', `${randomRotation}deg`);
         
+        // 🔥 Espejismo aleatorio de izquierda a derecha
+        if (Math.random() < 0.5) {
+            particle.style.setProperty('--flip', `-1`);
+        }else{
+            particle.style.setProperty('--flip', `1`);
+        }
+
         document.body.appendChild(particle);
         
         setTimeout(() => {
