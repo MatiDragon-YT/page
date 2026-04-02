@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Duelo Rápido 🤠</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        :root { --bg: #f4d9b0; }
+        
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Press Start 2P', system-ui;
+            background: var(--bg);
+            color: #222;
+            min-height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+        
+        .screen { 
+            display: none; 
+            flex-direction: column; 
+            align-items: center; 
+            width: 100%; 
+            max-width: 700px; 
+            padding: 20px; 
+            min-height: 100vh; 
+            overflow-y: auto; 
+            padding-bottom: 140px; 
+        }
+        .screen.active { display: flex; }
+        
+        h1 { font-size: 2.8rem; color: #c72c2c; text-shadow: 4px 4px 0 #222; margin-bottom: 30px; }
+        
+        button {
+            font-family: 'Press Start 2P';
+            padding: 15px 30px;
+            font-size: 1.4rem;
+            background: #c72c2c;
+            color: white;
+            border: 6px solid #222;
+            box-shadow: 6px 6px 0 #222;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        button:active { transform: translate(4px,4px); box-shadow: 2px 2px 0 #222; }
+        button.big { font-size: 2rem; padding: 25px 50px; width: 90%; max-width: 500px; }
+        
+        .card { background: white; border: 6px solid #222; padding: 25px; width: 100%; max-width: 520px; box-shadow: 8px 8px 0 #222; margin: 15px 0; }
+        textarea { width: 100%; height: 140px; font-family: monospace; font-size: 0.9rem; padding: 12px; border: 4px solid #222; resize: none; background: #f8f8f8; }
+        
+        .status { font-size: 1.1rem; padding: 12px; background: #222; color: #0f0; width: 100%; text-align: center; margin: 15px 0; }
+        
+        canvas { 
+            border: 8px solid #222; 
+            background: #222; 
+            image-rendering: pixelated; 
+            max-width: 100%; 
+            height: auto; 
+            box-shadow: 10px 10px 0 #222;
+            display: block;
+            margin: 10px auto;
+        }
+        
+        #shoot-btn {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 420px;
+            height: 110px;
+            font-size: 2.8rem;
+            background: #c72c2c;
+            border: 8px solid #222;
+            box-shadow: 12px 12px 0 #222;
+            z-index: 100;
+            display: none;
+        }
+        
+        #countdown-display {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Press Start 2P';
+            font-size: 180px;
+            font-weight: bold;
+            color: #c72c2c;
+            text-shadow: 8px 8px 0 #222;
+            z-index: 50;
+            pointer-events: none;
+            display: none;
+            text-align: center;
+            width: 100%;
+            max-width: 700px;
+        }
+        
+        .overlay {
+            position: fixed; top:0; left:0; right:0; bottom:0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<!-- MENÚ -->
+<div id="menu" class="screen active">
+    <h1>DUELLO<br>RÁPIDO 🤠</h1>
+    <p style="font-size:1.3rem; text-align:center; margin-bottom:40px;">¿Quién es más rápido?<br><strong>¡Desafía a un amigo!</strong></p>
+    <button onclick="startCreate()" style="margin-bottom:20px;">CREAR PARTIDA</button>
+    <button onclick="startJoin()">UNIRSE A PARTIDA</button>
+</div>
+
+<!-- CREAR -->
+<div id="create-screen" class="screen">
+    <h1 style="font-size:2rem;">Eres el ANFITRIÓN</h1>
+    <div class="card">
+        <p>Copia este código y envíaselo a tu amigo:</p>
+        <textarea id="offer-code" readonly></textarea>
+        <button onclick="copyOffer()" style="margin-top:10px;width:100%;">COPIAR CÓDIGO</button>
+    </div>
+    <div class="card" id="answer-section" style="display:none;">
+        <p>Pega el código que te devolvió tu amigo:</p>
+        <textarea id="answer-input" placeholder="Pega aquí..."></textarea>
+        <button onclick="connectWithAnswer()" style="margin-top:10px;width:100%;background:#0a0;">CONECTAR</button>
+    </div>
+    <div id="create-status" class="status" style="display:none;"></div>
+    <button onclick="backToMenu()" style="margin-top:30px;background:#555;">VOLVER</button>
+</div>
+
+<!-- UNIRSE -->
+<div id="join-screen" class="screen">
+    <h1 style="font-size:2rem;">Eres el INVITADO</h1>
+    <div class="card">
+        <p>Pega el código de tu amigo:</p>
+        <textarea id="join-input" placeholder="Pega aquí..."></textarea>
+        <button onclick="generateMyAnswer()" style="margin-top:10px;width:100%;">CREAR MI CÓDIGO</button>
+    </div>
+    <div class="card" id="my-answer-section" style="display:none;">
+        <p>¡Copia este código y envíaselo a tu amigo!</p>
+        <textarea id="my-answer-code" readonly></textarea>
+        <button onclick="copyMyAnswer()" style="margin-top:10px;width:100%;">COPIAR MI CÓDIGO</button>
+    </div>
+    <div id="join-status" class="status" style="display:none;"></div>
+    <button onclick="backToMenu()" style="margin-top:30px;background:#555;">VOLVER</button>
+</div>
+
+<!-- LOBBY -->
+<div id="lobby-screen" class="screen">
+    <h1 style="font-size:2.2rem;color:#0a0;">¡CONECTADOS!</h1>
+    <button onclick="setReady()" class="big" style="background:#0a0;margin:40px 0;">ESTOY LISTO 🤠</button>
+    <div id="lobby-players">Tú vs Amigo<br>Victorias: <span id="wins-me">0</span> — <span id="wins-opp">0</span></div>
+    <button onclick="backToMenu()" style="background:#555;">CANCELAR</button>
+</div>
+
+<!-- JUEGO -->
+<div id="game-screen" class="screen" style="position:relative;">
+    <canvas id="canvas" width="700" height="400"></canvas>
+    <div id="countdown-display"></div>
+    <button id="shoot-btn" onclick="handleShoot()">¡DISPARA!</button>
+</div>
+
+<!-- RESULTADO -->
+<div id="result-overlay" class="overlay">
+    <div id="result-text" style="font-size:4.5rem;margin-bottom:20px;"></div>
+    <div id="result-detail" style="font-size:1.5rem;margin-bottom:40px;"></div>
+    <button onclick="requestRematch()" class="big" style="margin-bottom:15px;">REVANCHA</button>
+    <button onclick="backToMenu()" style="background:#555;">MENÚ</button>
+</div>
+
+<script>
+// ====================== VARIABLES ======================
+let pc = null, dc = null, isHost = false;
+let offset = 0;
+let myWins = 0, oppWins = 0;
+let mySide = 'left';
+
+let walkEndTime = 0;
+let myShootTime = 0;
+let oppShootTimeAdj = 0;
+let gameFinished = false;
+let gameState = 'idle';
+
+// Canvas
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let leftX = 350, rightX = 350;
+let leftY = 190, rightY = 190;
+let leftState = 'alive', rightState = 'alive';
+let flashTime = 0;
+
+// Countdown HTML
+const countdownDiv = document.getElementById('countdown-display');
+
+// Audio
+let audioCtx;
+function beep(freq, ms) {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.frequency.value = freq; g.gain.value = 0.4;
+    o.start(); setTimeout(() => o.stop(), ms);
+}
+
+// ====================== WEBRTC ======================
+let iceCandidates = [];
+
+function setupPeerConnection() {
+    pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    iceCandidates = [];
+    pc.onicecandidate = e => { if (e.candidate) iceCandidates.push(e.candidate); };
+    pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === "complete" && isHost) updateOfferCode(); };
+    
+    if (isHost) { dc = pc.createDataChannel("duelo"); setupDataChannel(dc); }
+    pc.ondatachannel = e => { dc = e.channel; setupDataChannel(dc); };
+}
+
+function setupDataChannel(ch) {
+    ch.onopen = () => { showLobby(); startPing(); };
+    ch.onmessage = e => handleMessage(JSON.parse(e.data));
+    ch.onclose = () => { alert("Conexión perdida"); backToMenu(); };
+}
+
+function sendMsg(obj) { if (dc && dc.readyState === "open") dc.send(JSON.stringify(obj)); }
+
+// ====================== PING ======================
+function startPing() {
+    setInterval(() => sendMsg({ type: "ping", t: Date.now() }), 2200);
+}
+
+function handleMessage(msg) {
+    if (msg.type === "ping") { const recv = Date.now(); sendMsg({ type: "pong", t1: msg.t, t2: recv, t3: Date.now() }); return; }
+    if (msg.type === "pong") {
+        const t1 = msg.t1, t2 = msg.t2, t3 = msg.t3;
+        const t4 = Date.now();
+        offset = Math.round(((t2 - t1) + (t3 - t4)) / 2);
+        return;
+    }
+    if (msg.type === "ready") { oppReady = true; if (myReady && isHost) startGameSequence(); return; }
+    if (msg.type === "start") { walkEndTime = msg.walkEnd + offset; startLocalSequence(); return; }
+    if (msg.type === "shoot") { oppShootTimeAdj = msg.t + offset; checkWinner(); return; }
+    if (msg.type === "result") { if (!gameFinished) { gameFinished = true; const iWin = !msg.senderWon; showResult(iWin); } return; }
+    if (msg.type === "rematch") resetRound();
+}
+
+// ====================== FLUJO ======================
+let myReady = false, oppReady = false;
+
+function startCreate() { isHost = true; mySide = 'left'; document.getElementById('menu').classList.remove('active'); document.getElementById('create-screen').classList.add('active'); setupPeerConnection(); createOffer(); }
+async function createOffer() {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    setTimeout(updateOfferCode, 800);
+}
+function updateOfferCode() {
+    const code = JSON.stringify({ type: "offer", sdp: pc.localDescription, candidates: iceCandidates }, null, 2);
+    document.getElementById('offer-code').value = code;
+    document.getElementById('answer-section').style.display = 'block';
+}
+
+function startJoin() { isHost = false; mySide = 'right'; document.getElementById('menu').classList.remove('active'); document.getElementById('join-screen').classList.add('active'); setupPeerConnection(); }
+async function generateMyAnswer() {
+    const txt = document.getElementById('join-input').value.trim();
+    if (!txt) return alert("Pega el código");
+    let data; try { data = JSON.parse(txt); } catch(e) { return alert("Código inválido"); }
+    await pc.setRemoteDescription(data.sdp);
+    if (data.candidates) data.candidates.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    setTimeout(() => {
+        const code = JSON.stringify({ type: "answer", sdp: pc.localDescription, candidates: iceCandidates }, null, 2);
+        document.getElementById('my-answer-code').value = code;
+        document.getElementById('my-answer-section').style.display = 'block';
+    }, 800);
+}
+async function connectWithAnswer() {
+    const txt = document.getElementById('answer-input').value.trim();
+    let data; try { data = JSON.parse(txt); } catch(e) { return alert("Código inválido"); }
+    await pc.setRemoteDescription(data.sdp);
+    if (data.candidates) data.candidates.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)));
+    document.getElementById('create-status').style.display = 'block';
+    document.getElementById('create-status').textContent = "Conectando...";
+}
+
+function showLobby() {
+    document.getElementById('create-screen').classList.remove('active');
+    document.getElementById('join-screen').classList.remove('active');
+    document.getElementById('lobby-screen').classList.add('active');
+    updateWinDisplay();
+}
+
+function setReady() {
+    myReady = true;
+    sendMsg({ type: "ready" });
+    document.querySelector('#lobby-screen button').textContent = "ESPERANDO AL OTRO...";
+    if (isHost && oppReady) startGameSequence();
+}
+
+function startGameSequence() {
+    const walkEnd = Date.now() + 4000;
+    sendMsg({ type: "start", walkEnd: walkEnd });
+    walkEndTime = walkEnd;
+    startLocalSequence();
+}
+
+function startLocalSequence() {
+    document.getElementById('lobby-screen').classList.remove('active');
+    document.getElementById('game-screen').classList.add('active');
+    document.getElementById('shoot-btn').style.display = 'none';
+    countdownDiv.style.display = 'block';
+    
+    leftX = rightX = 350;
+    leftY = rightY = 190;
+    leftState = rightState = 'alive';
+    myShootTime = oppShootTimeAdj = 0;
+    gameFinished = false;
+    gameState = 'walk';
+    
+    drawLoop();
+}
+
+// ====================== DISPARO ======================
+function handleShoot() {
+    if (gameState !== 'playing' || gameFinished || Date.now() < walkEndTime) { beep(180, 80); return; }
+    myShootTime = Date.now();
+    sendMsg({ type: "shoot", t: myShootTime });
+    flashTime = myShootTime;
+    beep(1250, 35);
+    if (navigator.vibrate) navigator.vibrate(35);
+    checkWinner();
+}
+
+function checkWinner() {
+    if (gameFinished || !myShootTime || !oppShootTimeAdj) return;
+    gameFinished = true;
+    gameState = 'finished';
+    const iWin = myShootTime < oppShootTimeAdj;
+    showResult(iWin);
+    sendMsg({ type: "result", senderWon: iWin });
+}
+
+// ====================== RESULTADO ======================
+function showResult(iWin) {
+    document.getElementById('shoot-btn').style.display = 'none';
+    countdownDiv.style.display = 'none';
+    const ov = document.getElementById('result-overlay');
+    ov.style.display = 'flex';
+    
+    if (iWin) {
+        myWins++;
+        document.getElementById('result-text').innerHTML = '¡GANASTE! 🎉';
+        document.getElementById('result-text').style.color = '#0a0';
+        beep(700,150); beep(1100,300);
+        if (navigator.vibrate) navigator.vibrate([100,50,150]);
+    } else {
+        oppWins++;
+        document.getElementById('result-text').innerHTML = 'PERDISTE 😢';
+        document.getElementById('result-text').style.color = '#c72c2c';
+        beep(280,500);
+    }
+    
+    document.getElementById('result-detail').innerHTML = `TÚ ${myWins} — AMIGO ${oppWins}`;
+    updateWinDisplay();
+    
+    leftState = (mySide === 'left') ? (iWin ? 'winner' : 'dead') : (iWin ? 'dead' : 'winner');
+    rightState = (mySide === 'right') ? (iWin ? 'winner' : 'dead') : (iWin ? 'dead' : 'winner');
+}
+
+function updateWinDisplay() {
+    document.getElementById('wins-me').textContent = myWins;
+    document.getElementById('wins-opp').textContent = oppWins;
+}
+
+// ====================== REVANCHA ======================
+function requestRematch() {
+    sendMsg({ type: "rematch" });
+    resetRound();
+}
+
+function resetRound() {
+    document.getElementById('result-overlay').style.display = 'none';
+    document.getElementById('game-screen').classList.remove('active');
+    document.getElementById('lobby-screen').classList.add('active');
+    updateWinDisplay();
+    gameState = 'idle';
+}
+
+// ====================== CANVAS (solo vaqueros) ======================
+function drawLoop() {
+    ctx.clearRect(0, 0, 700, 400);
+    
+    ctx.fillStyle = '#d2b48c';
+    ctx.fillRect(0, 0, 700, 400);
+    ctx.fillStyle = '#b38b5e';
+    ctx.fillRect(0, 280, 700, 120);
+    
+    const now = Date.now();
+    const isWalking = gameState === 'walk';
+    const progress = isWalking ? Math.min(1, (now - (walkEndTime - 4000)) / 4000) : 1;
+    
+    leftX = 350 + (130 - 350) * progress;
+    rightX = 350 + (510 - 350) * progress;
+    
+    const leftFacingRight = !isWalking;
+    const rightFacingRight = isWalking;
+    
+    drawCowboy(leftX, leftY, '#2a6f97', leftFacingRight, leftState, mySide === 'left' && flashTime > now - 180);
+    drawCowboy(rightX, rightY, '#c72c2c', rightFacingRight, rightState, mySide === 'right' && flashTime > now - 180);
+    
+    // Actualizar contador HTML
+    if (isWalking) {
+        let remaining = Math.max(0, Math.ceil((walkEndTime - now) / 1000));
+        let text = remaining > 0 ? remaining.toString() : '¡DISPARA!';
+        countdownDiv.textContent = text;
+        
+        if (now >= walkEndTime) {
+            gameState = 'playing';
+            document.getElementById('shoot-btn').style.display = 'block';
+            countdownDiv.style.display = 'none';
+        }
+    }
+    
+    // Flash impacto
+    if (flashTime > now - 400) {
+        ctx.fillStyle = 'rgba(255,255,100,0.9)';
+        ctx.beginPath();
+        ctx.arc(mySide === 'left' ? 520 : 160, 200, 28, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    requestAnimationFrame(drawLoop);
+}
+
+function drawCowboy(x, y, color, facingRight, state, hasFlash) {
+    ctx.save();
+    ctx.translate(x, y);
+    
+    ctx.fillStyle = color;
+    ctx.fillRect(-38, -38, 76, 76);
+    
+    ctx.fillStyle = '#f1c40f';
+    ctx.fillRect(-28, -68, 56, 26);
+    ctx.fillRect(-38, -62, 76, 12);
+    
+    ctx.fillStyle = '#333';
+    const pistolY = 12;
+    if (facingRight) {
+        ctx.fillRect(32, pistolY, 54, 14);
+    } else {
+        ctx.fillRect(-86, pistolY, 54, 14);
+    }
+    
+    if (hasFlash) {
+        ctx.fillStyle = 'rgba(255,240,80,0.95)';
+        if (facingRight) ctx.fillRect(78, pistolY-6, 34, 26);
+        else ctx.fillRect(-112, pistolY-6, 34, 26);
+    }
+    
+    if (state === 'winner') {
+        ctx.fillStyle = '#0a0';
+        ctx.fillRect(facingRight ? 32 : -86, -30, 18, 18);
+    }
+    if (state === 'dead') {
+        ctx.fillStyle = '#666';
+        ctx.fillRect(-38, -10, 76, 60);
+        ctx.strokeStyle = '#ff0';
+        ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.arc(0, -75, 24, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#000';
+        ctx.fillRect(-22, -22, 12, 12);
+        ctx.fillRect(10, -22, 12, 12);
+    } else {
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(-22, -18, 12, 12);
+        ctx.fillRect(10, -18, 12, 12);
+    }
+    
+    ctx.restore();
+}
+
+// ====================== UTILIDADES ======================
+function copyOffer() { navigator.clipboard.writeText(document.getElementById('offer-code').value); alert("¡Código copiado!"); }
+function copyMyAnswer() { navigator.clipboard.writeText(document.getElementById('my-answer-code').value); alert("¡Código copiado!"); }
+function backToMenu() { if (pc) pc.close(); location.reload(); }
+
+// ====================== INICIO ======================
+window.onload = () => {};
+</script>
+</body>
+</html>
