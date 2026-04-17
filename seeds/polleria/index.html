@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pollería - Calculadora</title>
+    <meta name="theme-color" content="#ff00aa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Porcentaje">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="manifest" href="./manifest.json">
+
+<style>
+body{
+font-family: Arial;
+background:#f5f5f5;
+padding:20px;
+}
+
+h1{
+text-align:center;
+}
+
+button{
+padding:12px;
+margin:5px;
+font-size:18px;
+}
+
+#productos button{
+display:block;
+width:100%;
+}
+
+#lista{
+margin-top:20px;
+background:white;
+padding:10px;
+border-radius:10px;
+}
+
+.total{
+font-size:24px;
+font-weight:bold;
+margin-top:20px;
+}
+</style>
+
+</head>
+<body>
+
+<h1>🐔 Pollería</h1>
+
+<button onclick="mostrarProductos()">➕ Agregar Producto</button>
+<button onclick="vaciar()">🧹 Vaciar</button>
+
+<div id="productos" style="display:none">
+
+<button onclick="agregar('Pollo Entero',5500)">Pollo Entero - $5700/kg</button>
+<button onclick="agregar('Mitad de Pollo',6100)">Mitad de Pollo - $5800/kg</button>
+<button onclick="agregar('Pata y Muslo',3500)">Pata y Muslo - $3500/kg</button>
+<button onclick="agregar('Alitas',1800)">Alitas - $1800/kg</button>
+<button onclick="agregar('Alitas',1667)">3Kg de Alitas $1667/kg</button>
+<button onclick="agregar('Pechuga',6800)">Pechuga - $6800/kg</button>
+<button onclick="agregar('Menudo',1100)">Menudo - $1100/kg</button>
+<button onclick="agregar('Milas',9000)">Milas supremas - $9000/kg</button>
+
+</div>
+
+<div id="lista"></div>
+
+<div class="total">
+Total: $<span id="total">0</span>
+</div>
+
+<h3>Método de pago</h3>
+
+<label>
+<input type="radio" name="pago" value="Efectivo" checked>
+Efectivo
+</label>
+
+<label>
+<input type="radio" name="pago" value="Transferencia">
+Transferencia
+</label>
+
+<label>
+<input type="radio" name="pago" value="Débito">
+Débito
+</label>
+<br><br>
+<button onclick="finalizarVenta()">💰 Finalizar venta</button>
+
+<button onclick="verVentas()">📊 Ver ventas</button>
+<script>
+
+let total = 0
+let carrito = []
+
+function mostrarProductos(){
+document.getElementById("productos").style.display="block"
+}
+
+function redondear100(numero){
+return Math.ceil(numero/100)*100
+}
+
+function agregar(nombre, precio) {
+  
+  let gramos = prompt("¿Cuántos gramos pesa?")
+if (!gramos) return
+
+gramos = parseFloat(gramos)
+
+let peso = gramos / 1000
+  
+  let subtotal = peso * precio
+  subtotal = redondear100(subtotal)
+  
+  let item = document.createElement("div")
+  
+  item.style.display = "flex"
+  item.style.justifyContent = "space-between"
+  item.style.marginBottom = "5px"
+  
+  carrito.push({
+    nombre: nombre,
+    pesoKg: peso,
+    subtotal: subtotal
+  })
+  
+  let texto = document.createElement("span")
+  texto.innerText = nombre + " (" + peso + "kg) = $" + subtotal
+  
+  let boton = document.createElement("button")
+  boton.innerText = "❌"
+  
+  boton.onclick = function() {
+    
+    item.remove()
+    total -= subtotal
+    document.getElementById("total").innerText = total
+    carrito = carrito.filter(i => !(i.nombre === nombre && i.subtotal === subtotal))
+  }
+  
+  item.appendChild(texto)
+  item.appendChild(boton)
+  
+  document.getElementById("lista").appendChild(item)
+  
+  total += subtotal
+  document.getElementById("total").innerText = total
+  
+}
+function vaciar() {
+  document.getElementById("lista").innerHTML = ""
+  total = 0
+  carrito = []
+  document.getElementById("total").innerText = total
+}
+
+function finalizarVenta() {
+  
+  if (total == 0) return
+  
+  let metodo = document.querySelector('input[name="pago"]:checked').value
+  
+  let pagoCliente = null
+  let vuelto = 0
+  
+  // 💵 Si es efectivo, pedir pago
+  if (metodo === "Efectivo") {
+    
+    let input = prompt("¿Con cuánto paga el cliente?")
+    
+    if (!input) return
+    
+    pagoCliente = parseFloat(input)
+    
+    if (isNaN(pagoCliente)) {
+      alert("Número inválido")
+      return
+    }
+    
+    vuelto = pagoCliente - total
+    
+    if (vuelto < 0) {
+      alert("Falta dinero! Te debe $" + Math.abs(vuelto))
+      return
+    }
+    
+  }
+  
+  // 🧾 Crear ticket
+  let ahora = new Date()
+  
+  let ticket = "🐔 POLLERÍA\n"
+  ticket += ahora.toLocaleString() + "\n\n"
+  
+  carrito.forEach(i => {
+    ticket += i.nombre + " - " + i.pesoKg.toFixed(3) + "Kg - $" + i.subtotal + "\n"
+  })
+  
+  ticket += "\nTOTAL: $" + total + "\n"
+  ticket += "PAGO: " + metodo + "\n"
+  
+  if (metodo === "Efectivo") {
+    ticket += "RECIBIDO: $" + pagoCliente + "\n"
+    ticket += "VUELTO: $" + vuelto + "\n"
+  }
+  
+  // 💾 Guardar venta
+  let ventas = JSON.parse(localStorage.getItem("ventas")) || []
+  
+  ventas.push({
+    fecha: ahora.toLocaleDateString(),
+    hora: ahora.toLocaleTimeString(),
+    total: total,
+    metodo: metodo,
+    items: carrito.length ? carrito : null
+  })
+  
+  localStorage.setItem("ventas", JSON.stringify(ventas))
+  
+  // 📢 Mostrar resumen rápido
+  let resumen = "Venta: $" + total + " (" + metodo + ")"
+  
+  if (metodo === "Efectivo") {
+    resumen += "\nVuelto: $" + vuelto
+  }
+  
+  alert(resumen)
+  
+  // ❓ Preguntar ticket
+  if (confirm("¿mandar ticket?")) {
+    
+    // 📋 Mostrar ticket (copiable)
+    alert(ticket)
+    
+    // 📱 Intentar abrir WhatsApp
+    let url = "https://wa.me/?text=" + encodeURIComponent(ticket)
+    window.open(url, "_blank")
+    
+  }
+  
+  vaciar()
+  
+}
+</script>
+<script>
+if (typeof navigator.serviceWorker !== 'undefined') {
+  navigator.serviceWorker.register('service-worker.js')
+  .then(() => { console.log('Service Worker Registered'); });
+ }
+</script>
+</body>
+</html>

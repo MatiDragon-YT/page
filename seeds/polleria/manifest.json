@@ -1,14 +1,14 @@
 {
-  "name": "Valentine's Dice",
-  "short_name": "Dices",
-  "description": "Dados eroticos",
+  "name": "Polleria - Calculadora",
+  "short_name": "Polleria",
+  "description": "Negocio de Mati",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ff00aa",
   "theme_color": "#ff00aa",
   "orientation": "any",
   "scope": "../../",
-  "id": "valentine_s_dice",
+  "id": "Polleria_calculadora_de_mati",
   "lang": "es",
   "icons": [
     {

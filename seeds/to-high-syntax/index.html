@@ -1050,5 +1050,11 @@ XXXX: GOTO @for_looping
         loadExample('if');
     });
 </script>
+<script>
+if (typeof navigator.serviceWorker !== 'undefined') {
+  navigator.serviceWorker.register('service-worker.js')
+  .then(() => { console.log('Service Worker Registered'); });
+ }
+</script>
 </body>
 </html>
