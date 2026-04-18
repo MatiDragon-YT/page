@@ -1,15 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pollería - Calculadora</title>
-    <meta name="theme-color" content="#ff00aa">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Porcentaje">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    <link rel="manifest" href="./manifest.json">
+<meta charset="UTF-8">
+<title>Pollería - Calculadora</title>
 
 <style>
 body{
@@ -234,7 +227,7 @@ function finalizarVenta() {
   alert(resumen)
   
   // ❓ Preguntar ticket
-  if (confirm("¿mandar ticket?")) {
+  if (confirm("¿Mostrar ticket para copiar?")) {
     
     // 📋 Mostrar ticket (copiable)
     alert(ticket)
@@ -248,12 +241,65 @@ function finalizarVenta() {
   vaciar()
   
 }
+
+function verVentas() {
+  
+  let ventas = JSON.parse(localStorage.getItem("ventas")) || []
+  
+  if (ventas.length == 0) {
+    alert("No hay ventas guardadas")
+    return
+  }
+  
+  let dias = {}
+  
+  ventas.forEach(v => {
+    if (!dias[v.fecha]) dias[v.fecha] = []
+    dias[v.fecha].push(v)
+  })
+  
+  let hoy = new Date().toLocaleDateString()
+  
+  let texto = ""
+  
+  Object.keys(dias).reverse().forEach(dia => {
+    
+    let totalDia = 0
+    let kilosDia = 0
+    
+    if (dia == hoy) {
+      texto += "-------------- HOY -----------------\n"
+    } else {
+      texto += "-------- DIA " + dia + " ---------\n"
+    }
+    
+    dias[dia].forEach(v => {
+      
+      texto += v.hora + " - $" + v.total + " - " + v.metodo + "\n"
+      
+      totalDia += v.total
+      
+      // Si tiene items (ventas nuevas)
+      if (v.items) {
+        
+        v.items.forEach(i => {
+          texto += "|----- " + i.pesoKg.toFixed(3) + "Kg de " + i.nombre + "\n"
+          kilosDia += i.pesoKg
+        })
+        
+      }
+      
+    })
+    
+    texto += "\nTotal del día: $" + totalDia + "\n"
+    texto += "Kilos vendidos: " + kilosDia.toFixed(3) + "Kg\n\n"
+    
+  })
+  
+  alert(texto)
+  
+}
 </script>
-<script>
-if (typeof navigator.serviceWorker !== 'undefined') {
-  navigator.serviceWorker.register('service-worker.js')
-  .then(() => { console.log('Service Worker Registered'); });
- }
-</script>
+
 </body>
 </html>
