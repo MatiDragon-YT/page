@@ -20,11 +20,23 @@ button{
 padding:12px;
 margin:5px;
 font-size:18px;
+    font-weight: bold;
+    text-transform: uppercase;
 }
 
-#productos button{
-display:block;
-width:100%;
+label {
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+#productos {
+  display: flex;
+  flex-direction: column;
+  
+  & button{
+    display:block;
+    width:100%;
+  }
 }
 
 #lista{
@@ -96,7 +108,9 @@ let total = 0
 let carrito = []
 
 function mostrarProductos(){
-document.getElementById("productos").style.display="block"
+  document.getElementById("productos").style.display =
+    document.getElementById("productos").style.display == "flex"
+    ? "none" : "flex"
 }
 
 function redondear100(numero){
