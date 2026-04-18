@@ -87,6 +87,10 @@ Débito
 <button onclick="finalizarVenta()">💰 Finalizar venta</button>
 
 <button onclick="verVentas()">📊 Ver ventas</button>
+
+<hr />
+
+<button onclick="verRaw()">🧪 Ver datos crudos</button>
 <script>
 
 let total = 0
@@ -297,6 +301,26 @@ function verVentas() {
   })
   
   alert(texto)
+  
+}
+
+function verRaw() {
+  
+  let raw = localStorage.getItem("ventas")
+  
+  if (!raw) {
+    alert("No hay datos en LocalStorage")
+    return
+  }
+  
+  // Mostrar en partes para evitar que se corte el alert
+  let chunkSize = 1000
+  let i = 0
+  
+  while (i < raw.length) {
+    alert(raw.slice(i, i + chunkSize))
+    i += chunkSize
+  }
   
 }
 </script>
