@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pollería - Calculadora</title>
 
 <style>
@@ -50,14 +51,16 @@ margin-top:20px;
 
 <div id="productos" style="display:none">
 
-<button onclick="agregar('Pollo Entero',5500)">Pollo Entero - $5700/kg</button>
-<button onclick="agregar('Mitad de Pollo',6100)">Mitad de Pollo - $5800/kg</button>
-<button onclick="agregar('Pata y Muslo',3500)">Pata y Muslo - $3500/kg</button>
+<button onclick="agregar('Carcasa',500)">Carcasa - $500/kg</button>
+<button onclick="agregar('Menudo',1000)">Menudo - $1000/kg</button>
 <button onclick="agregar('Alitas',1800)">Alitas - $1800/kg</button>
-<button onclick="agregar('Alitas',1667)">3Kg de Alitas $1667/kg</button>
+<button onclick="agregar('3Kg de Alitas',1667)">3Kg de Alitas $1667/kg</button>
+<button onclick="agregar('Pata y Muslo',3500)">Pata y Muslo - $3500/kg</button>
+<button onclick="agregar('Pollo Entero',5700)">Pollo Entero - $5700/kg</button>
+<button onclick="agregar('Mitad de Pollo',5800)">Mitad de Pollo - $5800/kg</button>
 <button onclick="agregar('Pechuga',6800)">Pechuga - $6800/kg</button>
-<button onclick="agregar('Menudo',1100)">Menudo - $1100/kg</button>
-<button onclick="agregar('Milas',9000)">Milas supremas - $9000/kg</button>
+<button onclick="agregar('Suprema',7300)">Suprema - $7300/kg</button>
+<button onclick="agregar('Milanesa de Pollo',9000)">Milanesa de Pollo - $9000/kg</button>
 
 </div>
 
@@ -87,10 +90,6 @@ Débito
 <button onclick="finalizarVenta()">💰 Finalizar venta</button>
 
 <button onclick="verVentas()">📊 Ver ventas</button>
-
-<hr />
-
-<button onclick="verRaw()">🧪 Ver datos crudos</button>
 <script>
 
 let total = 0
@@ -304,25 +303,6 @@ function verVentas() {
   
 }
 
-function verRaw() {
-  
-  let raw = localStorage.getItem("ventas")
-  
-  if (!raw) {
-    alert("No hay datos en LocalStorage")
-    return
-  }
-  
-  // Mostrar en partes para evitar que se corte el alert
-  let chunkSize = 1000
-  let i = 0
-  
-  while (i < raw.length) {
-    alert(raw.slice(i, i + chunkSize))
-    i += chunkSize
-  }
-  
-}
 </script>
 
 </body>
