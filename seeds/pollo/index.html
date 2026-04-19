@@ -20,11 +20,11 @@ text-align:center;
 }
 
 button{
-padding:12px;
-margin:5px;
-font-size:18px;
-    font-weight: bold;
-    text-transform: uppercase;
+  padding:12px;
+  margin:5px;
+  font-size:18px;
+  font-weight: bold;
+  text-transform: uppercase;
 }
 
 label {
@@ -68,6 +68,30 @@ label {
   font-size: 18px;
   font-weight: bold;
   background: white;
+}
+
+.venta {
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.turno-manana {
+  background: #ffd580; /* naranjita */
+}
+
+.turno-tarde {
+  background: #d4b0ff; /* violetita */
+}
+
+.turno-test {
+  background: #ccc; /* gris */
+}
+
+.item-detalle {
+  margin-left: 10px;
+  font-weight: normal;
 }
 </style>
 
@@ -120,15 +144,22 @@ Débito
 <button onclick="finalizarVenta()">💰 Finalizar venta</button>
 
 <button onclick="verVentas()">📊 Ver ventas</button>
+
+<h2>📊 Historial</h2>
+<div id="historial"></div>
 <script>
 
 let total = 0
 let carrito = []
 
+let verVentas_bool = false
+let verProductos_bool = false
+
 function mostrarProductos(){
+  verProductos_bool = !verProductos_bool
+
   document.getElementById("productos").style.display =
-    document.getElementById("productos").style.display == "flex"
-    ? "none" : "flex"
+    verProductos_bool ? "flex" : "none"
 }
 
 function redondear100(numero){
@@ -139,10 +170,7 @@ function agregar(nombre, precio) {
   
   let gramos = prompt("¿Cuántos gramos pesa?")
 
-  if (!gramos) {
-    agregar(nombre, precio)
-    return
-  }
+  if (!gramos) return;
 
   gramos = parseFloat(gramos)
 
@@ -284,62 +312,110 @@ function finalizarVenta() {
 
 function verVentas() {
   
-  let ventas = JSON.parse(localStorage.getItem("ventas")) || []
-  
-  if (ventas.length == 0) {
-    alert("No hay ventas guardadas")
-    return
-  }
-  
-  let dias = {}
-  
-  ventas.forEach(v => {
-    if (!dias[v.fecha]) dias[v.fecha] = []
-    dias[v.fecha].push(v)
-  })
-  
-  let hoy = new Date().toLocaleDateString()
-  
-  let texto = ""
-  
-  Object.keys(dias).reverse().forEach(dia => {
-    
-    let totalDia = 0
-    let kilosDia = 0
-    
-    if (dia == hoy) {
-      texto += "-------------- HOY -----------------\n"
-    } else {
-      texto += "-------- DIA " + dia + " ---------\n"
-    }
-    
-    dias[dia].forEach(v => {
-      
-      texto += v.hora + " - $" + v.total + " - " + v.metodo + "\n"
-      
-      totalDia += v.total
-      
-      // Si tiene items (ventas nuevas)
-      if (v.items) {
-        
-        v.items.forEach(i => {
-          texto += "|----- " + i.pesoKg.toFixed(3) + "Kg de " + i.nombre + "\n"
-          kilosDia += i.pesoKg
-        })
-        
-      }
-      
-    })
-    
-    texto += "\nTotal del día: $" + totalDia + "\n"
-    texto += "Kilos vendidos: " + kilosDia.toFixed(3) + "Kg\n\n"
-    
-  })
-  
-  alert(texto)
+  renderHistorial()
   
 }
 
+function obtenerTurno(horaStr){
+
+let hora = parseInt(horaStr.split(":")[0])
+
+// Manana 9 a 14
+if(hora >= 9 && hora < 14) return "manana"
+
+// Tarde 17 a 21
+if(hora >= 17 && hora < 21) return "tarde"
+
+// Fuera de horario
+return "test"
+
+}
+
+function renderHistorial(){
+
+verVentas_bool = !verVentas_bool
+
+let contenedor = document.getElementById("historial")
+contenedor.innerHTML = ""
+
+if (!verVentas_bool) {
+  return
+}
+let ventas = JSON.parse(localStorage.getItem("ventas")) || []
+
+let dias = {}
+
+ventas.forEach(v=>{
+if(!dias[v.fecha]) dias[v.fecha] = []
+dias[v.fecha].push(v)
+})
+
+Object.keys(dias).reverse().forEach(dia=>{
+
+let bloqueDia = document.createElement("div")
+
+let titulo = document.createElement("h3")
+titulo.innerText = "----- " + dia + " -----"
+
+bloqueDia.appendChild(titulo)
+
+let totalDia = 0
+let kilosDia = 0
+
+dias[dia].forEach(v=>{
+
+let turno = obtenerTurno(v.hora)
+
+let ventaDiv = document.createElement("div")
+ventaDiv.classList.add("venta")
+
+if(turno === "manana") ventaDiv.classList.add("turno-manana")
+if(turno === "tarde") ventaDiv.classList.add("turno-tarde")
+if(turno === "test") ventaDiv.classList.add("turno-test")
+
+ventaDiv.innerText = v.hora + " - $" + v.total + " - " + v.metodo
+
+// 👇 SOLO suma si NO es test
+if(turno !== "test"){
+totalDia += v.total
+}
+
+// Detalles
+if(v.items){
+
+v.items.forEach(i=>{
+let item = document.createElement("div")
+item.classList.add("item-detalle")
+item.innerText = "| " + i.pesoKg.toFixed(3) + "Kg de " + i.nombre
+
+ventaDiv.appendChild(item)
+
+if(turno !== "test"){
+kilosDia += i.pesoKg
+}
+
+})
+
+}
+
+bloqueDia.appendChild(ventaDiv)
+
+})
+
+// Totales del día
+let resumen = document.createElement("div")
+resumen.innerHTML = `
+<b>Total del día:</b> $${totalDia}<br>
+<b>Kilos vendidos:</b> ${kilosDia.toFixed(3)}Kg
+`
+
+bloqueDia.appendChild(resumen)
+
+contenedor.appendChild(bloqueDia)
+
+})
+
+}
 </script>
 
 </body>
