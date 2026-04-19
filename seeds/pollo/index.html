@@ -7,9 +7,12 @@
 
 <style>
 body{
-font-family: Arial;
-background:#f5f5f5;
-padding:20px;
+    font-family: Arial;
+    padding: 20px;
+    min-height: 92.8vh;
+    margin: 0;
+    border: red solid 13px;
+    background: #edda77;
 }
 
 h1{
@@ -40,16 +43,31 @@ label {
 }
 
 #lista{
-margin-top:20px;
-background:white;
-padding:10px;
-border-radius:10px;
+  margin-top:20px;
+  background: red;
+  padding:10px;
+  border-radius:10px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  & span {
+    margin: 5px;
+  }
 }
 
 .total{
-font-size:24px;
-font-weight:bold;
-margin-top:20px;
+  font-size:24px;
+  font-weight:bold;
+  margin-top:20px;
+}
+
+.item {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+  font-weight: bold;
+  background: white;
 }
 </style>
 
@@ -66,7 +84,7 @@ margin-top:20px;
 <button onclick="agregar('Carcasa',500)">Carcasa - $500/kg</button>
 <button onclick="agregar('Menudo',1000)">Menudo - $1000/kg</button>
 <button onclick="agregar('Alitas',1800)">Alitas - $1800/kg</button>
-<button onclick="agregar('3Kg de Alitas',1667)">3Kg de Alitas $1667/kg</button>
+<button onclick="agregar('3Kg de Alitas',1666)">3kg de Alitas - $1666/kg</button>
 <button onclick="agregar('Pata y Muslo',3500)">Pata y Muslo - $3500/kg</button>
 <button onclick="agregar('Pollo Entero',5700)">Pollo Entero - $5700/kg</button>
 <button onclick="agregar('Mitad de Pollo',5800)">Mitad de Pollo - $5800/kg</button>
@@ -120,20 +138,21 @@ return Math.ceil(numero/100)*100
 function agregar(nombre, precio) {
   
   let gramos = prompt("¿Cuántos gramos pesa?")
-if (!gramos) return
 
-gramos = parseFloat(gramos)
+  if (!gramos) {
+    agregar(nombre, precio)
+    return
+  }
 
-let peso = gramos / 1000
+  gramos = parseFloat(gramos)
+
+  let peso = gramos / 1000
   
   let subtotal = peso * precio
   subtotal = redondear100(subtotal)
   
   let item = document.createElement("div")
-  
-  item.style.display = "flex"
-  item.style.justifyContent = "space-between"
-  item.style.marginBottom = "5px"
+  item.classList.add("item")
   
   carrito.push({
     nombre: nombre,
@@ -163,6 +182,7 @@ let peso = gramos / 1000
   total += subtotal
   document.getElementById("total").innerText = total
   
+  document.getElementById("productos").style.display = "none"
 }
 function vaciar() {
   document.getElementById("lista").innerHTML = ""
@@ -185,7 +205,10 @@ function finalizarVenta() {
     
     let input = prompt("¿Con cuánto paga el cliente?")
     
-    if (!input) return
+    if (!input) {
+      finalizarVenta()
+      return
+    }
     
     pagoCliente = parseFloat(input)
     
