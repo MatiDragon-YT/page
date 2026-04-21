@@ -78,7 +78,7 @@ label {
 }
 
 .turno-manana {
-  background: #ffd580; /* naranjita */
+  background: #F4BF55; /* naranjita */
 }
 
 .turno-tarde {
@@ -315,19 +315,32 @@ function verVentas() {
   
 }
 
-function obtenerTurno(horaStr){
-
-let hora = parseInt(horaStr.split(":")[0])
-
-// Manana 9 a 14
-if(hora >= 9 && hora < 14) return "manana"
-
-// Tarde 17 a 21
-if(hora >= 17 && hora < 21) return "tarde"
-
-// Fuera de horario
-return "test"
-
+function obtenerTurno(horaStr) {
+  
+  // Detectar si es PM
+  let esPM = horaStr.toLowerCase().includes("p")
+  
+  // Sacar la hora (ej: "6:28:38 p.m." → 6)
+  let hora = parseInt(horaStr.split(":")[0])
+  
+  // Convertir a formato 24h
+  if (esPM && hora !== 12) {
+    hora += 12
+  }
+  
+  if (!esPM && hora === 12) {
+    hora = 0
+  }
+  
+  // Mañana 9 a 14
+  if (hora >= 9 && hora < 14) return "manana"
+  
+  // Tarde 17 a 21
+  if (hora >= 17 && hora < 21) return "tarde"
+  
+  // Fuera de horario
+  return "test"
+  
 }
 
 function renderHistorial(){
