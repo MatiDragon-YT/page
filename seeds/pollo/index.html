@@ -111,6 +111,7 @@ label {
 <button onclick="agregar('3Kg de Alitas',1666)">3kg de Alitas - $1666/kg</button>
 <button onclick="agregar('Pata y Muslo',3500)">Pata y Muslo - $3500/kg</button>
 <button onclick="agregar('Pollo Entero',5700)">Pollo Entero - $5700/kg</button>
+<button onclick="agregar('Medallon',6500)">Medallon - $6500/kg</button>
 <button onclick="agregar('Pechuga',6500)">Pechuga - $6500/kg</button>
 <button onclick="agregar('Suprema',7500)">Suprema - $7500/kg</button>
 <button onclick="agregar('Milanesa de Pollo',8000)">Milanesa de Pollo - $8000/kg</button>
@@ -140,7 +141,10 @@ Transferencia
 Débito
 </label>
 <br><br>
+
 <button onclick="finalizarVenta()">💰 Finalizar venta</button>
+
+<button onclick="mostrarTicket()">📄 Ticket</button>
 
 <button onclick="verVentas()">📊 Ver ventas</button>
 
@@ -153,6 +157,7 @@ let carrito = []
 
 let verVentas_bool = false
 let verProductos_bool = false
+let ultimoTicket = ""
 
 function mostrarProductos(){
   verProductos_bool = !verProductos_bool
@@ -233,14 +238,14 @@ function finalizarVenta() {
     let input = prompt("¿Con cuánto paga el cliente?")
     
     if (!input) {
-      finalizarVenta()
-      return
+      input = total
     }
     
     pagoCliente = parseFloat(input)
     
     if (isNaN(pagoCliente)) {
       alert("Número inválido")
+      finalizarVenta()
       return
     }
     
@@ -293,17 +298,7 @@ function finalizarVenta() {
   
   alert(resumen)
   
-  // ❓ Preguntar ticket
-  if (confirm("¿Mostrar ticket para copiar?")) {
-    
-    // 📋 Mostrar ticket (copiable)
-    alert(ticket)
-    
-    // 📱 Intentar abrir WhatsApp
-    let url = "https://wa.me/?text=" + encodeURIComponent(ticket)
-    window.open(url, "_blank")
-    
-  }
+  ultimoTicket = ticket
   
   vaciar()
   
@@ -385,7 +380,7 @@ if(turno === "manana") ventaDiv.classList.add("turno-manana")
 if(turno === "tarde") ventaDiv.classList.add("turno-tarde")
 if(turno === "test") ventaDiv.classList.add("turno-test")
 
-ventaDiv.innerText = v.hora + " - $" + v.total + " - " + v.metodo
+ventaDiv.innerText = v.hora + " - $" + v.total + " - " + (v.metodo == "Efectivo" ? "💵" : "📱")
 
 // 👇 SOLO suma si NO es test
 if(turno !== "test"){
@@ -426,7 +421,16 @@ bloqueDia.appendChild(resumen)
 contenedor.appendChild(bloqueDia)
 
 })
-
+}
+function mostrarTicket() {
+  
+  if (!ultimoTicket) {
+    alert("No hay ticket reciente")
+    return
+  }
+  
+  // Mostrar ticket
+  alert(ultimoTicket)
 }
 </script>
 
