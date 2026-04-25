@@ -175,45 +175,93 @@ function mostrarProductos(){
 function redondear100(numero){
 return Math.ceil(numero/100)*100
 }
+function numeroValido(valor) {
+  return !isNaN(valor) && isFinite(valor)
+}
 
 function agregar(nombre, precio) {
   
   let gramos = prompt("¿Cuántos gramos pesa?")
-
   if (!gramos) return;
-
+  
   gramos = parseFloat(gramos)
 
+if (!numeroValido(gramos) || gramos <= 0) {
+  alert("Peso inválido")
+  return
+}
   let peso = gramos / 1000
   
-  let subtotal = peso * precio
-  subtotal = redondear100(subtotal)
+  let subtotal = redondear100(peso * precio)
   
   let item = document.createElement("div")
   item.classList.add("item")
   
-  carrito.push({
+  // 👇 objeto real en carrito (referencia directa)
+  let data = {
     nombre: nombre,
     pesoKg: peso,
-    subtotal: subtotal
-  })
+    subtotal: subtotal,
+    precio: precio
+  }
+  
+  carrito.push(data)
   
   let texto = document.createElement("span")
-  texto.innerText = nombre + " (" + peso + "kg) = $" + subtotal
   
-  let boton = document.createElement("button")
-  boton.innerText = "❌"
+  function actualizarTexto() {
+    texto.innerText = data.nombre + " (" + data.pesoKg.toFixed(3) + "kg) = $" + data.subtotal
+  }
   
-  boton.onclick = function() {
-    
+  actualizarTexto()
+  
+  // ❌ BOTÓN ELIMINAR
+  let botonEliminar = document.createElement("button")
+  botonEliminar.innerText = "❌"
+  
+  botonEliminar.onclick = function() {
     item.remove()
-    total -= subtotal
+    total -= data.subtotal
     document.getElementById("total").innerText = total
-    carrito = carrito.filter(i => !(i.nombre === nombre && i.subtotal === subtotal))
+    carrito = carrito.filter(i => i !== data)
+  }
+  
+  // ✏️ BOTÓN EDITAR
+  let botonEditar = document.createElement("button")
+  botonEditar.innerText = "✏️"
+  
+  botonEditar.onclick = function() {
+    
+    let nuevoGramos = prompt("Nuevo peso en gramos:", data.pesoKg * 1000)
+    if (!nuevoGramos) return
+    
+    nuevoGramos = parseFloat(nuevoGramos)
+
+if (!numeroValido(nuevoGramos) || nuevoGramos <= 0) {
+  alert("Peso inválido")
+  return
+}
+    let nuevoPeso = nuevoGramos / 1000
+    
+    // restar viejo
+    total -= data.subtotal
+    
+    // recalcular
+    data.pesoKg = nuevoPeso
+    data.subtotal = redondear100(nuevoPeso * data.precio)
+    
+    // sumar nuevo
+    total += data.subtotal
+    
+    // actualizar UI
+    actualizarTexto()
+    document.getElementById("total").innerText = total
+    
   }
   
   item.appendChild(texto)
-  item.appendChild(boton)
+  item.appendChild(botonEditar) // ✏️ primero editar
+  item.appendChild(botonEliminar) // ❌ después eliminar
   
   document.getElementById("lista").appendChild(item)
   
@@ -222,6 +270,7 @@ function agregar(nombre, precio) {
   
   document.getElementById("productos").style.display = "none"
 }
+
 function vaciar() {
   document.getElementById("lista").innerHTML = ""
   total = 0
@@ -307,11 +356,11 @@ function finalizarVenta() {
   ultimoTicket = ticket
   
   vaciar()
-  
+  renderHistorial()
 }
 
 function verVentas() {
-  
+  verVentas_bool = !verVentas_bool
   renderHistorial()
   
 }
@@ -345,8 +394,6 @@ function obtenerTurno(horaStr) {
 }
 
 function renderHistorial(){
-
-verVentas_bool = !verVentas_bool
 
 let contenedor = document.getElementById("historial")
 contenedor.innerHTML = ""
