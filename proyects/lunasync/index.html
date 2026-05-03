@@ -407,6 +407,10 @@
       border-color: rgba(116,226,154,.24);
       background: linear-gradient(180deg, rgba(116,226,154,.20), rgba(116,226,154,.06));
     }
+    .day.ovulation{
+      background: linear-gradient(180deg, rgb(177 17 17 / 58%), rgb(155 9 9 / 6%));
+      border-color: rgb(165 73 73 / 24%);
+    }
     .day.range{
       border-color: rgba(198,163,255,.24);
       background: linear-gradient(180deg, rgba(198,163,255,.17), rgba(198,163,255,.05));
@@ -429,6 +433,7 @@
     .dot.period{ background:var(--period); }
     .dot.fertile{ background:var(--fertile); }
     .dot.range{ background:var(--accent-2); }
+    .dot.ovulation {background: #b95037}
     .chart-box{
       height:280px;
     }
@@ -826,6 +831,7 @@
               <span class="pill"><span class="dot period"></span>Periodo probable</span>
               <span class="pill"><span class="dot fertile"></span>Ventana fértil</span>
               <span class="pill"><span class="dot range"></span>Rango probable</span>
+              <span class="pill"><span class="dot ovulation"></span>Ovulación estimada</span>
             </div>
           </div>
         </div>
@@ -1686,6 +1692,7 @@ const UIRenderer = {
     };
     addEmpty(firstDow);
 
+      let ovulationCon = 0
     for (let d = 1; d <= daysInMonth; d++) {
       const cellDate = start.date(d).startOf('day');
       const cell = document.createElement('div');
@@ -1724,7 +1731,6 @@ const UIRenderer = {
           }
         }
       });
-
       occurrences.forEach((occ, idx) => {
         const inPeriod = cellDate.isAfter(occ.periodStart.subtract(1, 'day')) && cellDate.isBefore(occ.periodEnd.add(1, 'day'));
         const inFertile = cellDate.isAfter(occ.fertileStart.subtract(1, 'day')) && cellDate.isBefore(occ.fertileEnd.add(1, 'day'));
@@ -1744,6 +1750,14 @@ const UIRenderer = {
           }
         }
         if (inFertile) {
+          ovulationCon++
+
+          if (ovulationCon == 5 || ovulationCon == 6) {
+            cell.classList.add('ovulation');
+            tags.push('<span class="tag fertile">Pico</span>');
+            console.log(ovulationCon)
+          }
+
           cell.classList.add('fertile');
           if (!tags.some(t => t.includes('Fértil'))) tags.push('<span class="tag fertile">Fértil</span>');
           if (!mainLabel || mainClass === 'range') {
