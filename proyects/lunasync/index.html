@@ -79,10 +79,21 @@
       animation-name: show;
       animation-range: entry 0% cover 20%;
       animation-fill-mode: both;
-      transition: all .3s;
+      transition: all .3s ease;
     }
     .hero .card{
       padding:22px;
+    }
+    .eyebrow{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      color:var(--accent);
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      font-size:.78rem;
+      font-weight:700;
+      margin-bottom:10px;
     }
     h1{
       margin:0 0 18px;
@@ -308,8 +319,7 @@
     .kpi .sub{ color:var(--muted); font-size:.82rem; margin-top:6px; line-height:1.4; }
     .calendar-wrap{
       display:grid;
-      <--grid-template-columns:repeat(2,minmax(0,1fr));-->
-      gap:12px;
+      gap: 17px;
     }
     .calendar{
       padding:14px;
@@ -394,6 +404,8 @@
     .tag.fertile{ background: rgba(116,226,154,.16); color:#d9ffe7; }
     .tag.today{ background: rgba(124,199,255,.16); color:#dbeeff; }
     .tag.range{ background: rgba(198,163,255,.15); color:#efe2ff; }
+    .tag.time{ background: rgba(255,107,139,.15); color:#ffe1e6; }
+    .tag.transe{ background: rgba(255,147,165,.22); color:#fff0f3; }
     .tag.transe{ background: rgba(124,199,255,.16); color:#dbeeff; }
     .day.today{
       outline:2px solid rgba(124,199,255,.75);
@@ -407,17 +419,21 @@
       border-color: rgba(116,226,154,.24);
       background: linear-gradient(180deg, rgba(116,226,154,.20), rgba(116,226,154,.06));
     }
-    .day.ovulation{
-      background: linear-gradient(180deg, rgb(177 17 17 / 58%), rgb(155 9 9 / 6%));
-      border-color: rgb(165 73 73 / 24%);
-    }
     .day.range{
       border-color: rgba(198,163,255,.24);
       background: linear-gradient(180deg, rgba(198,163,255,.17), rgba(198,163,255,.05));
     }
+    .day.expected{
+      border-color: rgba(255,107,139,.18);
+      background: linear-gradient(180deg, rgba(255,107,139,.10), rgba(255,107,139,.03));
+    }
     .day.transe{
-      border-color: rgba(124,199,255,.24);
-      background: linear-gradient(180deg, rgba(124,199,255,.18), rgba(124,199,255,.06));
+      border-color: rgba(255,147,165,.28);
+      background: linear-gradient(180deg, rgba(255,147,165,.28), rgba(255,147,165,.10));
+    }
+    .day.ovulation{
+      background: linear-gradient(180deg, rgb(177 17 17 / 58%), rgb(155 9 9 / 6%));
+      border-color: rgb(165 73 73 / 24%);
     }
     .legend{
       display:flex;
@@ -425,6 +441,30 @@
       gap:8px;
       margin-top:12px;
     }
+    .precision-grid, .timeline{
+      display:grid;
+      gap:10px;
+    }
+    .scoreline{ display:grid; gap:8px; margin-top:10px; }
+    .scorebar{
+      height:12px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid rgba(127,160,190,.12); overflow:hidden;
+    }
+    .scorebar > i{ display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, var(--accent), var(--accent-2)); width:0%; }
+    .companion-card{
+      padding:14px 15px; border-radius:18px; border:1px solid rgba(127,160,190,.14); background:rgba(255,255,255,.03); line-height:1.5;
+    }
+    .companion-card strong{ display:block; margin-bottom:4px; }
+    .timeline{ margin-top:12px; padding:14px; border-radius:20px; border:1px solid rgba(127,160,190,.14); background:rgba(255,255,255,.02); }
+    .timeline-track{ display:flex; align-items:stretch; gap:8px; min-height:54px; margin-top:10px; position:relative; }
+    .timeline-stage{ flex:1; min-width:0; border-radius:16px; border:1px solid rgba(127,160,190,.12); background:rgba(255,255,255,.03); padding:10px 10px 12px; position:relative; overflow:hidden; }
+    .timeline-stage .title{ font-size:.85rem; font-weight:800; }
+    .timeline-stage .sub{ color:var(--muted); font-size:.76rem; margin-top:3px; }
+    .timeline-stage.period{ background:rgba(255,107,139,.12); }
+    .timeline-stage.fertile{ background:rgba(116,226,154,.12); }
+    .timeline-stage.luteal{ background:rgba(198,163,255,.10); }
+    .timeline-stage.follicular{ background:rgba(124,199,255,.10); }
+    .timeline-marker{ position:absolute; top:-8px; bottom:-8px; width:2px; background:var(--today); left:0; box-shadow:0 0 0 4px rgba(124,199,255,.12); }
+    .timeline-stage.active{ outline:2px solid rgba(124,199,255,.5); }
     .legend .pill{ display:inline-flex; align-items:center; gap:8px; }
     .dot{
       width:10px; height:10px; border-radius:999px; display:inline-block;
@@ -522,6 +562,9 @@
       .hero .card, .content{ padding:16px; }
       .day{ min-height:60px; }
       .cal-head{ flex-direction:column; align-items:flex-start; }
+    }
+    #demoRegularBtn, #demoIrregularBtn, #sampleBtn {
+      display: none;
     }
   </style>
 </head>
@@ -742,6 +785,14 @@
               </div>
             </div>
 
+            <div class="precision-grid" style="margin-top:12px;">
+              <div class="status" id="precisionStatus">Precisión actual: —</div>
+              <div class="companion-card" id="companionStatus">
+                <strong>Te acompaño durante el ciclo</strong>
+                <div>Cuando calcules, aparecerán mensajes dinámicos según la fase y la cercanía del periodo.</div>
+              </div>
+            </div>
+
             <div class="footer-note" id="resultExplanation">
               Ingresá los datos mínimos y pulsá calcular. Si agregás fechas previas, la predicción gana precisión.
             </div>
@@ -832,6 +883,21 @@
               <span class="pill"><span class="dot fertile"></span>Ventana fértil</span>
               <span class="pill"><span class="dot range"></span>Rango probable</span>
               <span class="pill"><span class="dot ovulation"></span>Ovulación estimada</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="content">
+            <div class="section-title">
+              <div>
+                <h2>Timeline</h2>
+                <p>Una línea suave para entender el ciclo de un vistazo.</p>
+              </div>
+            </div>
+            <div class="timeline">
+              <div class="tiny" id="timelineLabel">Esperando cálculo…</div>
+              <div class="timeline-track" id="timelineTrack"></div>
             </div>
           </div>
         </div>
@@ -964,7 +1030,11 @@ const els = {
   fertileSub: document.getElementById('fertileSub'),
   phaseStatus: document.getElementById('phaseStatus'),
   confidenceStatus: document.getElementById('confidenceStatus'),
+  precisionStatus: document.getElementById('precisionStatus'),
+  companionStatus: document.getElementById('companionStatus'),
   resultExplanation: document.getElementById('resultExplanation'),
+  timelineLabel: document.getElementById('timelineLabel'),
+  timelineTrack: document.getElementById('timelineTrack'),
   historyList: document.getElementById('historyList'),
   historySummary: document.getElementById('historySummary'),
   monthNowLabel: document.getElementById('monthNowLabel'),
@@ -1100,6 +1170,83 @@ function episodeLength(ep) {
 
 function makeId(prefix) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}_${Date.now().toString(36)}`;
+}
+
+function getDailyCheckinDates() {
+  return uniqueSortedDates(AppState.dailyLogs.map(l => l.date));
+}
+
+function getCheckinStreak() {
+  const dates = getDailyCheckinDates().map(parseDate).filter(Boolean).sort((a, b) => a.valueOf() - b.valueOf());
+  if (!dates.length) return 0;
+  let streak = 1;
+  for (let i = dates.length - 1; i > 0; i--) {
+    const diff = dates[i].diff(dates[i - 1], 'day');
+    if (diff === 1) streak += 1;
+    else if (diff === 0) continue;
+    else break;
+  }
+  return streak;
+}
+
+function ensureAutoDailyCheckin() {
+  const iso = today().format('YYYY-MM-DD');
+  const exists = AppState.dailyLogs.some(l => l.type === 'auto_checkin' && l.date === iso);
+  if (exists) return false;
+  AppState.dailyLogs.push({ id: makeId('auto_checkin'), date: iso, type: 'auto_checkin', note: '', snapshot: { ...AppState.formData } });
+  return true;
+}
+
+function qualityScoreFromState(result, starts) {
+  const historyCount = starts.length;
+  const intervals = result?.intervals || [];
+  const variance = result?.variance || 0;
+  const riskScore = result?.riskScore ?? RiskContextEngine.getRiskScore(AppState.formData);
+  const streak = getCheckinStreak();
+  const episodeCount = AppState.periodEpisodes.length;
+  let score = 18;
+  score += Math.min(historyCount * 8, 26);
+  score += Math.min(episodeCount * 4, 12);
+  score += Math.min(streak * 3, 14);
+  if (intervals.length >= 2) score += 14;
+  score += Math.max(-8, Math.min(12, 12 - Math.round(variance * 2)));
+  score -= Math.max(0, Math.min(18, Math.round(riskScore * 0.55)));
+  return Math.max(10, Math.min(99, score));
+}
+
+function buildQualityBreakdown(result, starts) {
+  const historyCount = starts.length;
+  const streak = getCheckinStreak();
+  const variance = result?.variance || 0;
+  const riskScore = result?.riskScore ?? RiskContextEngine.getRiskScore(AppState.formData);
+  return { historyBoost: Math.min(historyCount * 8, 26), logsBoost: Math.min(streak * 3, 14), consistencyBoost: Math.max(-8, Math.min(12, 12 - Math.round(variance * 2))), riskPenalty: Math.max(0, Math.min(18, Math.round(riskScore * 0.55))) };
+}
+
+function companionMessage(result, confidence) {
+  const open = activeEpisode();
+  if (open) {
+    const days = episodeLength(open);
+    if (days <= 2) return 'Estás entrando en tu periodo 🌙 Bajá un cambio si podés y priorizá descanso.';
+    return `Tu periodo está en curso desde ${fmtDate(parseDate(open.start))}. Llevás ${days} día(s) registrándolo.`;
+  }
+  if (!result) return 'Cuando calculemos, te voy a ir avisando cómo se mueve tu ciclo con mensajes suaves.';
+  const next = result.nextOccurrence;
+  const todayDate = today();
+  const daysToPeriod = next ? next.periodStart.diff(todayDate, 'day') : 999;
+  if (next && todayDate.isAfter(next.fertileStart.subtract(1, 'day')) && todayDate.isBefore(next.fertileEnd.add(1, 'day'))) return 'Estás entrando en fase fértil 🌿 Hoy podrías sentir más energía o cambios leves en tu cuerpo.';
+  if (daysToPeriod <= 3) return 'Tu periodo está cerca, tomate un respiro y andá preparando un poco más de calma.';
+  if (daysToPeriod <= 7) return 'Tu periodo se está acercando de a poco. Ahora la app te muestra el tramo con más cercanía.';
+  if (result.phase === 'Fase lútea') return 'Hoy podrías sentir más energía variable o una fase más introspectiva.';
+  if (result.phase === 'Fase folicular') return 'Tu cuerpo parece ir levantando ritmo. Es una buena zona para observar patrones.';
+  return `Precisión actual ${confidence}%. Cada check-in diario la puede afinar un poco más.`;
+}
+
+function buildPhaseHint(result) {
+  if (!result) return '';
+  if (result.phase === 'Menstruación') return 'Hoy estás en periodo. Podés revisar tu comodidad y registrar síntomas.';
+  if (result.phase === 'Ovulación / fertilidad alta') return 'Estás en una etapa con fertilidad alta probable.';
+  if (result.phase === 'Fase lútea') return 'El cuerpo suele sentirse más cambiante en esta etapa.';
+  return 'El ciclo avanza y la app está afinando la predicción con lo que ya registraste.';
 }
 
 const RiskContextEngine = {
@@ -1253,25 +1400,9 @@ function buildDailyLogSummary(log) {
 
 function logDailyCheckin(type) {
   const date = today().format('YYYY-MM-DD');
-  const log = {
-    id: makeId(type),
-    date,
-    type,
-    note: AppState.formData.notes || AppState.formData.periodNote || '',
-    snapshot: {
-      stressLevel: AppState.formData.stressLevel,
-      exerciseLevel: AppState.formData.exerciseLevel,
-      weightChange: AppState.formData.weightChange,
-      sleepLevel: AppState.formData.sleepLevel,
-      contraception: AppState.formData.contraception,
-      pregnancyRisk: AppState.formData.pregnancyRisk,
-      lactation: AppState.formData.lactation,
-      symptomLevel: AppState.formData.symptomLevel,
-      cycleLength: AppState.formData.cycleLength,
-      bleedingLength: AppState.formData.bleedingLength,
-      note: AppState.formData.notes || ''
-    }
-  };
+  const existing = AppState.dailyLogs.find(l => l.type === type && l.date === date);
+  if (existing) return existing;
+  const log = { id: makeId(type), date, type, note: AppState.formData.notes || AppState.formData.periodNote || '', snapshot: { stressLevel: AppState.formData.stressLevel, exerciseLevel: AppState.formData.exerciseLevel, weightChange: AppState.formData.weightChange, sleepLevel: AppState.formData.sleepLevel, contraception: AppState.formData.contraception, pregnancyRisk: AppState.formData.pregnancyRisk, lactation: AppState.formData.lactation, symptomLevel: AppState.formData.symptomLevel, cycleLength: AppState.formData.cycleLength, bleedingLength: AppState.formData.bleedingLength, note: AppState.formData.notes || '' } };
   AppState.dailyLogs.push(log);
   return log;
 }
@@ -1287,11 +1418,12 @@ function upsertPeriodEpisode(startValue, durationValue, source = 'manual', endVa
 
   let episode = AppState.periodEpisodes.find(ep => ep && ep.start === isoStart) || null;
   if (!episode) {
-    episode = { id: makeId('episode'), start: isoStart, end: isoEnd, source };
+    episode = { id: makeId('episode'), start: isoStart, end: isoEnd, source, bleedingLength: duration || AppState.formData.bleedingLength || 5 };
     AppState.periodEpisodes.push(episode);
   } else {
     episode.end = isoEnd || episode.end || null;
     episode.source = source || episode.source || 'manual';
+    episode.bleedingLength = duration || episode.bleedingLength || AppState.formData.bleedingLength || 5;
   }
 
   if (!AppState.cycleHistory.includes(isoStart)) AppState.cycleHistory.push(isoStart);
@@ -1446,6 +1578,8 @@ const UIRenderer = {
     const tone = ConfidenceEngine.tone(confidence);
     const warnings = RiskContextEngine.buildWarnings(AppState.formData);
     const next = result.nextOccurrence;
+    const quality = qualityScoreFromState(result, starts);
+    const breakdown = buildQualityBreakdown(result, starts);
 
     els.nextPeriodKpi.textContent = next ? fmtDate(next.periodStart) : '—';
     els.nextPeriodSub.textContent = `Base: ${result.source}. Ciclo estimado: ${result.cycleLength} días.`;
@@ -1457,6 +1591,13 @@ const UIRenderer = {
     els.phaseStatus.textContent = `Fase actual: ${result.phase}. Día ${result.currentCycleDays} de ${result.cycleLength}.`;
     els.confidenceStatus.className = `status ${tone}`;
     els.confidenceStatus.textContent = `Confianza: ${label} (${confidence}%).`;
+
+    if (els.precisionStatus) {
+      els.precisionStatus.innerHTML = `Precisión actual: <strong>${quality}%</strong><div class="scoreline"><div class="scorebar"><i style="width:${quality}%"></i></div><div class="tiny">historial +${breakdown.historyBoost} · registros diarios +${breakdown.logsBoost} · consistencia +${breakdown.consistencyBoost} · contexto -${breakdown.riskPenalty}</div></div>`;
+    }
+    if (els.companionStatus) {
+      els.companionStatus.innerHTML = `<strong>${companionMessage(result, confidence)}</strong><div>${buildPhaseHint(result)}</div>`;
+    }
 
     let explanation = next
       ? `La próxima menstruación se estima para ${fmtDate(next.periodStart)}. El rango probable va de ${fmtDate(next.probableStart)} a ${fmtDate(next.probableEnd)} y la ventana fértil queda entre ${fmtDate(next.fertileStart)} y ${fmtDate(next.fertileEnd)}.`
@@ -1671,25 +1812,19 @@ const UIRenderer = {
 
     this.fillCalendar(els.calendarNow, currentMonth, result, now);
     this.fillCalendar(els.calendarNext, nextMonth, result, now);
+    this.renderTimeline(result, now);
   },
   fillCalendar(container, monthStart, result, now) {
     container.innerHTML = '';
     const start = monthStart.startOf('month');
     const firstDow = (start.day() + 6) % 7;
     const daysInMonth = monthStart.daysInMonth();
-
     const occurrences = result ? result.occurrences : [];
     const episodes = [...AppState.periodEpisodes]
       .filter(ep => ep && ep.start)
       .sort((a, b) => parseDate(a.start).valueOf() - parseDate(b.start).valueOf());
 
-    const addEmpty = n => {
-      for (let i = 0; i < n; i++) {
-        const cell = document.createElement('div');
-        cell.className = 'day empty';
-        container.appendChild(cell);
-      }
-    };
+    const addEmpty = n => { for (let i = 0; i < n; i++) { const cell = document.createElement('div'); cell.className = 'day empty'; container.appendChild(cell); } };
     addEmpty(firstDow);
 
       let ovulationCon = 0
@@ -1697,93 +1832,114 @@ const UIRenderer = {
       const cellDate = start.date(d).startOf('day');
       const cell = document.createElement('div');
       cell.className = 'day';
+      cell.dataset.date = cellDate.format('YYYY-MM-DD');
       const tags = [];
       let mainLabel = '';
       let mainClass = '';
       let closest = Infinity;
 
       const isToday = cellDate.isSame(now, 'day');
-      if (isToday) {
-        cell.classList.add('today');
-        tags.push('<span class="tag today">Hoy</span>');
-        mainLabel = 'Hoy';
-        mainClass = 'today';
-      }
+      if (isToday) { cell.classList.add('today'); tags.push('<span class="tag today">Hoy</span>'); mainLabel = 'Hoy'; mainClass = 'today'; }
 
-      // Periodo real / activo guardado por el usuario
       episodes.forEach(ep => {
         const startEp = parseDate(ep.start);
-        const endEp = ep.end ? parseDate(ep.end) : (activeEpisode() && activeEpisode().start === ep.start ? now : startEp);
-        if (!startEp || !endEp) return;
-
-        const inEpisode = (cellDate.isSame(startEp, 'day') || (cellDate.isAfter(startEp, 'day') && cellDate.isBefore(endEp.add(1, 'day'))));
-        if (inEpisode) {
+        if (!startEp) return;
+        const actualEnd = ep.end ? parseDate(ep.end) : now;
+        const expectedEnd = startEp.add((ep.bleedingLength || AppState.formData.bleedingLength || 5) - 1, 'day');
+        const inActual = cellDate.isSame(startEp, 'day') || (cellDate.isAfter(startEp, 'day') && cellDate.isBefore(actualEnd.add(1, 'day')));
+        const inExpectedTail = !ep.end && cellDate.isAfter(actualEnd, 'day') && cellDate.isBefore(expectedEnd.add(1, 'day'));
+        if (inActual) {
           cell.classList.add('period');
-          if (cellDate.isSame(startEp, 'day')) {
-            cell.classList.add('transe');
-            if (!tags.some(t => t.includes('Transe'))) tags.push('<span class="tag transe">Transe</span>');
-            mainLabel = mainLabel || 'Transe';
-          }
+          if (cellDate.isSame(startEp, 'day')) { cell.classList.add('transe'); tags.push('<span class="tag transe">Transe</span>'); mainLabel = 'Transe'; mainClass = 'transe'; }
           if (!tags.some(t => t.includes('Periodo'))) tags.push('<span class="tag period">Periodo</span>');
-          if (!mainLabel || mainClass === 'range') {
-            mainLabel = cellDate.isSame(startEp, 'day') ? 'Transe' : 'Periodo';
-            mainClass = 'period';
-          }
+          if (!mainLabel || mainClass === 'range') { mainLabel = cellDate.isSame(startEp, 'day') ? 'Transe' : 'Periodo'; mainClass = 'period'; }
+        } else if (inExpectedTail) {
+          cell.classList.add('expected');
+          if (!tags.some(t => t.includes('Rango esperado'))) tags.push('<span class="tag time">Rango</span>');
+          if (!mainLabel) { mainLabel = 'Rango esperado'; mainClass = 'expected'; }
         }
       });
+
       occurrences.forEach((occ, idx) => {
-        const inPeriod = cellDate.isAfter(occ.periodStart.subtract(1, 'day')) && cellDate.isBefore(occ.periodEnd.add(1, 'day'));
+        const inPeriodWindow = cellDate.isAfter(occ.periodStart.subtract(1, 'day')) && cellDate.isBefore(occ.periodEnd.add(1, 'day'));
         const inFertile = cellDate.isAfter(occ.fertileStart.subtract(1, 'day')) && cellDate.isBefore(occ.fertileEnd.add(1, 'day'));
         const inRange = cellDate.isAfter(occ.probableStart.subtract(1, 'day')) && cellDate.isBefore(occ.probableEnd.add(1, 'day'));
-
         const distToPeriod = Math.abs(cellDate.diff(occ.periodStart, 'day'));
         const distToFertile = Math.abs(cellDate.diff(occ.peakFertile, 'day'));
         const distToRange = Math.abs(cellDate.diff(occ.probableStart, 'day'));
         closest = Math.min(closest, distToPeriod, distToFertile, distToRange);
-
-        if (inPeriod) {
-          cell.classList.add('period');
-          if (!tags.some(t => t.includes('Periodo'))) tags.push('<span class="tag period">Periodo</span>');
-          if (!mainLabel) {
-            mainLabel = idx === 0 ? 'Periodo probable' : 'Periodo';
-            mainClass = 'period';
-          }
-        }
-        if (inFertile) {
-          ovulationCon++
+        if (inPeriodWindow && !cell.classList.contains('period') && !cell.classList.contains('expected')) { cell.classList.add('expected'); if (!tags.some(t => t.includes('Periodo'))) tags.push('<span class="tag time">Periodo</span>'); if (!mainLabel) { mainLabel = 'Periodo'; mainClass = 'expected'; } }
+        
+        if (inFertile) { 
+          ovulationCon++;
 
           if (ovulationCon == 5 || ovulationCon == 6) {
             cell.classList.add('ovulation');
-            tags.push('<span class="tag fertile">Pico</span>');
-            console.log(ovulationCon)
+            tags.push('<span class="tag ovulation">Pico</span>');
           }
 
           cell.classList.add('fertile');
-          if (!tags.some(t => t.includes('Fértil'))) tags.push('<span class="tag fertile">Fértil</span>');
+
+          if (!tags.some(t => t.includes('Fértil')))
+            tags.push('<span class="tag fertile">Fértil</span>');
+
           if (!mainLabel || mainClass === 'range') {
             mainLabel = idx === 0 ? 'Fértil alto' : 'Fértil';
             mainClass = 'fertile';
           }
         }
+
         if (inRange) {
           cell.classList.add('range');
-          if (!tags.some(t => t.includes('Rango'))) tags.push('<span class="tag range">Rango</span>');
+
+          if (!tags.some(t => t.includes('Rango')))
+            tags.push('<span class="tag range">Rango</span>'); 
+
           if (!mainLabel) {
-            mainLabel = idx === 0 ? 'Rango probable' : 'Rango';
-            mainClass = 'range';
+            mainLabel = idx === 0 ? 'Rango probable' : 'Rango'; 
+            mainClass = 'range'; 
           }
         }
       });
 
-      const intensity = clamp(1 - (closest / 12), 0.16, 0.92);
-      if (cell.classList.contains('period')) cell.style.boxShadow = `inset 0 0 0 999px rgba(255,107,139,${0.08 + intensity * 0.24})`;
+      const intensity = Math.max(0.16, Math.min(0.92, 1 - (closest / 12)));
+      if (cell.classList.contains('period')) cell.style.boxShadow = `inset 0 0 0 999px rgba(255,107,139,${0.10 + intensity * 0.24})`;
+      else if (cell.classList.contains('expected')) cell.style.boxShadow = `inset 0 0 0 999px rgba(255,107,139,${0.06 + intensity * 0.18})`;
       else if (cell.classList.contains('fertile')) cell.style.boxShadow = `inset 0 0 0 999px rgba(116,226,154,${0.08 + intensity * 0.22})`;
       else if (cell.classList.contains('range')) cell.style.boxShadow = `inset 0 0 0 999px rgba(198,163,255,${0.06 + intensity * 0.18})`;
-
       const summary = mainLabel ? `<div class="day-state ${mainClass}">${mainLabel}</div>` : '<div class="day-state">&nbsp;</div>';
       cell.innerHTML = `<div class="num">${d}</div>${summary}<div class="tags">${tags.join('')}</div>`;
       container.appendChild(cell);
     }
+  },
+  renderTimeline(result, now) {
+    if (!els.timelineTrack || !els.timelineLabel) return;
+    els.timelineTrack.innerHTML = '';
+    if (!result || !result.nextOccurrence) { els.timelineLabel.textContent = 'Todavía no hay datos suficientes para dibujar la línea del ciclo.'; return; }
+    const periodDays = Math.max(1, Math.min(12, result.bleed || AppState.formData.bleedingLength || 5));
+    const cycleLength = result.cycleLength || 28;
+    const ovDay = Math.max(1, cycleLength - 14);
+    const folDays = Math.max(1, ovDay - periodDays - 1);
+    const fertDays = 7;
+    const lutealDays = Math.max(1, cycleLength - periodDays - folDays - fertDays);
+    const stages = [
+      { key: 'period', title: 'Periodo', sub: `${periodDays} días`, days: periodDays },
+      { key: 'follicular', title: 'Folicular', sub: `${folDays} días`, days: folDays },
+      { key: 'fertile', title: 'Fértil', sub: `${fertDays} días`, days: fertDays },
+      { key: 'luteal', title: 'Lútea', sub: `${lutealDays} días`, days: lutealDays }
+    ];
+    const total = stages.reduce((a, b) => a + b.days, 0);
+    const currentDay = Math.max(1, Math.min(total, result.currentCycleDays || 1));
+    let cursor = 0;
+    stages.forEach(stage => {
+      const box = document.createElement('div');
+      box.className = `timeline-stage ${stage.key}${currentDay > cursor && currentDay <= cursor + stage.days ? ' active' : ''}`;
+      const marker = currentDay > cursor && currentDay <= cursor + stage.days ? `<span class="timeline-marker" style="left:${((currentDay - cursor - 1) / stage.days) * 100}%"></span>` : '';
+      box.innerHTML = `${marker}<div class="title">${stage.title}</div><div class="sub">${stage.sub}</div>`;
+      els.timelineTrack.appendChild(box);
+      cursor += stage.days;
+    });
+    els.timelineLabel.textContent = result.phase ? `Hoy estás en ${result.phase.toLowerCase()}.` : 'Hoy te acompaño con la línea general del ciclo.';
   },
   renderChart() {
     const starts = historyDateStrings();
@@ -1853,13 +2009,10 @@ const UIRenderer = {
   },
   renderStatuses() {
     const open = activeEpisode();
-    els.settingsStatus.textContent = AppState.lastResult
-      ? 'Último cálculo listo. Todo queda en este navegador y podés exportarlo si querés moverlo a otro dispositivo.'
-      : 'Aún no calculaste. Todo queda en este navegador y podés exportarlo si querés moverlo a otro dispositivo.';
+    const streak = getCheckinStreak();
+    els.settingsStatus.textContent = AppState.lastResult ? `Último cálculo listo. Llevás ${streak} día(s) seguidos con check-in${streak === 1 ? '' : 's'}.` : `Aún no calculaste. Llevás ${streak} día(s) seguidos con check-in${streak === 1 ? '' : 's'}.`;
     els.privacyStatus.textContent = 'Esto es una ayuda estimativa, no un diagnóstico médico.';
-    if (open) {
-      els.cycleHealthLabel.textContent = els.cycleHealthLabel.textContent;
-    }
+    if (open) { els.cycleHealthLabel.textContent = els.cycleHealthLabel.textContent; }
   }
 };
 
@@ -1890,6 +2043,8 @@ const FormController = {
       }
       StorageManager.save();
       UIRenderer.renderAll();
+      const result = AppState.lastResult;
+      if (result && els.mainStatus) { els.mainStatus.className = 'status good'; els.mainStatus.textContent = `Listo. ${companionMessage(result, result.confidence || 0)}`; }
     });
 
     els.saveBtn.addEventListener('click', () => {
@@ -1953,11 +2108,13 @@ const FormController = {
     els.clearHistoryBtn.addEventListener('click', () => {
       AppState.cycleHistory = [];
       AppState.periodEpisodes = [];
+      AppState.dailyLogs = [];
       StorageManager.save();
       UIRenderer.renderAll();
       els.mainStatus.className = 'status warn';
       els.mainStatus.textContent = 'Historial limpio.';
     });
+
 
     els.demoRegularBtn.addEventListener('click', () => {
       const base = today().subtract(84, 'day');
@@ -2065,6 +2222,7 @@ function bootstrap() {
   const loaded = StorageManager.load();
   initDefaults();
   syncStateToForm();
+  ensureAutoDailyCheckin();
   FormController.bind();
   UIRenderer.renderAll();
   if (!loaded) {
@@ -2072,9 +2230,11 @@ function bootstrap() {
     els.mainStatus.textContent = 'Cargá tus fechas o probá uno de los ejemplos para ver cómo funciona.';
   }
   setInterval(() => {
+    ensureAutoDailyCheckin();
     UIRenderer.renderHeader();
     UIRenderer.renderCalendars();
     UIRenderer.renderEpisode();
+    StorageManager.save();
   }, 60 * 1000);
 }
 
