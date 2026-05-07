@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carnicerias - El Sabrosón</title>
-
     <style>
         body {
             font-family: Arial;
@@ -14,11 +13,7 @@
             border: red solid 13px;
             background: #edda77;
         }
-
-        h1 {
-            text-align: center;
-        }
-
+        h1 { text-align: center; }
         button {
             padding: 12px;
             margin: 5px;
@@ -26,27 +21,14 @@
             font-weight: bold;
             text-transform: uppercase;
             user-select: none;
-
-            &:hover {
-                background: #C7A363;
-            }
         }
-
-        label {
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
+        button:hover { background: #C7A363; }
+        label { font-weight: bold; text-transform: uppercase; }
         #productos {
             display: flex;
             flex-direction: column;
-
-            & button {
-                display: block;
-                width: 100%;
-            }
         }
-
+        #productos button { display: block; width: 100%; }
         #lista {
             margin-top: 20px;
             background: red;
@@ -55,18 +37,9 @@
             display: flex;
             flex-direction: column;
             gap: 9px;
-
-            & span {
-                margin: 5px;
-            }
         }
-
-        .total {
-            font-size: 24px;
-            font-weight: bold;
-            margin-top: 20px;
-        }
-
+        #lista span { margin: 5px; }
+        .total { font-size: 24px; font-weight: bold; margin-top: 20px; }
         .item {
             align-items: center;
             display: flex;
@@ -75,32 +48,17 @@
             font-weight: bold;
             background: white;
         }
-
         .venta {
             padding: 10px;
             margin-bottom: 10px;
             border-radius: 8px;
             font-weight: bold;
         }
+        .turno-manana { background: #F4BF55; }
+        .turno-tarde { background: #d4b0ff; }
+        .turno-test { background: #ccc; }
+        .item-detalle { margin-left: 10px; font-weight: normal; }
 
-        .turno-manana {
-            background: #F4BF55;
-        }
-
-        .turno-tarde {
-            background: #d4b0ff;
-        }
-
-        .turno-test {
-            background: #ccc;
-        }
-
-        .item-detalle {
-            margin-left: 10px;
-            font-weight: normal;
-        }
-
-        /* ✅ NUEVO: Dashboard */
         #dashboard {
             background: #fff;
             border: 3px solid #b22222;
@@ -114,27 +72,19 @@
             gap: 12px;
             font-weight: bold;
             font-size: 16px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
-
         #dashboard .metrica {
             text-align: center;
             min-width: 100px;
         }
-
         #dashboard .valor {
             font-size: 22px;
             display: block;
             margin-top: 4px;
         }
-
-        .ganancia-positiva {
-            color: green;
-        }
-        .ganancia-negativa {
-            color: red;
-        }
-
+        .ganancia-positiva { color: green; }
+        .ganancia-negativa { color: red; }
         #dashboard button {
             font-size: 14px;
             padding: 10px 16px;
@@ -143,16 +93,18 @@
             border-radius: 8px;
             cursor: pointer;
         }
-
-        /* Resaltados en historial */
+        #btnSobras {
+            background: #d4edda;
+            border-color: #28a745;
+            display: none; /* se muestra solo después de las 21 */
+        }
         .resumen-dia {
             margin-top: 6px;
             font-size: 15px;
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(255,255,255,0.7);
             padding: 8px;
             border-radius: 6px;
         }
-
         .resumen-general {
             background: #b22222;
             color: white;
@@ -164,10 +116,8 @@
     </style>
 </head>
 <body>
-
     <h1>🐓 Carnicerias 🐄</h1>
 
-    <!-- ✅ NUEVO: Dashboard superior -->
     <div id="dashboard">
         <div class="metrica">
             💵 Ventas hoy
@@ -182,6 +132,7 @@
             <span class="valor" id="gananciaNeta">$0</span>
         </div>
         <button onclick="registrarInversion()">💰 Registrar Inversión</button>
+        <button id="btnSobras" onclick="registrarSobras()">🥩 Sobras</button>
     </div>
 
     <button onclick="mostrarProductos()">➕ Agregar Producto</button>
@@ -208,23 +159,13 @@
     </div>
 
     <div id="lista"></div>
-
-    <div class="total">
-        Total: $<span id="total">0</span>
-    </div>
+    <div class="total">Total: $<span id="total">0</span></div>
 
     <h3>Método de pago</h3>
-    <label>
-        <input type="radio" name="pago" value="Efectivo" checked> Efectivo
-    </label>
-    <label>
-        <input type="radio" name="pago" value="Transferencia"> Transferencia
-    </label>
-    <label>
-        <input type="radio" name="pago" value="Otro"> Otro
-    </label>
+    <label><input type="radio" name="pago" value="Efectivo" checked> Efectivo</label>
+    <label><input type="radio" name="pago" value="Transferencia"> Transferencia</label>
+    <label><input type="radio" name="pago" value="Otro"> Otro</label>
     <br><br>
-
     <button onclick="finalizarVenta()">💰 Finalizar venta</button>
     <button onclick="mostrarTicket()">📄 Ticket</button>
     <button onclick="verVentas()">📊 Ver ventas</button>
@@ -233,347 +174,298 @@
     <div id="historial"></div>
 
     <script>
-        let total = 0
-        let carrito = []
-        let verVentas_bool = false
-        let verProductos_bool = false
-        let ultimoTicket = ""
+        let total = 0;
+        let carrito = [];
+        let verVentas_bool = false;
+        let verProductos_bool = false;
+        let ultimoTicket = "";
 
-        // ✅ Al cargar la página: mostrar dashboard
         window.addEventListener("DOMContentLoaded", () => {
-            actualizarDashboard()
-        })
+            actualizarDashboard();
+            verificarHoraSobras(); // mostrar botón sobras si es tarde
+            // actualizar cada minuto por si cambia la hora
+            setInterval(() => {
+                verificarHoraSobras();
+                actualizarDashboard();
+                if (verVentas_bool) renderHistorial();
+            }, 60000);
+        });
 
-        // ✅ Obtener fecha de hoy en formato local (el mismo que usan las ventas)
         function fechaHoy() {
-            return new Date().toLocaleDateString()
+            return new Date().toLocaleDateString();
         }
 
-        // ✅ Actualizar el dashboard superior
-        function actualizarDashboard() {
-            const hoy = fechaHoy()
-            const ventas = JSON.parse(localStorage.getItem("ventas")) || []
-            const inversiones = JSON.parse(localStorage.getItem("inversiones")) || {}
-
-            // Sumar ventas de hoy
-            let totalVentasHoy = 0
-            ventas.forEach(v => {
-                if (v.fecha === hoy) {
-                    totalVentasHoy += v.total
-                }
-            })
-
-            // Inversión de hoy
-            let inversionHoy = inversiones[hoy] || 0
-
-            // Ganancia neta
-            let ganancia = totalVentasHoy - inversionHoy
-
-            document.getElementById("ventasHoy").innerText = "$" + totalVentasHoy
-            document.getElementById("inversionHoy").innerText = "$" + inversionHoy
-
-            const gananciaSpan = document.getElementById("gananciaNeta")
-            gananciaSpan.innerText = "$" + ganancia
-
-            // Color según positivo/negativo
-            gananciaSpan.className = "valor " + (ganancia >= 0 ? "ganancia-positiva" : "ganancia-negativa")
+        function horaActual() {
+            return new Date().getHours();
         }
 
-        // ✅ Botón para registrar inversión del día
-        function registrarInversion() {
-            const input = prompt("¿Cuánta plata invertiste hoy? ($)")
-            if (input === null) return
-
-            const monto = parseFloat(input)
-            if (isNaN(monto) || monto < 0) {
-                alert("Monto inválido")
-                return
+        function verificarHoraSobras() {
+            const btn = document.getElementById("btnSobras");
+            if (horaActual() >= 21) {
+                btn.style.display = "inline-block";
+            } else {
+                btn.style.display = "none";
             }
+        }
 
-            const inversiones = JSON.parse(localStorage.getItem("inversiones")) || {}
-            inversiones[fechaHoy()] = monto
-            localStorage.setItem("inversiones", JSON.stringify(inversiones))
+        function actualizarDashboard() {
+            const hoy = fechaHoy();
+            const ventas = JSON.parse(localStorage.getItem("ventas")) || [];
+            const inversiones = JSON.parse(localStorage.getItem("inversiones")) || {};
+            const sobrantes = JSON.parse(localStorage.getItem("sobrantes")) || {};
 
-            actualizarDashboard()
-            if (verVentas_bool) renderHistorial()
-            alert("✅ Inversión registrada: $" + monto)
+            let totalVentasHoy = 0;
+            ventas.forEach(v => {
+                if (v.fecha === hoy) totalVentasHoy += v.total;
+            });
+
+            let inversionHoy = inversiones[hoy] || 0;
+            let sobranteHoy = sobrantes[hoy] || 0;
+            let ganancia = totalVentasHoy - inversionHoy + sobranteHoy;
+
+            document.getElementById("ventasHoy").innerText = "$" + totalVentasHoy;
+            document.getElementById("inversionHoy").innerText = "$" + inversionHoy;
+            const gananciaSpan = document.getElementById("gananciaNeta");
+            gananciaSpan.innerText = "$" + ganancia;
+            gananciaSpan.className = "valor " + (ganancia >= 0 ? "ganancia-positiva" : "ganancia-negativa");
+
+            // Mostrar también el sobrante en el dashboard si existe
+            if (sobranteHoy > 0) {
+                gananciaSpan.innerText += " (incluye $" + sobranteHoy + " en sobrantes)";
+            }
+        }
+
+        function registrarSobras() {
+            const input = prompt("¿De la mercadería que quedó, cuánto hay más o menos de plata? ($)");
+            if (input === null) return;
+            const monto = parseFloat(input);
+            if (isNaN(monto) || monto < 0) {
+                alert("Monto inválido");
+                return;
+            }
+            const sobrantes = JSON.parse(localStorage.getItem("sobrantes")) || {};
+            sobrantes[fechaHoy()] = monto;
+            localStorage.setItem("sobrantes", JSON.stringify(sobrantes));
+            actualizarDashboard();
+            if (verVentas_bool) renderHistorial();
+            alert("✅ Sobrante registrado: $" + monto);
+        }
+
+        function registrarInversion() {
+            const input = prompt("¿Cuánta plata invertiste hoy? ($)");
+            if (input === null) return;
+            const monto = parseFloat(input);
+            if (isNaN(monto) || monto < 0) {
+                alert("Monto inválido");
+                return;
+            }
+            const inversiones = JSON.parse(localStorage.getItem("inversiones")) || {};
+            inversiones[fechaHoy()] = monto;
+            localStorage.setItem("inversiones", JSON.stringify(inversiones));
+            actualizarDashboard();
+            if (verVentas_bool) renderHistorial();
+            alert("✅ Inversión registrada: $" + monto);
         }
 
         function mostrarProductos() {
-            verProductos_bool = !verProductos_bool
-            document.getElementById("productos").style.display = verProductos_bool ? "flex" : "none"
+            verProductos_bool = !verProductos_bool;
+            document.getElementById("productos").style.display = verProductos_bool ? "flex" : "none";
         }
 
-        function redondear100(numero) {
-            return Math.ceil(numero / 100) * 100
-        }
-
-        function numeroValido(valor) {
-            return !isNaN(valor) && isFinite(valor)
-        }
+        function redondear100(numero) { return Math.ceil(numero/100)*100; }
+        function numeroValido(valor) { return !isNaN(valor) && isFinite(valor); }
 
         function agregar(nombre, precio) {
-            let gramos = prompt("¿Cuántos gramos pesa?")
+            let gramos = prompt("¿Cuántos gramos pesa?");
             if (!gramos) return;
-            gramos = parseFloat(gramos)
-            if (!numeroValido(gramos) || gramos <= 0) {
-                alert("Peso inválido")
-                return
-            }
-            let peso = gramos / 1000
-            let subtotal = redondear100(peso * precio)
+            gramos = parseFloat(gramos);
+            if (!numeroValido(gramos) || gramos <= 0) { alert("Peso inválido"); return; }
+            let peso = gramos / 1000;
+            let subtotal = redondear100(peso * precio);
 
-            let item = document.createElement("div")
-            item.classList.add("item")
+            let item = document.createElement("div");
+            item.classList.add("item");
+            let data = { nombre: nombre, pesoKg: peso, subtotal: subtotal, precio: precio };
+            carrito.push(data);
+            let texto = document.createElement("span");
+            function actualizarTexto() { texto.innerText = data.nombre + " (" + data.pesoKg.toFixed(3) + "kg) = $" + data.subtotal; }
+            actualizarTexto();
 
-            let data = {
-                nombre: nombre,
-                pesoKg: peso,
-                subtotal: subtotal,
-                precio: precio
-            }
-
-            carrito.push(data)
-
-            let texto = document.createElement("span")
-            function actualizarTexto() {
-                texto.innerText = data.nombre + " (" + data.pesoKg.toFixed(3) + "kg) = $" + data.subtotal
-            }
-            actualizarTexto()
-
-            let botonEliminar = document.createElement("button")
-            botonEliminar.innerText = "❌"
+            let botonEliminar = document.createElement("button");
+            botonEliminar.innerText = "❌";
             botonEliminar.onclick = function() {
-                item.remove()
-                total -= data.subtotal
-                document.getElementById("total").innerText = total
-                carrito = carrito.filter(i => i !== data)
-            }
+                item.remove();
+                total -= data.subtotal;
+                document.getElementById("total").innerText = total;
+                carrito = carrito.filter(i => i !== data);
+            };
 
-            let botonEditar = document.createElement("button")
-            botonEditar.innerText = "✏️"
+            let botonEditar = document.createElement("button");
+            botonEditar.innerText = "✏️";
             botonEditar.onclick = function() {
-                let nuevoGramos = prompt("Nuevo peso en gramos:", data.pesoKg * 1000)
-                if (!nuevoGramos) return
-                nuevoGramos = parseFloat(nuevoGramos)
-                if (!numeroValido(nuevoGramos) || nuevoGramos <= 0) {
-                    alert("Peso inválido")
-                    return
-                }
-                let nuevoPeso = nuevoGramos / 1000
-                total -= data.subtotal
-                data.pesoKg = nuevoPeso
-                data.subtotal = redondear100(nuevoPeso * data.precio)
-                total += data.subtotal
-                actualizarTexto()
-                document.getElementById("total").innerText = total
-            }
+                let nuevoGramos = prompt("Nuevo peso en gramos:", data.pesoKg * 1000);
+                if (!nuevoGramos) return;
+                nuevoGramos = parseFloat(nuevoGramos);
+                if (!numeroValido(nuevoGramos) || nuevoGramos <= 0) { alert("Peso inválido"); return; }
+                let nuevoPeso = nuevoGramos / 1000;
+                total -= data.subtotal;
+                data.pesoKg = nuevoPeso;
+                data.subtotal = redondear100(nuevoPeso * data.precio);
+                total += data.subtotal;
+                actualizarTexto();
+                document.getElementById("total").innerText = total;
+            };
 
-            item.appendChild(texto)
-            item.appendChild(botonEditar)
-            item.appendChild(botonEliminar)
-            document.getElementById("lista").appendChild(item)
+            item.appendChild(texto);
+            item.appendChild(botonEditar);
+            item.appendChild(botonEliminar);
+            document.getElementById("lista").appendChild(item);
 
-            total += subtotal
-            document.getElementById("total").innerText = total
-            document.getElementById("productos").style.display = "none"
+            total += subtotal;
+            document.getElementById("total").innerText = total;
+            document.getElementById("productos").style.display = "none";
         }
 
         function vaciar() {
-            document.getElementById("lista").innerHTML = ""
-            total = 0
-            carrito = []
-            document.getElementById("total").innerText = total
+            document.getElementById("lista").innerHTML = "";
+            total = 0;
+            carrito = [];
+            document.getElementById("total").innerText = total;
         }
 
         function finalizarVenta() {
-            if (total == 0) return
-
-            let metodo = document.querySelector('input[name="pago"]:checked').value
-            let pagoCliente = null
-            let vuelto = 0
-
+            if (total == 0) return;
+            let metodo = document.querySelector('input[name="pago"]:checked').value;
+            let pagoCliente = null, vuelto = 0;
             if (metodo === "Efectivo") {
-                let input = prompt("¿Con cuánto paga el cliente?")
-                if (!input) input = total
-                pagoCliente = parseFloat(input)
-                if (isNaN(pagoCliente)) {
-                    alert("Número inválido")
-                    finalizarVenta()
-                    return
-                }
-                vuelto = pagoCliente - total
-                if (vuelto < 0) {
-                    alert("Falta dinero! Te debe $" + Math.abs(vuelto))
-                    return
-                }
+                let input = prompt("¿Con cuánto paga el cliente?");
+                if (!input) input = total;
+                pagoCliente = parseFloat(input);
+                if (isNaN(pagoCliente)) { alert("Número inválido"); return; }
+                vuelto = pagoCliente - total;
+                if (vuelto < 0) { alert("Falta dinero! Te debe $" + Math.abs(vuelto)); return; }
             }
+            let ahora = new Date();
+            let ticket = "🐔 POLLERÍA\n" + ahora.toLocaleString() + "\n\n";
+            carrito.forEach(i => ticket += i.nombre + " - " + i.pesoKg.toFixed(3) + "Kg - $" + i.subtotal + "\n");
+            ticket += "\nTOTAL: $" + total + "\nPAGO: " + metodo + "\n";
+            if (metodo === "Efectivo") ticket += "RECIBIDO: $" + pagoCliente + "\nVUELTO: $" + vuelto + "\n";
 
-            let ahora = new Date()
-            let ticket = "🐔 POLLERÍA\n"
-            ticket += ahora.toLocaleString() + "\n\n"
+            let ventas = JSON.parse(localStorage.getItem("ventas")) || [];
+            ventas.push({ fecha: ahora.toLocaleDateString(), hora: ahora.toLocaleTimeString(), total: total, metodo: metodo, items: carrito.length ? carrito : null });
+            localStorage.setItem("ventas", JSON.stringify(ventas));
 
-            carrito.forEach(i => {
-                ticket += i.nombre + " - " + i.pesoKg.toFixed(3) + "Kg - $" + i.subtotal + "\n"
-            })
-
-            ticket += "\nTOTAL: $" + total + "\n"
-            ticket += "PAGO: " + metodo + "\n"
-
-            if (metodo === "Efectivo") {
-                ticket += "RECIBIDO: $" + pagoCliente + "\n"
-                ticket += "VUELTO: $" + vuelto + "\n"
-            }
-
-            let ventas = JSON.parse(localStorage.getItem("ventas")) || []
-            ventas.push({
-                fecha: ahora.toLocaleDateString(),
-                hora: ahora.toLocaleTimeString(),
-                total: total,
-                metodo: metodo,
-                items: carrito.length ? carrito : null
-            })
-            localStorage.setItem("ventas", JSON.stringify(ventas))
-
-            let resumen = "Venta: $" + total + " (" + metodo + ")"
-            if (metodo === "Efectivo") {
-                resumen += "\nVuelto: $" + vuelto
-            }
-            alert(resumen)
-
-            ultimoTicket = ticket
-            vaciar()
-
-            // ✅ Actualizar dashboard y historial si está abierto
-            actualizarDashboard()
-            if (verVentas_bool) renderHistorial()
+            alert("Venta: $" + total + " (" + metodo + ")" + (metodo === "Efectivo" ? "\nVuelto: $" + vuelto : ""));
+            ultimoTicket = ticket;
+            vaciar();
+            actualizarDashboard();
+            if (verVentas_bool) renderHistorial();
         }
 
         function verVentas() {
-            verVentas_bool = !verVentas_bool
-            renderHistorial()
+            verVentas_bool = !verVentas_bool;
+            renderHistorial();
         }
 
         function obtenerTurno(horaStr) {
-            let esPM = horaStr.toLowerCase().includes("p")
-            let hora = parseInt(horaStr.split(":")[0])
-            if (esPM && hora !== 12) hora += 12
-            if (!esPM && hora === 12) hora = 0
-            if (hora >= 9 && hora < 14) return "manana"
-            if (hora >= 17 && hora < 21) return "tarde"
-            return "test"
+            let esPM = horaStr.toLowerCase().includes("p");
+            let hora = parseInt(horaStr.split(":")[0]);
+            if (esPM && hora !== 12) hora += 12;
+            if (!esPM && hora === 12) hora = 0;
+            if (hora >= 9 && hora < 14) return "manana";
+            if (hora >= 17 && hora < 21) return "tarde";
+            return "test";
         }
 
         function renderHistorial() {
-            let contenedor = document.getElementById("historial")
-            contenedor.innerHTML = ""
+            let contenedor = document.getElementById("historial");
+            contenedor.innerHTML = "";
+            if (!verVentas_bool) return;
 
-            if (!verVentas_bool) return
+            let ventas = JSON.parse(localStorage.getItem("ventas")) || [];
+            let inversiones = JSON.parse(localStorage.getItem("inversiones")) || {};
+            let sobrantes = JSON.parse(localStorage.getItem("sobrantes")) || {};
 
-            let ventas = JSON.parse(localStorage.getItem("ventas")) || []
-            let inversiones = JSON.parse(localStorage.getItem("inversiones")) || {}
-
-            let dias = {}
+            let dias = {};
             ventas.forEach(v => {
-                if (!dias[v.fecha]) dias[v.fecha] = []
-                dias[v.fecha].push(v)
-            })
+                if (!dias[v.fecha]) dias[v.fecha] = [];
+                dias[v.fecha].push(v);
+            });
 
-            // Variables para totales generales
-            let totalGeneral = 0
-            let totalEfectivoGeneral = 0
-            let totalTransferenciaGeneral = 0
+            let totalGeneral = 0, totalEfectivoGeneral = 0, totalTransferenciaGeneral = 0;
 
             Object.keys(dias).reverse().forEach(dia => {
-                let bloqueDia = document.createElement("div")
-                let titulo = document.createElement("h3")
-                titulo.innerText = "----- " + dia + " -----"
-                bloqueDia.appendChild(titulo)
+                let bloqueDia = document.createElement("div");
+                let titulo = document.createElement("h3");
+                titulo.innerText = "----- " + dia + " -----";
+                bloqueDia.appendChild(titulo);
 
-                let totalDia = 0
-                let kilosDia = 0
-                let efectivoDia = 0
-                let transferenciaDia = 0
+                let totalDia = 0, kilosDia = 0, efectivoDia = 0, transferenciaDia = 0;
 
                 dias[dia].forEach(v => {
-                    let turno = obtenerTurno(v.hora)
-                    let ventaDiv = document.createElement("div")
-                    ventaDiv.classList.add("venta")
-                    if (turno === "manana") ventaDiv.classList.add("turno-manana")
-                    if (turno === "tarde") ventaDiv.classList.add("turno-tarde")
-                    if (turno === "test") ventaDiv.classList.add("turno-test")
-
-                    ventaDiv.innerText = v.hora + " - $" + v.total + " - " + (v.metodo == "Efectivo" ? "💵" : "📱")
+                    let turno = obtenerTurno(v.hora);
+                    let ventaDiv = document.createElement("div");
+                    ventaDiv.classList.add("venta");
+                    if (turno === "manana") ventaDiv.classList.add("turno-manana");
+                    if (turno === "tarde") ventaDiv.classList.add("turno-tarde");
+                    if (turno === "test") ventaDiv.classList.add("turno-test");
+                    ventaDiv.innerText = v.hora + " - $" + v.total + " - " + (v.metodo == "Efectivo" ? "💵" : "📱");
 
                     if (turno !== "test") {
-                        totalDia += v.total
-                        if (v.metodo === "Efectivo") {
-                            efectivoDia += v.total
-                        } else {
-                            transferenciaDia += v.total
-                        }
+                        totalDia += v.total;
+                        if (v.metodo === "Efectivo") efectivoDia += v.total;
+                        else transferenciaDia += v.total;
                     }
-
                     if (v.items) {
                         v.items.forEach(i => {
-                            let item = document.createElement("div")
-                            item.classList.add("item-detalle")
-                            item.innerText = "| " + i.pesoKg.toFixed(3) + "Kg de " + i.nombre
-                            ventaDiv.appendChild(item)
-                            if (turno !== "test") {
-                                kilosDia += i.pesoKg
-                            }
-                        })
+                            let item = document.createElement("div");
+                            item.classList.add("item-detalle");
+                            item.innerText = "| " + i.pesoKg.toFixed(3) + "Kg de " + i.nombre;
+                            ventaDiv.appendChild(item);
+                            if (turno !== "test") kilosDia += i.pesoKg;
+                        });
                     }
+                    bloqueDia.appendChild(ventaDiv);
+                });
 
-                    bloqueDia.appendChild(ventaDiv)
-                })
+                let inversionDia = inversiones[dia] || 0;
+                let sobranteDia = sobrantes[dia] || 0;
+                let gananciaDia = totalDia - inversionDia + sobranteDia;
 
-                // Inversión de este día
-                let inversionDia = inversiones[dia] || 0
-                let gananciaDia = totalDia - inversionDia
-
-                // Resumen del día
-                let resumen = document.createElement("div")
-                resumen.classList.add("resumen-dia")
+                let resumen = document.createElement("div");
+                resumen.classList.add("resumen-dia");
                 resumen.innerHTML = `
-                <b>🧾 Total del día:</b> $${totalDia}<br>
-                <b>💵 Efectivo:</b> $${efectivoDia} | <b>📱 Transferencia/Otro:</b> $${transferenciaDia}<br>
-                <b>📦 Inversión:</b> $${inversionDia}<br>
-                <b>📈 Ganancia:</b> <span style="color:${gananciaDia >= 0 ? 'green' : 'red'}">$${gananciaDia}</span><br>
-                <b>⚖️ Kilos vendidos:</b> ${kilosDia.toFixed(3)}Kg
-              `
-                bloqueDia.appendChild(resumen)
-                contenedor.appendChild(bloqueDia)
+                    <b>🧾 Total del día:</b> $${totalDia}<br>
+                    <b>💵 Efectivo:</b> $${efectivoDia} | <b>📱 Transferencia/Otro:</b> $${transferenciaDia}<br>
+                    <b>📦 Inversión:</b> $${inversionDia} | <b>🥩 Sobrante:</b> $${sobranteDia}<br>
+                    <b>📈 Ganancia real:</b> <span style="color:${gananciaDia >= 0 ? 'green' : 'red'}">$${gananciaDia}</span><br>
+                    <b>⚖️ Kilos vendidos:</b> ${kilosDia.toFixed(3)}Kg
+                `;
+                bloqueDia.appendChild(resumen);
+                contenedor.appendChild(bloqueDia);
 
-                // Acumular totales generales (solo si no es test)
-                totalGeneral += totalDia
-                totalEfectivoGeneral += efectivoDia
-                totalTransferenciaGeneral += transferenciaDia
-            })
+                totalGeneral += totalDia;
+                totalEfectivoGeneral += efectivoDia;
+                totalTransferenciaGeneral += transferenciaDia;
+            });
 
-            // ✅ Resumen general de TODO
             if (totalGeneral > 0) {
-                let resumenGeneral = document.createElement("div")
-                resumenGeneral.classList.add("resumen-general")
+                let resumenGeneral = document.createElement("div");
+                resumenGeneral.classList.add("resumen-general");
                 resumenGeneral.innerHTML = `
-                <h3 style="margin:0 0 8px 0;">📊 TOTAL ACUMULADO</h3>
-                <b>💰 Total general:</b> $${totalGeneral}<br>
-                <b>💵 Total en efectivo:</b> $${totalEfectivoGeneral}<br>
-                <b>📱 Total transferencia/otro:</b> $${totalTransferenciaGeneral}
-              `
-                contenedor.appendChild(resumenGeneral)
+                    <h3 style="margin:0 0 8px 0;">📊 TOTAL ACUMULADO</h3>
+                    <b>💰 Total general:</b> $${totalGeneral}<br>
+                    <b>💵 Total en efectivo:</b> $${totalEfectivoGeneral}<br>
+                    <b>📱 Total transferencia/otro:</b> $${totalTransferenciaGeneral}
+                `;
+                contenedor.appendChild(resumenGeneral);
             }
         }
 
         function mostrarTicket() {
-            if (!ultimoTicket) {
-                alert("No hay ticket reciente")
-                return
-            }
-            alert(ultimoTicket)
+            if (!ultimoTicket) { alert("No hay ticket reciente"); return; }
+            alert(ultimoTicket);
         }
     </script>
-
 </body>
 </html>
