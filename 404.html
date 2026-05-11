@@ -6,17 +6,6 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" type="text/css" href="https://matidragon-yt.github.io/page/css/main.css">
-</head>
-<body>
-
-
-# Error 404
-[h4][Pagina no econtrada :(]
-Revisa de a ver ingresado bien la direccion de la pagina, por que no se encontro ninguna coincidencia con este link
-
-
-
-<script src="https://matidragon-yt.github.io/page/js/main.min.js"></script>
 <script>
 
 const redirectsText = `
@@ -42,8 +31,6 @@ function parseRedirects(text) {
 
 function applyRedirects(rules, pathname, search, hash) {
   const pathNoSlash = pathname.replace(/^\/+/, '');
-  console.log('404 rules:', rules);
-  console.log('current path:', pathNoSlash);
   for (const r of rules) {
     const m = pathNoSlash.match(r.regex);
     if (m) {
@@ -64,26 +51,25 @@ function applyRedirects(rules, pathname, search, hash) {
   return null;
 }
 
-(function(){
-  const rules = parseRedirects(redirectsText);
-  const pathname = window.location.pathname;
-  const search = window.location.search;
-  const hash = window.location.hash;
-  const dest = applyRedirects(rules, pathname, search, hash);
-  console.log('redirect dest:', dest);
-  if (dest) {
-    document.addEventListener('DOMContentLoaded', () => {
-      const p = document.getElementById('msg');
-      if (p) p.textContent = 'Redirigiendo a ' + dest + ' …';
-    });
-    location.replace(dest);
-  } else {
-    document.addEventListener('DOMContentLoaded', () => {
-      const p = document.getElementById('msg');
-      if (p) p.textContent = 'Página no encontrada.';
-    });
-  }
-})();
+const rules = parseRedirects(redirectsText);
+const pathname = window.location.pathname;
+const search = window.location.search;
+const hash = window.location.hash;
+const dest = applyRedirects(rules, pathname, search, hash);
+if (dest) {
+  location.replace(dest);
+};
 
 
 </script>
+</head>
+<body>
+
+
+# Error 404
+[h4][Pagina no econtrada :(]
+Revisa de a ver ingresado bien la direccion de la pagina, por que no se encontro ninguna coincidencia con este link
+
+
+
+<script src="https://matidragon-yt.github.io/page/js/main.min.js"></script>
