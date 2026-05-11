@@ -17,3 +17,73 @@ Revisa de a ver ingresado bien la direccion de la pagina, por que no se encontro
 
 
 <script src="https://matidragon-yt.github.io/page/js/main.min.js"></script>
+<script>
+
+const redirectsText = `
+page/seeds -> page/proyects
+page/seeds.html -> page/proyects.html
+page/seeds/* -> page/proyects/*
+page/dyos -> page/mods/a
+page/index.md -> page/index.html
+`;
+
+// Parseo de reglas
+function parseRedirects(text) {
+  return text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(line => {
+    const parts = line.split('->').map(p => p.trim());
+    if (parts.length !== 2) return null;
+    let [src, dst] = parts;
+    // Escape regex special chars except *
+    let reSrc = src.replace(/[-/\\^$+?.()|[\]{}]/g, '\\$&').replace(/\\\*/g, '(.*)');
+    const regex = new RegExp('^/?' + reSrc + '$', 'i');
+    return { regex, target: dst };
+  }).filter(Boolean);
+}
+
+function applyRedirects(rules, pathname, search, hash) {
+  const pathNoSlash = pathname.replace(/^\/+/, '');
+  console.log('404 rules:', rules);
+  console.log('current path:', pathNoSlash);
+  for (const r of rules) {
+    const m = pathNoSlash.match(r.regex);
+    if (m) {
+      let target = r.target;
+      let idx = 1;
+      target = target.replace(/\*/g, () => (m[idx++] || ''));
+      if (!target.startsWith('/')) target = '/' + target;
+      const finalUrl = target + (search || '') + (hash || '');
+      if (finalUrl === pathname + (search || '') + (hash || '')) return null;
+      return finalUrl;
+    }
+  }
+  // regla global .md -> .html si no hubo match
+  if (pathNoSlash.match(/\.md$/i)) {
+    const target = '/' + pathNoSlash.replace(/\.md$/i, '.html') + (search || '') + (hash || '');
+    if (target !== pathname + (search || '') + (hash || '')) return target;
+  }
+  return null;
+}
+
+(function(){
+  const rules = parseRedirects(redirectsText);
+  const pathname = window.location.pathname;
+  const search = window.location.search;
+  const hash = window.location.hash;
+  const dest = applyRedirects(rules, pathname, search, hash);
+  console.log('redirect dest:', dest);
+  if (dest) {
+    document.addEventListener('DOMContentLoaded', () => {
+      const p = document.getElementById('msg');
+      if (p) p.textContent = 'Redirigiendo a ' + dest + ' …';
+    });
+    location.replace(dest);
+  } else {
+    document.addEventListener('DOMContentLoaded', () => {
+      const p = document.getElementById('msg');
+      if (p) p.textContent = 'Página no encontrada.';
+    });
+  }
+})();
+
+
+</script>
