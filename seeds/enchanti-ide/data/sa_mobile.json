@@ -1,7 +1,7 @@
 {
   "meta": {
-    "last_update": 1737060371492,
-    "version": "0.418",
+    "last_update": 1777218937529,
+    "version": "0.514",
     "url": "https://library.sannybuilder.com/#/sa_mobile"
   },
   "extensions": [
@@ -2848,7 +2848,7 @@
           "member": "Random",
           "name": "GENERATE_RANDOM_FLOAT",
           "num_params": 1,
-          "short_desc": "Returns a random float between 0.0 to 1.0"
+          "short_desc": "Returns a random float between 0.0 to 1.0; excluding 1.0"
         },
         {
           "output": [
@@ -2867,7 +2867,7 @@
           "member": "Random",
           "name": "GENERATE_RANDOM_INT",
           "num_params": 1,
-          "short_desc": "Returns a random integer between -32767 and 32767 (SA) or 0 and 65535 (III & VC)"
+          "short_desc": "Returns a random integer between 0 and 32767"
         },
         {
           "input": [
@@ -5687,7 +5687,7 @@
           "member": "Create",
           "name": "CREATE_CAR_GENERATOR",
           "num_params": 13,
-          "short_desc": "Initializes a parked car generator"
+          "short_desc": "Initializes a parked car generator (modelId -1 selects a random vehicle from the local popcycle)"
         },
         {
           "input": [
@@ -6254,8 +6254,8 @@
               "type": "float"
             },
             {
-              "name": "townId",
-              "type": "Town"
+              "name": "citiesPassed",
+              "type": "int"
             }
           ],
           "id": "016C",
@@ -6287,8 +6287,8 @@
               "type": "float"
             },
             {
-              "name": "townId",
-              "type": "Town"
+              "name": "citiesPassed",
+              "type": "int"
             }
           ],
           "id": "016D",
@@ -7503,7 +7503,7 @@
           "member": "IsStoppedInArea2D",
           "name": "IS_CAR_STOPPED_IN_AREA_2D",
           "num_params": 6,
-          "short_desc": ""
+          "short_desc": "Returns true if the car stopped within the specified 2D area"
         },
         {
           "input": [
@@ -7548,7 +7548,7 @@
           "member": "IsStoppedInArea3D",
           "name": "IS_CAR_STOPPED_IN_AREA_3D",
           "num_params": 8,
-          "short_desc": ""
+          "short_desc": "Returns true if the car stopped within the specified 3D area"
         },
         {
           "input": [
@@ -7585,7 +7585,7 @@
           "member": "Locate2D",
           "name": "LOCATE_CAR_2D",
           "num_params": 6,
-          "short_desc": ""
+          "short_desc": "Returns true if the car is within the 2D radius of the point"
         },
         {
           "input": [
@@ -7622,7 +7622,7 @@
           "member": "LocateStopped2D",
           "name": "LOCATE_STOPPED_CAR_2D",
           "num_params": 6,
-          "short_desc": ""
+          "short_desc": "Returns true if the car is stopped within the 2D radius of the point"
         },
         {
           "input": [
@@ -7667,7 +7667,7 @@
           "member": "Locate3D",
           "name": "LOCATE_CAR_3D",
           "num_params": 8,
-          "short_desc": ""
+          "short_desc": "Returns true if the car is within the 3D radius of the point"
         },
         {
           "input": [
@@ -8430,7 +8430,7 @@
           "member": "SwitchRoadsOn",
           "name": "SWITCH_ROADS_ON",
           "num_params": 6,
-          "short_desc": "Allows cars to drive in the specified 3D area"
+          "short_desc": "Enables all car paths in the given area"
         },
         {
           "input": [
@@ -8467,7 +8467,7 @@
           "member": "SwitchRoadsOff",
           "name": "SWITCH_ROADS_OFF",
           "num_params": 6,
-          "short_desc": "Prevents cars from driving on roads in the specified 3D area"
+          "short_desc": "Disables all car paths in the given area"
         },
         {
           "input": [
@@ -9073,7 +9073,7 @@
           "member": "RandomFloatInRange",
           "name": "GENERATE_RANDOM_FLOAT_IN_RANGE",
           "num_params": 3,
-          "short_desc": "Returns a random float between the specified ranges"
+          "short_desc": "Returns a random float within the specified range; including min and max values"
         },
         {
           "input": [
@@ -9101,7 +9101,7 @@
           "member": "RandomIntInRange",
           "name": "GENERATE_RANDOM_INT_IN_RANGE",
           "num_params": 3,
-          "short_desc": "Returns a random integer greater or equal to min and lesser or equal to max"
+          "short_desc": "Returns a random integer within the specified range; including min and excluding max values"
         },
         {
           "input": [
@@ -9563,7 +9563,7 @@
           "member": "ChangeColor",
           "name": "CHANGE_CAR_COLOUR",
           "num_params": 3,
-          "short_desc": "Sets the car's primary and secondary colors. See also 0A11"
+          "short_desc": "Sets the car's primary and secondary colors"
         },
         {
           "input": [
@@ -9600,7 +9600,7 @@
           "member": "SwitchPedRoadsOn",
           "name": "SWITCH_PED_ROADS_ON",
           "num_params": 6,
-          "short_desc": "Allows pedestrians to walk into the specified area"
+          "short_desc": "Enables all ped paths in the given area"
         },
         {
           "input": [
@@ -9637,7 +9637,7 @@
           "member": "SwitchPedRoadsOff",
           "name": "SWITCH_PED_ROADS_OFF",
           "num_params": 6,
-          "short_desc": "Forbids pedestrians to walk into the specified area"
+          "short_desc": "Disables all ped paths in the given area"
         },
         {
           "id": "022C",
@@ -10124,7 +10124,7 @@
           "member": "DrawCorona",
           "name": "DRAW_CORONA",
           "num_params": 9,
-          "short_desc": "Displays a corona at the specified location"
+          "short_desc": "Displays a corona with fade in-out effect at the specified location"
         },
         {
           "id": "0250",
@@ -10195,7 +10195,7 @@
           "member": "IsPlaying",
           "name": "IS_PLAYER_PLAYING",
           "num_params": 1,
-          "short_desc": "Returns true if the player hasn't been wasted or busted (the player is still playing)"
+          "short_desc": "Returns true if the player is alive and not arrested by the police"
         },
         {
           "id": "0257",
@@ -10696,27 +10696,6 @@
           "short_desc": "Returns 1. Command unused in this game version"
         },
         {
-          "output": [
-            {
-              "name": "mode",
-              "type": "ControllerMode",
-              "source": "var_any"
-            }
-          ],
-          "attrs": {
-            "is_static": true
-          },
-          "class": "Pad",
-          "id": "0293",
-          "member": "GetControllerMode",
-          "name": "GET_CONTROLLER_MODE",
-          "num_params": 1,
-          "short_desc": "Returns 1. Command unused in this game version",
-          "platforms": [
-            "any"
-          ]
-        },
-        {
           "input": [
             {
               "name": "self",
@@ -11001,7 +10980,7 @@
           "member": "AddSpriteForContactPoint",
           "name": "ADD_SPRITE_BLIP_FOR_CONTACT_POINT",
           "num_params": 5,
-          "short_desc": "Adds a sprite blip to the contact point"
+          "short_desc": "Adds a long range sprite blip and sphere to the contact point that is not displayed while on mission"
         },
         {
           "input": [
@@ -13576,27 +13555,27 @@
               "type": "Object"
             },
             {
-              "name": "fromX",
+              "name": "posX",
               "type": "float"
             },
             {
-              "name": "fromY",
+              "name": "posY",
               "type": "float"
             },
             {
-              "name": "fromZ",
+              "name": "posZ",
               "type": "float"
             },
             {
-              "name": "xSpeed",
+              "name": "speedX",
               "type": "float"
             },
             {
-              "name": "ySpeed",
+              "name": "speedY",
               "type": "float"
             },
             {
-              "name": "zSpeed",
+              "name": "speedZ",
               "type": "float"
             },
             {
@@ -13612,7 +13591,7 @@
           "member": "Slide",
           "name": "SLIDE_OBJECT",
           "num_params": 8,
-          "short_desc": "Returns true if the object has finished moving"
+          "short_desc": "Animates object movement toward specified coordinates. Returns true if the object has finished moving"
         },
         {
           "input": [
@@ -14456,7 +14435,7 @@
         {
           "input": [
             {
-              "name": "memorySlot",
+              "name": "spriteSlot",
               "type": "int"
             },
             {
@@ -14550,11 +14529,11 @@
         {
           "input": [
             {
-              "name": "memorySlot",
+              "name": "spriteSlot",
               "type": "int"
             },
             {
-              "name": "spriteName",
+              "name": "textureName",
               "type": "string"
             }
           ],
@@ -14632,7 +14611,7 @@
           "id": "0393",
           "name": "SET_CHAR_ANIM_SPEED",
           "num_params": 3,
-          "short_desc": "Makes an actor perform an animation at the specified speed",
+          "short_desc": "Makes an char perform an animation at the specified speed",
           "class": "Char",
           "member": "SetAnimSpeed"
         },
@@ -14684,7 +14663,7 @@
           "member": "ClearArea",
           "name": "CLEAR_AREA",
           "num_params": 5,
-          "short_desc": "Clears the area, removing all vehicles and pedestrians"
+          "short_desc": "Clears the area, removing all vehicles and pedestrians that are not marked as needed by a mission"
         },
         {
           "input": [
@@ -15788,7 +15767,7 @@
           "member": "ActivateSaveMenu",
           "name": "ACTIVATE_SAVE_MENU",
           "num_params": 0,
-          "short_desc": "Displays a screen prompting the player to save"
+          "short_desc": "Schedules save game menu to be displayed on next render frame"
         },
         {
           "attrs": {
@@ -15800,7 +15779,7 @@
           "member": "HasSaveGameFinished",
           "name": "HAS_SAVE_GAME_FINISHED",
           "num_params": 0,
-          "short_desc": "Returns true if the player has saved their game"
+          "short_desc": "Returns false if save game menu was requested with activate_save_menu command, but not displayed yet"
         },
         {
           "id": "03DA",
@@ -16141,7 +16120,7 @@
           "member": "GetColors",
           "name": "GET_CAR_COLOURS",
           "num_params": 3,
-          "short_desc": "Gets the car's primary and secondary colors. See also 0A12"
+          "short_desc": "Gets the car's primary and secondary colors"
         },
         {
           "input": [
@@ -17567,7 +17546,7 @@
         {
           "input": [
             {
-              "name": "_p1",
+              "name": "interpolationToStopMoving",
               "type": "float"
             },
             {
@@ -17652,11 +17631,11 @@
               "type": "float"
             },
             {
-              "name": "position",
-              "type": "int"
+              "name": "heading",
+              "type": "Facing"
             },
             {
-              "name": "angleLimit",
+              "name": "headingRange",
               "type": "float"
             },
             {
@@ -19075,8 +19054,8 @@
               "type": "Char"
             },
             {
-              "name": "weaponSlotId",
-              "type": "WeaponSlot"
+              "name": "slot",
+              "type": "int"
             }
           ],
           "output": [
@@ -20259,11 +20238,11 @@
               "type": "float"
             },
             {
-              "name": "orientation",
-              "type": "int"
+              "name": "heading",
+              "type": "Facing"
             },
             {
-              "name": "angleLimit",
+              "name": "headingRange",
               "type": "float"
             },
             {
@@ -21020,7 +20999,7 @@
           "id": "051B",
           "name": "HAS_CHAR_BEEN_DAMAGED_BY_CAR",
           "num_params": 2,
-          "short_desc": "Returns true if the actor has been hurt by the specified vehicle",
+          "short_desc": "Returns true if the char has been hurt by the specified vehicle",
           "attrs": {
             "is_condition": true
           },
@@ -21041,7 +21020,7 @@
           "id": "051C",
           "name": "HAS_CAR_BEEN_DAMAGED_BY_CHAR",
           "num_params": 2,
-          "short_desc": "Returns true if the car has been damaged by the specified actor",
+          "short_desc": "Returns true if the car has been damaged by the specified char",
           "attrs": {
             "is_condition": true
           },
@@ -21764,7 +21743,7 @@
           "member": "IncreaseMaxHealth",
           "name": "INCREASE_PLAYER_MAX_HEALTH",
           "num_params": 2,
-          "short_desc": "Increases the players maximum health by the specified amount"
+          "short_desc": "Increases the player's max health by the specified value and changes current health to the new maximum"
         },
         {
           "input": [
@@ -21782,7 +21761,7 @@
           "member": "IncreaseMaxArmor",
           "name": "INCREASE_PLAYER_MAX_ARMOUR",
           "num_params": 2,
-          "short_desc": "Increases the players armor by the specified amount"
+          "short_desc": "Increases the player's max armor by the specified value and changes current armor to the new maximum"
         },
         {
           "input": [
@@ -22073,7 +22052,7 @@
           "member": "AddShortRangeSpriteForContactPoint",
           "name": "ADD_SHORT_RANGE_SPRITE_BLIP_FOR_CONTACT_POINT",
           "num_params": 5,
-          "short_desc": "Adds a contact sprite blip for the specified coordinates"
+          "short_desc": "Adds a short range sprite blip and sphere to the contact point that is not displayed while on mission"
         },
         {
           "id": "0571",
@@ -22977,12 +22956,12 @@
         {
           "input": [
             {
-              "name": "str1",
+              "name": "",
               "type": "string",
               "source": "var_global"
             },
             {
-              "name": "str2",
+              "name": "",
               "type": "string"
             }
           ],
@@ -22998,12 +22977,12 @@
         {
           "input": [
             {
-              "name": "str1",
+              "name": "",
               "type": "string",
               "source": "var_local"
             },
             {
-              "name": "str2",
+              "name": "",
               "type": "string"
             }
           ],
@@ -23221,7 +23200,7 @@
           "id": "05BB",
           "name": "TASK_FALL_AND_GET_UP",
           "num_params": 3,
-          "short_desc": "Makes actor fall to the ground and stay there for the specified time",
+          "short_desc": "Makes char fall to the ground and stay there for the specified time",
           "attrs": {
             "is_static": true
           },
@@ -23242,7 +23221,7 @@
           "id": "05BC",
           "name": "TASK_JUMP",
           "num_params": 2,
-          "short_desc": "Makes the actor perform a jump",
+          "short_desc": "Makes the char perform a jump",
           "attrs": {
             "is_static": true
           },
@@ -23263,7 +23242,7 @@
           "id": "05BD",
           "name": "TASK_TIRED",
           "num_params": 2,
-          "short_desc": "Makes the actor stop to regain breath",
+          "short_desc": "Makes the char stop to regain breath",
           "class": "Task",
           "member": "Tired",
           "attrs": {
@@ -23330,7 +23309,7 @@
           "id": "05C0",
           "name": "TASK_LOOK_AT_VEHICLE",
           "num_params": 3,
-          "short_desc": "Makes the actor look at the specified vehicle",
+          "short_desc": "Makes the char look at the specified vehicle",
           "attrs": {
             "is_static": true
           },
@@ -23368,7 +23347,7 @@
           "id": "05C2",
           "name": "TASK_SHAKE_FIST",
           "num_params": 1,
-          "short_desc": "Makes the actor lift their hand up in the air angrily",
+          "short_desc": "Makes the char lift their hand up in the air angrily",
           "attrs": {
             "is_static": true
           },
@@ -23385,7 +23364,7 @@
           "id": "05C3",
           "name": "TASK_COWER",
           "num_params": 1,
-          "short_desc": "Makes the actor stumble backwards with their arms in front of their face as if he is backing away from something in fear",
+          "short_desc": "Makes the char stumble backwards with their arms in front of their face as if he is backing away from something in fear",
           "attrs": {
             "is_static": true
           },
@@ -23406,7 +23385,7 @@
           "id": "05C4",
           "name": "TASK_HANDS_UP",
           "num_params": 2,
-          "short_desc": "Makes the actor put their hands in the air",
+          "short_desc": "Makes the char put their hands in the air",
           "attrs": {
             "is_static": true
           },
@@ -24096,7 +24075,7 @@
           "id": "05E6",
           "name": "HAS_STUNT_ENDED",
           "num_params": 0,
-          "short_desc": "Gets a pointer to the structure of the actor on the handle",
+          "short_desc": "Gets a pointer to the structure of the char on the handle",
           "attrs": {
             "is_nop": true
           }
@@ -24123,7 +24102,7 @@
           "id": "05E9",
           "name": "START_RECORDING_CAR",
           "num_params": 2,
-          "short_desc": "Gets the handle to the actor, which is located in the pool of actors",
+          "short_desc": "Gets the handle to the char, which is located in the pool of actors",
           "input": [
             {
               "name": "_p1",
@@ -24211,7 +24190,7 @@
           "id": "05EF",
           "name": "SET_CAR_PROTECT_CAR_REAR",
           "num_params": 0,
-          "short_desc": "Performs a search for an actor, which is located in a specified radius around the point",
+          "short_desc": "Performs a search for an char, which is located in a specified radius around the point",
           "attrs": {
             "is_nop": true
           }
@@ -24316,8 +24295,8 @@
               "type": "float"
             },
             {
-              "name": "walkSpeed",
-              "type": "int"
+              "name": "speed",
+              "type": "MoveState"
             },
             {
               "name": "time",
@@ -24720,7 +24699,7 @@
           "id": "05FE",
           "name": "IS_CHAR_IN_ANGLED_AREA_IN_CAR_3D",
           "num_params": 9,
-          "short_desc": "",
+          "short_desc": "Checks if the character is in a car which is within the angled 3D area",
           "attrs": {
             "is_condition": true
           },
@@ -24769,7 +24748,7 @@
           "id": "05FF",
           "name": "IS_CHAR_STOPPED_IN_ANGLED_AREA_3D",
           "num_params": 9,
-          "short_desc": "",
+          "short_desc": "Checks if the character is within the angled 3D area and is motionless",
           "attrs": {
             "is_condition": true
           },
@@ -24818,7 +24797,7 @@
           "id": "0600",
           "name": "IS_CHAR_STOPPED_IN_ANGLED_AREA_ON_FOOT_3D",
           "num_params": 9,
-          "short_desc": "",
+          "short_desc": "Checks if the character is on foot within the angled 3D area and is motionless",
           "attrs": {
             "is_condition": true
           },
@@ -24867,7 +24846,7 @@
           "id": "0601",
           "name": "IS_CHAR_STOPPED_IN_ANGLED_AREA_IN_CAR_3D",
           "num_params": 9,
-          "short_desc": "",
+          "short_desc": "Checks if the character is in a motionless car within the angled 3D area",
           "attrs": {
             "is_condition": true
           },
@@ -25258,7 +25237,7 @@
           "id": "0613",
           "name": "GET_CHAR_ANIM_CURRENT_TIME",
           "num_params": 3,
-          "short_desc": "Returns the progress of the animation on the actor, ranging from 0.0 to 1.0",
+          "short_desc": "Returns the progress of the animation on the char, ranging from 0.0 to 1.0",
           "class": "Char",
           "member": "GetAnimCurrentTime"
         },
@@ -25502,12 +25481,12 @@
               "type": "model_char"
             },
             {
-              "name": "taskId",
-              "type": "int"
-            },
-            {
               "name": "attractor",
               "type": "Attractor"
+            },
+            {
+              "name": "task",
+              "type": "TaskCommand"
             }
           ],
           "output": [
@@ -25750,8 +25729,8 @@
               "type": "Char"
             },
             {
-              "name": "taskId",
-              "type": "int"
+              "name": "task",
+              "type": "TaskCommand"
             }
           ],
           "output": [
@@ -25855,7 +25834,7 @@
           "id": "0633",
           "name": "TASK_LEAVE_ANY_CAR",
           "num_params": 1,
-          "short_desc": "Makes the actor exit the car, if he is in one",
+          "short_desc": "Makes the char exit the car, if he is in one",
           "attrs": {
             "is_static": true
           },
@@ -26204,7 +26183,7 @@
           "id": "0647",
           "name": "CLEAR_LOOK_AT",
           "num_params": 1,
-          "short_desc": "Clears the actor's look task, making them stop looking at whatever they were assigned to look at",
+          "short_desc": "Clears the char's look task, making them stop looking at whatever they were assigned to look at",
           "class": "Char",
           "member": "ClearLookAt"
         },
@@ -27446,7 +27425,7 @@
           "id": "067C",
           "name": "ATTACH_CAMERA_TO_CHAR",
           "num_params": 9,
-          "short_desc": "Keeps the camera relative to the actor with the specified offset",
+          "short_desc": "Keeps the camera relative to the char with the specified offset",
           "class": "Camera",
           "member": "AttachToChar",
           "attrs": {
@@ -27620,26 +27599,26 @@
               "type": "Object"
             },
             {
-              "name": "x",
+              "name": "pitch",
               "type": "float"
             },
             {
-              "name": "y",
+              "name": "heading",
               "type": "float"
             },
             {
-              "name": "z",
+              "name": "strength",
               "type": "float"
             },
             {
-              "name": "collisionDetection",
+              "name": "applyTurnForce",
               "type": "bool"
             }
           ],
           "id": "0682",
           "name": "DETACH_OBJECT",
           "num_params": 5,
-          "short_desc": "",
+          "short_desc": "Detaches the object with optional rotation and force",
           "class": "Object",
           "member": "Detach"
         },
@@ -27692,26 +27671,26 @@
               "type": "Car"
             },
             {
-              "name": "x",
+              "name": "pitch",
               "type": "float"
             },
             {
-              "name": "y",
+              "name": "heading",
               "type": "float"
             },
             {
-              "name": "z",
+              "name": "strength",
               "type": "float"
             },
             {
-              "name": "collisionDetection",
+              "name": "applyTurnForce",
               "type": "bool"
             }
           ],
           "id": "0684",
           "name": "DETACH_CAR",
           "num_params": 5,
-          "short_desc": "",
+          "short_desc": "Detaches the car with optional rotation and force",
           "class": "Car",
           "member": "Detach"
         },
@@ -27856,7 +27835,7 @@
           "id": "068C",
           "name": "IS_PLAYER_TARGETTING_ANYTHING",
           "num_params": 1,
-          "short_desc": "Returns true if the specified player is aiming at anything using autoaim",
+          "short_desc": "Returns true if the specified player is auto-aiming at a ped or object",
           "attrs": {
             "is_condition": true
           },
@@ -27992,17 +27971,17 @@
             },
             {
               "name": "panelId",
-              "type": "int"
+              "type": "CarPanel"
             },
             {
-              "name": "visibility",
+              "name": "drop",
               "type": "bool"
             }
           ],
           "id": "0697",
           "name": "POP_CAR_PANEL",
           "num_params": 3,
-          "short_desc": "",
+          "short_desc": "Detatches or deletes car's body part",
           "class": "Car",
           "member": "PopPanel"
         },
@@ -28014,13 +27993,13 @@
             },
             {
               "name": "panelId",
-              "type": "int"
+              "type": "CarPanel"
             }
           ],
           "id": "0698",
           "name": "FIX_CAR_PANEL",
           "num_params": 2,
-          "short_desc": "",
+          "short_desc": "Repairs or reinstalls car's body part",
           "class": "Car",
           "member": "FixPanel"
         },
@@ -28248,14 +28227,14 @@
               "type": "Char"
             },
             {
-              "name": "time",
+              "name": "timeOnGround",
               "type": "int"
             }
           ],
           "id": "06A5",
           "name": "TASK_DIVE_FROM_ATTACHMENT_AND_GET_UP",
           "num_params": 2,
-          "short_desc": "",
+          "short_desc": "Makes character detach from host, perform dive then get up",
           "attrs": {
             "is_static": true
           },
@@ -28294,15 +28273,15 @@
               "type": "float"
             },
             {
-              "name": "position",
-              "type": "int"
+              "name": "heading",
+              "type": "Facing"
             },
             {
-              "name": "_p7",
+              "name": "headingRange",
               "type": "float"
             },
             {
-              "name": "_p8",
+              "name": "pitchRange",
               "type": "float"
             },
             {
@@ -28376,7 +28355,7 @@
           "id": "06A9",
           "name": "TASK_LOOK_AT_COORD",
           "num_params": 5,
-          "short_desc": "Makes the actor look at the specified coordinates",
+          "short_desc": "Makes the char look at the specified coordinates",
           "attrs": {
             "is_static": true
           },
@@ -28412,7 +28391,7 @@
           "id": "06AB",
           "name": "HIDE_CHAR_WEAPON_FOR_SCRIPTED_CUTSCENE",
           "num_params": 2,
-          "short_desc": "Hides all of the specified actor's weapons",
+          "short_desc": "Hides all of the specified char's weapons",
           "class": "Char",
           "member": "HideWeaponForScriptedCutscene"
         },
@@ -28433,7 +28412,7 @@
           "id": "06AC",
           "name": "GET_CHAR_SPEED",
           "num_params": 2,
-          "short_desc": "Returns the actor's movement speed",
+          "short_desc": "Returns the char's movement speed",
           "class": "Char",
           "member": "GetSpeed"
         },
@@ -28459,7 +28438,7 @@
           "input": [
             {
               "name": "type",
-              "type": "int"
+              "type": "DecisionMakerGroupType"
             }
           ],
           "output": [
@@ -28511,7 +28490,7 @@
           "id": "06B0",
           "name": "TASK_SIT_DOWN",
           "num_params": 2,
-          "short_desc": "Makes the actor sit down for the specified amount of time",
+          "short_desc": "Makes the char sit down for the specified amount of time",
           "attrs": {
             "is_static": true
           },
@@ -28695,7 +28674,7 @@
           "id": "06B6",
           "name": "POINT_SEARCHLIGHT_AT_CHAR",
           "num_params": 3,
-          "short_desc": "Makes the searchlight follow the specified actor",
+          "short_desc": "Makes the searchlight follow the specified char",
           "class": "Searchlight",
           "member": "PointAtChar"
         },
@@ -28713,7 +28692,7 @@
           "id": "06B7",
           "name": "IS_CHAR_IN_SEARCHLIGHT",
           "num_params": 2,
-          "short_desc": "Returns true if the searchlight has spotted the actor",
+          "short_desc": "Returns true if the searchlight has spotted the char",
           "attrs": {
             "is_condition": true
           },
@@ -28828,7 +28807,7 @@
           "id": "06BC",
           "name": "FIRE_SINGLE_BULLET",
           "num_params": 7,
-          "short_desc": "",
+          "short_desc": "Creates firearm projectile effect between two coordinates. Leaves visible trace and deals damage on hit",
           "class": "World",
           "member": "FireSingleBullet",
           "attrs": {
@@ -29286,16 +29265,16 @@
           }
         },
         {
+          "input": [
+            {
+              "name": "state",
+              "type": "bool"
+            }
+          ],
           "id": "06CF",
           "name": "DISPLAY_TIMER_BARS",
           "num_params": 1,
           "short_desc": "Does nothing",
-          "input": [
-            {
-              "name": "_p1",
-              "type": "any"
-            }
-          ],
           "attrs": {
             "is_nop": true
           }
@@ -30469,12 +30448,12 @@
               "type": "float"
             },
             {
-              "name": "boneId",
-              "type": "int"
+              "name": "bone",
+              "type": "PedBoneId"
             },
             {
-              "name": "_p7",
-              "type": "int"
+              "name": "orientation",
+              "type": "HoldOrientation"
             },
             {
               "name": "animationName",
@@ -30492,7 +30471,7 @@
           "id": "070A",
           "name": "TASK_PICK_UP_OBJECT",
           "num_params": 10,
-          "short_desc": "Attaches the specified actor to an object with the optional addition of having it perform an animation",
+          "short_desc": "Attaches the specified char to an object with the optional addition of having it perform an animation",
           "attrs": {
             "is_static": true
           },
@@ -30801,7 +30780,7 @@
           "id": "0719",
           "name": "FINISH_SETTING_UP_CONVERSATION",
           "num_params": 0,
-          "short_desc": "Begins a script-controlled conversation",
+          "short_desc": "Finalizes the current conversation sequence started with 0717. Selected answers will be subtitled",
           "class": "Conversation",
           "member": "FinishSettingUp",
           "attrs": {
@@ -30994,7 +30973,7 @@
           "id": "0726",
           "name": "HELI_FOLLOW_ENTITY",
           "num_params": 4,
-          "short_desc": "Makes the heli follow the specified actor or vehicle in the air",
+          "short_desc": "Makes the heli follow the specified char or vehicle in the air",
           "class": "Heli",
           "member": "FollowEntity"
         },
@@ -31087,7 +31066,7 @@
             },
             {
               "name": "seatId",
-              "type": "int"
+              "type": "SeatId"
             }
           ],
           "id": "072B",
@@ -31224,11 +31203,11 @@
               "type": "bool"
             },
             {
-              "name": "warp",
+              "name": "inWater",
               "type": "bool"
             },
             {
-              "name": "pathId",
+              "name": "numNodesToCheck",
               "type": "int"
             }
           ],
@@ -31357,7 +31336,7 @@
           "id": "0737",
           "name": "IS_CHAR_HOLDING_OBJECT",
           "num_params": 2,
-          "short_desc": "Returns true if the actor is lifting the specified object",
+          "short_desc": "Returns true if the char is lifting the specified object",
           "input": [
             {
               "name": "self",
@@ -31761,7 +31740,7 @@
         {
           "input": [
             {
-              "name": "memorySlot",
+              "name": "spriteSlot",
               "type": "int"
             },
             {
@@ -31929,7 +31908,7 @@
               "type": "Char"
             },
             {
-              "name": "runDistance",
+              "name": "safeDist",
               "type": "float"
             },
             {
@@ -31937,19 +31916,19 @@
               "type": "int"
             },
             {
-              "name": "changeCourse",
+              "name": "shoot",
               "type": "bool"
             },
             {
-              "name": "_p6",
+              "name": "shootTime",
               "type": "int"
             },
             {
-              "name": "_p7",
+              "name": "shootCooldownTime",
               "type": "int"
             },
             {
-              "name": "radius",
+              "name": "stealCarDist",
               "type": "float"
             }
           ],
@@ -32305,7 +32284,7 @@
           "id": "0767",
           "name": "SET_ZONE_POPULATION_TYPE",
           "num_params": 2,
-          "short_desc": "",
+          "short_desc": "Sets which population type from popcycle.dat will inhabit this zone",
           "class": "Zone",
           "member": "SetPopulationType",
           "attrs": {
@@ -32451,7 +32430,7 @@
           "id": "0770",
           "name": "SET_CHAR_IS_TARGET_PRIORITY",
           "num_params": 2,
-          "short_desc": "Causes the auto aim to be more likely to target the specified actor than actors without this flag",
+          "short_desc": "Causes the auto aim to be more likely to target the specified char than actors without this flag",
           "input": [
             {
               "name": "self",
@@ -32472,8 +32451,8 @@
               "type": "model_vehicle"
             },
             {
-              "name": "townId",
-              "type": "Town"
+              "name": "design",
+              "type": "CarPlateDesign"
             }
           ],
           "id": "0771",
@@ -32776,7 +32755,7 @@
           "output": [
             {
               "name": "slot",
-              "type": "int",
+              "type": "WeaponSlot",
               "source": "var_any"
             }
           ],
@@ -33273,10 +33252,6 @@
           }
         },
         {
-          "id": "07A0",
-          "name": "PERFORM_SEQUENCE_TASK_FROM_PROGRESS",
-          "num_params": 4,
-          "short_desc": "",
           "input": [
             {
               "name": "self",
@@ -33287,14 +33262,18 @@
               "type": "Sequence"
             },
             {
-              "name": "_p3",
+              "name": "startTaskIndex",
               "type": "int"
             },
             {
-              "name": "_p4",
+              "name": "endTaskIndex",
               "type": "int"
             }
           ],
+          "id": "07A0",
+          "name": "PERFORM_SEQUENCE_TASK_FROM_PROGRESS",
+          "num_params": 4,
+          "short_desc": "",
           "class": "Char",
           "member": "PerformSequenceFromProgress"
         },
@@ -33612,23 +33591,23 @@
         {
           "input": [
             {
-              "name": "_p1",
+              "name": "offset",
               "type": "int"
             }
           ],
           "output": [
             {
-              "name": "_p2",
+              "name": "beatTime",
               "type": "int",
               "source": "var_any"
             },
             {
-              "name": "_p3",
+              "name": "beatType",
               "type": "int",
               "source": "var_any"
             },
             {
-              "name": "_p4",
+              "name": "beatIndex",
               "type": "int",
               "source": "var_any"
             }
@@ -33636,7 +33615,7 @@
           "id": "07B1",
           "name": "GET_BEAT_PROXIMITY",
           "num_params": 4,
-          "short_desc": "",
+          "short_desc": "Returns information about a beat offset from the current playback position of the active beat track (0954)",
           "class": "Audio",
           "member": "GetBeatProximity",
           "attrs": {
@@ -33671,10 +33650,6 @@
           "member": "SetDefaultTaskAllocator"
         },
         {
-          "id": "07B4",
-          "name": "SET_PLAYER_GROUP_RECRUITMENT",
-          "num_params": 2,
-          "short_desc": "",
           "input": [
             {
               "name": "self",
@@ -33685,6 +33660,10 @@
               "type": "bool"
             }
           ],
+          "id": "07B4",
+          "name": "SET_PLAYER_GROUP_RECRUITMENT",
+          "num_params": 2,
+          "short_desc": "Sets the player's ability to recruit new members to the group",
           "class": "Player",
           "member": "SetGroupRecruitment"
         },
@@ -33773,7 +33752,7 @@
           "id": "07BC",
           "name": "TASK_SET_CHAR_DECISION_MAKER",
           "num_params": 2,
-          "short_desc": "Sets the decision maker used by the specified actor",
+          "short_desc": "Sets the decision maker used by the specified char",
           "class": "Task",
           "member": "SetCharDecisionMaker",
           "attrs": {
@@ -34054,7 +34033,7 @@
           "id": "07C9",
           "name": "TASK_COMPLEX_PICKUP_OBJECT",
           "num_params": 2,
-          "short_desc": "",
+          "short_desc": "Makes character walk to the object and pick it up",
           "attrs": {
             "is_static": true
           },
@@ -34095,7 +34074,7 @@
               "type": "Player"
             },
             {
-              "name": "state",
+              "name": "enabled",
               "type": "bool"
             }
           ],
@@ -34132,7 +34111,7 @@
               "type": "float"
             },
             {
-              "name": "radius",
+              "name": "slideSpeed",
               "type": "float"
             }
           ],
@@ -34207,14 +34186,14 @@
               "type": "script_id"
             },
             {
-              "name": "_p2",
+              "name": "scriptName",
               "type": "string"
             }
           ],
           "id": "07D3",
           "name": "REGISTER_SCRIPT_BRAIN_FOR_CODE_USE",
           "num_params": 2,
-          "short_desc": "Sets the name for the script brain, enabling it to be initiated by the EXE",
+          "short_desc": "Allows the game to start a new ambient script by name, e.g. to control behavior of peds in interiors",
           "class": "StreamedScript",
           "member": "RegisterScriptBrainForCodeUse",
           "attrs": {
@@ -34237,6 +34216,18 @@
               "type": "Car"
             },
             {
+              "name": "xDir",
+              "type": "float"
+            },
+            {
+              "name": "yDir",
+              "type": "float"
+            },
+            {
+              "name": "zDir",
+              "type": "float"
+            },
+            {
               "name": "xOffset",
               "type": "float"
             },
@@ -34247,36 +34238,24 @@
             {
               "name": "zOffset",
               "type": "float"
-            },
-            {
-              "name": "xRotation",
-              "type": "float"
-            },
-            {
-              "name": "yRotation",
-              "type": "float"
-            },
-            {
-              "name": "zRotation",
-              "type": "float"
             }
           ],
           "id": "07D5",
           "name": "APPLY_FORCE_TO_CAR",
           "num_params": 7,
-          "short_desc": "",
+          "short_desc": "Applies force to car with offset from its center of mass",
           "class": "Car",
           "member": "ApplyForce"
         },
         {
           "input": [
             {
-              "name": "_p1",
+              "name": "",
               "type": "int",
               "source": "var_local"
             },
             {
-              "name": "_p2",
+              "name": "",
               "type": "int",
               "source": "var_global"
             }
@@ -34293,12 +34272,12 @@
         {
           "input": [
             {
-              "name": "_p1",
+              "name": "",
               "type": "float",
               "source": "var_local"
             },
             {
-              "name": "_p2",
+              "name": "",
               "type": "float",
               "source": "var_global"
             }
@@ -34393,7 +34372,7 @@
           "id": "07DD",
           "name": "SET_CHAR_SHOOT_RATE",
           "num_params": 2,
-          "short_desc": "Sets the attack rate of the actor",
+          "short_desc": "Sets the attack rate of the char",
           "input": [
             {
               "name": "self",
@@ -34759,15 +34738,15 @@
           ],
           "output": [
             {
-              "name": "townId",
-              "type": "Town",
+              "name": "level",
+              "type": "Level",
               "source": "var_any"
             }
           ],
           "id": "07EF",
           "name": "GET_CITY_FROM_COORDS",
           "num_params": 4,
-          "short_desc": "Returns the town the specified location is within",
+          "short_desc": "Returns the city the specified location is within",
           "class": "World",
           "member": "GetCityFromCoords",
           "attrs": {
@@ -34884,26 +34863,26 @@
               "type": "Car"
             },
             {
-              "name": "_p2",
+              "name": "frontLeftWheelSuspension",
               "type": "float"
             },
             {
-              "name": "_p3",
+              "name": "rearLeftWheelSuspension",
               "type": "float"
             },
             {
-              "name": "_p4",
+              "name": "frontRightWheelSuspension",
               "type": "float"
             },
             {
-              "name": "_p5",
+              "name": "rearRightWheelSuspension",
               "type": "float"
             }
           ],
           "id": "07F5",
           "name": "CONTROL_CAR_HYDRAULICS",
           "num_params": 5,
-          "short_desc": "",
+          "short_desc": "Changes the car wheels' suspension level",
           "class": "Car",
           "member": "ControlHydraulics"
         },
@@ -35185,7 +35164,7 @@
               "type": "float"
             },
             {
-              "name": "radius",
+              "name": "slideSpeed",
               "type": "float"
             },
             {
@@ -35699,7 +35678,7 @@
           "id": "0819",
           "name": "GET_CHAR_HEIGHT_ABOVE_GROUND",
           "num_params": 2,
-          "short_desc": "Returns the actor's distance from ground",
+          "short_desc": "Returns the char's distance from ground",
           "class": "Char",
           "member": "GetHeightAboveGround"
         },
@@ -35717,7 +35696,7 @@
           "id": "081A",
           "name": "SET_CHAR_WEAPON_SKILL",
           "num_params": 2,
-          "short_desc": "Sets the characters fire arms wielding style",
+          "short_desc": "Sets the character's fire arms wielding style",
           "class": "Char",
           "member": "SetWeaponSkill"
         },
@@ -35991,7 +35970,7 @@
           "id": "0829",
           "name": "TASK_DIE_NAMED_ANIM",
           "num_params": 5,
-          "short_desc": "Makes the actor perform an animation similarly to 0605",
+          "short_desc": "Makes the char perform an animation similarly to 0605",
           "attrs": {
             "is_static": true
           },
@@ -36005,7 +35984,7 @@
               "type": "Player"
             },
             {
-              "name": "state",
+              "name": "enabled",
               "type": "bool"
             }
           ],
@@ -36412,8 +36391,8 @@
               "type": "Car"
             },
             {
-              "name": "_p2",
-              "type": "int"
+              "name": "weapon",
+              "type": "CarWeapon"
             }
           ],
           "id": "0841",
@@ -36432,15 +36411,15 @@
           ],
           "output": [
             {
-              "name": "townId",
-              "type": "Town",
+              "name": "level",
+              "type": "Level",
               "source": "var_any"
             }
           ],
           "id": "0842",
           "name": "GET_CITY_PLAYER_IS_IN",
           "num_params": 2,
-          "short_desc": "Gets the players current town ID",
+          "short_desc": "Gets the player's current city",
           "class": "Player",
           "member": "GetCityIsIn"
         },
@@ -36656,7 +36635,7 @@
           "id": "0850",
           "name": "TASK_FOLLOW_FOOTSTEPS",
           "num_params": 2,
-          "short_desc": "Makes one actor follow another",
+          "short_desc": "Makes one char follow another",
           "attrs": {
             "is_static": true
           },
@@ -36803,7 +36782,7 @@
               "type": "float"
             },
             {
-              "name": "rotationSpeed",
+              "name": "headingRange",
               "type": "float"
             }
           ],
@@ -37370,7 +37349,7 @@
           "id": "0874",
           "name": "SET_ZONE_POPULATION_RACE",
           "num_params": 2,
-          "short_desc": "",
+          "short_desc": "Sets which races will inhabit this zone",
           "class": "Zone",
           "member": "SetPopulationRace",
           "attrs": {
@@ -37603,7 +37582,7 @@
               "type": "Player"
             },
             {
-              "name": "state",
+              "name": "enabled",
               "type": "bool"
             }
           ],
@@ -37637,8 +37616,8 @@
               "type": "Char"
             },
             {
-              "name": "boneId",
-              "type": "int"
+              "name": "pedBone",
+              "type": "PedBone"
             }
           ],
           "id": "0883",
@@ -37655,14 +37634,14 @@
               "type": "script_id"
             },
             {
-              "name": "_p2",
+              "name": "scriptName",
               "type": "string"
             }
           ],
           "id": "0884",
           "name": "REGISTER_ATTRACTOR_SCRIPT_BRAIN_FOR_CODE_USE",
           "num_params": 2,
-          "short_desc": "Registers a script brain for the specified ped attractor",
+          "short_desc": "Allows the game to start a new ambient script for the ped using the map attractor, e.g. shoppers",
           "class": "StreamedScript",
           "member": "RegisterAttractorScriptBrainForCodeUse",
           "attrs": {
@@ -37694,11 +37673,11 @@
               "type": "Char"
             },
             {
-              "name": "orientation",
-              "type": "int"
+              "name": "heading",
+              "type": "Facing"
             },
             {
-              "name": "headingLimit",
+              "name": "headingRange",
               "type": "float"
             }
           ],
@@ -37814,7 +37793,7 @@
           "id": "088A",
           "name": "TASK_PLAY_ANIM_WITH_FLAGS",
           "num_params": 11,
-          "short_desc": "Makes the actor perform an animation",
+          "short_desc": "Makes the char perform an animation",
           "attrs": {
             "is_static": true
           },
@@ -38237,14 +38216,14 @@
               "type": "Player"
             },
             {
-              "name": "radius",
+              "name": "altitude",
               "type": "float"
             }
           ],
           "id": "08A2",
           "name": "PLANE_ATTACK_PLAYER_USING_DOG_FIGHT",
           "num_params": 3,
-          "short_desc": "",
+          "short_desc": "Sets the plane mission to attack the player while maintaining the minimum altitude",
           "class": "Plane",
           "member": "AttackPlayerUsingDogFight"
         },
@@ -39030,7 +39009,7 @@
           "id": "08C9",
           "name": "REMOVE_PRICE_MODIFIER",
           "num_params": 1,
-          "short_desc": "",
+          "short_desc": "Restores the base price for a shopping.dat item altered by ADD_PRICE_MODIFIER",
           "class": "Shopping",
           "member": "RemovePriceModifier",
           "attrs": {
@@ -39172,14 +39151,14 @@
           "output": [
             {
               "name": "type",
-              "type": "int",
+              "type": "ZoneType",
               "source": "var_any"
             }
           ],
           "id": "08D3",
           "name": "GET_CURRENT_POPULATION_ZONE_TYPE",
           "num_params": 1,
-          "short_desc": "",
+          "short_desc": "Returns the population type in the zone the player is currently in",
           "class": "Zone",
           "member": "GetCurrentPopulationZoneType",
           "attrs": {
@@ -39616,7 +39595,7 @@
           "id": "08E3",
           "name": "IS_OBJECT_IN_ANGLED_AREA_2D",
           "num_params": 7,
-          "short_desc": "",
+          "short_desc": "Checks if the object is within the angled 2D area",
           "attrs": {
             "is_condition": true
           },
@@ -39665,7 +39644,7 @@
           "id": "08E4",
           "name": "IS_OBJECT_IN_ANGLED_AREA_3D",
           "num_params": 9,
-          "short_desc": "",
+          "short_desc": "Checks if the object is within the angled 3D area",
           "attrs": {
             "is_condition": true
           },
@@ -39833,7 +39812,7 @@
           "id": "08EB",
           "name": "ADD_SPARKS",
           "num_params": 7,
-          "short_desc": "",
+          "short_desc": "Creates single burst of spark particles",
           "class": "Fx",
           "member": "AddSparks",
           "attrs": {
@@ -39945,11 +39924,11 @@
         {
           "input": [
             {
-              "name": "_p1",
+              "name": "objectName",
               "type": "string"
             },
             {
-              "name": "_p2",
+              "name": "animName",
               "type": "string"
             }
           ],
@@ -40121,12 +40100,12 @@
         {
           "input": [
             {
-              "name": "_p1",
+              "name": "",
               "type": "string",
               "source": "var_global"
             },
             {
-              "name": "_p2",
+              "name": "",
               "type": "string"
             }
           ],
@@ -40142,12 +40121,12 @@
         {
           "input": [
             {
-              "name": "_p1",
+              "name": "",
               "type": "string",
               "source": "var_local"
             },
             {
-              "name": "_p2",
+              "name": "",
               "type": "string"
             }
           ],
@@ -40258,7 +40237,7 @@
               "type": "Player"
             },
             {
-              "name": "state",
+              "name": "enabled",
               "type": "bool"
             }
           ],
@@ -40293,8 +40272,8 @@
         {
           "input": [
             {
-              "name": "hudObject",
-              "type": "HudObject"
+              "name": "color",
+              "type": "HudColors"
             }
           ],
           "output": [
@@ -40535,7 +40514,7 @@
         {
           "input": [
             {
-              "name": "_p1",
+              "name": "customPosition",
               "type": "bool"
             },
             {
@@ -40597,7 +40576,7 @@
           "id": "0915",
           "name": "SET_WEATHER_TO_APPROPRIATE_TYPE_NOW",
           "num_params": 0,
-          "short_desc": "Sets the current weather ID according to the game clock and the players current town number",
+          "short_desc": "Sets the weather appropriate to the weather region the player is currently in",
           "class": "Weather",
           "member": "SetToAppropriateTypeNow",
           "attrs": {
@@ -40778,7 +40757,7 @@
           "id": "091D",
           "name": "SWITCH_ROADS_BACK_TO_ORIGINAL",
           "num_params": 6,
-          "short_desc": "",
+          "short_desc": "Reverts all changes to car paths done with SWITCH_ROADS_ON and SWITCH_ROADS_OFF",
           "class": "Path",
           "member": "SwitchRoadsBackToOriginal",
           "attrs": {
@@ -40815,7 +40794,7 @@
           "id": "091E",
           "name": "SWITCH_PED_ROADS_BACK_TO_ORIGINAL",
           "num_params": 6,
-          "short_desc": "",
+          "short_desc": "Reverts all changes to ped paths done with SWITCH_PED_ROADS_ON and SWITCH_PED_ROADS_OFF",
           "attrs": {
             "is_static": true
           },
@@ -41052,7 +41031,7 @@
               "type": "float"
             },
             {
-              "name": "type",
+              "name": "groupingId",
               "type": "int"
             }
           ],
@@ -41841,7 +41820,7 @@
           "id": "0952",
           "name": "PRELOAD_BEAT_TRACK",
           "num_params": 1,
-          "short_desc": "",
+          "short_desc": "Loads the soundtrack audio that is stored in the audio\\streams\\BEATS file",
           "class": "Audio",
           "member": "PreloadBeatTrack",
           "attrs": {
@@ -41852,14 +41831,14 @@
           "output": [
             {
               "name": "status",
-              "type": "int",
+              "type": "CutsceneTrackStatus",
               "source": "var_any"
             }
           ],
           "id": "0953",
           "name": "GET_BEAT_TRACK_STATUS",
           "num_params": 1,
-          "short_desc": "",
+          "short_desc": "Returns the status of the currenly active beat track (0954)",
           "class": "Audio",
           "member": "GetBeatTrackStatus",
           "attrs": {
@@ -41870,7 +41849,7 @@
           "id": "0954",
           "name": "PLAY_BEAT_TRACK",
           "num_params": 0,
-          "short_desc": "",
+          "short_desc": "Plays the last soundtrack loaded by PRELOAD_BEAT_TRACK",
           "class": "Audio",
           "member": "PlayBeatTrack",
           "attrs": {
@@ -41881,7 +41860,7 @@
           "id": "0955",
           "name": "STOP_BEAT_TRACK",
           "num_params": 0,
-          "short_desc": "",
+          "short_desc": "Stops any currently active beat track",
           "class": "Audio",
           "member": "StopBeatTrack",
           "attrs": {
@@ -41899,7 +41878,7 @@
           "id": "0956",
           "name": "FIND_MAX_NUMBER_OF_GROUP_MEMBERS",
           "num_params": 1,
-          "short_desc": "",
+          "short_desc": "Returns a number of group members the player can recruit with the current respect",
           "class": "Game",
           "member": "FindMaxNumberOfGroupMembers",
           "attrs": {
@@ -42065,19 +42044,19 @@
             },
             {
               "name": "red",
-              "type": "int"
+              "type": "float"
             },
             {
               "name": "green",
-              "type": "int"
+              "type": "float"
             },
             {
               "name": "blue",
-              "type": "int"
+              "type": "float"
             },
             {
               "name": "alpha",
-              "type": "int"
+              "type": "float"
             },
             {
               "name": "size",
@@ -42102,7 +42081,7 @@
           "id": "095D",
           "name": "IS_CHAR_STUCK_UNDER_CAR",
           "num_params": 1,
-          "short_desc": "Returns true if the actor is stuck under a car",
+          "short_desc": "Returns true if the char is stuck under a car",
           "input": [
             {
               "name": "self",
@@ -42173,7 +42152,7 @@
               "type": "Player"
             },
             {
-              "name": "state",
+              "name": "enabled",
               "type": "bool"
             }
           ],
@@ -42302,7 +42281,7 @@
           "output": [
             {
               "name": "state",
-              "type": "int",
+              "type": "SwimState",
               "source": "var_any"
             }
           ],
@@ -42464,7 +42443,7 @@
           "id": "0970",
           "name": "FORCE_DEATH_RESTART",
           "num_params": 0,
-          "short_desc": "",
+          "short_desc": "Triggers usual after player death game bahavior (respawn in front of the hospital, weapons taken away, etc.)",
           "class": "Game",
           "member": "ForceDeathRestart",
           "attrs": {
@@ -42709,7 +42688,7 @@
           "id": "097D",
           "name": "GET_NUM_CAR_COLOURS",
           "num_params": 2,
-          "short_desc": "",
+          "short_desc": "Returns number of color variations defined for the model of this car in carcols.dat",
           "class": "Car",
           "member": "GetNumColors"
         },
@@ -43101,7 +43080,7 @@
               "type": "Player"
             },
             {
-              "name": "state",
+              "name": "enabled",
               "type": "bool"
             }
           ],
@@ -43181,14 +43160,14 @@
         {
           "input": [
             {
-              "name": "totalRespect",
+              "name": "value",
               "type": "int"
             }
           ],
           "id": "0997",
           "name": "SET_MISSION_RESPECT_TOTAL",
           "num_params": 1,
-          "short_desc": "",
+          "short_desc": "Sets the total value of mission respect points (stat 228)",
           "class": "Stat",
           "member": "SetMissionRespectTotal",
           "attrs": {
@@ -43205,7 +43184,7 @@
           "id": "0998",
           "name": "AWARD_PLAYER_MISSION_RESPECT",
           "num_params": 1,
-          "short_desc": "",
+          "short_desc": "Increments the earned mission respect points (stat 224) by the given value",
           "class": "Stat",
           "member": "AwardPlayerMissionRespect",
           "attrs": {
@@ -43352,11 +43331,11 @@
             },
             {
               "name": "boneId",
-              "type": "int"
+              "type": "PedBoneId"
             },
             {
-              "name": "_p7",
-              "type": "int"
+              "name": "orientation",
+              "type": "HoldOrientation"
             },
             {
               "name": "animationName",
@@ -43704,7 +43683,7 @@
         {
           "input": [
             {
-              "name": "_p1",
+              "name": "normalOnly",
               "type": "bool"
             }
           ],
@@ -43856,15 +43835,15 @@
               "type": "float"
             },
             {
-              "name": "offsetX",
+              "name": "velocityX",
               "type": "float"
             },
             {
-              "name": "offsetY",
+              "name": "velocityY",
               "type": "float"
             },
             {
-              "name": "offsetZ",
+              "name": "velocityZ",
               "type": "float"
             },
             {
@@ -43879,7 +43858,7 @@
           "id": "09B8",
           "name": "ADD_BLOOD",
           "num_params": 8,
-          "short_desc": "",
+          "short_desc": "Creates blood spray and ground splatter effects",
           "class": "Fx",
           "member": "AddBlood",
           "attrs": {
@@ -44408,21 +44387,21 @@
               "type": "SpeechId"
             },
             {
-              "name": "_p3",
+              "name": "overrideSilence",
               "type": "bool"
             },
             {
-              "name": "_p4",
+              "name": "ignoreMute",
               "type": "bool"
             },
             {
-              "name": "_p5",
+              "name": "frontEnd",
               "type": "bool"
             }
           ],
           "output": [
             {
-              "name": "_p6",
+              "name": "saidVariant",
               "type": "int",
               "source": "var_any"
             }
@@ -44684,7 +44663,7 @@
             },
             {
               "name": "modelId",
-              "type": "int"
+              "type": "model_vehicle"
             },
             {
               "name": "primaryColor",
@@ -44729,7 +44708,7 @@
           "id": "09E2",
           "name": "CREATE_CAR_GENERATOR_WITH_PLATE",
           "num_params": 14,
-          "short_desc": "Creates a parked car generator with a number plate",
+          "short_desc": "Creates a parked car generator with a number plate (modelId -1 selects a random vehicle from the local popcycle)",
           "class": "CarGenerator",
           "member": "CreateWithPlate",
           "attrs": {
@@ -45160,7 +45139,7 @@
           "output": [
             {
               "name": "languageSlot",
-              "type": "int",
+              "type": "Language",
               "source": "var_any"
             }
           ],
@@ -45573,7 +45552,7 @@
           "id": "0A12",
           "name": "GET_EXTRA_CAR_COLOURS",
           "num_params": 3,
-          "short_desc": "Returns the car's tertiary and quaternary colors (0A11)",
+          "short_desc": "Returns the car's tertiary and quaternary colors. See also 03F3",
           "class": "Car",
           "member": "GetExtraColors"
         },
@@ -45581,7 +45560,7 @@
           "id": "0A13",
           "name": "MANAGE_ALL_POPULATION",
           "num_params": 0,
-          "short_desc": "",
+          "short_desc": "Deletes distant, no longer needed, objects and world dummy objects",
           "class": "Game",
           "member": "ManageAllPopulation",
           "attrs": {
@@ -45606,16 +45585,16 @@
           }
         },
         {
-          "id": "0A15",
-          "name": "HAS_CAR_BEEN_RESPRAYED",
-          "num_params": 1,
-          "short_desc": "Returns true if the vehicle was resprayed in the last frame",
           "input": [
             {
               "name": "self",
               "type": "Car"
             }
           ],
+          "id": "0A15",
+          "name": "HAS_CAR_BEEN_RESPRAYED",
+          "num_params": 1,
+          "short_desc": "Returns true if the vehicle was resprayed in the last frame AND resets the resprayed state to false",
           "attrs": {
             "is_condition": true
           },
@@ -46131,8 +46110,8 @@
               "type": "float"
             },
             {
-              "name": "mode",
-              "type": "int"
+              "name": "speed",
+              "type": "MoveState"
             },
             {
               "name": "time",
@@ -46206,7 +46185,7 @@
           "id": "0A32",
           "name": "IS_CHAR_ATTACHED_TO_ANY_CAR",
           "num_params": 1,
-          "short_desc": "Returns true if the actor is turreted on any vehicle",
+          "short_desc": "Returns true if the char is turreted on any vehicle",
           "input": [
             {
               "name": "self",
@@ -46582,8 +46561,8 @@
         {
           "input": [
             {
-              "name": "type",
-              "type": "ScriptBrainAttachType"
+              "name": "groupingId",
+              "type": "int"
             },
             {
               "name": "state",
@@ -46593,7 +46572,7 @@
           "id": "0A46",
           "name": "SWITCH_OBJECT_BRAINS",
           "num_params": 2,
-          "short_desc": "Enables or disables all triggers of the specified type (0928 or 0929)",
+          "short_desc": "Enables or disables all object triggers with the specified grouping id (set with 0929)",
           "class": "Game",
           "member": "SwitchObjectBrains",
           "attrs": {
@@ -46604,7 +46583,7 @@
           "id": "0A47",
           "name": "FINISH_SETTING_UP_CONVERSATION_NO_SUBTITLES",
           "num_params": 0,
-          "short_desc": "",
+          "short_desc": "Finalizes the current conversation sequence started with 0717. Selected answers will not be subtitled",
           "class": "Conversation",
           "member": "FinishSettingUpNoSubtitles",
           "attrs": {
@@ -46634,7 +46613,7 @@
           "num_params": 0,
           "short_desc": "Returns true for Xbox versions of the game",
           "attrs": {
-            "is_nop": true
+            "is_condition": true
           }
         },
         {
@@ -46690,7 +46669,7 @@
           "num_params": 0,
           "short_desc": "Returns true for Japanese versions of the game",
           "attrs": {
-            "is_nop": true
+            "is_condition": true
           }
         },
         {
@@ -46706,11 +46685,7 @@
           "id": "0A4F",
           "name": "FINISHED_WITH_XBOX_PLAYER2",
           "num_params": 0,
-          "short_desc": "",
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          "short_desc": ""
         },
         {
           "id": "0A50",
@@ -46721,33 +46696,7 @@
           "member": "DoStuff",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            }
-          ],
-          "id": "0A51",
-          "name": "IS_WIDGET_PRESSED",
-          "num_params": 1,
-          "short_desc": "Returns true if the button widget icon on the screen is touched",
-          "class": "Widget",
-          "member": "IsPressed",
-          "attrs": {
-            "is_condition": true,
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -46771,28 +46720,6 @@
           "input": [
             {
               "name": "widgetId",
-              "type": "int"
-            }
-          ],
-          "id": "0A52",
-          "name": "IS_WIDGET_RELEASED",
-          "num_params": 1,
-          "short_desc": "Returns true if the button widget icon on the screen is pressed and released",
-          "class": "Widget",
-          "member": "IsReleased",
-          "attrs": {
-            "is_condition": true,
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
               "type": "WidgetId"
             }
           ],
@@ -46806,28 +46733,6 @@
             "is_condition": true,
             "is_static": true
           }
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            }
-          ],
-          "id": "0A53",
-          "name": "IS_WIDGET_DOUBLETAPPED",
-          "num_params": 1,
-          "short_desc": "Returns true if the button widget icon on the screen is double-tapped",
-          "class": "Widget",
-          "member": "IsDoubletapped",
-          "attrs": {
-            "is_condition": true,
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
         },
         {
           "input": [
@@ -46851,28 +46756,6 @@
           "input": [
             {
               "name": "widgetId",
-              "type": "int"
-            }
-          ],
-          "id": "0A54",
-          "name": "IS_WIDGET_SWIPED",
-          "num_params": 1,
-          "short_desc": "Returns true if the button widget icon on the screen is swiped",
-          "class": "Widget",
-          "member": "IsSwiped",
-          "attrs": {
-            "is_condition": true,
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
               "type": "WidgetId"
             }
           ],
@@ -46891,28 +46774,6 @@
           "input": [
             {
               "name": "widgetId",
-              "type": "int"
-            }
-          ],
-          "id": "0A55",
-          "name": "IS_WIDGET_SWIPED_LEFT",
-          "num_params": 1,
-          "short_desc": "Returns true if the button widget icon on the screen is swiped left",
-          "class": "Widget",
-          "member": "IsSwipedLeft",
-          "attrs": {
-            "is_condition": true,
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
               "type": "WidgetId"
             }
           ],
@@ -46926,28 +46787,6 @@
             "is_condition": true,
             "is_static": true
           }
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            }
-          ],
-          "id": "0A56",
-          "name": "IS_WIDGET_SWIPED_RIGHT",
-          "num_params": 1,
-          "short_desc": "Returns true if the button widget icon on the screen is swiped right",
-          "class": "Widget",
-          "member": "IsSwipedRight",
-          "attrs": {
-            "is_condition": true,
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
         },
         {
           "input": [
@@ -46989,11 +46828,7 @@
           "attrs": {
             "is_condition": true,
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "output": [
@@ -47012,11 +46847,7 @@
           "attrs": {
             "is_condition": true,
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "output": [
@@ -47035,39 +46866,7 @@
           "attrs": {
             "is_condition": true,
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            }
-          ],
-          "output": [
-            {
-              "name": "_p2",
-              "type": "float",
-              "source": "var_any"
-            }
-          ],
-          "id": "0A5A",
-          "name": "GET_WIDGET_VALUE",
-          "num_params": 2,
-          "short_desc": "",
-          "class": "Widget",
-          "member": "GetValue",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -47092,39 +46891,6 @@
           "attrs": {
             "is_static": true
           }
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            }
-          ],
-          "output": [
-            {
-              "name": "_p2",
-              "type": "float",
-              "source": "var_any"
-            },
-            {
-              "name": "_p3",
-              "type": "float",
-              "source": "var_any"
-            }
-          ],
-          "id": "0A5B",
-          "name": "GET_WIDGET_VALUE2",
-          "num_params": 3,
-          "short_desc": "",
-          "class": "Widget",
-          "member": "GetValue2",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
         },
         {
           "input": [
@@ -47178,54 +46944,7 @@
           "member": "DisplayText",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            }
-          ],
-          "output": [
-            {
-              "name": "screenX",
-              "type": "float",
-              "source": "var_any"
-            },
-            {
-              "name": "screenY",
-              "type": "float",
-              "source": "var_any"
-            },
-            {
-              "name": "scaleX",
-              "type": "float",
-              "source": "var_any"
-            },
-            {
-              "name": "scaleY",
-              "type": "float",
-              "source": "var_any"
-            }
-          ],
-          "id": "0A5D",
-          "name": "GET_WIDGET_POSITION",
-          "num_params": 5,
-          "short_desc": "",
-          "class": "Widget",
-          "member": "GetPosition",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -47270,31 +46989,6 @@
           "input": [
             {
               "name": "widgetId",
-              "type": "int"
-            },
-            {
-              "name": "_p2",
-              "type": "float"
-            }
-          ],
-          "id": "0A5E",
-          "name": "SET_WIDGET_VALUE",
-          "num_params": 2,
-          "short_desc": "",
-          "class": "Widget",
-          "member": "SetValue",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
               "type": "WidgetId"
             },
             {
@@ -47311,35 +47005,6 @@
           "attrs": {
             "is_static": true
           }
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            },
-            {
-              "name": "rangeX",
-              "type": "float"
-            },
-            {
-              "name": "rangeY",
-              "type": "float"
-            }
-          ],
-          "id": "0A5F",
-          "name": "SET_SLIDER_RANGE",
-          "num_params": 3,
-          "short_desc": "",
-          "class": "Widget",
-          "member": "SetSliderRange",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
         },
         {
           "input": [
@@ -47357,7 +47022,7 @@
             }
           ],
           "id": "0A5F",
-          "name": "SET_WIDGET_SLIDER_RANGE",
+          "name": "SET_SLIDER_RANGE",
           "num_params": 3,
           "short_desc": "",
           "class": "Widget",
@@ -47412,31 +47077,6 @@
           "input": [
             {
               "name": "widgetId",
-              "type": "int"
-            },
-            {
-              "name": "flag",
-              "type": "int"
-            }
-          ],
-          "id": "0A62",
-          "name": "ADD_BUTTON_FLAG",
-          "num_params": 2,
-          "short_desc": "",
-          "class": "Widget",
-          "member": "AddButtonFlag",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
               "type": "WidgetId"
             },
             {
@@ -47453,31 +47093,6 @@
           "attrs": {
             "is_static": true
           }
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            },
-            {
-              "name": "flag",
-              "type": "int"
-            }
-          ],
-          "id": "0A63",
-          "name": "REMOVE_BUTTON_FLAG",
-          "num_params": 2,
-          "short_desc": "",
-          "class": "Widget",
-          "member": "RemoveButtonFlag",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
         },
         {
           "input": [
@@ -47510,11 +47125,7 @@
             "is_static": true
           },
           "class": "Hid",
-          "member": "IsTouchEnabled",
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          "member": "IsTouchEnabled"
         },
         {
           "id": "0A65",
@@ -47526,11 +47137,7 @@
             "is_static": true
           },
           "class": "Game",
-          "member": "IsFinalbuild",
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          "member": "IsFinalbuild"
         },
         {
           "input": [
@@ -47548,11 +47155,7 @@
           "member": "WriteLog",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -47582,11 +47185,7 @@
           "member": "WriteLogInt",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -47616,11 +47215,7 @@
           "member": "WriteLogFloat",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -47637,11 +47232,7 @@
           "member": "CreateShopMenu",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -47662,32 +47253,7 @@
           "member": "AddShopItem",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            }
-          ],
-          "id": "0A6B",
-          "name": "DELETE_WIDGET",
-          "num_params": 1,
-          "short_desc": "Removes a widget icon from the screen (cannot be restored)",
-          "class": "Widget",
-          "member": "Delete",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -47705,31 +47271,6 @@
           "attrs": {
             "is_static": true
           }
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            },
-            {
-              "name": "_p2",
-              "type": "int"
-            }
-          ],
-          "id": "0A6C",
-          "name": "SET_EQUIPPED_ITEM",
-          "num_params": 2,
-          "short_desc": "",
-          "class": "Widget",
-          "member": "SetEquippedItem",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
         },
         {
           "input": [
@@ -47771,37 +47312,7 @@
           "member": "PrintHelpForeverConditional",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            },
-            {
-              "name": "textureName",
-              "type": "string128",
-              "source": "literal"
-            }
-          ],
-          "id": "0A6E",
-          "name": "SET_WIDGET_TEXTURE",
-          "num_params": 2,
-          "short_desc": "",
-          "class": "Widget",
-          "member": "SetTexture",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -47840,11 +47351,7 @@
           "member": "CheckPointSave",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -47873,11 +47380,7 @@
           "member": "DisplayClamped",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -47910,11 +47413,7 @@
           "member": "DisplayWithNumberClamped",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "id": "0A72",
@@ -47925,44 +47424,7 @@
           "member": "AutoSave",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            },
-            {
-              "name": "x",
-              "type": "float"
-            },
-            {
-              "name": "y",
-              "type": "float"
-            },
-            {
-              "name": "z",
-              "type": "float"
-            }
-          ],
-          "id": "0A73",
-          "name": "SET_WIDGET_VALUE3",
-          "num_params": 4,
-          "short_desc": "",
-          "class": "Widget",
-          "member": "SetValue3",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48009,11 +47471,7 @@
             "is_static": true
           },
           "class": "Game",
-          "member": "IsCheckPointResuming",
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          "member": "IsCheckPointResuming"
         },
         {
           "input": [
@@ -48034,11 +47492,7 @@
           "member": "SetActiveItemCarMods",
           "attrs": {
             "is_condition": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48056,11 +47510,7 @@
           "attrs": {
             "is_condition": true,
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48077,11 +47527,7 @@
           "member": "CheckpointSaveOddjob",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48102,11 +47548,7 @@
           "member": "PrintHelpForeverConditionalTouch",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48127,11 +47569,7 @@
           "member": "PrintHelpForeverConditionalHid",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48152,11 +47590,7 @@
           "member": "PrintHelpForeverConditionalTouchClassic",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48177,11 +47611,7 @@
           "member": "PrintHelpForeverConditionalTouchAdapted",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48202,11 +47632,7 @@
           "member": "PrintHelpForeverConditionalHidJoypad",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48227,11 +47653,7 @@
           "member": "PrintHelpForeverConditionalHidKeyboard",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48252,11 +47674,7 @@
           "member": "PrintHelpForeverConditionalTouchAnalog",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48277,11 +47695,7 @@
           "member": "PrintHelpForeverConditionalTouchDigital",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48302,11 +47716,7 @@
           "member": "PrintHelpForeverConditionalTouchFlick",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48327,11 +47737,7 @@
           "member": "PrintHelpConditional",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48352,11 +47758,7 @@
           "member": "PrintHelpConditionalTouch",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48377,11 +47779,7 @@
           "member": "PrintHelpConditionalHid",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48402,11 +47800,7 @@
           "member": "PrintHelpConditionalTouchClassic",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48426,11 +47820,7 @@
           "member": "PrintHelpConditionalTouchAdapted",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48450,11 +47840,7 @@
           "member": "PrintHelpConditionalHidJoypad",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48474,11 +47860,7 @@
           "member": "PrintHelpConditionalHidKeyboard",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48498,39 +47880,7 @@
           "member": "PrintHelpConditionalTouchAnalog",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            },
-            {
-              "name": "_p2",
-              "type": "float"
-            },
-            {
-              "name": "_p3",
-              "type": "float"
-            }
-          ],
-          "id": "0A89",
-          "name": "SET_WIDGET_VALUE2",
-          "num_params": 3,
-          "class": "Widget",
-          "member": "SetValue2",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48560,78 +47910,30 @@
           "input": [
             {
               "name": "widgetId",
-              "type": "int"
-            },
-            {
-              "name": "_p2",
-              "type": "int"
-            },
-            {
-              "name": "_p3",
-              "type": "int"
-            },
-            {
-              "name": "_p4",
-              "type": "int"
-            },
-            {
-              "name": "_p5",
-              "type": "int"
-            },
-            {
-              "name": "_p6",
-              "type": "int"
-            },
-            {
-              "name": "_p7",
-              "type": "float"
-            },
-            {
-              "name": "key",
-              "type": "gxt_key"
-            }
-          ],
-          "id": "0A8A",
-          "name": "SET_WIDGET_INFO",
-          "num_params": 8,
-          "class": "Widget",
-          "member": "SetInfo",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
               "type": "WidgetId"
             },
             {
-              "name": "_p2",
+              "name": "bTitle",
+              "type": "bool"
+            },
+            {
+              "name": "bPercentage",
+              "type": "bool"
+            },
+            {
+              "name": "bTime",
+              "type": "bool"
+            },
+            {
+              "name": "bNumber",
+              "type": "bool"
+            },
+            {
+              "name": "color",
               "type": "int"
             },
             {
-              "name": "_p3",
-              "type": "int"
-            },
-            {
-              "name": "_p4",
-              "type": "int"
-            },
-            {
-              "name": "_p5",
-              "type": "int"
-            },
-            {
-              "name": "_p6",
-              "type": "int"
-            },
-            {
-              "name": "_p7",
+              "name": "value",
               "type": "float"
             },
             {
@@ -48647,50 +47949,6 @@
           "attrs": {
             "is_static": true
           }
-        },
-        {
-          "input": [
-            {
-              "name": "widgetId",
-              "type": "int"
-            },
-            {
-              "name": "_p2",
-              "type": "int"
-            },
-            {
-              "name": "_p3",
-              "type": "int"
-            },
-            {
-              "name": "_p4",
-              "type": "int"
-            },
-            {
-              "name": "_p5",
-              "type": "int"
-            },
-            {
-              "name": "_p6",
-              "type": "int"
-            },
-            {
-              "name": "key",
-              "type": "gxt_key"
-            }
-          ],
-          "id": "0A8B",
-          "name": "SET_WIDGET_INFO2",
-          "num_params": 7,
-          "class": "Widget",
-          "member": "SetInfo2",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
         },
         {
           "input": [
@@ -48741,11 +47999,7 @@
           "attrs": {
             "is_static": true
           },
-          "short_desc": "Loads all models immediately, faster than 038B",
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          "short_desc": "Loads all models immediately, faster than 038B"
         },
         {
           "input": [
@@ -48762,11 +48016,7 @@
           "attrs": {
             "is_static": true,
             "is_condition": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48783,11 +48033,7 @@
           "attrs": {
             "is_static": true
           },
-          "short_desc": "Unlocks the achievement",
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          "short_desc": "Unlocks the achievement"
         },
         {
           "id": "0A8F",
@@ -48797,11 +48043,7 @@
           "member": "ReleaseWeaponLock",
           "attrs": {
             "is_static": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         },
         {
           "input": [
@@ -48818,11 +48060,7 @@
           "attrs": {
             "is_static": true,
             "is_condition": true
-          },
-          "platforms": [
-            "console",
-            "mobile"
-          ]
+          }
         }
       ]
     },
@@ -48857,50 +48095,21 @@
         {
           "input": [
             {
+              "name": "address",
+              "type": "int",
+              "source": "var_any"
+            },
+            {
               "name": "",
               "type": "label"
             }
           ],
-          "output": [
-            {
-              "name": "address",
-              "type": "int",
-              "source": "var_any"
-            }
-          ],
           "id": "0DD0",
-          "name": "GET_LABEL_POINTER",
+          "name": "STORE_LABEL_POINTER",
           "num_params": 2,
           "class": "Memory",
-          "member": "GetLabelPointer",
+          "member": "StoreLabelPointer",
           "short_desc": "Stores the absolute address of a code location marked with the label",
-          "attrs": {
-            "is_static": true
-          },
-          "platforms": [
-            "mobile"
-          ]
-        },
-        {
-          "input": [
-            {
-              "name": "pointer",
-              "type": "int"
-            }
-          ],
-          "output": [
-            {
-              "name": "address",
-              "type": "int",
-              "source": "var_any"
-            }
-          ],
-          "id": "0DD1",
-          "name": "FIND_FUNCTION_BY_NAME",
-          "num_params": 2,
-          "short_desc": "Obtains the address of the corresponding function and variable in the game library according to the string pointer",
-          "class": "Memory",
-          "member": "FindFunctionByName",
           "attrs": {
             "is_static": true
           },
@@ -49277,7 +48486,7 @@
           "num_params": 3,
           "class": "Hid",
           "member": "GetTouchPointState",
-          "short_desc": "Returns result of the requested touch action check, can be 0 or 1. On PSP always returns 0. Touch points is the CLEO Android engine implemented touch detection system which divides touchscreen into 9 parts called touch points, they can be used to detect timed touche, How long to touch an area at the minimum",
+          "short_desc": "Returns result of the requested touch action check, can be 0 or 1. Touch points is the CLEO Android engine implemented touch detection system which divides touchscreen into 9 parts called touch points, they can be used to detect timed touche, How long to touch an area at the minimum",
           "attrs": {
             "is_static": true
           },
@@ -49343,7 +48552,7 @@
           "platforms": [
             "mobile"
           ],
-          "short_desc": "Returns state of the Android hardware menu button, can be 0 or 1, a lot of devices have no button like this. On PSP always returns 0. Such buttons are only available on old smart phones and semi-smart phones. The current smart phones no longer have such buttons"
+          "short_desc": "Returns state of the Android hardware menu button, can be 0 or 1, a lot of devices have no button like this. Such buttons are only available on old smart phones and semi-smart phones. The current smart phones no longer have such buttons"
         },
         {
           "input": [
@@ -49371,6 +48580,44 @@
             "mobile"
           ],
           "short_desc": "Returns to the state where the Android hardware menu button is pressed at the specified time. See 0DE2"
+        },
+        {
+          "input": [
+            {
+              "name": "pointer",
+              "type": "int"
+            },
+            {
+              "name": "numItems",
+              "type": "int"
+            }
+          ],
+          "id": "0DF2",
+          "name": "CREATE_MENU",
+          "num_params": 2,
+          "class": "Hid",
+          "member": "CreateMenu",
+          "attrs": {
+            "is_static": true
+          },
+          "platforms": [
+            "mobile"
+          ],
+          "short_desc": "Creates the menu gui which handles most of the things like drawing and input automatically. With first param being a label like @menu_desc where you describe the menu and second param indicating menu item count, can be set to a higher value than actual items if the menu has last item described as 00 byte. On Android the menu is touch based"
+        },
+        {
+          "id": "0DF3",
+          "name": "DELETE_MENU",
+          "num_params": 0,
+          "class": "Hid",
+          "member": "DeleteMenu",
+          "attrs": {
+            "is_static": true
+          },
+          "platforms": [
+            "mobile"
+          ],
+          "short_desc": "Removes active menu. See 0DF2"
         }
       ]
     }
@@ -49384,17 +48631,6 @@
     {
       "name": "Audio",
       "constructable": false,
-      "desc": ""
-    },
-    {
-      "name": "AudioStream",
-      "constructable": true,
-      "desc": ""
-    },
-    {
-      "name": "AudioStream3D",
-      "constructable": true,
-      "extends": "AudioStream",
       "desc": ""
     },
     {
@@ -49436,11 +48672,6 @@
     {
       "name": "Checkpoint",
       "constructable": true,
-      "desc": ""
-    },
-    {
-      "name": "Clipboard",
-      "constructable": false,
       "desc": ""
     },
     {
@@ -49491,21 +48722,6 @@
       "desc": ""
     },
     {
-      "name": "DynamicLibrary",
-      "constructable": true,
-      "desc": ""
-    },
-    {
-      "name": "File",
-      "constructable": true,
-      "desc": ""
-    },
-    {
-      "name": "Fs",
-      "constructable": false,
-      "desc": ""
-    },
-    {
       "name": "Fx",
       "constructable": false,
       "desc": ""
@@ -49543,11 +48759,6 @@
     },
     {
       "name": "Hud",
-      "constructable": false,
-      "desc": ""
-    },
-    {
-      "name": "IniFile",
       "constructable": false,
       "desc": ""
     },
