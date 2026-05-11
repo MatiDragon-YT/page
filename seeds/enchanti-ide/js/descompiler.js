@@ -2,6 +2,8 @@
 import { log, sleep, LS } from './utils/utils.js'
 import { fetchPercentece } from './utils/dom.js'
 import { STRING } from './utils/string.js'
+
+
 // Author: MatiDragon.
 // Contributors: Seemann, OrionSR, Miran.
 
@@ -212,238 +214,290 @@ NP.floatToHex = function(){
 	return result.toBigEndian()
 }
 
-//log(descompilar(`0000,0100,05,E803,D00A,0E,08,61-63-74-69-76-61-64-6F,05,E803,00,B10A,01,9BFFFFFF,04,05,04,5C,06,00801144,06,0000C842,06,00005041,06,00005041,00,B10A,01,9BFFFFFF,04,05,04,5C,06,00801144,06,0000C842,06,00005041,06,00005041,00,0100,01,C0270900,0200,01,A9FFFFFF,D00D,03,0A00,01,0DFFFFFF,D10D,03,0A00,03,0A00,8500,03,0B00,03,0000,1200,03,0B00,04,04,5A00,03,0A00,03,0B00,D80D,03,0A00,03,0A00,04,04,04,00,0A00,03,0A00,04,0C,D90D,03,0A00,03,0100,04,04,04,00,04,01,0A00,03,0A00,04,04,D90D,03,0A00,03,0200,04,04,04,00,04,01,0A00,03,0A00,04,04,D90D,03,0A00,03,0300,04,04,04,00,04,01,0A00,03,0A00,04,04,D90D,03,0A00,03,0400,04,04,04,00,04,01,B20A,04,00,00,5F5A4E313543546F756368496E7465726661636531306D5F70576964676574734500,`))
+/*
+0000: nop
+:nonamed_2
+0002: goto @nonamed_2
+0001: wait 1000
+0AD0: printf 1000 "activado" 1000 
+0AB1: cleo_call  5 92 582.0 100.0 13.0 13.0
+*/
+function createLabelManager(prefix = 'nonamed'){
+  let counter = 0
+  const map = new Map()
 
+  return {
+    alloc(offset){
+      if (!map.has(offset)){
+        map.set(offset, `${prefix}_${counter++}`)
+      }
+      return map.get(offset)
+    },
+    get(offset){
+      return map.get(offset)
+    },
+    has(offset){
+      return map.has(offset)
+    },
+    entries(){
+      return map.entries()
+    }
+  }
+}
+
+// Esto es un ejemplo de cómo se ve el código descompilado. La función descompilar toma una cadena de hex y la convierte en instrucciones legibles.
+log(descompilar(`0000,0200,01,02000000,0100,05,0000,D00A,0E,08,61-63-74-69-76-61-64-6F,05,E803,00,B10A,01,09000000,04,05,04,5C,06,00801144,06,0000C842,06,00005041,06,00005041,00`))
 function descompilar(scm){
-  let codigo = ''
-  
-  let src = scm.r(/(,|\s|\-)/g).match(/.{2}/g)
-  
-  let op = {
+
+  const byteArray = scm.r(/(,|\s|\-)/g).match(/.{2}/g)
+
+  const opcodes = {
     '0000':{name:'nop',param:0},
     '0001':{name:'wait',param:1},
     '0002':{name:'goto',param:1,def:['label']},
     '0050':{name:'gosub',param:1,def:['label']},
-    '0AB1':{name:'cleo_call',param:-1,def:['str','int']},
+    '0AB1':{name:'cleo_call',param:-1,def:['label','int']},
     '0AD0':{name:'printf',param:-1},
     '0DD0':{name:'get_label_addr',param:2,def:['var','label']},
     '0DD1':{name:'get_func_addr_by_cstr_name',param:2},
-    '0DD0':{name:'get_label_addr',param:2,def:['label']},
   }
-  
-  let waiting = 'opcode'
-  
-  let i = 0
-  let cmd = ''
-  let type = ''
-  let arg = ''
-  let inputs = 0
-  
-  let bitsCounter = []
-  
-  let name = 'nonamed'
-  
-  let iteraciones = 0
-  while (i < src.length){
-    if (waiting == 'opcode'){
-      bitsCounter.push(i)
-      
-      codigo += '\n'
-      cmd = src[i+1] + src[i]
-      
-      if (+('0x'+src[i+1]) >= 0x80){
-        codigo += '!'
-        cmd = (+('0x'+cmd) - 0x8000)
-          .toString(16).padStart(4,'0')
-      }
-      
-      if(cmd in op){
-        codigo += op[cmd].name
-        
-        if (op[cmd].param != 0){
-          waiting = 'param'
-        }
-        i+=2
-      } else {
-        throw new Error('Opcode undefined;'+
-          '\n\toffset invoked: '+ bitsCounter.last() +
-          '\n\tcmd byte: '+ cmd +
-          '\n\nLast code:\n\t[...]\n'+ 
-            codigo
-            .split('\n')
-            .reverse()
-            .slice(0,3)
-            .map(e => '\t'+e)
-            .reverse()
-            .join('\n')
-            + '>>> ' + cmd + '\n\t[...]'
-        )
-      }
+
+  /** ---------------------------
+   * PASADA 1 — PARSEO A IR
+   * --------------------------*/
+  const instructions = []
+  const labels = createLabelManager()
+  let index = 0
+  let byteOffset = 0
+
+  while (index < byteArray.length){
+
+    const insOffset = byteOffset
+    let opcodeHex = byteArray[index+1] + byteArray[index]
+    let negative = false
+
+    if (+('0x'+byteArray[index+1]) >= 0x80){
+      negative = true
+      opcodeHex = (+('0x'+opcodeHex) - 0x8000)
+        .toString(16).padStart(4,'0')
     }
-    if (waiting == 'param'){
-      codigo += ' '
-      
-      type = src[i]
-      
-      if (type == TYPE_CODE.TERMINAL_NULL){
-        arg = ''
-        waiting = 'opcode'
-        i+=1
+
+    if (!(opcodeHex in opcodes)){
+      throw new Error(`Opcode undefined at byte ${byteOffset}`)
+    }
+
+    const meta = opcodes[opcodeHex]
+
+    const ins = {
+      offset: insOffset,
+      opcode: opcodeHex,
+      name: meta.name,
+      negative,
+      params: [],
+      size: 2
+    }
+
+    index += 2
+    byteOffset += 2
+
+    let paramCount = 0
+
+    while (meta.param !== 0){
+
+      const type = byteArray[index]
+
+      // TERMINAL NULL
+      if (type === TYPE_CODE.TERMINAL_NULL){
+        index++
+        byteOffset++
+        break
       }
-      else if (type == TYPE_CODE.INT32){
-        if ("def" in op[cmd]){
-          if (op[cmd].def[inputs] == 'label'){
-            let jump = leb128(+('0x'+src[i+4]+src[i+3]+src[i+2]+src[i+1]))
-            
-            i+=5
-            
-            jump = Math.abs(+(jump))
-            
-            arg = '@' + name + '_' + jump
-            
-            let target = 0
-            
-            for (let b = 0; b <= bitsCounter.length; b++){
-              if (jump <= bitsCounter[b]){
-                if (jump == bitsCounter[b]){
-                  target = b+1
-                  break
-                }
-              }
-              if (bitsCounter[b] > jump){
-                throw new Error(
-                  'Jump undefined;'+
-                  '\n\tinvoked bit: '+ bitsCounter.last() +
-                  '\n\toffset bit: '+ jump
-                )
-              }
-            }
-            
-            codigo = insertarSalto(
-              codigo, arg.r('@',':'), target
-            )
-          }
+
+      // INT32 (LABEL o INT)
+      if (type === TYPE_CODE.INT32){
+        const raw = +('0x'+byteArray[index+4]+byteArray[index+3]+byteArray[index+2]+byteArray[index+1])
+        const value = leb128(raw)
+        const abs = Math.abs(value)
+
+        const isLabel = meta.def && meta.def[paramCount] === 'label'
+
+        if (isLabel){
+          labels.alloc(abs)
+          ins.params.push({
+            type:'label',
+            target: abs,
+            size:5
+          })
+        } else {
+          ins.params.push({
+            type:'value',
+            value,
+            size:5
+          })
         }
-        else {
-          arg = leb128(+('0x'+src[i+4]+src[i+3]+src[i+2]+src[i+1]))
-          i+=5
-        }
+
+        index += 5
+        byteOffset += 5
       }
-      else if (type == TYPE_CODE.INT8){
-          arg = leb128(+('0x'+src[i+1]))
-          i+=2
+
+      // INT8
+      else if (type === TYPE_CODE.INT8){
+        ins.params.push({
+          type:'value',
+          value: leb128(+('0x'+byteArray[index+1])),
+          size:2
+        })
+        index += 2
+        byteOffset += 2
       }
-      else if (type == TYPE_CODE.INT16){
-          arg = leb128(+('0x'+src[i+2]+src[i+1]))
-          i+=3
+
+      // INT16
+      else if (type === TYPE_CODE.INT16){
+        ins.params.push({
+          type:'value',
+          value: leb128(+('0x'+byteArray[index+2]+byteArray[index+1])),
+          size:3
+        })
+        index += 3
+        byteOffset += 3
       }
-      else if (type == TYPE_CODE.FLOAT32){
-        arg = src[i+4]+src[i+3]+src[i+2]+src[i+1]
-        arg = (arg.hexToFloat()+"").slice(0,8)
-        
-        if (!arg.i('.')) arg += '.0';
-        
-        i+=5
+
+      // FLOAT32
+      else if (type === TYPE_CODE.FLOAT32){
+        let hex = byteArray[index+4]+byteArray[index+3]+byteArray[index+2]+byteArray[index+1]
+        let v = (hex.hexToFloat()+"").slice(0,8)
+        if (!v.i('.')) v += '.0'
+        ins.params.push({ type:'value', value:v, size:5 })
+        index += 5
+        byteOffset += 5
       }
-      else if (type == TYPE_CODE.LVAR){
-        arg = +("0x"+src[i+2]+src[i+1]) + '@'
-        
-        i+=3
+
+      // LVAR
+      else if (type === TYPE_CODE.LVAR){
+        ins.params.push({
+          type:'value',
+          value: +("0x"+byteArray[index+2]+byteArray[index+1]) + '@',
+          size:3
+        })
+        index += 3
+        byteOffset += 3
       }
-      else if (type == TYPE_CODE.GVAR){
-        arg = '$' + ~~(+("0x"+src[i+2]+src[i+1])/4)
-        
-        i+=3
+
+      // GVAR
+      else if (type === TYPE_CODE.GVAR){
+        ins.params.push({
+          type:'value',
+          value: '$' + ~~(+("0x"+byteArray[index+2]+byteArray[index+1])/4),
+          size:3
+        })
+        index += 3
+        byteOffset += 3
       }
-      else if (type == TYPE_CODE.STRING8){
+
+      // STRING8
+      else if (type === TYPE_CODE.STRING8){
         let str = ""
-        let hex = src.slice(i+1, i+8).join('')
-        
-        for (let u = 0; u < hex.length; u += 2) {
-          const char = hex.substr(u, 2)
-          
-          if (char == '00') break;
-          
-          str += String.fromCharCode(parseInt(char, 16))
+        let hex = byteArray.slice(index+1, index+8).join('')
+        for (let i=0;i<hex.length;i+=2){
+          const c = hex.substr(i,2)
+          if (c==='00') break
+          str += String.fromCharCode(parseInt(c,16))
         }
-        
-        arg = "'" + str + "'"
-        i += 8
+        ins.params.push({ type:'value', value:`'${str}'`, size:8 })
+        index += 8
+        byteOffset += 8
       }
-      else if (type == TYPE_CODE.STRING16){
+
+      // STRING_VARIABLE
+      else if (type === TYPE_CODE.STRING_VARIABLE){
+        const len = +('0x'+byteArray[index+1])
+        const ascii = byteArray.slice(index+2, index+2+len).join('')
         let str = ""
-        let hex = src.slice(i+1, i+16).join('')
-        
-        for (let u = 0; u < hex.length; u += 2) {
-          const char = hex.substr(u, 2)
-          
-          if (char == '00') break;
-          
-          str += String.fromCharCode(parseInt(char, 16))
+        for (let i=0;i<len;i++){
+          str += String.fromCharCode(+('0x'+ascii.substr(i*2,2)))
         }
-        
-        arg = '"' + str + '"'
-        i += str.length +1
+        ins.params.push({ type:'value', value:`"${str}"`, size:2+len })
+        index += 2+len
+        byteOffset += 2+len
       }
-      else if (type == TYPE_CODE.STRING_VARIABLE) {
-        const length = +('0x'+src[i+1])
-        const ascii = src.slice(i+2, i+2+length).join('')
-        
-        let str = ""
-        for (let u = 0; u < length; u++) {
-          const char = ascii.substr(u*2, 2)
-        
-          str += String.fromCharCode(+('0x'+char))
-        }
-        
-        arg += '"'+str+'"'
-        
-        i += 2 + length
-      }
-      
+
       else {
-        throw new Error('Parameter undefined;'+
-          '\n\toffset invoked: '+ bitsCounter.last() +
-          '\n\tcmd byte: '+ type +
-          '\n\nLast code:\n\t[...]\n'+ 
-            codigo
-            .split('\n')
-            .reverse()
-            .slice(0,5)
-            .map(e => '\t'+e)
-            .reverse()
-            .join('\n')
-            + '[' + type + ' :: ??]\n\t[...]'
-        )
+        throw new Error(`Unknown param ${type} at ${byteOffset}`)
       }
-      
-      
-      codigo += arg
-      inputs++
-      if (inputs == op[cmd].param){
-        waiting = 'opcode'
-      }
+
+      paramCount++
+      if (meta.param !== -1 && paramCount >= meta.param) break
     }
-    
-    iteraciones++
-    if (iteraciones>1000)break;
+
+    instructions.push(ins)
   }
-  return codigo.trim()
+
+  /** ---------------------------
+   * PASADA 2 — NORMALIZAR LABELS
+   * (offsets intermedios)
+   * --------------------------*/
+  for (const ins of instructions){
+    let cursor = ins.offset + 2
+    for (const p of ins.params){
+      if (labels.has(cursor)){
+        labels.alloc(cursor)
+      }
+      cursor += p.size
+    }
+  }
+
+  /** ---------------------------
+   * PASADA 3 — RENDER FINAL
+   * --------------------------*/
+  const output = []
+
+  for (const ins of instructions){
+
+    if (labels.has(ins.offset)){
+      output.push(`:${labels.get(ins.offset)}`)
+    }
+
+    let line = (ins.negative?'!':'') + ins.name
+    let cursor = ins.offset + 2
+
+    for (const p of ins.params){
+
+      if (labels.has(cursor)){
+        line += ` :${labels.get(cursor)}`
+      }
+
+      if (p.type === 'label'){
+        line += ` @${labels.get(p.target)}`
+      } else {
+        line += ` ${p.value}`
+      }
+
+      cursor += p.size
+    }
+
+    output.push(line)
+  }
+
+  // etiquetas colgantes al final
+  for (const [offset,name] of labels.entries()){
+    if (!instructions.some(i => i.offset === offset)){
+      output.push(`:${name}`)
+    }
+  }
+
+  return output.join('\n')
 }
 
-function leb128(byteArray) {
-    if (byteArray > 0x7F && byteArray <= 0xff){
-      byteArray -= 0xFF+1
-    }
-    if (byteArray > 0x7FFF && byteArray <= 0xffff){
-      byteArray -= 0xFFFF+1
-    }
-    if (byteArray > 0x7FFFFFFF && byteArray <= 0xffffffff){
-      byteArray -= 0xFFFFFFFF+1
-    }
-    
-    return byteArray
+
+function leb128(n){
+  if (n > 0x7F && n <= 0xFF) n -= 0x100
+  if (n > 0x7FFF && n <= 0xFFFF) n -= 0x10000
+  if (n > 0x7FFFFFFF) n -= 0x100000000
+  return n
 }
+
+
+
 
 function diffStringsWithLines(oldStr, newStr) {
     const oldLines = oldStr.split('\n');
