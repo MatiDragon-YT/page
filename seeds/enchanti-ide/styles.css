@@ -51,6 +51,9 @@ body {
   & button {
     background: none;
     color: white;
+    &:hover {
+      filter: drop-shadow(3px 4px 6px #101);
+    }
   }
 }
 
@@ -63,6 +66,9 @@ body {
   background: #0004;
   color: white;
   padding: .3rem;
+  &:hover {
+    background: #eee4;
+  }
 }
 #inspect{
   color:#fff9;
@@ -1222,6 +1228,16 @@ h6:hover{
 
 #fast_commandContainer {
   display: block;
+  background: #000b;
+  border-radius: 5px;
+  border: solid 2px #4a0037;
+  
+  & input {
+    padding: 10px;
+    background: black;
+    box-shadow: 0 10px 15px black;
+    color:white;
+  }
   & ul {
     list-style: none;
     padding: 0;
@@ -1235,4 +1251,8 @@ h6:hover{
   & li:hover {
     background: #f003;
   }
+}
+
+button {
+  cursor: pointer;
 }
