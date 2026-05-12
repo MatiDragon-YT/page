@@ -29,10 +29,10 @@ DB.forEach((e, i) => {
     let folder = e[0].toLowerCase().r(/(\x20|')/g, '-')
     template += `
 :::col-12 col-md-6 col-xl-4 p-2
-<a href='seeds/${folder}/' class='d-flex w-100 no-decoration white-dm' style="height: 100%;">
+<a href='proyects/${folder}/' class='d-flex w-100 no-decoration white-dm' style="height: 100%;">
 :::p-2 bg-black-2-dm w-100
 <div class='d-flex end button grid-item' id='#${folder}' style='opacity: 0;'>\n
-![v${e[1].trim()} :: ${e[2].trim()}](seeds/${folder}/x1.webp)
+![v${e[1].trim()} :: ${e[2].trim()}](proyects/${folder}/x1.webp)
 </div>
 #### ${e[0].trim()}
 [d-none d-md-flex][**${e[2].trim()}**]
