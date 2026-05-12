@@ -692,13 +692,12 @@ SP.toMarkdown = function(){
 
 $('body').innerHTML = `
 <div id="navbar">
-	<h1><a href="${ROOT}index.html">MatiDragon</a><button id="CHANGE"><img src="${ROOT}files/img/dm-baseline.png" alt="🌓" style="user-select:none"></button></h1>
+	<h1><a href="${ROOT}index.html" alt="Homepage">MatiDragon</a><button id="CHANGE"><img src="${ROOT}files/img/dm-baseline.png" alt="🌓" style="user-select:none"></button></h1>
 </div>
 <div id='nav'>
 	<section>
-		<a href="${ROOT}index.html">Inicio</a>
 		<!--<a href="${ROOT}docs.html">Docs</a>-->
-		<a href="${ROOT}seeds.html">Seeds</a>
+		<a href="${ROOT}proyects.html">Proyectos</a>
 		<a href="${ROOT}topics.html">Temas</a>
 		<a href="${ROOT}mods.html">Mods</a>
 	</section>
