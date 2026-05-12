@@ -4,7 +4,7 @@ importScripts('https://storage.googleapis.com/workbox-cdn/releases/5.1.2/workbox
 
 // Versión actualizada del Service Worker para manejar la página offline
 
-const CACHE_NAME = "1.4.7-1";
+const CACHE_NAME = "1.4.8";
 const OFFLINE_URL = "index.html";
 const ASSETS = [
   "/index.html",
