@@ -189,7 +189,12 @@
 
 			&:hover {
 				transform: translateY(-5px) scale(1.01);
-				border: 1px solid #ffeb3b;
+
+				border: 1px solid #4CEB32;
+				&:has([class="favorite-badge"]) {
+					border: 1px solid #ffeb3b;
+				}
+				
 				box-shadow: 0 3px 21px 6px rgba(0, 0, 0, 0.3);
 				
 				& .img-background {
@@ -203,7 +208,7 @@
 				}
 			}
 		}
-		
+
 		.img-background {
 			background-size: cover;
 			background-repeat: round;
