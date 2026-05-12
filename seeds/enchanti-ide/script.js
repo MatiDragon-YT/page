@@ -5127,8 +5127,6 @@ SP.refinarVariables = function() {
   return log(header.concat(salidaLines).join('\n'), 'Refinar variable');
 };
 
-
-
 SP.refinarObjetos = function(str = this) {
   const lines = str.split('\n');
   const output = [];
@@ -9230,7 +9228,7 @@ updatePlaceholder()
 addCounterLine()
 $highlighting.innerHTML = syntaxHighlight($editor.value, null)
 
-if (VERSION_GUARDADA != HISTORY.length) {
+if (VERSION_GUARDADA != HISTORY.length || VERSION_GUARDADA == '') {
   updatedSMS();
   LS.set("current_version", HISTORY.length)
 }
