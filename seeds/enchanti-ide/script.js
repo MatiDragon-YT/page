@@ -1190,7 +1190,7 @@ const $closeOthers = $('#close-others')
 
 //    SETTINGS
 
-let SUGGESTION_ENGINE_TYPE = "FUZZY";
+let SUGGESTION_ENGINE_TYPE = "AKIN";
 // Puede ser "EXACT" o "FUZZY" o "AKIN"
 let SUGGESTION_SORT_TYPE = "SIMILAR";
 // Puede ser "OFF" "SIMPLE" o "SIMILAR"
@@ -4580,7 +4580,7 @@ const TYPE_CODE = {
 //          [0400][03 0700][04 0F]
 //           \__/   | \__/  |  \/
 //          opcode  | lvar  |  int
-//                type     type
+//              type_code  type
 //
 // Hay opcodes a los que se les puede pasar diferentes
 //   cantidades de parametros al mismo. A estos al
@@ -4832,7 +4832,9 @@ NP.intToHex = function () {
 /** Converts the code we pass with named variables into its global pointer-offset equivalent.
  * 
  * Example:
- * 'int a = 2' → '&0(0@,1i) = 2'
+ * - 'int a' → '&0(0@,1i) = 0'
+ * - 'int a = 2' → '&4(0@,1i) = 2'
+ * - 'float a = 2.2' → '&8(0@,1i) = 2.2'
  * 
  * Single-value variables, arrays and matrices must be translated here.
  */
@@ -9090,85 +9092,85 @@ function generarStringAleatorio(longitud, min = 0) {
 
 //  FAST SETTINGS 
 const LIST_SETTINGS = {
-            "/font-size": { desc: "Cambia el tamaño de fuente", aliases: ["/font", "/fs"], params: [12, 14, 16, 18, 20, 24] },
-            "/tab-size": { desc: "Cambia el tamaño de tabulación", aliases: ["/tab"], params: [2,3,4,5,6,7,8] },
-            "/search-engine": { desc: "Cambia el motor de búsqueda", aliases: ["/search", "/se"], params: ["default", "fuzzy", "akin"] },
-            "/search-order": { desc: "Cambia el motor de búsqueda", aliases: ["/order", "/so"], params: ["off", "simple", "similar"] }
-        };
+    "/font-size": { desc: "Cambia el tamaño de fuente", aliases: ["/font", "/fs"], params: [12, 14, 16, 18, 20, 24] },
+    "/tab-size": { desc: "Cambia el tamaño de tabulación", aliases: ["/tab"], params: [2,3,4,5,6,7,8] },
+    "/search-engine": { desc: "Cambia el motor de búsqueda", aliases: ["/search", "/se"], params: ["default", "fuzzy", "akin"] },
+    "/search-order": { desc: "Cambia el motor de búsqueda", aliases: ["/order", "/so"], params: ["off", "simple", "similar"] }
+};
 
-        let history = [];
-        let historyIndex = -1;
-        let lastCommand = "";
+let history = [];
+let historyIndex = -1;
+let lastCommand = "";
 
-        function showSettingFast() {
+function showSettingFast() {
+    $fastSettings_suggestionsList.innerHTML = "";
+    $fastSettings_paramSuggestionsList.innerHTML = "";
+    const value =$fastSettings_input.value.trim().toLowerCase();
+    let matchedCommands = [];
+
+    for (let cmd in LIST_SETTINGS) {
+        if (cmd.includes(value) || LIST_SETTINGS[cmd].aliases.some(alias => alias.includes(value))) {
+            matchedCommands.push({ name: cmd, desc: LIST_SETTINGS[cmd].desc });
+        }
+    }
+
+    if (!value && lastCommand) {
+        matchedCommands.unshift({ name: lastCommand, desc: LIST_SETTINGS[lastCommand].desc });
+    }
+
+    matchedCommands.forEach(cmdObj => {
+        const item = document.createElement("li");
+        item.textContent = `${cmdObj.name} - ${cmdObj.desc}`;
+        item.onclick = () => {
+            $fastSettings_input.value = cmdObj.name + " ";
+            $fastSettings_input.focus();
             $fastSettings_suggestionsList.innerHTML = "";
-            $fastSettings_paramSuggestionsList.innerHTML = "";
-            const value =$fastSettings_input.value.trim().toLowerCase();
-            let matchedCommands = [];
+            showParamSuggestions(cmdObj.name);
+        };
+        $fastSettings_suggestionsList.appendChild(item);
+    });
+}
 
-            for (let cmd in LIST_SETTINGS) {
-                if (cmd.includes(value) || LIST_SETTINGS[cmd].aliases.some(alias => alias.includes(value))) {
-                    matchedCommands.push({ name: cmd, desc: LIST_SETTINGS[cmd].desc });
-                }
-            }
+function showParamSuggestions(command) {
+    $fastSettings_paramSuggestionsList.innerHTML = "";
+    if (LIST_SETTINGS[command]) {
+        LIST_SETTINGS[command].params.forEach(param => {
+            const item = document.createElement("li");
+            item.textContent = param;
+            item.onclick = () => {
+                $fastSettings_input.value = `${command} ${param}`;
+                $fastSettings_input.focus();
+                $fastSettings_paramSuggestionsList.innerHTML = "";
+                processCommand();
+            };
+            $fastSettings_paramSuggestionsList.appendChild(item);
+        });
+    }
+}
 
-            if (!value && lastCommand) {
-                matchedCommands.unshift({ name: lastCommand, desc: LIST_SETTINGS[lastCommand].desc });
-            }
+function processCommand() {
+    const $fastSettings_inputValue = $fastSettings_input.value.trim();
+    if (!$fastSettings_inputValue) return;
 
-            matchedCommands.forEach(cmdObj => {
-                const item = document.createElement("li");
-                item.textContent = `${cmdObj.name} - ${cmdObj.desc}`;
-                item.onclick = () => {
-                    $fastSettings_input.value = cmdObj.name + " ";
-                    $fastSettings_input.focus();
-                    $fastSettings_suggestionsList.innerHTML = "";
-                    showParamSuggestions(cmdObj.name);
-                };
-                $fastSettings_suggestionsList.appendChild(item);
-            });
+    const parts = $fastSettings_inputValue.split(" ");
+    let command = parts[0];
+    const param = parts.slice(1).join(" ");
+
+    for (let cmd in LIST_SETTINGS) {
+        if (cmd === command || LIST_SETTINGS[cmd].aliases.includes(command)) {
+            command = cmd;
+            break;
         }
+    }
 
-        function showParamSuggestions(command) {
-            $fastSettings_paramSuggestionsList.innerHTML = "";
-            if (LIST_SETTINGS[command]) {
-                LIST_SETTINGS[command].params.forEach(param => {
-                    const item = document.createElement("li");
-                    item.textContent = param;
-                    item.onclick = () => {
-                        $fastSettings_input.value = `${command} ${param}`;
-                        $fastSettings_input.focus();
-                        $fastSettings_paramSuggestionsList.innerHTML = "";
-                        processCommand();
-                    };
-                    $fastSettings_paramSuggestionsList.appendChild(item);
-                });
-            }
-        }
-
-        function processCommand() {
-            const $fastSettings_inputValue = $fastSettings_input.value.trim();
-            if (!$fastSettings_inputValue) return;
-
-            const parts = $fastSettings_inputValue.split(" ");
-            let command = parts[0];
-            const param = parts.slice(1).join(" ");
-
-            for (let cmd in LIST_SETTINGS) {
-                if (cmd === command || LIST_SETTINGS[cmd].aliases.includes(command)) {
-                    command = cmd;
-                    break;
-                }
-            }
-
-            if (!LIST_SETTINGS[command]) {
-                alert("⚠️ Comando no válido.");
-                return;
-            }
-            if (!param) {
-                alert("⚠️ Falta el parámetro.");
-                return;
-            }
+    if (!LIST_SETTINGS[command]) {
+        alert("⚠️ Comando no válido.");
+        return;
+    }
+    if (!param) {
+        alert("⚠️ Falta el parámetro.");
+        return;
+    }
 
             lastCommand = command;
             history.unshift($fastSettings_inputValue);
