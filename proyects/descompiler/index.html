@@ -144,6 +144,17 @@
             box-sizing: border-box;
         }
 
+        .target-flash {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(0, 255, 255, 0.7);
+            border: 2px solid #00ffff;
+            z-index: 10;
+            display: none;
+            box-sizing: border-box;
+            transition: opacity 0.2s;
+        }
+
         #outputCode {
             flex: 1;
             margin: 0;
@@ -279,6 +290,62 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         (function() {
+            // ========== IndexedDB Persistence ==========
+            const DB_NAME = 'SCMDecompiler';
+            const DB_VERSION = 1;
+            const STORE_NAME = 'appData';
+            let db = null;
+
+            function openDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            db.createObjectStore(STORE_NAME, {
+                                keyPath: 'key'
+                            });
+                        }
+                    };
+                    request.onsuccess = (event) => {
+                        db = event.target.result;
+                        resolve(db);
+                    };
+                    request.onerror = (event) => {
+                        console.error('IndexedDB error:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            }
+
+            async function saveToDB(key, value) {
+                if (!db) await openDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.put({
+                        key,
+                        value
+                    });
+                    request.onsuccess = () => resolve();
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            }
+
+            async function loadFromDB(key) {
+                if (!db) await openDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.get(key);
+                    request.onsuccess = () => {
+                        resolve(request.result ? request.result.value : null);
+                    };
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            }
+
+            // ========== CONSTANTES Y TIPOS ==========
             const TYPE_SIZE = {
                 0x00: 0,
                 0x01: 4,
@@ -311,7 +378,7 @@
                 STATE_POSSIBLE_STRING = 7,
                 STATE_STRING_UNKNOWN = 8,
                 STATE_FLOAT = 9;
-            const STATE_LABEL_POINTER = 10; // nuevo estado para punteros a etiqueta (%p%)
+            const STATE_LABEL_POINTER = 10;
 
             const CLASS_COLORS = {
                 [STATE_UNKNOWN]: 'transparent',
@@ -324,7 +391,7 @@
                 [STATE_POSSIBLE_STRING]: '#800000',
                 [STATE_STRING_UNKNOWN]: '#ffff00',
                 [STATE_FLOAT]: '#ff8c00',
-                [STATE_LABEL_POINTER]: '#d0a0ff' // texto violeta claro
+                [STATE_LABEL_POINTER]: '#d0a0ff'
             };
             const CLASS_BG = {
                 [STATE_UNKNOWN]: 'rgba(58,58,74,0.4)',
@@ -337,7 +404,7 @@
                 [STATE_POSSIBLE_STRING]: 'rgba(128,0,0,0.45)',
                 [STATE_STRING_UNKNOWN]: 'rgba(255,255,0,0.45)',
                 [STATE_FLOAT]: 'rgba(255,140,0,0.45)',
-                [STATE_LABEL_POINTER]: 'rgba(100,100,100,0.7)' // fondo gris
+                [STATE_LABEL_POINTER]: 'rgba(100,100,100,0.7)'
             };
             const ASCII_COLORS = {
                 [STATE_UNKNOWN]: '#aaaaaa',
@@ -402,6 +469,10 @@
             opcodePairHighlight.className = 'hex-highlight';
             opcodePairHighlight.style.background = 'rgba(76,175,132,0.5)';
             hexScrollArea.appendChild(opcodePairHighlight);
+
+            const targetFlash = document.createElement('div');
+            targetFlash.className = 'target-flash';
+            hexScrollArea.appendChild(targetFlash);
 
             let selectionStart = null,
                 selectionEnd = null;
@@ -548,7 +619,6 @@
                             idx++;
                             let vs = paramSize(tc, b, idx);
                             if (vs > 0 && idx + vs <= b.length) {
-                                // Detectar si es puntero a etiqueta (%p%)
                                 let isLabelPtr = false;
                                 if (tc === 0x01 && vs === 4 && def.formatParts) {
                                     let fp = def.formatParts.find(p => p.paramNum === i + 1);
@@ -1285,14 +1355,12 @@
                 ctxMenuTarget = null;
             }
 
-            // Navegación por doble clic en etiquetas
             function handleLabelDoubleClick(e) {
                 if (!rawBytes || !classification) return;
                 const idx = getByteIndexFromEvent(e);
                 if (idx === null) return;
                 if (classification[idx] !== STATE_LABEL_POINTER) return;
 
-                // Encontrar el inicio del valor de 4 bytes
                 let start = idx;
                 while (start > 0 && classification[start - 1] === STATE_LABEL_POINTER) start--;
                 if (start + 3 >= rawBytes.length) return;
@@ -1301,16 +1369,30 @@
                 const targetOffset = labelValueToOffset(raw);
                 if (targetOffset < 0 || targetOffset >= rawBytes.length) return;
 
-                // Hacer scroll hasta la fila del target
                 const targetRow = Math.floor(targetOffset / BYTES_PER_ROW);
+                const targetCol = targetOffset % BYTES_PER_ROW;
                 const scrollTop = targetRow * CELL_H - (hexContainer.clientHeight / 2) + CELL_H;
                 hexScrollArea.scrollTo({
                     top: Math.max(0, scrollTop),
-                    behavior: 'smooth'
+                    left: 0,
+                    behavior: 'instant'
                 });
 
-                // Feedback visual opcional: resaltar temporalmente el destino
-                // (no implementado por simplicidad)
+                const hexX = OFFSET_W + targetCol * (CELL_W + 1);
+                const hexY = targetRow * CELL_H + 2;
+                targetFlash.style.display = 'block';
+                targetFlash.style.left = hexX + 'px';
+                targetFlash.style.top = hexY + 'px';
+                targetFlash.style.width = CELL_W + 'px';
+                targetFlash.style.height = CELL_H + 'px';
+                targetFlash.style.opacity = '1';
+
+                setTimeout(() => {
+                    targetFlash.style.opacity = '0';
+                    setTimeout(() => {
+                        targetFlash.style.display = 'none';
+                    }, 200);
+                }, 300);
             }
 
             function setupInteraction() {
@@ -1425,7 +1507,6 @@
                 });
 
                 hexScrollArea.addEventListener('dblclick', handleLabelDoubleClick);
-
                 hexScrollArea.addEventListener('contextmenu', handleContextMenu);
                 document.addEventListener('click', (e) => {
                     if (!ctxMenu.contains(e.target)) hideContextMenu();
@@ -1470,6 +1551,13 @@
                 selectionStart = selectionEnd = null;
                 document.getElementById('outputCode').value = '';
                 setupVirtualHex();
+                // Guardar binario en IndexedDB
+                saveToDB('binaryData', b.buffer.slice(0)).catch(console.error);
+            }
+
+            async function saveSascmToDB() {
+                const text = document.getElementById('sascmEditor').value;
+                await saveToDB('sascmConfig', text).catch(console.error);
             }
 
             function runDecompile() {
@@ -1595,10 +1683,12 @@
                 });
             }
 
-            window.applyConfig = function() {
+            window.applyConfig = async function() {
                 applyConfigSilent();
-                alert('Configuración aplicada.');
+                await saveSascmToDB();
+                alert('Configuración aplicada y guardada.');
             };
+
             window.toggleConfig = () => document.getElementById('configPanel').classList.toggle('open');
             window.copyOutput = () => {
                 let ta = document.getElementById('outputCode');
@@ -1614,7 +1704,7 @@
                 }
                 let bytes = [];
                 for (let i = 0; i < hex.length; i += 2) bytes.push(parseInt(hex.substring(i, i + 2), 16));
-                loadBytes(bytes);
+                loadBytes(new Uint8Array(bytes));
                 bootstrap.Modal.getInstance(document.getElementById('hexModal')).hide();
             };
             window.runDecompile = runDecompile;
@@ -1637,7 +1727,15 @@
                 }
             });
 
-            document.getElementById('sascmEditor').value = `; SASCM.ini
+            // Inicialización de la aplicación con carga desde IndexedDB
+            async function initApp() {
+                await openDB();
+                // Intentar cargar configuración guardada
+                const savedConfig = await loadFromDB('sascmConfig');
+                if (savedConfig) {
+                    document.getElementById('sascmEditor').value = savedConfig;
+                } else {
+                    document.getElementById('sascmEditor').value = `; SASCM.ini
 [OPCODES]
 0000=0,NOP
 0001=1,wait %1d% ms
@@ -1653,15 +1751,27 @@
 03A4=-1,thread %1s%
 0AB1=-1,cleo_call %1p%
 0AB2=-1,cleo_return %1d%`;
+                }
+                applyConfigSilent();
 
-            applyConfigSilent();
-            setupInteraction();
+                // Intentar cargar binario guardado
+                const savedBinary = await loadFromDB('binaryData');
+                if (savedBinary) {
+                    loadBytes(new Uint8Array(savedBinary));
+                    document.getElementById('outputCode').value = 'Sesión restaurada. Descompila para ver el código.';
+                } else {
+                    // Cargar ejemplo por defecto
+                    let ex = '00 00 01 00 04 00 02 00 01 FE FF FF FF'.replace(/[^0-9A-Fa-f]/g, '');
+                    let eb = [];
+                    for (let i = 0; i < ex.length; i += 2) eb.push(parseInt(ex.substring(i, i + 2), 16));
+                    loadBytes(new Uint8Array(eb));
+                    document.getElementById('outputCode').value = 'Example loaded. Double-click a violet label pointer to jump to its target.';
+                }
 
-            let ex = '00 00 01 00 04 00 02 00 01 FE FF FF FF'.replace(/[^0-9A-Fa-f]/g, '');
-            let eb = [];
-            for (let i = 0; i < ex.length; i += 2) eb.push(parseInt(ex.substring(i, i + 2), 16));
-            loadBytes(eb);
-            document.getElementById('outputCode').value = 'Example loaded. Double-click a violet label pointer to jump to its target.';
+                setupInteraction();
+            }
+
+            initApp().catch(console.error);
         })();
     </script>
 </body>
