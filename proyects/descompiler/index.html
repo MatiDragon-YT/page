@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SCM Decompiler – Previsualización y flechas de etiquetas</title>
+    <title>SCM Decompiler</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
@@ -254,6 +254,7 @@
         <span style="flex:1"></span>
         <button class="btn btn-sm btn-outline-info" onclick="toggleConfig()">⚙️ SASCM.ini</button>
     </div>
+
     <div class="main-container">
         <div class="panel" id="hexPanel">
             <div class="panel-header">
@@ -510,6 +511,36 @@
             const ctxMenu = document.getElementById('ctxMenu');
             let ctxMenuTarget = null;
 
+            // ========== FUNCIONES DE ESCAPE DE CADENAS ==========
+            function escapeStringForSCM(str, quoteType) {
+                let out = '';
+                for (let i = 0; i < str.length; i++) {
+                    const ch = str.charCodeAt(i);
+                    if (ch === 0x5C) { // backslash
+                        out += '\\\\';
+                    } else if (quoteType === 'single' && ch === 0x27) { // '
+                        out += '\\\'';
+                    } else if (quoteType === 'double' && ch === 0x22) { // "
+                        out += '\\"';
+                    } else if (quoteType === 'backtick' && ch === 0x60) { // `
+                        out += '\\`';
+                    } else if (ch === 0x0A) { // newline
+                        out += '\\n';
+                    } else if (ch === 0x0D) { // carriage return
+                        out += '\\r';
+                    } else if (ch === 0x09) { // tab
+                        out += '\\t';
+                    } else if (ch === 0x00) { // null
+                        out += '\\0';
+                    } else if (ch < 0x20 || ch === 0x7F || (ch >= 0x80 && ch <= 0xFF)) {
+                        out += '\\x' + ch.toString(16).padStart(2, '0').toUpperCase();
+                    } else {
+                        out += str.charAt(i);
+                    }
+                }
+                return out;
+            }
+
             // ============================================================
             // UTILIDADES DE LECTURA BINARIA
             // ============================================================
@@ -605,6 +636,7 @@
                 return null;
             }
 
+            // ========== CLASIFICACIÓN CORREGIDA ==========
             function classifyBytes(bytes, db) {
                 let cls = new Array(bytes.length).fill(0),
                     visited = new Set(),
@@ -635,7 +667,8 @@
                     };
                     let def = getDefinition(opNum, db);
                     let idx = off;
-                    if (def && def.numParams >= 0) {
+                    if (!def) return res; // sin definición, no avanzar
+                    if (def.numParams >= 0) {
                         for (let i = 0; i < def.numParams; i++) {
                             if (idx >= b.length) break;
                             let tc = b[idx];
@@ -670,7 +703,7 @@
                                 idx += vs;
                             } else break;
                         }
-                    } else if (def && def.numParams === -1) {
+                    } else if (def.numParams === -1) {
                         let cnt = 0;
                         while (idx < b.length) {
                             let tc = b[idx];
@@ -706,27 +739,6 @@
                                 idx += vs;
                             } else break;
                         }
-                    } else {
-                        let lim = Math.min(idx + 30, b.length);
-                        while (idx < lim) {
-                            let tc = b[idx];
-                            if (tc === 0x00) {
-                                mark(idx, 1, 5);
-                                idx++;
-                                break;
-                            }
-                            if (tc >= 0x01 && tc <= 0x13) {
-                                mark(idx, 1, 3);
-                                idx++;
-                                let vs = paramSize(tc, b, idx);
-                                if (vs > 0 && idx + vs <= b.length) {
-                                    if (tc === 0x06) mark(idx, vs, STATE_FLOAT);
-                                    else mark(idx, vs, STATE_VALUE);
-                                    idx += vs;
-                                } else if (vs === 0) break;
-                                else break;
-                            } else break;
-                        }
                     }
                     res.nextOffset = idx;
                     return res;
@@ -736,6 +748,9 @@
                     if (off + 1 >= bytes.length) return null;
                     let op = readU16LE(bytes, off);
                     if (op === null) return null;
+                    let def = getDefinition(op, db);
+                    // Si no hay definición y no es un opcode de flujo conocido, no procesar
+                    if (!def && !FLOW_OPCODES[op]) return null;
                     mark(off, 2, 2);
                     let pr = readParams(op, bytes, off + 2);
                     let flow = FLOW_OPCODES[op],
@@ -786,7 +801,6 @@
                             if (eo !== null && FLOW_OPCODES[eo] === 'ELSE_FALSE_JUMP');
                             else break;
                         }
-                        mark(po, 2, 2);
                         let res = processAt(po);
                         if (!res) break;
                         visited.add(po);
@@ -876,6 +890,7 @@
                 }
             }
 
+
             function decompileLinear(bytes, cls, db) {
                 let instructions = [],
                     labelNames = {},
@@ -887,13 +902,13 @@
                     const suffix = OPCODE_LABEL_SUFFIX[baseOp];
                     if (suffix && !labelSuffixes[off]) {
                         labelSuffixes[off] = suffix;
-                        if (labelNames[off]) labelNames[off] = currentLabelPrefix + '_' + suffix + off;
+                        if (labelNames[off]) labelNames[off] = currentLabelPrefix + '_' + suffix + off.toString(16);
                     }
                 }
 
                 function getLabel(off) {
                     if (labelNames[off]) return labelNames[off];
-                    let n = (labelSuffixes[off] ? currentLabelPrefix + '_' + labelSuffixes[off] + off : currentLabelPrefix + '_' + off);
+                    let n = (labelSuffixes[off] ? currentLabelPrefix + '_' + labelSuffixes[off] + off.toString(16) : currentLabelPrefix + '_' + off.toString(16));
                     labelNames[off] = n;
                     return n;
                 }
@@ -944,7 +959,7 @@
                             s += String.fromCharCode(b[i]);
                         }
                         markStringBytes(b, cls, tc, vo, vs);
-                        return "'" + s + "'";
+                        return "'" + escapeStringForSCM(s, 'single') + "'";
                     }
                     if (tc === 0x0F) {
                         let s = '';
@@ -953,14 +968,14 @@
                             s += String.fromCharCode(b[i]);
                         }
                         markStringBytes(b, cls, tc, vo, vs);
-                        return '"' + s + '"';
+                        return '"' + escapeStringForSCM(s, 'double') + '"';
                     }
                     if (tc === 0x0E) {
                         let len = b[vo];
                         let s = '';
                         for (let i = vo + 1; i < vo + 1 + len && i < b.length; i++) s += String.fromCharCode(b[i]);
                         markStringBytes(b, cls, tc, vo, vs);
-                        return '`' + s + '`';
+                        return '`' + escapeStringForSCM(s, 'backtick') + '`';
                     }
                     if (tc >= 0x07 && tc <= 0x08 || tc === 0x0C || tc === 0x0D || tc === 0x12 || tc === 0x13) {
                         let idxVar = readU16LE(b, vo),
@@ -1001,10 +1016,25 @@
                             continue;
                         }
                         let def = getDefinition(op, db);
+                        // Si no hay definición, no debería estar marcado como opcode, pero por seguridad lo tratamos como desconocido
+                        if (!def) {
+                            let start = off;
+                            while (off < bytes.length && (cls[off] === STATE_OPCODE || cls[off] === STATE_READING)) {
+                                proc.add(off);
+                                off++;
+                            }
+                            instructions.push({
+                                offset: start,
+                                byteLen: off - start,
+                                lines: null,
+                                isUnknown: true
+                            });
+                            continue;
+                        }
                         let idx = off + 2,
                             params = [],
                             len = 2;
-                        if (def && def.numParams >= 0) {
+                        if (def.numParams >= 0) {
                             for (let i = 0; i < def.numParams; i++) {
                                 if (idx >= bytes.length) break;
                                 let tc = bytes[idx];
@@ -1030,7 +1060,7 @@
                                     len += vs;
                                 } else break;
                             }
-                        } else if (def && def.numParams === -1) {
+                        } else if (def.numParams === -1) {
                             let cnt = 0;
                             while (idx < bytes.length) {
                                 let tc = bytes[idx];
@@ -1057,38 +1087,14 @@
                                     len += vs;
                                 } else break;
                             }
-                        } else {
-                            while (idx < bytes.length) {
-                                let tc = bytes[idx];
-                                if (tc === 0x00) {
-                                    len++;
-                                    idx++;
-                                    break;
-                                }
-                                if (tc >= 0x01 && tc <= 0x13) {
-                                    idx++;
-                                    len++;
-                                    let vs = (tc === 0x0E && idx < bytes.length) ? 1 + bytes[idx] : TYPE_SIZE[tc];
-                                    if (vs > 0 && idx + vs <= bytes.length) {
-                                        params.push({
-                                            val: fmtVal(tc, bytes, idx, vs, 'd', op),
-                                            ft: 'd'
-                                        });
-                                        idx += vs;
-                                        len += vs;
-                                    } else if (vs === 0) break;
-                                    else break;
-                                } else break;
-                            }
                         }
                         let lines = [],
                             opHex = op.toString(16).toUpperCase().padStart(4, '0');
-                        if (def && def.formatStr) {
+                        if (def.formatStr) {
                             let res = def.formatStr.replace(/%(\d+)([bdpomgxsh])%/g, (match, numStr) => {
                                 let paramIdx = parseInt(numStr) - 1;
                                 return (paramIdx >= 0 && paramIdx < params.length) ? params[paramIdx].val : '?';
                             });
-                            // Añadir parámetros sobrantes para opcodes -1
                             if (def.numParams === -1) {
                                 const maxPlaceholder = def.formatParts.reduce((max, p) => Math.max(max, p.paramNum), 0);
                                 if (params.length > maxPlaceholder) {
@@ -1096,8 +1102,10 @@
                                     res += ' ' + extraParams;
                                 }
                             }
-                            lines.push(`/* ${off} */ ` + opHex + ': ' + res);
-                        } else lines.push(`/* ${off} */ ` + opHex + ': ' + params.map(p => p.val).join(' '));
+                            lines.push(`/* ${off.toString(16)} */ ` + opHex + ': ' + res);
+                        } else {
+                            lines.push(`/* ${off.toString(16)} */ ` + opHex + ': ' + params.map(p => p.val).join(' '));
+                        }
                         if (op === 0x03A4 && params.length > 0) {
                             let rawName = params[0].val.replace(/^['"`]|['"`]$/g, '');
                             let clean = rawName.replace(/[^a-zA-Z0-9_]/g, '_').toUpperCase();
@@ -1128,12 +1136,13 @@
                         off++;
                     }
                 }
+
                 let finalLines = [],
                     used = new Set();
                 for (let inst of instructions) {
                     if (!inst.isUnknown) {
                         if (labelNames[inst.offset] && !used.has(inst.offset)) {
-                            finalLines.push(`/* ${inst.offset} */ :` + labelNames[inst.offset]);
+                            finalLines.push(`/* ${inst.offset.toString(16)} */ :` + labelNames[inst.offset]);
                             used.add(inst.offset);
                         }
                         for (let l of inst.lines) finalLines.push(l);
@@ -1146,10 +1155,10 @@
                             if (lo > cur) {
                                 let unk = [];
                                 for (let i = cur; i < lo; i++) unk.push(bytes[i].toString(16).padStart(2, '0').toUpperCase());
-                                finalLines.push(`/* ${cur} */ <undefined> ` + unk.join(' ') + ' </undefined>');
+                                finalLines.push(`/* ${cur.toString(16)} */ <undefined> ` + unk.join(' ') + ' </undefined>');
                             }
                             if (!used.has(lo)) {
-                                finalLines.push(`/* ${lo} */ :` + labelNames[lo]);
+                                finalLines.push(`/* ${lo.toString(16)} */ :` + labelNames[lo]);
                                 used.add(lo);
                             }
                             cur = lo;
@@ -1157,13 +1166,13 @@
                         if (cur < e) {
                             let unk = [];
                             for (let i = cur; i < e; i++) unk.push(bytes[i].toString(16).padStart(2, '0').toUpperCase());
-                            finalLines.push(`/* ${cur} */ <undefined> ` + unk.join(' ') + ' </undefined>');
+                            finalLines.push(`/* ${cur.toString(16)} */ <undefined> ` + unk.join(' ') + ' </undefined>');
                         }
                     }
                 }
                 let rem = Object.keys(labelNames).map(Number).filter(o => !used.has(o)).sort((a, b) => a - b);
                 for (let o of rem) {
-                    finalLines.push(`/* ${o} */ :` + labelNames[o]);
+                    finalLines.push(`/* ${o.toString(16)} */ :` + labelNames[o]);
                 }
                 return finalLines;
             }
@@ -1261,7 +1270,7 @@
                         const byte = rawBytes[idx];
                         const asciiX = asciiStartX + col * ASCII_CELL_W - scrollLeft;
                         if (asciiX + ASCII_CELL_W < 0 || asciiX > viewWidth) continue;
-                        const ch = (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.';
+                        const ch = (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '•';
                         const st = classification ? classification[idx] : STATE_UNKNOWN;
                         ctx.fillStyle = ASCII_COLORS[st] || '#aaaaaa';
                         ctx.fillText(ch, asciiX + ASCII_CELL_W / 2, asciiY);
@@ -1428,11 +1437,79 @@
             }
 
             // ========== PREVISUALIZACIÓN DE DATOS Y FLECHAS ==========
+            function fmtValBasic(tc, off, vs) {
+                if (tc === 0x01 && vs === 4) return String(readI32LE(rawBytes, off));
+                if (tc === 0x04) return String(rawBytes[off] > 127 ? rawBytes[off] - 256 : rawBytes[off]);
+                if (tc === 0x05) return String(readI16LE(rawBytes, off));
+                if (tc === 0x06 && vs === 4) {
+                    let f = readFloat32LE(rawBytes, off);
+                    return f !== null ? f.toFixed(6) : '?';
+                }
+                if (tc === 0x02) {
+                    let v = readU16LE(rawBytes, off);
+                    return v % 4 === 0 ? '$' + (v / 4) : '&' + v;
+                }
+                if (tc === 0x03) return readU16LE(rawBytes, off) + '@';
+                if (tc === 0x0A) {
+                    let v = readU16LE(rawBytes, off);
+                    return v % 4 === 0 ? 's$' + (v / 4) : 's&' + v;
+                }
+                if (tc === 0x0B) return readU16LE(rawBytes, off) + '@s';
+                if (tc === 0x10) {
+                    let v = readU16LE(rawBytes, off);
+                    return v % 4 === 0 ? 'v$' + (v / 4) : 'v&' + v;
+                }
+                if (tc === 0x11) return readU16LE(rawBytes, off) + '@v';
+                if (tc === 0x09) {
+                    let s = '';
+                    for (let i = off; i < off + 7 && i < rawBytes.length; i++) {
+                        if (rawBytes[i] === 0) break;
+                        s += String.fromCharCode(rawBytes[i]);
+                    }
+                    return "'" + escapeStringForSCM(s, 'single') + "'";
+                }
+                if (tc === 0x0F) {
+                    let s = '';
+                    for (let i = off; i < off + 15 && i < rawBytes.length; i++) {
+                        if (rawBytes[i] === 0) break;
+                        s += String.fromCharCode(rawBytes[i]);
+                    }
+                    return '"' + escapeStringForSCM(s, 'double') + '"';
+                }
+                if (tc === 0x0E) {
+                    let len = rawBytes[off];
+                    let s = '';
+                    for (let i = off + 1; i < off + 1 + len && i < rawBytes.length; i++) s += String.fromCharCode(rawBytes[i]);
+                    return '`' + escapeStringForSCM(s, 'backtick') + '`';
+                }
+                if (tc >= 0x07 && tc <= 0x08 || tc === 0x0C || tc === 0x0D || tc === 0x12 || tc === 0x13) {
+                    let idxVar = readU16LE(rawBytes, off),
+                        offVar = readU16LE(rawBytes, off + 2),
+                        size = rawBytes[off + 4],
+                        elemType = rawBytes[off + 5];
+                    let isGlobalOff = (elemType & 0x80) !== 0,
+                        dataType = elemType & 0x7F;
+                    let suffix = dataType === 0 ? 'i' : dataType === 1 ? 'f' : dataType === 2 ? 's' : dataType === 3 ? 'v' : '?';
+                    let idxStr, offStr;
+                    if (tc === 0x07 || tc === 0x0C || tc === 0x12) idxStr = (idxVar % 4 === 0 ? '$' + (idxVar / 4) : '&' + idxVar);
+                    else idxStr = idxVar + '@';
+                    if (isGlobalOff) offStr = (offVar % 4 === 0 ? '$' + (offVar / 4) : '&' + offVar);
+                    else offStr = offVar + '@';
+                    if (tc === 0x0C) idxStr = 's' + idxStr.replace(/^s/, '');
+                    if (tc === 0x0D) idxStr = idxStr + 's';
+                    if (tc === 0x12) idxStr = 'v' + idxStr.replace(/^v/, '');
+                    if (tc === 0x13) idxStr = idxStr + 'v';
+                    return idxStr + '(' + offStr + ',' + size + suffix + ')';
+                }
+                let hex = '';
+                for (let i = off; i < off + vs && i < rawBytes.length; i++) hex += rawBytes[i].toString(16).padStart(2, '0').toUpperCase();
+                return '0x' + hex;
+            }
+
             function getValueInfo(offset) {
                 if (!rawBytes || !classification) return null;
                 const st = classification[offset];
                 if (st === STATE_OPCODE) {
-                    // Encontrar el inicio del opcode (2 bytes STATE_OPCODE)
                     let start = offset;
                     while (start > 0 && classification[start - 1] === STATE_OPCODE) start--;
                     if (start + 1 >= rawBytes.length) return null;
@@ -1440,10 +1517,8 @@
                     if (op === null) return null;
                     const def = getDefinition(op, sascmDB);
                     const opHex = op.toString(16).toUpperCase().padStart(4, '0');
-                    // Generar una línea de previsualización con etiquetas genéricas "offset_"
                     let previewLine = '';
                     if (def && def.formatStr) {
-                        // Recolectar parámetros reales para sustituir %1d%, %2p%, etc.
                         let idx = start + 2;
                         let params = [];
                         if (def.numParams >= 0) {
@@ -1451,7 +1526,7 @@
                                 if (idx >= rawBytes.length) break;
                                 let tc = rawBytes[idx];
                                 if (tc === 0x00) break;
-                                idx++; // saltamos type_code
+                                idx++;
                                 let vs = (tc === 0x0E && idx < rawBytes.length) ? 1 + rawBytes[idx] : TYPE_SIZE[tc];
                                 if (vs > 0 && idx + vs <= rawBytes.length) {
                                     let ft = 'd';
@@ -1459,16 +1534,10 @@
                                         let fp = def.formatParts.find(p => p.paramNum === i + 1);
                                         if (fp) ft = fp.type;
                                     }
-                                    let valStr = '';
-                                    if (tc === 0x01 && vs === 4 && ft === 'p') {
+                                    let valStr = (tc === 0x01 && vs === 4 && ft === 'p') ? (() => {
                                         let raw = readU32LE(rawBytes, idx);
-                                        if (raw !== null) {
-                                            let t = labelValueToOffset(raw);
-                                            valStr = '@offset_' + t;
-                                        } else valStr = '?';
-                                    } else {
-                                        valStr = fmtValBasic(tc, idx, vs);
-                                    }
+                                        return raw !== null ? '@offset_' + labelValueToOffset(raw) : '?';
+                                    })() : fmtValBasic(tc, idx, vs);
                                     params.push({
                                         val: valStr
                                     });
@@ -1500,13 +1569,11 @@
                                 } else break;
                             }
                         }
-                        // Reemplazar placeholders en formatStr
                         previewLine = opHex + ': ' + def.formatStr.replace(/%(\d+)([bdpomgxsh])%/g, (match, numStr) => {
                             let i = parseInt(numStr) - 1;
                             return (i >= 0 && i < params.length) ? params[i].val : '?';
                         });
                     } else {
-                        // Sin definición, simplemente mostrar opcode
                         previewLine = opHex + ': <opcode desconocido>';
                     }
                     return {
@@ -1521,11 +1588,10 @@
                         text: f !== null ? f.toFixed(6) : '?'
                     };
                 } else if (st === STATE_VALUE) {
-                    // Necesitamos el type_code anterior
                     let start = offset;
                     while (start > 0 && classification[start - 1] === STATE_VALUE) start--;
                     if (start === 0) return null;
-                    let tc = rawBytes[start - 1]; // type code
+                    let tc = rawBytes[start - 1];
                     if (tc === undefined) return null;
                     let vs = (tc === 0x0E && start < rawBytes.length) ? 1 + rawBytes[start] : TYPE_SIZE[tc];
                     if (vs > 0 && start + vs <= rawBytes.length) {
@@ -1546,103 +1612,65 @@
                         text: `Offset ${arrowText}`,
                         targetOffset: target
                     };
-                } else if (st === STATE_STRING_OPCODE || st === STATE_STRING_UNKNOWN) {
-                    let start = offset;
-                    while (start > 0 && (classification[start - 1] === STATE_STRING_OPCODE || classification[start - 1] === STATE_STRING_UNKNOWN)) start--;
-                    // Determinar tipo de string por el type_code anterior
-                    if (start > 0) {
-                        let tc = rawBytes[start - 1];
+                } else if (st === STATE_STRING_OPCODE) {
+                    // Buscar el type code retrocediendo hasta STATE_TYPE
+                    let typeOff = offset;
+                    while (typeOff > 0 && classification[typeOff] !== STATE_TYPE) typeOff--;
+                    if (classification[typeOff] === STATE_TYPE && typeOff + 1 < rawBytes.length) {
+                        let tc = rawBytes[typeOff];
                         if (tc === 0x09) {
                             let s = '';
-                            for (let i = start; i < start + 7 && i < rawBytes.length; i++) {
+                            for (let i = typeOff + 1; i < typeOff + 8 && i < rawBytes.length; i++) {
                                 if (rawBytes[i] === 0) break;
                                 s += String.fromCharCode(rawBytes[i]);
                             }
                             return {
-                                text: `'${s}'`
+                                text: `'${escapeStringForSCM(s, 'single')}'`
                             };
                         } else if (tc === 0x0F) {
                             let s = '';
-                            for (let i = start; i < start + 15 && i < rawBytes.length; i++) {
+                            for (let i = typeOff + 1; i < typeOff + 16 && i < rawBytes.length; i++) {
                                 if (rawBytes[i] === 0) break;
                                 s += String.fromCharCode(rawBytes[i]);
                             }
                             return {
-                                text: `"${s}"`
+                                text: `"${escapeStringForSCM(s, 'double')}"`
                             };
                         } else if (tc === 0x0E) {
-                            let len = rawBytes[start - 1]; // en realidad start apunta al primer char, el length está en start-1
-                            if (start - 1 >= 0) {
-                                let lengthByte = rawBytes[start - 1];
-                                let s = '';
-                                for (let i = start; i < start + lengthByte && i < rawBytes.length; i++) s += String.fromCharCode(rawBytes[i]);
-                                return {
-                                    text: `\`${s}\``
-                                };
-                            }
+                            if (typeOff + 1 >= rawBytes.length) return null;
+                            let len = rawBytes[typeOff + 1];
+                            let s = '';
+                            for (let i = typeOff + 2; i < typeOff + 2 + len && i < rawBytes.length; i++) s += String.fromCharCode(rawBytes[i]);
+                            return {
+                                text: `\`${escapeStringForSCM(s, 'backtick')}\``
+                            };
                         }
                     }
-                    // Fallback: leer hasta null
+                    // Fallback
                     let s = '';
-                    let i = start;
+                    let i = offset;
                     while (i < rawBytes.length && rawBytes[i] !== 0) {
                         s += String.fromCharCode(rawBytes[i]);
                         i++;
                     }
                     return {
-                        text: `"${s}"`
+                        text: `"${escapeStringForSCM(s, 'double')}"`
+                    };
+                } else if (st === STATE_STRING_UNKNOWN) {
+                    // No hay type code, leer hasta null
+                    let s = '';
+                    let i = offset;
+                    while (i < rawBytes.length && rawBytes[i] !== 0) {
+                        s += String.fromCharCode(rawBytes[i]);
+                        i++;
+                    }
+                    return {
+                        text: `"${escapeStringForSCM(s, 'double')}"`
                     };
                 } else if (st === STATE_POSSIBLE_STRING) {
-                    return null; // no mostrar
+                    return null;
                 }
                 return null;
-            }
-
-            function fmtValBasic(tc, off, vs) {
-                if (tc === 0x01 && vs === 4) return String(readI32LE(rawBytes, off));
-                if (tc === 0x04) return String(rawBytes[off] > 127 ? rawBytes[off] - 256 : rawBytes[off]);
-                if (tc === 0x05) return String(readI16LE(rawBytes, off));
-                if (tc === 0x06 && vs === 4) {
-                    let f = readFloat32LE(rawBytes, off);
-                    return f !== null ? f.toFixed(6) : '?';
-                }
-                if (tc === 0x02) {
-                    let v = readU16LE(rawBytes, off);
-                    return v % 4 === 0 ? '$' + (v / 4) : '&' + v;
-                }
-                if (tc === 0x03) return readU16LE(rawBytes, off) + '@';
-                if (tc === 0x0A) {
-                    let v = readU16LE(rawBytes, off);
-                    return v % 4 === 0 ? 's$' + (v / 4) : 's&' + v;
-                }
-                if (tc === 0x0B) return readU16LE(rawBytes, off) + '@s';
-                if (tc === 0x10) {
-                    let v = readU16LE(rawBytes, off);
-                    return v % 4 === 0 ? 'v$' + (v / 4) : 'v&' + v;
-                }
-                if (tc === 0x11) return readU16LE(rawBytes, off) + '@v';
-                if (tc >= 0x07 && tc <= 0x08 || tc === 0x0C || tc === 0x0D || tc === 0x12 || tc === 0x13) {
-                    let idxVar = readU16LE(rawBytes, off),
-                        offVar = readU16LE(rawBytes, off + 2),
-                        size = rawBytes[off + 4],
-                        elemType = rawBytes[off + 5];
-                    let isGlobalOff = (elemType & 0x80) !== 0,
-                        dataType = elemType & 0x7F;
-                    let suffix = dataType === 0 ? 'i' : dataType === 1 ? 'f' : dataType === 2 ? 's' : dataType === 3 ? 'v' : '?';
-                    let idxStr, offStr;
-                    if (tc === 0x07 || tc === 0x0C || tc === 0x12) idxStr = (idxVar % 4 === 0 ? '$' + (idxVar / 4) : '&' + idxVar);
-                    else idxStr = idxVar + '@';
-                    if (isGlobalOff) offStr = (offVar % 4 === 0 ? '$' + (offVar / 4) : '&' + offVar);
-                    else offStr = offVar + '@';
-                    if (tc === 0x0C) idxStr = 's' + idxStr.replace(/^s/, '');
-                    if (tc === 0x0D) idxStr = idxStr + 's';
-                    if (tc === 0x12) idxStr = 'v' + idxStr.replace(/^v/, '');
-                    if (tc === 0x13) idxStr = idxStr + 'v';
-                    return idxStr + '(' + offStr + ',' + size + suffix + ')';
-                }
-                let hex = '';
-                for (let i = off; i < off + vs && i < rawBytes.length; i++) hex += rawBytes[i].toString(16).padStart(2, '0').toUpperCase();
-                return '0x' + hex;
             }
 
             function startAutoScroll(direction) {
