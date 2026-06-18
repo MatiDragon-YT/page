@@ -531,16 +531,23 @@
         let instructions = [], labelNames = {}, labelSuffixes = {};
         let currentLabelPrefix = "Noname";
         function applyLabelSuffix(opcode, off) {
-            const baseOp = opcode & 32767;
+            if (off === 0 || off === 0xFFFFFFFF) return;
+            const baseOp = opcode & 0x7FFF;
             const suffix = OPCODE_LABEL_SUFFIX[baseOp];
             if (suffix && !labelSuffixes[off]) {
                 labelSuffixes[off] = suffix;
-                if (labelNames[off]) labelNames[off] = currentLabelPrefix + "_" + suffix + off.toString(16);
+                if (labelNames[off]) labelNames[off] = currentLabelPrefix + '_' + suffix + off.toString(16);
             }
         }
         function getLabel(off) {
+            // Etiquetas especiales para punteros nulos
+            if (off === 0 || off === 0xFFFFFFFF) {
+                const name = 'offset_' + off.toString(16).padStart(8, '0').toUpperCase();
+                labelNames[off] = name;
+                return name;
+            }
             if (labelNames[off]) return labelNames[off];
-            let n = labelSuffixes[off] ? currentLabelPrefix + "_" + labelSuffixes[off] + off.toString(16) : currentLabelPrefix + "_" + off.toString(16);
+            let n = (labelSuffixes[off] ? currentLabelPrefix + '_' + labelSuffixes[off] + off.toString(16) : currentLabelPrefix + '_' + off.toString(16));
             labelNames[off] = n;
             return n;
         }
@@ -557,14 +564,22 @@
                 let raw = readU32LE(b, vo);
                 if (raw === null) return "?";
                 if (ft === "p") {
-                    let t = labelValueToOffset(raw);
-                    if (t >= 0 && t < b.length) {
-                        if (opNum !== undefined) applyLabelSuffix(opNum, t);
-                        let l = getLabel(t);
-                        return "@" + l;
-                    }
-                    return "@?";
-                }
+    // --- Punteros nulos especiales (sin conversión a offset) ---
+    if (raw === 0xFFFFFFFF) {
+        return "@offset_0xFFFFFFFF";
+    }
+    if (raw === 0x00000000) {
+        return "@offset_0x00000000";
+    }
+    // ---------------------------------------------------------
+    let t = labelValueToOffset(raw);
+    if (t >= 0 && t < b.length) {
+        if (opNum !== undefined) applyLabelSuffix(opNum, t);
+        let l = getLabel(t);
+        return "@" + l;
+    }
+    return "@?";
+}
                 return String(readI32LE(b, vo));
             }
             if (tc === 4) return String(b[vo] > 127 ? b[vo] - 256 : b[vo]);
@@ -1775,6 +1790,14 @@
                     paramNum: 1,
                     type: "s"
                 } ]
+            },
+            0x0DD0: {
+                numParams: 2,
+                formatStr: '%1d% = get_label_addr %2p%',
+                formatParts: [
+                    { paramNum: 1, type: 'd' },
+                    { paramNum: 2, type: 'p' }
+                ]
             }
         };
         Object.entries(defs).forEach(([ k, v ]) => {
