@@ -544,6 +544,14 @@
             labelNames[off] = n;
             return n;
         }
+        // --- NUEVA FUNCIÓN AUXILIAR: indica si un valor formateado es inválido ---
+        function isInvalidParam(val) {
+            if (val === undefined || val === null) return true;
+            if (val === "?" || val === "@?") return true;
+            // Los valores que no pudieron interpretarse y se muestran como hex crudo tampoco son válidos
+            if (typeof val === "string" && val.startsWith("0x")) return true;
+            return false;
+        }
         function fmtVal(tc, b, vo, vs, ft, opNum) {
             if (tc === 1 && vs === 4) {
                 let raw = readU32LE(b, vo);
@@ -636,7 +644,6 @@
                     continue;
                 }
                 let def = getDefinition(op, db);
-                // Si no hay definición, no debería estar marcado como opcode, pero por seguridad lo tratamos como desconocido
                 if (!def) {
                     let start = off;
                     while (off < bytes.length && (cls[off] === STATE_OPCODE || cls[off] === STATE_READING)) {
@@ -651,14 +658,20 @@
                     });
                     continue;
                 }
-                let idx = off + 2, params = [], len = 2;
+                let idx = off + 2, params = [], len = 2, invalid = false;
+                // Leer parámetros según definición
                 if (def.numParams >= 0) {
                     for (let i = 0; i < def.numParams; i++) {
-                        if (idx >= bytes.length) break;
+                        if (idx >= bytes.length) {
+                            invalid = true;
+                            break;
+                        }
                         let tc = bytes[idx];
                         if (tc === 0) {
                             len++;
                             idx++;
+                            // Si se esperaban más parámetros pero apareció un terminador, es inválido
+                            if (i + 1 < def.numParams) invalid = true;
                             break;
                         }
                         idx++;
@@ -670,14 +683,24 @@
                                 let fp = def.formatParts.find(p => p.paramNum === i + 1);
                                 if (fp) ft = fp.type;
                             }
+                            let val = fmtVal(tc, bytes, idx, vs, ft, op);
+                            if (isInvalidParam(val)) {
+                                invalid = true;
+                                // No rompemos aquí para poder calcular len completo y marcarlo como unknown
+                            }
                             params.push({
-                                val: fmtVal(tc, bytes, idx, vs, ft, op),
+                                val: val,
                                 ft: ft
                             });
                             idx += vs;
                             len += vs;
-                        } else break;
+                        } else {
+                            invalid = true;
+                            break;
+                        }
                     }
+                    // Si no se leyeron todos los parámetros esperados, también es inválido
+                    if (!invalid && params.length < def.numParams) invalid = true;
                 } else if (def.numParams === -1) {
                     let cnt = 0;
                     while (idx < bytes.length) {
@@ -697,21 +720,53 @@
                                 let fp = def.formatParts.find(p => p.paramNum === cnt);
                                 if (fp) ft = fp.type;
                             }
+                            let val = fmtVal(tc, bytes, idx, vs, ft, op);
+                            if (isInvalidParam(val)) invalid = true;
                             params.push({
-                                val: fmtVal(tc, bytes, idx, vs, ft, op),
+                                val: val,
                                 ft: ft
                             });
                             idx += vs;
                             len += vs;
-                        } else break;
+                        } else {
+                            invalid = true;
+                            break;
+                        }
                     }
                 }
+                // --- Si la instrucción es inválida, se trata como desconocida ---
+                if (invalid) {
+                    // Marcar todos los bytes implicados como procesados
+                    for (let i = off; i < off + len && i < bytes.length; i++) proc.add(i);
+                    instructions.push({
+                        offset: off,
+                        byteLen: len,
+                        lines: null,
+                        isUnknown: true
+                    });
+                    off = idx; // avanzamos igual que si se hubiera interpretado bien
+                    continue;
+                }
+                // --- Construir líneas de descompilado (solo si es válida) ---
                 let lines = [], opHex = op.toString(16).toUpperCase().padStart(4, "0");
                 if (def.formatStr) {
                     let res = def.formatStr.replace(/%(\d+)([bdpomgxsh])%/g, (match, numStr) => {
                         let paramIdx = parseInt(numStr) - 1;
                         return paramIdx >= 0 && paramIdx < params.length ? params[paramIdx].val : "?";
                     });
+                    // En este punto no debería haber '?' porque ya validamos, pero por seguridad:
+                    if (res.includes("?")) {
+                        // Si aun así aparece, forzamos unknown
+                        for (let i = off; i < off + len && i < bytes.length; i++) proc.add(i);
+                        instructions.push({
+                            offset: off,
+                            byteLen: len,
+                            lines: null,
+                            isUnknown: true
+                        });
+                        off = idx;
+                        continue;
+                    }
                     if (def.numParams === -1) {
                         const maxPlaceholder = def.formatParts.reduce((max, p) => Math.max(max, p.paramNum), 0);
                         if (params.length > maxPlaceholder) {
@@ -788,7 +843,10 @@
         for (let o of rem) {
             finalLines.push(`/* ${o.toString(16)} */ :` + labelNames[o]);
         }
-        return finalLines;
+        return {
+            lines: finalLines,
+            instructions: instructions
+        };
     }
     // ========== REFERENCIAS CRUZADAS (variables y arrays) ==========
     function getVariableKeyAtOffset(offset) {
@@ -1591,12 +1649,24 @@
             return;
         }
         applyConfigSilent();
+        // Clasificación inicial
         classification = new Array(rawBytes.length).fill(0);
         classification = classifyBytes(rawBytes, sascmDB);
-        let lines = decompileLinear(rawBytes, classification, sascmDB);
+        // Descompilar y obtener instrucciones
+        const result = decompileLinear(rawBytes, classification, sascmDB);
         detectUnknownStrings(rawBytes, classification);
-        document.getElementById("outputCode").value = lines.join("\n");
-        setupVirtualHex();
+        // --- NUEVO: marcar como STATE_UNKNOWN los bytes de instrucciones inválidas ---
+        if (result.instructions) {
+            for (const inst of result.instructions) {
+                if (inst.isUnknown) {
+                    for (let i = inst.offset; i < inst.offset + inst.byteLen && i < classification.length; i++) {
+                        classification[i] = STATE_UNKNOWN;
+                    }
+                }
+            }
+        }
+        document.getElementById("outputCode").value = result.lines.join("\n");
+        setupVirtualHex(); // ahora los bytes inválidos se verán desteñidos
     }
     function applyConfigSilent() {
         sascmDB = parseSASCM(document.getElementById("sascmEditor").value);
