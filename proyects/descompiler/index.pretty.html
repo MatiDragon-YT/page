@@ -1,0 +1,2153 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCM Decompiler</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --surface: #16213e;
+            --surface2: #0f3460;
+            --text: #e0e0e0;
+            --accent: #e94560;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', 'Consolas', monospace;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .app-header {
+            background: var(--surface);
+            border-bottom: 2px solid var(--accent);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .app-header h1 {
+            font-size: 1.3rem;
+            margin: 0;
+            color: var(--accent);
+        }
+
+        .main-container {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            height: calc(100vh - 130px);
+            min-height: 500px;
+        }
+
+        @media (max-width: 992px) {
+            .main-container {
+                flex-direction: column;
+                height: auto;
+            }
+        }
+
+        .panel {
+            background: var(--surface);
+            border-radius: 8px;
+            border: 1px solid #2a2a4a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: var(--surface2);
+            padding: 8px 14px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid #2a2a4a;
+        }
+
+        #hexPanel {
+            flex: 0 0 45%;
+            min-width: 350px;
+        }
+
+        #outputPanel {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        #configPanel {
+            flex: 0 0 0;
+            min-width: 0;
+            transition: all 0.3s;
+        }
+
+        #configPanel.open {
+            flex: 0 0 40%;
+            min-width: 320px;
+        }
+
+        #hexContainer {
+            position: relative;
+            overflow: hidden;
+            flex: 1;
+            background: #0a0a16;
+        }
+
+        #hexScrollArea {
+            overflow: auto;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #hexSpacer {
+            /* dimensiones por JS */
+        }
+
+        #hexCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        #selectionCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .hex-highlight {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            z-index: 5;
+            display: none;
+            box-sizing: border-box;
+        }
+
+        .target-flash {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(0, 255, 255, 0.7);
+            border: 2px solid #00ffff;
+            z-index: 10;
+            display: none;
+            box-sizing: border-box;
+            transition: opacity 0.2s;
+        }
+
+        .target-hover {
+            position: absolute;
+            pointer-events: none;
+            background: rgba(0, 255, 255, 0.35);
+            border: 1px solid #00ffff;
+            z-index: 6;
+            display: none;
+            box-sizing: border-box;
+        }
+
+        #outputCode {
+            flex: 1;
+            margin: 0;
+            padding: 12px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+            background: #0d0d1a;
+            color: #d4d4d4;
+            border: none;
+            resize: none;
+        }
+
+        .config-editor {
+            background: #0d0d1a;
+            color: #c0c0c0;
+            border: 1px solid #2a2a4a;
+            font-family: 'Consolas', monospace;
+            font-size: 0.78rem;
+            resize: vertical;
+            min-height: 180px;
+        }
+
+        .stat-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            margin: 1px;
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a16;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3a3a5a;
+            border-radius: 4px;
+        }
+
+        #ctxMenu {
+            display: none;
+            position: fixed;
+            background: #1a1a2e;
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            z-index: 1000;
+            min-width: 180px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            padding: 4px 0;
+        }
+
+        #ctxMenu .ctx-item {
+            padding: 8px 16px;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        #ctxMenu .ctx-item:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-header">
+        <h1>🔬 SCM Decompiler</h1>
+        <input type="file" id="fileInput" accept="*/*" style="display:none">
+        <button class="btn btn-accent btn-sm" onclick="document.getElementById('fileInput').click()">📁 Upload file</button>
+        <button class="btn btn-outline-accent btn-outline-primary btn-sm" onclick="showHexModal()">✏️ Paste Hex</button>
+        <button class="btn btn-outline-accent btn-outline-secondary btn-sm" onclick="runDecompile()">▶️ Descompiler</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-sm btn-outline-info" onclick="toggleConfig()">⚙️ SASCM.ini</button>
+    </div>
+
+    <div class="main-container">
+        <div class="panel" id="hexPanel">
+            <div class="panel-header">
+                📊 HEX-View
+                <span style="flex:1"></span>
+                <button class="btn btn-sm btn-outline-light" id="btnCopySelection" onclick="copySelection()" title="Copy selection (or all)">📋 Copy</button>
+                <span id="statsBar"></span>
+            </div>
+            <div id="hexContainer">
+                <div id="hexScrollArea">
+                    <div id="hexSpacer"></div>
+                </div>
+                <canvas id="hexCanvas"></canvas>
+                <canvas id="selectionCanvas"></canvas>
+            </div>
+        </div>
+        <div class="panel" id="outputPanel">
+            <div class="panel-header">📝 Code descompiled <span style="flex:1"></span><button class="btn btn-sm btn-outline-light" onclick="copyOutput()">📋 Copy</button></div>
+            <textarea id="outputCode" readonly placeholder="Result..."></textarea>
+        </div>
+        <div class="panel" id="configPanel">
+            <div class="panel-header">⚙️ SASCM.ini <span style="flex:1"></span><button class="btn btn-sm btn-close btn-close-white" onclick="toggleConfig()"></button></div>
+            <div class="panel-body p-2 d-flex flex-column gap-2"><textarea class="config-editor form-control" id="sascmEditor" rows="14"></textarea><button class="btn btn-sm btn-accent" onclick="applyConfig()">Aplicate</button></div>
+        </div>
+    </div>
+    <div class="tooltip-hex" id="hexTooltip" style="position:fixed;background:#1a1a2e;border:1px solid var(--accent);padding:6px 10px;border-radius:4px;font-size:0.75rem;pointer-events:none;z-index:999;display:none;white-space:nowrap;"></div>
+    <div class="modal fade" id="hexModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Paste Hex</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body"><textarea id="hexTextarea" class="form-control bg-dark text-light" rows="6" placeholder="00 00 01 00 ..."></textarea></div>
+                <div class="modal-footer border-secondary"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-accent" onclick="loadHexFromModal()">Upload</button></div>
+            </div>
+        </div>
+    </div>
+    <div id="ctxMenu">
+        <div class="ctx-item" data-action="copyHexSpaces">Copy Hex (with spaces)</div>
+        <div class="ctx-item" data-action="copyHexNoSpaces">Copy Hex (not spaces)</div>
+        <div class="ctx-item" data-action="copyText">Copy with text</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function() {
+            // ========== IndexedDB Persistence ==========
+            const DB_NAME = 'SCMDecompiler';
+            const DB_VERSION = 1;
+            const STORE_NAME = 'appData';
+            let db = null;
+
+            function openDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            db.createObjectStore(STORE_NAME, {
+                                keyPath: 'key'
+                            });
+                        }
+                    };
+                    request.onsuccess = (event) => {
+                        db = event.target.result;
+                        resolve(db);
+                    };
+                    request.onerror = (event) => {
+                        console.error('IndexedDB error:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            }
+
+            async function saveToDB(key, value) {
+                if (!db) await openDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.put({
+                        key,
+                        value
+                    });
+                    request.onsuccess = () => resolve();
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            }
+
+            async function loadFromDB(key) {
+                if (!db) await openDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.get(key);
+                    request.onsuccess = () => {
+                        resolve(request.result ? request.result.value : null);
+                    };
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            }
+
+            // ========== CONSTANTES Y TIPOS ==========
+            const TYPE_SIZE = {
+                0x00: 0,
+                0x01: 4,
+                0x02: 2,
+                0x03: 2,
+                0x04: 1,
+                0x05: 2,
+                0x06: 4,
+                0x07: 6,
+                0x08: 6,
+                0x09: 8,
+                0x0A: 2,
+                0x0B: 2,
+                0x0C: 6,
+                0x0D: 6,
+                0x0E: -1,
+                0x0F: 16,
+                0x10: 2,
+                0x11: 2,
+                0x12: 6,
+                0x13: 6
+            };
+            const STATE_UNKNOWN = 0,
+                STATE_READING = 1,
+                STATE_OPCODE = 2,
+                STATE_TYPE = 3,
+                STATE_VALUE = 4,
+                STATE_NULL = 5;
+            const STATE_STRING_OPCODE = 6,
+                STATE_POSSIBLE_STRING = 7,
+                STATE_STRING_UNKNOWN = 8,
+                STATE_FLOAT = 9;
+            const STATE_LABEL_POINTER = 10;
+
+            const CLASS_COLORS = {
+                [STATE_UNKNOWN]: 'transparent',
+                [STATE_READING]: '#e6c84c',
+                [STATE_OPCODE]: '#4caf84',
+                [STATE_TYPE]: '#5b9bd5',
+                [STATE_VALUE]: '#b084cc',
+                [STATE_NULL]: '#e05555',
+                [STATE_STRING_OPCODE]: '#ff69b4',
+                [STATE_POSSIBLE_STRING]: '#800000',
+                [STATE_STRING_UNKNOWN]: '#ffff00',
+                [STATE_FLOAT]: '#ff8c00',
+                [STATE_LABEL_POINTER]: '#d0a0ff'
+            };
+            const CLASS_BG = {
+                [STATE_UNKNOWN]: 'rgba(58,58,74,0.4)',
+                [STATE_READING]: 'rgba(230,200,76,0.35)',
+                [STATE_OPCODE]: 'rgba(76,175,132,0.4)',
+                [STATE_TYPE]: 'rgba(91,155,213,0.4)',
+                [STATE_VALUE]: 'rgba(176,132,204,0.4)',
+                [STATE_NULL]: 'rgba(224,85,85,0.45)',
+                [STATE_STRING_OPCODE]: 'rgba(255,105,180,0.45)',
+                [STATE_POSSIBLE_STRING]: 'rgba(128,0,0,0.45)',
+                [STATE_STRING_UNKNOWN]: 'rgba(255,255,0,0.45)',
+                [STATE_FLOAT]: 'rgba(255,140,0,0.45)',
+                [STATE_LABEL_POINTER]: 'rgba(100,100,100,0.7)'
+            };
+            const ASCII_COLORS = {
+                [STATE_UNKNOWN]: '#aaaaaa',
+                [STATE_READING]: '#e6c84c',
+                [STATE_OPCODE]: '#4caf84',
+                [STATE_TYPE]: '#5b9bd5',
+                [STATE_VALUE]: '#b084cc',
+                [STATE_NULL]: '#e05555',
+                [STATE_STRING_OPCODE]: '#ff69b4',
+                [STATE_POSSIBLE_STRING]: '#800000',
+                [STATE_STRING_UNKNOWN]: '#ffff00',
+                [STATE_FLOAT]: '#ff8c00',
+                [STATE_LABEL_POINTER]: '#d0a0ff'
+            };
+
+            const FLOW_OPCODES = {
+                0x0002: 'GOTO',
+                0x004D: 'ELSE_FALSE_JUMP',
+                0x004E: 'TERMINATE_THIS_SCRIPT',
+                0x004F: 'START_NEW_SCRIPT',
+                0x0050: 'GOSUB',
+                0x0051: 'RETURN',
+                0x00D7: 'START_NEW_SCRIPT_ALT',
+                0x0150: 'CLEO_CALL',
+                0x0151: 'CLEO_RETURN',
+                0x0707: 'SCENE_SKIP_TO',
+                0x0871: 'INIT_JUMP_TABLE',
+                0x0872: 'JUMP_TABLE_JUMPS',
+                0x0AA0: 'GOSUB_IF_FALSE',
+                0x0AA1: 'RETURN_IF_FALSE',
+                0x0AB1: 'CLEO_CALL_2',
+                0x0AB2: 'CLEO_RETURN_2',
+                0x0F0B: 'SCRIPT_EVENT_BEFORE',
+                0x0F0C: 'SCRIPT_EVENT_AFTER'
+            };
+            let rawBytes = null,
+                classification = null,
+                sascmDB = {};
+
+            const OPCODE_LABEL_SUFFIX = {
+                0x0050: 'subrutine_',
+                0x0AA0: 'subrutine_',
+                0x0AB1: 'function_',
+                0x004D: 'else_',
+                0x0DD0: 'buffer_',
+                0x0AC6: 'buffer_',
+                0x0871: 'table_',
+                0x0872: 'table_',
+                0x0E6F: 'script_',
+                0x004F: 'script_'
+            };
+
+            const BYTES_PER_ROW = 16,
+                CELL_W = 24,
+                CELL_H = 20,
+                OFFSET_W = 70;
+            const ASCII_CELL_W = 10,
+                HEX_ASCII_GAP = 10;
+
+            const hexContainer = document.getElementById('hexContainer');
+            const hexScrollArea = document.getElementById('hexScrollArea');
+            const hexSpacer = document.getElementById('hexSpacer');
+            const hexCanvas = document.getElementById('hexCanvas');
+            const selectionCanvas = document.getElementById('selectionCanvas');
+            const ctx = hexCanvas.getContext('2d');
+            const selCtx = selectionCanvas.getContext('2d');
+
+            const hexHighlight = document.createElement('div');
+            hexHighlight.className = 'hex-highlight';
+            hexScrollArea.appendChild(hexHighlight);
+            const asciiHighlight = document.createElement('div');
+            asciiHighlight.className = 'hex-highlight';
+            hexScrollArea.appendChild(asciiHighlight);
+            const opcodePairHighlight = document.createElement('div');
+            opcodePairHighlight.className = 'hex-highlight';
+            opcodePairHighlight.style.background = 'rgba(76,175,132,0.5)';
+            hexScrollArea.appendChild(opcodePairHighlight);
+            const targetFlash = document.createElement('div');
+            targetFlash.className = 'target-flash';
+            hexScrollArea.appendChild(targetFlash);
+            const targetHoverHighlight = document.createElement('div');
+            targetHoverHighlight.className = 'target-hover';
+            hexScrollArea.appendChild(targetHoverHighlight);
+
+            let selectedIndices = new Set();
+            let isSelecting = false,
+                selectionAnchor = null,
+                selectionStartIdx = null;
+            let selectionMode = 'replace',
+                selectionBaseSet = new Set();
+            let autoScrollInterval = null;
+
+            const ctxMenu = document.getElementById('ctxMenu');
+            let ctxMenuTarget = null;
+
+            // ========== FUNCIONES DE ESCAPE DE CADENAS ==========
+            function escapeStringForSCM(str, quoteType) {
+                let out = '';
+                for (let i = 0; i < str.length; i++) {
+                    const ch = str.charCodeAt(i);
+                    if (ch === 0x5C) { // backslash
+                        out += '\\\\';
+                    } else if (quoteType === 'single' && ch === 0x27) { // '
+                        out += '\\\'';
+                    } else if (quoteType === 'double' && ch === 0x22) { // "
+                        out += '\\"';
+                    } else if (quoteType === 'backtick' && ch === 0x60) { // `
+                        out += '\\`';
+                    } else if (ch === 0x0A) { // newline
+                        out += '\\n';
+                    } else if (ch === 0x0D) { // carriage return
+                        out += '\\r';
+                    } else if (ch === 0x09) { // tab
+                        out += '\\t';
+                    } else if (ch === 0x00) { // null
+                        out += '\\0';
+                    } else if (ch < 0x20 || ch === 0x7F || (ch >= 0x80 && ch <= 0xFF)) {
+                        out += '\\x' + ch.toString(16).padStart(2, '0').toUpperCase();
+                    } else {
+                        out += str.charAt(i);
+                    }
+                }
+                return out;
+            }
+
+            // ============================================================
+            // UTILIDADES DE LECTURA BINARIA
+            // ============================================================
+            function readU8(bytes, offset) {
+                if (offset >= bytes.length) return null;
+                return bytes[offset];
+            }
+
+            function readU16LE(bytes, offset) {
+                if (offset + 1 >= bytes.length) return null;
+                return bytes[offset] | (bytes[offset + 1] << 8);
+            }
+
+            function readU32LE(bytes, offset) {
+                if (offset + 3 >= bytes.length) return null;
+                return bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] <<
+                    24);
+            }
+
+            function readI8(bytes, offset) {
+                let v = readU8(bytes, offset);
+                if (v === null) return null;
+                return v > 127 ? v - 256 : v;
+            }
+
+            function readI16LE(bytes, offset) {
+                let v = readU16LE(bytes, offset);
+                if (v === null) return null;
+                return v > 32767 ? v - 65536 : v;
+            }
+
+            function readI32LE(bytes, offset) {
+                let v = readU32LE(bytes, offset);
+                if (v === null) return null;
+                return v > 2147483647 ? v - 4294967296 : v;
+            }
+
+            function readFloat32LE(bytes, offset) {
+                let v = readU32LE(bytes, offset);
+                if (v === null) return null;
+                let buf = new ArrayBuffer(4);
+                let dv = new DataView(buf);
+                dv.setUint32(0, v, true);
+                return dv.getFloat32(0, true);
+            }
+
+            function labelValueToOffset(rawU32) {
+                // target = 0xFFFFFFFF - rawU32 + 1
+                return ((~rawU32) >>> 0) + 1;
+            }
+
+            function offsetToLabelValue(targetOffset) {
+                let v = (targetOffset - 1) >>> 0;
+                return ((~v) >>> 0);
+            }
+
+            function parseSASCM(text) {
+                let db = {};
+                text.split(/\r?\n/).forEach(line => {
+                    line = line.trim();
+                    if (!line || line.startsWith(';') || line.startsWith('#') || line.startsWith('[')) return;
+                    let eq = line.indexOf('=');
+                    if (eq < 0) return;
+                    let opc = line.substring(0, eq).trim(),
+                        rest = line.substring(eq + 1).trim();
+                    let comma = rest.indexOf(',');
+                    if (comma < 0) return;
+                    let numPar = rest.substring(0, comma).trim(),
+                        fmt = rest.substring(comma + 1).trim();
+                    let opNum = parseInt(opc, 16);
+                    if (isNaN(opNum)) return;
+                    let np = parseInt(numPar);
+                    if (isNaN(np)) np = -1;
+                    let parts = [],
+                        re = /%(\d+)([bdpomgxsh])%/g,
+                        m;
+                    while ((m = re.exec(fmt)) !== null) parts.push({
+                        paramNum: parseInt(m[1]),
+                        type: m[2]
+                    });
+                    db[opNum] = {
+                        numParams: np,
+                        formatStr: fmt,
+                        formatParts: parts
+                    };
+                });
+                return db;
+            }
+
+            function getDefinition(opNum, db) {
+                if (db[opNum]) return db[opNum];
+                if (opNum & 0x8000) return db[opNum & 0x7FFF] || null;
+                return null;
+            }
+
+            // ========== CLASIFICACIÓN CORREGIDA ==========
+            function classifyBytes(bytes, db) {
+                let cls = new Array(bytes.length).fill(0),
+                    visited = new Set(),
+                    queue = [{
+                        offset: 0
+                    }],
+                    maxIter = bytes.length * 4,
+                    iter = 0;
+
+                function mark(off, len, st) {
+                    for (let i = off; i < off + len && i < cls.length; i++)
+                        if (cls[i] === 0 || st === 1) cls[i] = st;
+                }
+
+                function paramSize(tc, b, off) {
+                    if (tc === 0x0E) return off >= b.length ? 1 : 1 + b[off];
+                    let sz = TYPE_SIZE[tc];
+                    return sz !== undefined && sz >= 0 ? sz : 0;
+                }
+
+                function readParams(opNum, b, off) {
+                    let res = {
+                        nextOffset: off,
+                        targets: [],
+                        isTerm: false,
+                        isUncond: false,
+                        isBranch: false
+                    };
+                    let def = getDefinition(opNum, db);
+                    let idx = off;
+                    if (!def) return res; // sin definición, no avanzar
+                    if (def.numParams >= 0) {
+                        for (let i = 0; i < def.numParams; i++) {
+                            if (idx >= b.length) break;
+                            let tc = b[idx];
+                            if (tc === 0x00) {
+                                mark(idx, 1, 5);
+                                idx++;
+                                break;
+                            }
+                            mark(idx, 1, 3);
+                            idx++;
+                            let vs = paramSize(tc, b, idx);
+                            if (vs > 0 && idx + vs <= b.length) {
+                                let isLabelPtr = false;
+                                if (tc === 0x01 && vs === 4 && def.formatParts) {
+                                    let fp = def.formatParts.find(p => p.paramNum === i + 1);
+                                    if (fp && fp.type === 'p') isLabelPtr = true;
+                                }
+                                if (isLabelPtr) {
+                                    mark(idx, vs, STATE_LABEL_POINTER);
+                                    let raw = readU32LE(b, idx);
+                                    if (raw !== null) {
+                                        let t = labelValueToOffset(raw);
+                                        if (t >= 0 && t < b.length) res.targets.push({
+                                            offset: t
+                                        });
+                                    }
+                                } else if (tc === 0x06) {
+                                    mark(idx, vs, STATE_FLOAT);
+                                } else {
+                                    mark(idx, vs, STATE_VALUE);
+                                }
+                                idx += vs;
+                            } else break;
+                        }
+                    } else if (def.numParams === -1) {
+                        let cnt = 0;
+                        while (idx < b.length) {
+                            let tc = b[idx];
+                            if (tc === 0x00) {
+                                mark(idx, 1, 5);
+                                idx++;
+                                break;
+                            }
+                            mark(idx, 1, 3);
+                            idx++;
+                            cnt++;
+                            let vs = paramSize(tc, b, idx);
+                            if (vs > 0 && idx + vs <= b.length) {
+                                let isLabelPtr = false;
+                                if (tc === 0x01 && vs === 4 && def.formatParts) {
+                                    let fp = def.formatParts.find(p => p.paramNum === cnt);
+                                    if (fp && fp.type === 'p') isLabelPtr = true;
+                                }
+                                if (isLabelPtr) {
+                                    mark(idx, vs, STATE_LABEL_POINTER);
+                                    let raw = readU32LE(b, idx);
+                                    if (raw !== null) {
+                                        let t = labelValueToOffset(raw);
+                                        if (t >= 0 && t < b.length) res.targets.push({
+                                            offset: t
+                                        });
+                                    }
+                                } else if (tc === 0x06) {
+                                    mark(idx, vs, STATE_FLOAT);
+                                } else {
+                                    mark(idx, vs, STATE_VALUE);
+                                }
+                                idx += vs;
+                            } else break;
+                        }
+                    }
+                    res.nextOffset = idx;
+                    return res;
+                }
+
+                function processAt(off) {
+                    if (off + 1 >= bytes.length) return null;
+                    let op = readU16LE(bytes, off);
+                    if (op === null) return null;
+                    let def = getDefinition(op, db);
+                    // Si no hay definición y no es un opcode de flujo conocido, no procesar
+                    if (!def && !FLOW_OPCODES[op]) return null;
+                    mark(off, 2, 2);
+                    let pr = readParams(op, bytes, off + 2);
+                    let flow = FLOW_OPCODES[op],
+                        isU = false,
+                        isT = false,
+                        isB = false,
+                        tgts = [...pr.targets];
+                    if (flow === 'GOTO') isU = true;
+                    else if (flow === 'ELSE_FALSE_JUMP') isB = true;
+                    else if (flow === 'TERMINATE_THIS_SCRIPT') isT = true;
+                    else if (flow === 'START_NEW_SCRIPT' || flow === 'START_NEW_SCRIPT_ALT') tgts.forEach(t => queue.push({
+                        offset: t.offset
+                    }));
+                    else if (flow === 'GOSUB' || flow === 'CLEO_CALL' || flow === 'CLEO_CALL_2') tgts.forEach(t => queue.push({
+                        offset: t.offset
+                    }));
+                    else if (flow === 'RETURN' || flow === 'CLEO_RETURN' || flow === 'CLEO_RETURN_2') isT = true;
+                    else if (flow === 'GOSUB_IF_FALSE') tgts.forEach(t => queue.push({
+                        offset: t.offset
+                    }));
+                    else if (flow === 'SCENE_SKIP_TO' || flow === 'SCRIPT_EVENT_BEFORE' || flow === 'SCRIPT_EVENT_AFTER') tgts.forEach(t => queue.push({
+                        offset: t.offset
+                    }));
+                    else if (flow === 'INIT_JUMP_TABLE' || flow === 'JUMP_TABLE_JUMPS') tgts.forEach(t => queue.push({
+                        offset: t.offset
+                    }));
+                    return {
+                        nextOffset: pr.nextOffset,
+                        isU,
+                        isT,
+                        isB,
+                        targets: tgts,
+                        opNum: op
+                    };
+                }
+                while (queue.length && iter < maxIter) {
+                    iter++;
+                    let cur = queue.shift().offset;
+                    if (cur >= bytes.length || visited.has(cur)) continue;
+                    visited.add(cur);
+                    let po = cur,
+                        pi = 0,
+                        mp = bytes.length * 2;
+                    while (po < bytes.length && pi < mp) {
+                        pi++;
+                        if (visited.has(po) && cls[po] !== 0 && cls[po] !== 1) {
+                            let eo = readU16LE(bytes, po);
+                            if (eo !== null && FLOW_OPCODES[eo] === 'ELSE_FALSE_JUMP');
+                            else break;
+                        }
+                        let res = processAt(po);
+                        if (!res) break;
+                        visited.add(po);
+                        if (res.isU) {
+                            res.targets.forEach(t => {
+                                if (!visited.has(t.offset)) queue.push({
+                                    offset: t.offset
+                                });
+                            });
+                            break;
+                        }
+                        if (res.isB) {
+                            res.targets.forEach(t => {
+                                if (!visited.has(t.offset)) queue.push({
+                                    offset: t.offset
+                                });
+                            });
+                            po = res.nextOffset;
+                            continue;
+                        }
+                        if (res.isT) break;
+                        po = res.nextOffset;
+                        if (po >= bytes.length) break;
+                    }
+                }
+                return cls;
+            }
+
+            function markStringBytes(bytes, cls, tc, vo, vs) {
+                if (tc === 0x09) {
+                    for (let i = vo; i < vo + 7 && i < bytes.length; i++) {
+                        if (bytes[i] === 0) break;
+                        cls[i] = STATE_STRING_OPCODE;
+                    }
+                } else if (tc === 0x0F) {
+                    for (let i = vo; i < vo + 15 && i < bytes.length; i++) {
+                        if (bytes[i] === 0) break;
+                        cls[i] = STATE_STRING_OPCODE;
+                    }
+                } else if (tc === 0x0E) {
+                    let len = bytes[vo];
+                    for (let i = vo + 1; i < vo + 1 + len && i < bytes.length; i++) {
+                        cls[i] = STATE_STRING_OPCODE;
+                    }
+                }
+            }
+
+            function detectUnknownStrings(bytes, cls) {
+                let i = 0;
+                while (i < bytes.length) {
+                    if (cls[i] !== STATE_UNKNOWN) {
+                        i++;
+                        continue;
+                    }
+                    let start = i;
+                    while (i < bytes.length && cls[i] === STATE_UNKNOWN) i++;
+                    let end = i;
+                    let pos = start;
+                    while (pos < end) {
+                        if (cls[pos] !== STATE_UNKNOWN) {
+                            pos++;
+                            continue;
+                        }
+                        if (bytes[pos] >= 32 && bytes[pos] <= 126) {
+                            let strStart = pos;
+                            let len = 0;
+                            while (pos < end && bytes[pos] >= 32 && bytes[pos] <= 126 && len < 255) {
+                                len++;
+                                pos++;
+                            }
+                            if (len >= 3) {
+                                let isNullTerminated = pos < end && bytes[pos] === 0x00;
+                                if (isNullTerminated) {
+                                    for (let j = strStart; j < strStart + len; j++) cls[j] = STATE_STRING_UNKNOWN;
+                                    cls[pos] = STATE_NULL;
+                                    pos++;
+                                } else {
+                                    for (let j = strStart; j < strStart + len; j++) cls[j] = STATE_POSSIBLE_STRING;
+                                }
+                            } else {
+                                pos = strStart + len;
+                            }
+                        } else {
+                            pos++;
+                        }
+                    }
+                }
+            }
+
+
+            function decompileLinear(bytes, cls, db) {
+                let instructions = [],
+                    labelNames = {},
+                    labelSuffixes = {};
+                let currentLabelPrefix = 'Noname';
+
+                function applyLabelSuffix(opcode, off) {
+                    const baseOp = opcode & 0x7FFF;
+                    const suffix = OPCODE_LABEL_SUFFIX[baseOp];
+                    if (suffix && !labelSuffixes[off]) {
+                        labelSuffixes[off] = suffix;
+                        if (labelNames[off]) labelNames[off] = currentLabelPrefix + '_' + suffix + off.toString(16);
+                    }
+                }
+
+                function getLabel(off) {
+                    if (labelNames[off]) return labelNames[off];
+                    let n = (labelSuffixes[off] ? currentLabelPrefix + '_' + labelSuffixes[off] + off.toString(16) : currentLabelPrefix + '_' + off.toString(16));
+                    labelNames[off] = n;
+                    return n;
+                }
+
+                function fmtVal(tc, b, vo, vs, ft, opNum) {
+                    if (tc === 0x01 && vs === 4) {
+                        let raw = readU32LE(b, vo);
+                        if (raw === null) return '?';
+                        if (ft === 'p') {
+                            let t = labelValueToOffset(raw);
+                            if (t >= 0 && t < b.length) {
+                                if (opNum !== undefined) applyLabelSuffix(opNum, t);
+                                let l = getLabel(t);
+                                return '@' + l;
+                            }
+                            return '@?';
+                        }
+                        return String(readI32LE(b, vo));
+                    }
+                    if (tc === 0x04) return String(b[vo] > 127 ? b[vo] - 256 : b[vo]);
+                    if (tc === 0x05) return String(readI16LE(b, vo));
+                    if (tc === 0x06 && vs === 4) {
+                        let f = readFloat32LE(b, vo);
+                        return f !== null ? parseFloat(f.toFixed(6)).toString() : '?';
+                    }
+                    if (tc === 0x02) {
+                        let v = readU16LE(b, vo);
+                        if (v % 4 === 0) return '$' + (v / 4);
+                        else return '&' + v;
+                    }
+                    if (tc === 0x03) return readU16LE(b, vo) + '@';
+                    if (tc === 0x0A) {
+                        let v = readU16LE(b, vo);
+                        if (v % 4 === 0) return 's$' + (v / 4);
+                        else return 's&' + v;
+                    }
+                    if (tc === 0x0B) return readU16LE(b, vo) + '@s';
+                    if (tc === 0x10) {
+                        let v = readU16LE(b, vo);
+                        if (v % 4 === 0) return 'v$' + (v / 4);
+                        else return 'v&' + v;
+                    }
+                    if (tc === 0x11) return readU16LE(b, vo) + '@v';
+                    if (tc === 0x09) {
+                        let s = '';
+                        for (let i = vo; i < vo + 7 && i < b.length; i++) {
+                            if (b[i] === 0) break;
+                            s += String.fromCharCode(b[i]);
+                        }
+                        markStringBytes(b, cls, tc, vo, vs);
+                        return "'" + escapeStringForSCM(s, 'single') + "'";
+                    }
+                    if (tc === 0x0F) {
+                        let s = '';
+                        for (let i = vo; i < vo + 15 && i < b.length; i++) {
+                            if (b[i] === 0) break;
+                            s += String.fromCharCode(b[i]);
+                        }
+                        markStringBytes(b, cls, tc, vo, vs);
+                        return '"' + escapeStringForSCM(s, 'double') + '"';
+                    }
+                    if (tc === 0x0E) {
+                        let len = b[vo];
+                        let s = '';
+                        for (let i = vo + 1; i < vo + 1 + len && i < b.length; i++) s += String.fromCharCode(b[i]);
+                        markStringBytes(b, cls, tc, vo, vs);
+                        return '`' + escapeStringForSCM(s, 'backtick') + '`';
+                    }
+                    if (tc >= 0x07 && tc <= 0x08 || tc === 0x0C || tc === 0x0D || tc === 0x12 || tc === 0x13) {
+                        let idxVar = readU16LE(b, vo),
+                            offVar = readU16LE(b, vo + 2),
+                            size = b[vo + 4],
+                            elemType = b[vo + 5];
+                        let isGlobalOff = (elemType & 0x80) !== 0,
+                            dataType = elemType & 0x7F;
+                        let suffix = dataType === 0 ? 'i' : dataType === 1 ? 'f' : dataType === 2 ? 's' : dataType === 3 ? 'v' : '?';
+                        let idxStr, offStr;
+                        if (tc === 0x07 || tc === 0x0C || tc === 0x12) idxStr = (idxVar % 4 === 0 ? '$' + (idxVar / 4) : '&' + idxVar);
+                        else idxStr = idxVar + '@';
+                        if (isGlobalOff) offStr = (offVar % 4 === 0 ? '$' + (offVar / 4) : '&' + offVar);
+                        else offStr = offVar + '@';
+                        if (tc === 0x0C) idxStr = 's' + idxStr.replace(/^s/, '');
+                        if (tc === 0x0D) idxStr = idxStr + 's';
+                        if (tc === 0x12) idxStr = 'v' + idxStr.replace(/^v/, '');
+                        if (tc === 0x13) idxStr = idxStr + 'v';
+                        return idxStr + '(' + offStr + ',' + size + suffix + ')';
+                    }
+                    let hex = '';
+                    for (let i = vo; i < vo + vs && i < b.length; i++) hex += b[i].toString(16).padStart(2, '0').toUpperCase();
+                    return '0x' + hex;
+                }
+
+                let off = 0,
+                    proc = new Set();
+                while (off < bytes.length) {
+                    if (proc.has(off)) {
+                        off++;
+                        continue;
+                    }
+                    let st = cls[off];
+                    if (st === STATE_OPCODE || st === STATE_READING) {
+                        let op = readU16LE(bytes, off);
+                        if (op === null) {
+                            off++;
+                            continue;
+                        }
+                        let def = getDefinition(op, db);
+                        // Si no hay definición, no debería estar marcado como opcode, pero por seguridad lo tratamos como desconocido
+                        if (!def) {
+                            let start = off;
+                            while (off < bytes.length && (cls[off] === STATE_OPCODE || cls[off] === STATE_READING)) {
+                                proc.add(off);
+                                off++;
+                            }
+                            instructions.push({
+                                offset: start,
+                                byteLen: off - start,
+                                lines: null,
+                                isUnknown: true
+                            });
+                            continue;
+                        }
+                        let idx = off + 2,
+                            params = [],
+                            len = 2;
+                        if (def.numParams >= 0) {
+                            for (let i = 0; i < def.numParams; i++) {
+                                if (idx >= bytes.length) break;
+                                let tc = bytes[idx];
+                                if (tc === 0x00) {
+                                    len++;
+                                    idx++;
+                                    break;
+                                }
+                                idx++;
+                                len++;
+                                let vs = (tc === 0x0E && idx < bytes.length) ? 1 + bytes[idx] : TYPE_SIZE[tc];
+                                if (vs > 0 && idx + vs <= bytes.length) {
+                                    let ft = 'd';
+                                    if (def.formatParts) {
+                                        let fp = def.formatParts.find(p => p.paramNum === i + 1);
+                                        if (fp) ft = fp.type;
+                                    }
+                                    params.push({
+                                        val: fmtVal(tc, bytes, idx, vs, ft, op),
+                                        ft
+                                    });
+                                    idx += vs;
+                                    len += vs;
+                                } else break;
+                            }
+                        } else if (def.numParams === -1) {
+                            let cnt = 0;
+                            while (idx < bytes.length) {
+                                let tc = bytes[idx];
+                                if (tc === 0x00) {
+                                    len++;
+                                    idx++;
+                                    break;
+                                }
+                                idx++;
+                                len++;
+                                cnt++;
+                                let vs = (tc === 0x0E && idx < bytes.length) ? 1 + bytes[idx] : TYPE_SIZE[tc];
+                                if (vs > 0 && idx + vs <= bytes.length) {
+                                    let ft = 'd';
+                                    if (def.formatParts) {
+                                        let fp = def.formatParts.find(p => p.paramNum === cnt);
+                                        if (fp) ft = fp.type;
+                                    }
+                                    params.push({
+                                        val: fmtVal(tc, bytes, idx, vs, ft, op),
+                                        ft
+                                    });
+                                    idx += vs;
+                                    len += vs;
+                                } else break;
+                            }
+                        }
+                        let lines = [],
+                            opHex = op.toString(16).toUpperCase().padStart(4, '0');
+                        if (def.formatStr) {
+                            let res = def.formatStr.replace(/%(\d+)([bdpomgxsh])%/g, (match, numStr) => {
+                                let paramIdx = parseInt(numStr) - 1;
+                                return (paramIdx >= 0 && paramIdx < params.length) ? params[paramIdx].val : '?';
+                            });
+                            if (def.numParams === -1) {
+                                const maxPlaceholder = def.formatParts.reduce((max, p) => Math.max(max, p.paramNum), 0);
+                                if (params.length > maxPlaceholder) {
+                                    const extraParams = params.slice(maxPlaceholder).map(p => p.val).join(' ');
+                                    res += ' ' + extraParams;
+                                }
+                            }
+                            lines.push(`/* ${off.toString(16)} */ ` + opHex + ': ' + res);
+                        } else {
+                            lines.push(`/* ${off.toString(16)} */ ` + opHex + ': ' + params.map(p => p.val).join(' '));
+                        }
+                        if (op === 0x03A4 && params.length > 0) {
+                            let rawName = params[0].val.replace(/^['"`]|['"`]$/g, '');
+                            let clean = rawName.replace(/[^a-zA-Z0-9_]/g, '_').toUpperCase();
+                            if (clean) currentLabelPrefix = clean;
+                        }
+                        instructions.push({
+                            offset: off,
+                            byteLen: len,
+                            lines,
+                            isUnknown: false
+                        });
+                        for (let i = off; i < off + len && i < bytes.length; i++) proc.add(i);
+                        off = idx;
+                    } else if (st === STATE_UNKNOWN) {
+                        let start = off;
+                        while (off < bytes.length && cls[off] === STATE_UNKNOWN) {
+                            proc.add(off);
+                            off++;
+                        }
+                        instructions.push({
+                            offset: start,
+                            byteLen: off - start,
+                            lines: null,
+                            isUnknown: true
+                        });
+                    } else {
+                        proc.add(off);
+                        off++;
+                    }
+                }
+
+                let finalLines = [],
+                    used = new Set();
+                for (let inst of instructions) {
+                    if (!inst.isUnknown) {
+                        if (labelNames[inst.offset] && !used.has(inst.offset)) {
+                            finalLines.push(`/* ${inst.offset.toString(16)} */ :` + labelNames[inst.offset]);
+                            used.add(inst.offset);
+                        }
+                        for (let l of inst.lines) finalLines.push(l);
+                    } else {
+                        let s = inst.offset,
+                            e = s + inst.byteLen;
+                        let inner = Object.keys(labelNames).map(Number).filter(o => o >= s && o < e).sort((a, b) => a - b);
+                        let cur = s;
+                        for (let lo of inner) {
+                            if (lo > cur) {
+                                let unk = [];
+                                for (let i = cur; i < lo; i++) unk.push(bytes[i].toString(16).padStart(2, '0').toUpperCase());
+                                finalLines.push(`/* ${cur.toString(16)} */ <undefined> ` + unk.join(' ') + ' </undefined>');
+                            }
+                            if (!used.has(lo)) {
+                                finalLines.push(`/* ${lo.toString(16)} */ :` + labelNames[lo]);
+                                used.add(lo);
+                            }
+                            cur = lo;
+                        }
+                        if (cur < e) {
+                            let unk = [];
+                            for (let i = cur; i < e; i++) unk.push(bytes[i].toString(16).padStart(2, '0').toUpperCase());
+                            finalLines.push(`/* ${cur.toString(16)} */ <undefined> ` + unk.join(' ') + ' </undefined>');
+                        }
+                    }
+                }
+                let rem = Object.keys(labelNames).map(Number).filter(o => !used.has(o)).sort((a, b) => a - b);
+                for (let o of rem) {
+                    finalLines.push(`/* ${o.toString(16)} */ :` + labelNames[o]);
+                }
+                return finalLines;
+            }
+
+            function setupVirtualHex() {
+                if (!rawBytes || !rawBytes.length) {
+                    hexCanvas.width = 0;
+                    hexCanvas.height = 0;
+                    selectionCanvas.width = 0;
+                    selectionCanvas.height = 0;
+                    hexSpacer.style.width = '0px';
+                    hexSpacer.style.height = '0px';
+                    return;
+                }
+                const totalRows = Math.ceil(rawBytes.length / BYTES_PER_ROW);
+                const hexAreaWidth = OFFSET_W + BYTES_PER_ROW * (CELL_W + 1);
+                const asciiAreaWidth = BYTES_PER_ROW * ASCII_CELL_W;
+                const totalWidth = hexAreaWidth + HEX_ASCII_GAP + asciiAreaWidth + 20;
+                const totalHeight = totalRows * CELL_H + 10;
+
+                hexSpacer.style.width = totalWidth + 'px';
+                hexSpacer.style.height = totalHeight + 'px';
+
+                hexCanvas.width = hexContainer.clientWidth;
+                hexCanvas.height = hexContainer.clientHeight;
+                hexCanvas.style.width = hexCanvas.width + 'px';
+                hexCanvas.style.height = hexCanvas.height + 'px';
+
+                selectionCanvas.width = hexCanvas.width;
+                selectionCanvas.height = hexCanvas.height;
+                selectionCanvas.style.width = hexCanvas.style.width;
+                selectionCanvas.style.height = hexCanvas.height;
+
+                drawVisibleHex();
+                drawSelection();
+                if (classification) updateStats(rawBytes, classification);
+            }
+
+            function drawVisibleHex() {
+                if (!rawBytes || !rawBytes.length) return;
+                const scrollLeft = hexScrollArea.scrollLeft;
+                const scrollTop = hexScrollArea.scrollTop;
+                const viewWidth = hexCanvas.width;
+                const viewHeight = hexCanvas.height;
+                ctx.clearRect(0, 0, viewWidth, viewHeight);
+
+                const startRow = Math.floor(scrollTop / CELL_H);
+                const endRow = Math.min(Math.ceil((scrollTop + viewHeight) / CELL_H), Math.ceil(rawBytes.length / BYTES_PER_ROW));
+                const startCol = Math.max(0, Math.floor((scrollLeft - OFFSET_W) / (CELL_W + 1)));
+                const endCol = Math.min(BYTES_PER_ROW, Math.ceil((scrollLeft + viewWidth - OFFSET_W) / (CELL_W + 1)));
+
+                const hexAreaWidth = OFFSET_W + BYTES_PER_ROW * (CELL_W + 1);
+                const asciiStartX = hexAreaWidth + HEX_ASCII_GAP;
+
+                ctx.font = '11px "Consolas", monospace';
+                ctx.textBaseline = 'middle';
+
+                for (let row = startRow; row < endRow; row++) {
+                    const baseY = row * CELL_H + 2;
+                    const offX = OFFSET_W - scrollLeft;
+                    const offY = baseY - scrollTop + CELL_H / 2;
+                    if (offX > 0 && offX < viewWidth) {
+                        ctx.fillStyle = '#888';
+                        ctx.textAlign = 'right';
+                        ctx.fillText((row * BYTES_PER_ROW).toString(16).padStart(6, '0'), offX - 8, offY);
+                    }
+                    ctx.textAlign = 'center';
+                    for (let col = startCol; col < endCol; col++) {
+                        const idx = row * BYTES_PER_ROW + col;
+                        if (idx >= rawBytes.length) break;
+                        const x = OFFSET_W + col * (CELL_W + 1) - scrollLeft;
+                        const y = baseY - scrollTop;
+                        if (x + CELL_W < 0 || x > viewWidth) continue;
+                        const st = classification ? classification[idx] : STATE_UNKNOWN;
+                        ctx.fillStyle = CLASS_BG[st];
+                        ctx.fillRect(x, y, CELL_W, CELL_H);
+                        if (st === STATE_UNKNOWN) {
+                            ctx.strokeStyle = '#555';
+                            ctx.setLineDash([2, 2]);
+                            ctx.strokeRect(x, y, CELL_W, CELL_H);
+                            ctx.setLineDash([]);
+                        } else {
+                            ctx.strokeStyle = CLASS_COLORS[st];
+                            ctx.strokeRect(x, y, CELL_W, CELL_H);
+                        }
+                        ctx.fillStyle = st === STATE_UNKNOWN ? '#777' : CLASS_COLORS[st];
+                        ctx.fillText(rawBytes[idx].toString(16).padStart(2, '0'), x + CELL_W / 2, y + CELL_H / 2);
+                    }
+
+                    const asciiY = baseY - scrollTop + CELL_H / 2;
+                    ctx.textAlign = 'center';
+                    for (let col = 0; col < BYTES_PER_ROW; col++) {
+                        const idx = row * BYTES_PER_ROW + col;
+                        if (idx >= rawBytes.length) break;
+                        const byte = rawBytes[idx];
+                        const asciiX = asciiStartX + col * ASCII_CELL_W - scrollLeft;
+                        if (asciiX + ASCII_CELL_W < 0 || asciiX > viewWidth) continue;
+                        const ch = (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '•';
+                        const st = classification ? classification[idx] : STATE_UNKNOWN;
+                        ctx.fillStyle = ASCII_COLORS[st] || '#aaaaaa';
+                        ctx.fillText(ch, asciiX + ASCII_CELL_W / 2, asciiY);
+                    }
+                }
+            }
+
+            function drawSelection() {
+                selCtx.clearRect(0, 0, selectionCanvas.width, selectionCanvas.height);
+                if (selectedIndices.size === 0 || !rawBytes) return;
+
+                const scrollLeft = hexScrollArea.scrollLeft;
+                const scrollTop = hexScrollArea.scrollTop;
+                const hexAreaWidth = OFFSET_W + BYTES_PER_ROW * (CELL_W + 1);
+                const asciiStartX = hexAreaWidth + HEX_ASCII_GAP;
+
+                selCtx.fillStyle = 'rgba(100, 150, 255, 0.35)';
+                selCtx.strokeStyle = 'rgba(100, 150, 255, 0.8)';
+                selCtx.lineWidth = 1;
+
+                for (let idx of selectedIndices) {
+                    const row = Math.floor(idx / BYTES_PER_ROW);
+                    const col = idx % BYTES_PER_ROW;
+                    const hexX = OFFSET_W + col * (CELL_W + 1) - scrollLeft;
+                    const hexY = row * CELL_H + 2 - scrollTop;
+                    selCtx.fillRect(hexX, hexY, CELL_W, CELL_H);
+                    selCtx.strokeRect(hexX, hexY, CELL_W, CELL_H);
+                    const asciiX = asciiStartX + col * ASCII_CELL_W - scrollLeft;
+                    selCtx.fillRect(asciiX, hexY, ASCII_CELL_W, CELL_H);
+                    selCtx.strokeRect(asciiX, hexY, ASCII_CELL_W, CELL_H);
+                }
+            }
+
+            function updateStats(bytes, cls) {
+                let cnts = {};
+                for (let i = 0; i <= 10; i++) cnts[i] = 0;
+                cls.forEach(v => cnts[v] = (cnts[v] || 0) + 1);
+                document.getElementById('statsBar').innerHTML = `
+            <span class="stat-badge" style="background:#2a5a2a;color:#8fdf8f">Op:${cnts[STATE_OPCODE]}</span>
+            <span class="stat-badge" style="background:#2a2a5a;color:#8f8fdf">Tp:${cnts[STATE_TYPE]}</span>
+            <span class="stat-badge" style="background:#3a2a4a;color:#cfafdf">Val:${cnts[STATE_VALUE]}</span>
+            <span class="stat-badge" style="background:#4a2a2a;color:#df8f8f">Nul:${cnts[STATE_NULL]}</span>
+            <span class="stat-badge" style="background:#4a4a1a;color:#dfdf8f">Rd:${cnts[STATE_READING]}</span>
+            <span class="stat-badge" style="background:#3a3a3a;color:#aaa">Unk:${cnts[STATE_UNKNOWN]}</span>
+            <span class="stat-badge" style="background:#ff69b4;color:#fff">StrOp:${cnts[STATE_STRING_OPCODE]}</span>
+            <span class="stat-badge" style="background:#ffff00;color:#000">StrUnk:${cnts[STATE_STRING_UNKNOWN]}</span>
+            <span class="stat-badge" style="background:#800000;color:#fff">Str?:${cnts[STATE_POSSIBLE_STRING]}</span>
+            <span class="stat-badge" style="background:#ff8c00;color:#fff">Flt:${cnts[STATE_FLOAT]}</span>
+            <span class="stat-badge" style="background:#d0a0ff;color:#000">Lbl:${cnts[STATE_LABEL_POINTER]}</span>`;
+            }
+
+            function getByteIndexFromEvent(e) {
+                const rect = hexContainer.getBoundingClientRect();
+                const mx = e.clientX - rect.left + hexScrollArea.scrollLeft;
+                const my = e.clientY - rect.top + hexScrollArea.scrollTop;
+                const hexAreaWidth = OFFSET_W + BYTES_PER_ROW * (CELL_W + 1);
+                const asciiStartX = hexAreaWidth + HEX_ASCII_GAP;
+                const asciiEndX = asciiStartX + BYTES_PER_ROW * ASCII_CELL_W;
+
+                let col = -1,
+                    row = -1;
+                if (mx >= OFFSET_W && mx < hexAreaWidth) {
+                    col = Math.floor((mx - OFFSET_W) / (CELL_W + 1));
+                    row = Math.floor((my - 2) / CELL_H);
+                } else if (mx >= asciiStartX && mx < asciiEndX) {
+                    col = Math.floor((mx - asciiStartX) / ASCII_CELL_W);
+                    row = Math.floor((my - 2) / CELL_H);
+                }
+                if (col >= 0 && col < BYTES_PER_ROW && row >= 0) {
+                    const idx = row * BYTES_PER_ROW + col;
+                    if (idx < rawBytes.length) return idx;
+                }
+                return null;
+            }
+
+            function hideHoverHighlights() {
+                hexHighlight.style.display = 'none';
+                asciiHighlight.style.display = 'none';
+                opcodePairHighlight.style.display = 'none';
+                targetHoverHighlight.style.display = 'none';
+            }
+
+            function getSelectedSortedIndices() {
+                return Array.from(selectedIndices).sort((a, b) => a - b);
+            }
+
+            function copySelection() {
+                if (!rawBytes) return;
+                if (selectedIndices.size > 0) {
+                    const sorted = getSelectedSortedIndices();
+                    const hexStr = sorted.map(idx => rawBytes[idx].toString(16).padStart(2, '0')).join(' ');
+                    navigator.clipboard.writeText(hexStr).then(() => {
+                        const btn = document.getElementById('btnCopySelection');
+                        const orig = btn.textContent;
+                        btn.textContent = '✅ Copiado';
+                        setTimeout(() => btn.textContent = orig, 1500);
+                    });
+                } else {
+                    const hexStr = Array.from(rawBytes, b => b.toString(16).padStart(2, '0')).join(' ');
+                    navigator.clipboard.writeText(hexStr).then(() => {
+                        const btn = document.getElementById('btnCopySelection');
+                        const orig = btn.textContent;
+                        btn.textContent = '✅ Copiado todo';
+                        setTimeout(() => btn.textContent = orig, 1500);
+                    });
+                }
+            }
+
+            function handleContextMenu(e) {
+                if (!rawBytes) return;
+                if (selectedIndices.size === 0) return;
+                e.preventDefault();
+                ctxMenu.style.display = 'block';
+                ctxMenu.style.left = e.clientX + 'px';
+                ctxMenu.style.top = e.clientY + 'px';
+                ctxMenuTarget = {
+                    indices: getSelectedSortedIndices()
+                };
+            }
+
+            function hideContextMenu() {
+                ctxMenu.style.display = 'none';
+                ctxMenuTarget = null;
+            }
+
+            function handleLabelDoubleClick(e) {
+                if (!rawBytes || !classification) return;
+                const idx = getByteIndexFromEvent(e);
+                if (idx === null) return;
+                if (classification[idx] !== STATE_LABEL_POINTER) return;
+
+                let start = idx;
+                while (start > 0 && classification[start - 1] === STATE_LABEL_POINTER) start--;
+                if (start + 3 >= rawBytes.length) return;
+                const raw = readU32LE(rawBytes, start);
+                if (raw === null) return;
+                const targetOffset = labelValueToOffset(raw);
+                if (targetOffset < 0 || targetOffset >= rawBytes.length) return;
+
+                const targetRow = Math.floor(targetOffset / BYTES_PER_ROW);
+                const targetCol = targetOffset % BYTES_PER_ROW;
+                const scrollTop = targetRow * CELL_H - (hexContainer.clientHeight / 2) + CELL_H;
+                hexScrollArea.scrollTo({
+                    top: Math.max(0, scrollTop),
+                    left: 0,
+                    behavior: 'instant'
+                });
+
+                const hexX = OFFSET_W + targetCol * (CELL_W + 1);
+                const hexY = targetRow * CELL_H + 2;
+                targetFlash.style.display = 'block';
+                targetFlash.style.left = hexX + 'px';
+                targetFlash.style.top = hexY + 'px';
+                targetFlash.style.width = CELL_W + 'px';
+                targetFlash.style.height = CELL_H + 'px';
+                targetFlash.style.opacity = '1';
+
+                setTimeout(() => {
+                    targetFlash.style.opacity = '0';
+                    setTimeout(() => {
+                        targetFlash.style.display = 'none';
+                    }, 200);
+                }, 300);
+            }
+
+            // ========== PREVISUALIZACIÓN DE DATOS Y FLECHAS ==========
+            function fmtValBasic(tc, off, vs) {
+                if (tc === 0x01 && vs === 4) return String(readI32LE(rawBytes, off));
+                if (tc === 0x04) return String(rawBytes[off] > 127 ? rawBytes[off] - 256 : rawBytes[off]);
+                if (tc === 0x05) return String(readI16LE(rawBytes, off));
+                if (tc === 0x06 && vs === 4) {
+                    let f = readFloat32LE(rawBytes, off);
+                    return f !== null ? f.toFixed(6) : '?';
+                }
+                if (tc === 0x02) {
+                    let v = readU16LE(rawBytes, off);
+                    return v % 4 === 0 ? '$' + (v / 4) : '&' + v;
+                }
+                if (tc === 0x03) return readU16LE(rawBytes, off) + '@';
+                if (tc === 0x0A) {
+                    let v = readU16LE(rawBytes, off);
+                    return v % 4 === 0 ? 's$' + (v / 4) : 's&' + v;
+                }
+                if (tc === 0x0B) return readU16LE(rawBytes, off) + '@s';
+                if (tc === 0x10) {
+                    let v = readU16LE(rawBytes, off);
+                    return v % 4 === 0 ? 'v$' + (v / 4) : 'v&' + v;
+                }
+                if (tc === 0x11) return readU16LE(rawBytes, off) + '@v';
+                if (tc === 0x09) {
+                    let s = '';
+                    for (let i = off; i < off + 7 && i < rawBytes.length; i++) {
+                        if (rawBytes[i] === 0) break;
+                        s += String.fromCharCode(rawBytes[i]);
+                    }
+                    return "'" + escapeStringForSCM(s, 'single') + "'";
+                }
+                if (tc === 0x0F) {
+                    let s = '';
+                    for (let i = off; i < off + 15 && i < rawBytes.length; i++) {
+                        if (rawBytes[i] === 0) break;
+                        s += String.fromCharCode(rawBytes[i]);
+                    }
+                    return '"' + escapeStringForSCM(s, 'double') + '"';
+                }
+                if (tc === 0x0E) {
+                    let len = rawBytes[off];
+                    let s = '';
+                    for (let i = off + 1; i < off + 1 + len && i < rawBytes.length; i++) s += String.fromCharCode(rawBytes[i]);
+                    return '`' + escapeStringForSCM(s, 'backtick') + '`';
+                }
+                if (tc >= 0x07 && tc <= 0x08 || tc === 0x0C || tc === 0x0D || tc === 0x12 || tc === 0x13) {
+                    let idxVar = readU16LE(rawBytes, off),
+                        offVar = readU16LE(rawBytes, off + 2),
+                        size = rawBytes[off + 4],
+                        elemType = rawBytes[off + 5];
+                    let isGlobalOff = (elemType & 0x80) !== 0,
+                        dataType = elemType & 0x7F;
+                    let suffix = dataType === 0 ? 'i' : dataType === 1 ? 'f' : dataType === 2 ? 's' : dataType === 3 ? 'v' : '?';
+                    let idxStr, offStr;
+                    if (tc === 0x07 || tc === 0x0C || tc === 0x12) idxStr = (idxVar % 4 === 0 ? '$' + (idxVar / 4) : '&' + idxVar);
+                    else idxStr = idxVar + '@';
+                    if (isGlobalOff) offStr = (offVar % 4 === 0 ? '$' + (offVar / 4) : '&' + offVar);
+                    else offStr = offVar + '@';
+                    if (tc === 0x0C) idxStr = 's' + idxStr.replace(/^s/, '');
+                    if (tc === 0x0D) idxStr = idxStr + 's';
+                    if (tc === 0x12) idxStr = 'v' + idxStr.replace(/^v/, '');
+                    if (tc === 0x13) idxStr = idxStr + 'v';
+                    return idxStr + '(' + offStr + ',' + size + suffix + ')';
+                }
+                let hex = '';
+                for (let i = off; i < off + vs && i < rawBytes.length; i++) hex += rawBytes[i].toString(16).padStart(2, '0').toUpperCase();
+                return '0x' + hex;
+            }
+
+            function getValueInfo(offset) {
+                if (!rawBytes || !classification) return null;
+                const st = classification[offset];
+                if (st === STATE_OPCODE) {
+                    let start = offset;
+                    while (start > 0 && classification[start - 1] === STATE_OPCODE) start--;
+                    if (start + 1 >= rawBytes.length) return null;
+                    const op = readU16LE(rawBytes, start);
+                    if (op === null) return null;
+                    const def = getDefinition(op, sascmDB);
+                    const opHex = op.toString(16).toUpperCase().padStart(4, '0');
+                    let previewLine = '';
+                    if (def && def.formatStr) {
+                        let idx = start + 2;
+                        let params = [];
+                        if (def.numParams >= 0) {
+                            for (let i = 0; i < def.numParams; i++) {
+                                if (idx >= rawBytes.length) break;
+                                let tc = rawBytes[idx];
+                                if (tc === 0x00) break;
+                                idx++;
+                                let vs = (tc === 0x0E && idx < rawBytes.length) ? 1 + rawBytes[idx] : TYPE_SIZE[tc];
+                                if (vs > 0 && idx + vs <= rawBytes.length) {
+                                    let ft = 'd';
+                                    if (def.formatParts) {
+                                        let fp = def.formatParts.find(p => p.paramNum === i + 1);
+                                        if (fp) ft = fp.type;
+                                    }
+                                    let valStr = (tc === 0x01 && vs === 4 && ft === 'p') ? (() => {
+                                        let raw = readU32LE(rawBytes, idx);
+                                        return raw !== null ? '@offset_' + labelValueToOffset(raw) : '?';
+                                    })() : fmtValBasic(tc, idx, vs);
+                                    params.push({
+                                        val: valStr
+                                    });
+                                    idx += vs;
+                                } else break;
+                            }
+                        } else if (def.numParams === -1) {
+                            let cnt = 0;
+                            while (idx < rawBytes.length) {
+                                let tc = rawBytes[idx];
+                                if (tc === 0x00) break;
+                                idx++;
+                                cnt++;
+                                let vs = (tc === 0x0E && idx < rawBytes.length) ? 1 + rawBytes[idx] : TYPE_SIZE[tc];
+                                if (vs > 0 && idx + vs <= rawBytes.length) {
+                                    let ft = 'd';
+                                    if (def.formatParts) {
+                                        let fp = def.formatParts.find(p => p.paramNum === cnt);
+                                        if (fp) ft = fp.type;
+                                    }
+                                    let valStr = (tc === 0x01 && vs === 4 && ft === 'p') ? (() => {
+                                        let raw = readU32LE(rawBytes, idx);
+                                        return raw !== null ? '@offset_' + labelValueToOffset(raw) : '?';
+                                    })() : fmtValBasic(tc, idx, vs);
+                                    params.push({
+                                        val: valStr
+                                    });
+                                    idx += vs;
+                                } else break;
+                            }
+                        }
+                        previewLine = opHex + ': ' + def.formatStr.replace(/%(\d+)([bdpomgxsh])%/g, (match, numStr) => {
+                            let i = parseInt(numStr) - 1;
+                            return (i >= 0 && i < params.length) ? params[i].val : '?';
+                        });
+                    } else {
+                        previewLine = opHex + ': <opcode desconocido>';
+                    }
+                    return {
+                        text: previewLine
+                    };
+                } else if (st === STATE_FLOAT) {
+                    let start = offset;
+                    while (start > 0 && classification[start - 1] === STATE_FLOAT) start--;
+                    if (start + 3 >= rawBytes.length) return null;
+                    let f = readFloat32LE(rawBytes, start);
+                    return {
+                        text: f !== null ? f.toFixed(6) : '?'
+                    };
+                } else if (st === STATE_VALUE) {
+                    let start = offset;
+                    while (start > 0 && classification[start - 1] === STATE_VALUE) start--;
+                    if (start === 0) return null;
+                    let tc = rawBytes[start - 1];
+                    if (tc === undefined) return null;
+                    let vs = (tc === 0x0E && start < rawBytes.length) ? 1 + rawBytes[start] : TYPE_SIZE[tc];
+                    if (vs > 0 && start + vs <= rawBytes.length) {
+                        return {
+                            text: fmtValBasic(tc, start, vs)
+                        };
+                    }
+                } else if (st === STATE_LABEL_POINTER) {
+                    let start = offset;
+                    while (start > 0 && classification[start - 1] === STATE_LABEL_POINTER) start--;
+                    if (start + 3 >= rawBytes.length) return null;
+                    let raw = readU32LE(rawBytes, start);
+                    if (raw === null) return null;
+                    let target = labelValueToOffset(raw);
+                    let direction = target > start ? '→' : '←';
+                    let arrowText = `${direction} ${target.toString(16)}`;
+                    return {
+                        text: `Offset ${arrowText}`,
+                        targetOffset: target
+                    };
+                } else if (st === STATE_STRING_OPCODE) {
+                    // Buscar el type code retrocediendo hasta STATE_TYPE
+                    let typeOff = offset;
+                    while (typeOff > 0 && classification[typeOff] !== STATE_TYPE) typeOff--;
+                    if (classification[typeOff] === STATE_TYPE && typeOff + 1 < rawBytes.length) {
+                        let tc = rawBytes[typeOff];
+                        if (tc === 0x09) {
+                            let s = '';
+                            for (let i = typeOff + 1; i < typeOff + 8 && i < rawBytes.length; i++) {
+                                if (rawBytes[i] === 0) break;
+                                s += String.fromCharCode(rawBytes[i]);
+                            }
+                            return {
+                                text: `'${escapeStringForSCM(s, 'single')}'`
+                            };
+                        } else if (tc === 0x0F) {
+                            let s = '';
+                            for (let i = typeOff + 1; i < typeOff + 16 && i < rawBytes.length; i++) {
+                                if (rawBytes[i] === 0) break;
+                                s += String.fromCharCode(rawBytes[i]);
+                            }
+                            return {
+                                text: `"${escapeStringForSCM(s, 'double')}"`
+                            };
+                        } else if (tc === 0x0E) {
+                            if (typeOff + 1 >= rawBytes.length) return null;
+                            let len = rawBytes[typeOff + 1];
+                            let s = '';
+                            for (let i = typeOff + 2; i < typeOff + 2 + len && i < rawBytes.length; i++) s += String.fromCharCode(rawBytes[i]);
+                            return {
+                                text: `\`${escapeStringForSCM(s, 'backtick')}\``
+                            };
+                        }
+                    }
+                    // Fallback
+                    let s = '';
+                    let i = offset;
+                    while (i < rawBytes.length && rawBytes[i] !== 0) {
+                        s += String.fromCharCode(rawBytes[i]);
+                        i++;
+                    }
+                    return {
+                        text: `"${escapeStringForSCM(s, 'double')}"`
+                    };
+                } else if (st === STATE_STRING_UNKNOWN) {
+                    // No hay type code, leer hasta null
+                    let s = '';
+                    let i = offset;
+                    while (i < rawBytes.length && rawBytes[i] !== 0) {
+                        s += String.fromCharCode(rawBytes[i]);
+                        i++;
+                    }
+                    return {
+                        text: `"${escapeStringForSCM(s, 'double')}"`
+                    };
+                } else if (st === STATE_POSSIBLE_STRING) {
+                    return null;
+                }
+                return null;
+            }
+
+            function startAutoScroll(direction) {
+                if (autoScrollInterval) return;
+                autoScrollInterval = setInterval(() => {
+                    const delta = direction === 'up' ? -CELL_H : CELL_H;
+                    hexScrollArea.scrollBy(0, delta);
+                }, 30);
+            }
+
+            function stopAutoScroll() {
+                if (autoScrollInterval) {
+                    clearInterval(autoScrollInterval);
+                    autoScrollInterval = null;
+                }
+            }
+
+            function setupInteraction() {
+                const tip = document.getElementById('hexTooltip');
+
+                function updateSelectionRange(minIdx, maxIdx) {
+                    if (selectionMode === 'replace') {
+                        selectedIndices.clear();
+                        for (let i = minIdx; i <= maxIdx; i++) selectedIndices.add(i);
+                    } else if (selectionMode === 'invert') {
+                        selectedIndices.clear();
+                        for (let idx of selectionBaseSet) selectedIndices.add(idx);
+                        for (let i = minIdx; i <= maxIdx; i++) {
+                            if (selectedIndices.has(i)) selectedIndices.delete(i);
+                            else selectedIndices.add(i);
+                        }
+                    } else if (selectionMode === 'extend') {
+                        selectedIndices.clear();
+                        for (let idx of selectionBaseSet) selectedIndices.add(idx);
+                        for (let i = minIdx; i <= maxIdx; i++) selectedIndices.add(i);
+                    }
+                    drawSelection();
+                }
+
+                hexScrollArea.addEventListener('mousedown', (e) => {
+                    if (e.button !== 0) return;
+                    if (!rawBytes) return;
+                    const idx = getByteIndexFromEvent(e);
+                    if (idx === null) return;
+
+                    if (e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                        e.preventDefault();
+                        if (selectionAnchor !== null) {
+                            const start = Math.min(selectionAnchor, idx);
+                            const end = Math.max(selectionAnchor, idx);
+                            for (let i = start; i <= end; i++) selectedIndices.add(i);
+                            drawSelection();
+                        } else {
+                            selectionAnchor = idx;
+                            selectedIndices.clear();
+                            selectedIndices.add(idx);
+                            drawSelection();
+                        }
+                        isSelecting = false;
+                        return;
+                    }
+
+                    isSelecting = true;
+
+                    if (e.ctrlKey || e.metaKey) {
+                        selectionMode = 'invert';
+                    } else if (e.shiftKey) {
+                        selectionMode = 'extend';
+                        if (selectionAnchor === null) selectionAnchor = idx;
+                    } else {
+                        selectionMode = 'replace';
+                        selectionAnchor = idx;
+                    }
+
+                    selectionStartIdx = (selectionMode === 'extend') ? selectionAnchor : idx;
+                    selectionBaseSet = new Set(selectedIndices);
+
+                    const minIdx = Math.min(selectionStartIdx, idx);
+                    const maxIdx = Math.max(selectionStartIdx, idx);
+                    updateSelectionRange(minIdx, maxIdx);
+
+                    hideHoverHighlights();
+                    e.preventDefault();
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    if (!rawBytes) return;
+                    const idx = getByteIndexFromEvent(e);
+                    const rect = hexContainer.getBoundingClientRect();
+                    const mouseY = e.clientY - rect.top;
+
+                    if (isSelecting) {
+                        if (idx !== null) {
+                            const start = selectionStartIdx;
+                            const minIdx = Math.min(start, idx);
+                            const maxIdx = Math.max(start, idx);
+                            updateSelectionRange(minIdx, maxIdx);
+                        }
+
+                        const scrollThreshold = 40;
+                        if (mouseY < scrollThreshold) {
+                            startAutoScroll('up');
+                        } else if (mouseY > hexContainer.clientHeight - scrollThreshold) {
+                            startAutoScroll('down');
+                        } else {
+                            stopAutoScroll();
+                        }
+
+                        tip.style.display = 'none';
+                        hideHoverHighlights();
+                        return;
+                    }
+
+                    stopAutoScroll();
+
+                    const mx = e.clientX - rect.left + hexScrollArea.scrollLeft;
+                    const my = e.clientY - rect.top + hexScrollArea.scrollTop;
+                    const hexAreaWidth = OFFSET_W + BYTES_PER_ROW * (CELL_W + 1);
+                    const asciiStartX = hexAreaWidth + HEX_ASCII_GAP;
+                    const asciiEndX = asciiStartX + BYTES_PER_ROW * ASCII_CELL_W;
+
+                    let col = -1,
+                        row = -1;
+                    if (mx >= OFFSET_W && mx < hexAreaWidth) {
+                        col = Math.floor((mx - OFFSET_W) / (CELL_W + 1));
+                        row = Math.floor((my - 2) / CELL_H);
+                    } else if (mx >= asciiStartX && mx < asciiEndX) {
+                        col = Math.floor((mx - asciiStartX) / ASCII_CELL_W);
+                        row = Math.floor((my - 2) / CELL_H);
+                    }
+
+                    if (col >= 0 && col < BYTES_PER_ROW && row >= 0) {
+                        const idx = row * BYTES_PER_ROW + col;
+                        if (idx < rawBytes.length) {
+                            const st = classification ? classification[idx] : 0;
+                            const sts = ['desconocido', 'leyendo', 'opcode', 'type_code', 'value', 'terminal_null', 'string_opcode', 'posible_string', 'string_unknown', 'float', 'label_pointer'];
+                            const hex = rawBytes[idx].toString(16).padStart(2, '0');
+                            const ascii = rawBytes[idx] >= 32 && rawBytes[idx] < 127 ? String.fromCharCode(rawBytes[idx]) : '.';
+                            let tipText = `Offset:0x${idx.toString(16).padStart(6,'0')} | ${hex} | ${ascii} | ${sts[st]}`;
+
+                            // Información extra de previsualización
+                            const extra = getValueInfo(idx);
+                            if (extra && extra.text) {
+                                tipText += '\n' + extra.text;
+                            }
+
+                            tip.style.display = 'block';
+                            tip.style.left = (e.clientX + 16) + 'px';
+                            tip.style.top = (e.clientY - 30) + 'px';
+                            tip.innerHTML = tipText.replace(/\n/g, '<br>');
+
+                            const hexX = OFFSET_W + col * (CELL_W + 1);
+                            const hexY = row * CELL_H + 2;
+                            hexHighlight.style.display = 'block';
+                            hexHighlight.style.left = hexX + 'px';
+                            hexHighlight.style.top = hexY + 'px';
+                            hexHighlight.style.width = CELL_W + 'px';
+                            hexHighlight.style.height = CELL_H + 'px';
+
+                            const asciiX = asciiStartX + col * ASCII_CELL_W;
+                            const asciiY = row * CELL_H + 2;
+                            asciiHighlight.style.display = 'block';
+                            asciiHighlight.style.left = asciiX + 'px';
+                            asciiHighlight.style.top = asciiY + 'px';
+                            asciiHighlight.style.width = ASCII_CELL_W + 'px';
+                            asciiHighlight.style.height = CELL_H + 'px';
+
+                            if (classification && classification[idx] === STATE_OPCODE) {
+                                const pairIdx = (idx % 2 === 0) ? idx + 1 : idx - 1;
+                                if (pairIdx >= 0 && pairIdx < rawBytes.length && classification[pairIdx] === STATE_OPCODE) {
+                                    const pairCol = pairIdx % BYTES_PER_ROW;
+                                    const pairRow = Math.floor(pairIdx / BYTES_PER_ROW);
+                                    const pairHexX = OFFSET_W + pairCol * (CELL_W + 1);
+                                    const pairHexY = pairRow * CELL_H + 2;
+                                    opcodePairHighlight.style.display = 'block';
+                                    opcodePairHighlight.style.left = pairHexX + 'px';
+                                    opcodePairHighlight.style.top = pairHexY + 'px';
+                                    opcodePairHighlight.style.width = CELL_W + 'px';
+                                    opcodePairHighlight.style.height = CELL_H + 'px';
+                                } else {
+                                    opcodePairHighlight.style.display = 'none';
+                                }
+                            } else {
+                                opcodePairHighlight.style.display = 'none';
+                            }
+
+                            // Resaltar destino de etiqueta si corresponde
+                            if (extra && extra.targetOffset !== undefined) {
+                                const targetOff = extra.targetOffset;
+                                const targetRow = Math.floor(targetOff / BYTES_PER_ROW);
+                                const targetCol = targetOff % BYTES_PER_ROW;
+                                const targetX = OFFSET_W + targetCol * (CELL_W + 1);
+                                const targetY = targetRow * CELL_H + 2;
+                                targetHoverHighlight.style.display = 'block';
+                                targetHoverHighlight.style.left = targetX + 'px';
+                                targetHoverHighlight.style.top = targetY + 'px';
+                                targetHoverHighlight.style.width = CELL_W + 'px';
+                                targetHoverHighlight.style.height = CELL_H + 'px';
+                            } else {
+                                targetHoverHighlight.style.display = 'none';
+                            }
+                            return;
+                        }
+                    }
+                    tip.style.display = 'none';
+                    hideHoverHighlights();
+                });
+
+                window.addEventListener('mouseup', () => {
+                    if (isSelecting) {
+                        isSelecting = false;
+                        stopAutoScroll();
+                        drawSelection();
+                    }
+                });
+
+                hexScrollArea.addEventListener('dblclick', handleLabelDoubleClick);
+                hexScrollArea.addEventListener('contextmenu', handleContextMenu);
+                document.addEventListener('click', (e) => {
+                    if (!ctxMenu.contains(e.target)) hideContextMenu();
+                });
+
+                ctxMenu.querySelectorAll('.ctx-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        if (!ctxMenuTarget || !rawBytes) return;
+                        const {
+                            indices
+                        } = ctxMenuTarget;
+                        if (!indices || indices.length === 0) return;
+                        const bytesSlice = indices.map(i => rawBytes[i]);
+                        const action = item.dataset.action;
+                        let text = '';
+                        if (action === 'copyHexSpaces') {
+                            text = bytesSlice.map(b => b.toString(16).padStart(2, '0')).join(' ');
+                        } else if (action === 'copyHexNoSpaces') {
+                            text = bytesSlice.map(b => b.toString(16).padStart(2, '0')).join('');
+                        } else if (action === 'copyText') {
+                            text = String.fromCharCode(...bytesSlice);
+                        }
+                        navigator.clipboard.writeText(text).then(() => {});
+                        hideContextMenu();
+                    });
+                });
+
+                hexScrollArea.addEventListener('scroll', () => {
+                    hideHoverHighlights();
+                    drawVisibleHex();
+                    drawSelection();
+                });
+            }
+
+            window.addEventListener('resize', () => setupVirtualHex());
+
+            function loadBytes(b) {
+                rawBytes = new Uint8Array(b);
+                classification = new Array(rawBytes.length).fill(0);
+                selectedIndices.clear();
+                selectionAnchor = null;
+                document.getElementById('outputCode').value = '';
+                setupVirtualHex();
+                saveToDB('binaryData', b.buffer.slice(0)).catch(console.error);
+            }
+
+            async function saveSascmToDB() {
+                const text = document.getElementById('sascmEditor').value;
+                await saveToDB('sascmConfig', text).catch(console.error);
+            }
+
+            function runDecompile() {
+                if (!rawBytes || !rawBytes.length) {
+                    alert('Carga un archivo o pega hex.');
+                    return;
+                }
+                applyConfigSilent();
+                classification = new Array(rawBytes.length).fill(0);
+                classification = classifyBytes(rawBytes, sascmDB);
+                let lines = decompileLinear(rawBytes, classification, sascmDB);
+                detectUnknownStrings(rawBytes, classification);
+                document.getElementById('outputCode').value = lines.join('\n');
+                setupVirtualHex();
+            }
+
+            function applyConfigSilent() {
+                sascmDB = parseSASCM(document.getElementById('sascmEditor').value);
+                let defs = {
+                    0x0002: {
+                        numParams: 1,
+                        formatStr: 'jump %1p%',
+                        formatParts: [{
+                            paramNum: 1,
+                            type: 'p'
+                        }]
+                    },
+                    0x004D: {
+                        numParams: 1,
+                        formatStr: 'else_jump %1p%',
+                        formatParts: [{
+                            paramNum: 1,
+                            type: 'p'
+                        }]
+                    },
+                    0x004E: {
+                        numParams: 0,
+                        formatStr: 'end_thread',
+                        formatParts: []
+                    },
+                    0x004F: {
+                        numParams: -1,
+                        formatStr: 'start_new_script %1p%',
+                        formatParts: [{
+                            paramNum: 1,
+                            type: 'p'
+                        }]
+                    },
+                    0x0050: {
+                        numParams: -1,
+                        formatStr: 'gosub %1p%',
+                        formatParts: [{
+                            paramNum: 1,
+                            type: 'p'
+                        }]
+                    },
+                    0x0051: {
+                        numParams: 0,
+                        formatStr: 'return',
+                        formatParts: []
+                    },
+                    0x00D7: {
+                        numParams: -1,
+                        formatStr: 'start_new_script %1p%',
+                        formatParts: [{
+                            paramNum: 1,
+                            type: 'p'
+                        }]
+                    },
+                    0x0150: {
+                        numParams: -1,
+                        formatStr: 'cleo_call %1p%',
+                        formatParts: [{
+                            paramNum: 1,
+                            type: 'p'
+                        }]
+                    },
+                    0x0151: {
+                        numParams: 0,
+                        formatStr: 'cleo_return',
+                        formatParts: []
+                    },
+                    0x0AB1: {
+                        numParams: -1,
+                        formatStr: 'cleo_call %1p%',
+                        formatParts: [{
+                            paramNum: 1,
+                            type: 'p'
+                        }]
+                    },
+                    0x0AB2: {
+                        numParams: -1,
+                        formatStr: 'cleo_return %1d%',
+                        formatParts: [{
+                            paramNum: 1,
+                            type: 'd'
+                        }]
+                    },
+                    0x0AA0: {
+                        numParams: -1,
+                        formatStr: 'gosub_if_false %1p%',
+                        formatParts: [{
+                            paramNum: 1,
+                            type: 'p'
+                        }]
+                    },
+                    0x0AA1: {
+                        numParams: 0,
+                        formatStr: 'return_if_false',
+                        formatParts: []
+                    },
+                    0x03A4: {
+                        numParams: -1,
+                        formatStr: 'thread %1s%',
+                        formatParts: [{
+                            paramNum: 1,
+                            type: 's'
+                        }]
+                    }
+                };
+                Object.entries(defs).forEach(([k, v]) => {
+                    if (!sascmDB[k]) sascmDB[k] = v;
+                });
+            }
+
+            window.applyConfig = async function() {
+                applyConfigSilent();
+                await saveSascmToDB();
+                alert('Configuración aplicada y guardada.');
+            };
+            window.toggleConfig = () => document.getElementById('configPanel').classList.toggle('open');
+            window.copyOutput = () => {
+                let ta = document.getElementById('outputCode');
+                ta.select();
+                document.execCommand('copy');
+            };
+            window.showHexModal = () => new bootstrap.Modal(document.getElementById('hexModal')).show();
+            window.loadHexFromModal = () => {
+                let hex = document.getElementById('hexTextarea').value.replace(/[^0-9A-Fa-f]/g, '');
+                if (hex.length % 2 !== 0) {
+                    alert('Hex impar.');
+                    return;
+                }
+                let bytes = [];
+                for (let i = 0; i < hex.length; i += 2) bytes.push(parseInt(hex.substring(i, i + 2), 16));
+                loadBytes(new Uint8Array(bytes));
+                bootstrap.Modal.getInstance(document.getElementById('hexModal')).hide();
+            };
+            window.runDecompile = runDecompile;
+            window.copySelection = copySelection;
+
+            document.getElementById('fileInput').addEventListener('change', e => {
+                if (e.target.files[0]) {
+                    let r = new FileReader();
+                    r.onload = ev => loadBytes(new Uint8Array(ev.target.result));
+                    r.readAsArrayBuffer(e.target.files[0]);
+                }
+            });
+            document.body.addEventListener('dragover', e => e.preventDefault());
+            document.body.addEventListener('drop', e => {
+                e.preventDefault();
+                if (e.dataTransfer.files[0]) {
+                    let r = new FileReader();
+                    r.onload = ev => loadBytes(new Uint8Array(ev.target.result));
+                    r.readAsArrayBuffer(e.dataTransfer.files[0]);
+                }
+            });
+
+            async function initApp() {
+                await openDB();
+                const savedConfig = await loadFromDB('sascmConfig');
+                if (savedConfig) {
+                    document.getElementById('sascmEditor').value = savedConfig;
+                } else {
+                    document.getElementById('sascmEditor').value = `; SASCM.ini
+[OPCODES]
+0000=0,NOP
+0001=1,wait %1d% ms
+0002=1,jump %1p%
+0003=1,shake_camera %1d%
+004D=1,else_jump %1p%
+004E=0,terminate_this_script
+004F=-1,start_new_script %1p%
+0050=-1,gosub %1p%
+0051=0,return
+009A=6,%6d% = create_actor_type %1d% model %2m% at %3d% %4d% %5d%
+00DF=1,actor %1d% driving
+03A4=-1,thread %1s%
+0AB1=-1,cleo_call %1p%
+0AB2=-1,cleo_return %1d%`;
+                }
+                applyConfigSilent();
+
+                const savedBinary = await loadFromDB('binaryData');
+                if (savedBinary) {
+                    loadBytes(new Uint8Array(savedBinary));
+                    document.getElementById('outputCode').value = 'Load perfect. Decompile your script';
+                } else {
+                    let ex = '00 00 01 00 04 00 02 00 01 FE FF FF FF'.replace(/[^0-9A-Fa-f]/g, '');
+                    let eb = [];
+                    for (let i = 0; i < ex.length; i += 2) eb.push(parseInt(ex.substring(i, i + 2), 16));
+                    loadBytes(new Uint8Array(eb));
+                    document.getElementById('outputCode').value = 'Upload any file CLEO.';
+                }
+
+                setupInteraction();
+            }
+
+            initApp().catch(console.error);
+        })();
+    </script>
+</body>
+
+</html>

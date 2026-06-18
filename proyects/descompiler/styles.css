@@ -1,0 +1,291 @@
+:root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --text: #e0e0e0;
+    --accent: #e94560;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'Consolas', monospace;
+    margin: 0;
+    min-height: 100vh;
+}
+
+.app-header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.app-header h1 {
+    font-size: 1.3rem;
+    margin: 0;
+    color: var(--accent);
+}
+
+.main-container {
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    height: calc(100vh - 130px);
+    min-height: 500px;
+}
+
+@media (max-width: 992px) {
+    .main-container {
+        flex-direction: column;
+        height: auto;
+    }
+}
+
+.panel {
+    background: var(--surface);
+    border-radius: 8px;
+    border: 1px solid #2a2a4a;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.panel-header {
+    background: var(--surface2);
+    padding: 8px 14px;
+    font-weight: bold;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #2a2a4a;
+}
+
+#hexPanel {
+    flex: 0 0 45%;
+    min-width: 350px;
+}
+
+#outputPanel {
+    flex: 1;
+    min-width: 300px;
+}
+
+#configPanel {
+    flex: 0 0 0;
+    min-width: 0;
+    transition: all 0.3s;
+}
+
+#configPanel.open {
+    flex: 0 0 40%;
+    min-width: 320px;
+}
+
+#hexContainer {
+    position: relative;
+    overflow: hidden;
+    flex: 1;
+    background: #0a0a16;
+}
+
+#hexScrollArea {
+    overflow: auto;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+#hexSpacer {
+    /* dimensiones por JS */
+}
+
+#hexCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+#selectionCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+#xrefCanvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+
+.hex-highlight {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    z-index: 5;
+    display: none;
+    box-sizing: border-box;
+}
+
+.target-flash {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(0, 255, 255, 0.7);
+    border: 2px solid #00ffff;
+    z-index: 10;
+    display: none;
+    box-sizing: border-box;
+    transition: opacity 0.2s;
+}
+
+.target-hover {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(0, 255, 255, 0.35);
+    border: 1px solid #00ffff;
+    z-index: 6;
+    display: none;
+    box-sizing: border-box;
+}
+
+#outputCode {
+    flex: 1;
+    margin: 0;
+    padding: 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: #0d0d1a;
+    color: #d4d4d4;
+    border: none;
+    resize: none;
+}
+
+.config-editor {
+    background: #0d0d1a;
+    color: #c0c0c0;
+    border: 1px solid #2a2a4a;
+    font-family: 'Consolas', monospace;
+    font-size: 0.78rem;
+    resize: vertical;
+    min-height: 180px;
+}
+
+.stat-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    margin: 1px;
+}
+
+.btn-accent {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0a16;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3a3a5a;
+    border-radius: 4px;
+}
+
+#ctxMenu {
+    display: none;
+    position: fixed;
+    background: #1a1a2e;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    z-index: 1000;
+    min-width: 180px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    padding: 4px 0;
+}
+
+#ctxMenu .ctx-item {
+    padding: 8px 16px;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+#ctxMenu .ctx-item:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+
+
+/* Añadir al body */
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;          /* ocupar toda la altura de la ventana */
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'Consolas', monospace;
+}
+
+/* La cabecera no debe encogerse */
+.app-header {
+    flex-shrink: 0;
+}
+
+/* Contenedor principal: ocupa el resto del espacio vertical */
+.main-container {
+    flex: 1;
+    min-height: 0;          /* importante para que el flex no desborde */
+    display: flex;
+    gap: 10px;
+    padding: 10px;
+    /* ya NO lleva height fijo ni min-height rígida */
+}
+
+/* Media query para pantallas pequeñas */
+@media (max-width: 992px) {
+    .main-container {
+        flex-direction: column;
+        min-height: 0;       /* refuerzo */
+    }
+
+    /* Todos los paneles se reparten el espacio vertical */
+    .panel {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    /* Eliminar anchos mínimos fijos para evitar scroll horizontal */
+    #hexPanel,
+    #outputPanel {
+        min-width: 0 !important;
+    }
+
+    /* El panel de configuración también se integra verticalmente */
+    #configPanel.open {
+        flex: 0 0 auto;
+        min-height: 200px;
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+}
