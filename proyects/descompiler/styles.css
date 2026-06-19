@@ -234,6 +234,18 @@ body {
     color: #fff;
 }
 
+#hexTooltip {
+    position:fixed;
+    background:rgb(26 26 46 / 90%);
+    border:1px solid var(--accent);
+    padding:6px 10px;
+    border-radius:4px;
+    font-size:0.75rem;
+    pointer-events:none;
+    z-index:999;
+    display:none;
+    white-space:nowrap;
+}
 
 
 /* Añadir al body */
