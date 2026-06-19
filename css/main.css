@@ -3,7 +3,6 @@
 	padding: 0;
 	/* outline: 1px solid cadetblue; */
 	scroll-behavior: smooth;
-	user-select: none;
 	-webkit-tap-highlight-color: transparent;
 	outline: none;
 }
@@ -105,6 +104,11 @@ body {
 
 #navbar h1 a{
 	color: white;
+
+	transition: color .04s linear;
+	&:hover{
+		color: #f1379e;
+	}
 }
 #navbar h1 a:hover{
 	text-decoration: none;
@@ -180,7 +184,7 @@ table {
 	width: 100%;
 	margin: .5rem 0;
 	border-spacing: 0;
-	border: 1px solid #30363d;
+	border: 1px solid #999814;
 	border-radius: 4px;
 	display: block;
 }
@@ -191,13 +195,13 @@ thead {
 
 th, td {
 	padding: .6rem;
-	border-left: #30363d 1px solid;
+	border-left: #999814 1px solid;
 	text-align: center;
 	width: 1%;
 }
 
 td {
-	border-top: #30363d 1px solid;
+	border-top: #999814 1px solid;
 }
 
 td:first-child, th:first-child {
@@ -217,7 +221,7 @@ h1, h2, h3, h4, h5, h6,
 h1, h2, h3 {
 	padding: 1rem 0 0.3em;
 	margin-bottom: 1rem;
-	border-bottom: #30363d 1px solid;
+	border-bottom: #999814 1px solid;
 }
 
 h4, h5, h6 {
@@ -244,6 +248,7 @@ b { font-weight: 700 }
 ins { 
 	text-decoration: dotted underline;
 	text-underline-position: under;
+	cursor: help;
 }
 
 dl, ol, ul { margin: 1rem calc(1.5rem + .5vw) }
@@ -367,7 +372,7 @@ input[type='text'], input[type='search'], input[type='number'], textarea {
 input[type='text'], input[type='search'], input[type='number'] {
 	&.update {
 		&:hover {
-			border-bottom: #30363d solid 1px;
+			border-bottom: #999814 solid 1px;
 		}
 		&:focus {
 			border-bottom: #dae800 solid 1px;
