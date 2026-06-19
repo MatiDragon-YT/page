@@ -73,9 +73,7 @@
         18: 6,
         19: 6
     };
-    const STATE_UNKNOWN = 0, STATE_READING = 1, STATE_OPCODE = 2, STATE_TYPE = 3, STATE_VALUE = 4, STATE_NULL = 5;
-    const STATE_STRING_OPCODE = 6, STATE_POSSIBLE_STRING = 7, STATE_STRING_UNKNOWN = 8, STATE_FLOAT = 9;
-    const STATE_LABEL_POINTER = 10;
+    const STATE_UNKNOWN = 0, STATE_READING = 1, STATE_OPCODE = 2, STATE_TYPE = 3, STATE_VALUE = 4, STATE_NULL = 5, STATE_STRING_OPCODE = 6, STATE_POSSIBLE_STRING = 7, STATE_STRING_UNKNOWN = 8, STATE_FLOAT = 9, STATE_LABEL_POINTER = 10, STATE_GVAR = 11, STATE_LVAR = 12, STATE_GVAR_STRING8 = 13, STATE_LVAR_STRING8 = 14, STATE_GVAR_STRING16 = 15, STATE_LVAR_STRING16 = 16, STATE_GVAR_ARRAY = 17, STATE_LVAR_ARRAY = 18, STATE_GVAR_ARRAY_STRING8 = 19, STATE_LVAR_ARRAY_STRING8 = 20, STATE_GVAR_ARRAY_STRING16 = 21, STATE_LVAR_ARRAY_STRING16 = 22;
     const CLASS_COLORS = {
         [STATE_UNKNOWN]: "transparent",
         [STATE_READING]: "#e6c84c",
@@ -87,7 +85,19 @@
         [STATE_POSSIBLE_STRING]: "#800000",
         [STATE_STRING_UNKNOWN]: "#ffff00",
         [STATE_FLOAT]: "#ff8c00",
-        [STATE_LABEL_POINTER]: "#d0a0ff"
+        [STATE_LABEL_POINTER]: "#d0a0ff",
+        [STATE_GVAR]: "#8fbc8f",
+        [STATE_LVAR]: "#20b2aa",
+        [STATE_GVAR_STRING8]: "#daa520",
+        [STATE_LVAR_STRING8]: "#cd853f",
+        [STATE_GVAR_STRING16]: "#b8860b",
+        [STATE_LVAR_STRING16]: "#d2691e",
+        [STATE_GVAR_ARRAY]: "#4682b4",
+        [STATE_LVAR_ARRAY]: "#5f9ea0",
+        [STATE_GVAR_ARRAY_STRING8]: "#6a5acd",
+        [STATE_LVAR_ARRAY_STRING8]: "#7b68ee",
+        [STATE_GVAR_ARRAY_STRING16]: "#6495ed",
+        [STATE_LVAR_ARRAY_STRING16]: "#4169e1"
     };
     const CLASS_BG = {
         [STATE_UNKNOWN]: "rgba(58,58,74,0.4)",
@@ -100,7 +110,19 @@
         [STATE_POSSIBLE_STRING]: "rgba(128,0,0,0.45)",
         [STATE_STRING_UNKNOWN]: "rgba(255,255,0,0.45)",
         [STATE_FLOAT]: "rgba(255,140,0,0.45)",
-        [STATE_LABEL_POINTER]: "rgba(100,100,100,0.7)"
+        [STATE_LABEL_POINTER]: "rgba(100,100,100,0.7)",
+        [STATE_GVAR]: "rgba(143,188,143,0.4)",
+        [STATE_LVAR]: "rgba(32,178,170,0.4)",
+        [STATE_GVAR_STRING8]: "rgba(218,165,32,0.4)",
+        [STATE_LVAR_STRING8]: "rgba(205,133,63,0.4)",
+        [STATE_GVAR_STRING16]: "rgba(184,134,11,0.4)",
+        [STATE_LVAR_STRING16]: "rgba(210,105,30,0.4)",
+        [STATE_GVAR_ARRAY]: "rgba(70,130,180,0.4)",
+        [STATE_LVAR_ARRAY]: "rgba(95,158,160,0.4)",
+        [STATE_GVAR_ARRAY_STRING8]: "rgba(106,90,205,0.4)",
+        [STATE_LVAR_ARRAY_STRING8]: "rgba(123,104,238,0.4)",
+        [STATE_GVAR_ARRAY_STRING16]: "rgba(100,149,237,0.4)",
+        [STATE_LVAR_ARRAY_STRING16]: "rgba(65,105,225,0.4)"
     };
     const ASCII_COLORS = {
         [STATE_UNKNOWN]: "#aaaaaa",
@@ -113,8 +135,99 @@
         [STATE_POSSIBLE_STRING]: "#800000",
         [STATE_STRING_UNKNOWN]: "#ffff00",
         [STATE_FLOAT]: "#ff8c00",
-        [STATE_LABEL_POINTER]: "#d0a0ff"
+        [STATE_LABEL_POINTER]: "#d0a0ff",
+        [STATE_GVAR]: "#8fbc8f",
+        [STATE_LVAR]: "#20b2aa",
+        [STATE_GVAR_STRING8]: "#daa520",
+        [STATE_LVAR_STRING8]: "#cd853f",
+        [STATE_GVAR_STRING16]: "#b8860b",
+        [STATE_LVAR_STRING16]: "#d2691e",
+        [STATE_GVAR_ARRAY]: "#4682b4",
+        [STATE_LVAR_ARRAY]: "#5f9ea0",
+        [STATE_GVAR_ARRAY_STRING8]: "#6a5acd",
+        [STATE_LVAR_ARRAY_STRING8]: "#7b68ee",
+        [STATE_GVAR_ARRAY_STRING16]: "#6495ed",
+        [STATE_LVAR_ARRAY_STRING16]: "#4169e1"
     };
+    const STATE_NAMES = {
+        [STATE_UNKNOWN]: "desconocido",
+        [STATE_READING]: "leyendo",
+        [STATE_OPCODE]: "opcode",
+        [STATE_TYPE]: "type_code",
+        [STATE_VALUE]: "int",
+        [STATE_NULL]: "terminal_null",
+        [STATE_STRING_OPCODE]: "string_opcode",
+        [STATE_POSSIBLE_STRING]: "posible_string",
+        [STATE_STRING_UNKNOWN]: "string_unknown",
+        [STATE_FLOAT]: "float",
+        [STATE_LABEL_POINTER]: "label_pointer",
+        [STATE_GVAR]: "gvar",
+        [STATE_LVAR]: "lvar",
+        [STATE_GVAR_STRING8]: "gvar_str8",
+        [STATE_LVAR_STRING8]: "lvar_str8",
+        [STATE_GVAR_STRING16]: "gvar_str16",
+        [STATE_LVAR_STRING16]: "lvar_str16",
+        [STATE_GVAR_ARRAY]: "gvar_array",
+        [STATE_LVAR_ARRAY]: "lvar_array",
+        [STATE_GVAR_ARRAY_STRING8]: "gvar_array_str8",
+        [STATE_LVAR_ARRAY_STRING8]: "lvar_array_str8",
+        [STATE_GVAR_ARRAY_STRING16]: "gvar_array_str16",
+        [STATE_LVAR_ARRAY_STRING16]: "lvar_array_str16"
+    };
+    function getValueState(tc) {
+        switch (tc) {
+          case 2:
+            return STATE_GVAR;
+
+          case 3:
+            return STATE_LVAR;
+
+          case 4:
+            return STATE_VALUE; // INT8
+
+          case 5:
+            return STATE_VALUE; // INT16
+
+          case 1:
+            return STATE_VALUE; // INT32 (aunque los punteros son STATE_LABEL_POINTER)
+
+          case 6:
+            return STATE_FLOAT;
+
+          case 10:
+            return STATE_GVAR_STRING8;
+
+          case 11:
+            return STATE_LVAR_STRING8;
+
+          case 16:
+            return STATE_GVAR_STRING16;
+
+          case 17:
+            return STATE_LVAR_STRING16;
+
+          case 7:
+            return STATE_GVAR_ARRAY;
+
+          case 8:
+            return STATE_LVAR_ARRAY;
+
+          case 12:
+            return STATE_GVAR_ARRAY_STRING8;
+
+          case 13:
+            return STATE_LVAR_ARRAY_STRING8;
+
+          case 18:
+            return STATE_GVAR_ARRAY_STRING16;
+
+          case 19:
+            return STATE_LVAR_ARRAY_STRING16;
+
+          default:
+            return STATE_VALUE;
+        }
+    }
     const FLOW_OPCODES = {
         2: "GOTO",
         77: "ELSE_FALSE_JUMP",
@@ -136,6 +249,7 @@
         3852: "SCRIPT_EVENT_AFTER"
     };
     let rawBytes = null, classification = null, sascmDB = {};
+    let currentScriptPrefix = "Noname";
     const OPCODE_LABEL_SUFFIX = {
         80: "subrutine_",
         2720: "subrutine_",
@@ -351,10 +465,9 @@
                                     offset: t
                                 });
                             }
-                        } else if (tc === 6) {
-                            mark(idx, vs, STATE_FLOAT);
                         } else {
-                            mark(idx, vs, STATE_VALUE);
+                            let st = getValueState(tc);
+                            mark(idx, vs, st);
                         }
                         idx += vs;
                     } else break;
@@ -387,10 +500,9 @@
                                     offset: t
                                 });
                             }
-                        } else if (tc === 6) {
-                            mark(idx, vs, STATE_FLOAT);
                         } else {
-                            mark(idx, vs, STATE_VALUE);
+                            let st = getValueState(tc);
+                            mark(idx, vs, st);
                         }
                         idx += vs;
                     } else break;
@@ -531,23 +643,23 @@
         let instructions = [], labelNames = {}, labelSuffixes = {};
         let currentLabelPrefix = "Noname";
         function applyLabelSuffix(opcode, off) {
-            if (off === 0 || off === 0xFFFFFFFF) return;
-            const baseOp = opcode & 0x7FFF;
+            if (off === 0 || off === 4294967295) return;
+            const baseOp = opcode & 32767;
             const suffix = OPCODE_LABEL_SUFFIX[baseOp];
             if (suffix && !labelSuffixes[off]) {
                 labelSuffixes[off] = suffix;
-                if (labelNames[off]) labelNames[off] = currentLabelPrefix + '_' + suffix + off.toString(16);
+                if (labelNames[off]) labelNames[off] = currentLabelPrefix + "_" + suffix + off.toString(16);
             }
         }
         function getLabel(off) {
             // Etiquetas especiales para punteros nulos
-            if (off === 0 || off === 0xFFFFFFFF) {
-                const name = 'offset_' + off.toString(16).padStart(8, '0').toUpperCase();
+            if (off === 0 || off === 4294967295) {
+                const name = "offset_" + off.toString(16).padStart(8, "0").toUpperCase();
                 labelNames[off] = name;
                 return name;
             }
             if (labelNames[off]) return labelNames[off];
-            let n = (labelSuffixes[off] ? currentLabelPrefix + '_' + labelSuffixes[off] + off.toString(16) : currentLabelPrefix + '_' + off.toString(16));
+            let n = labelSuffixes[off] ? currentLabelPrefix + "_" + labelSuffixes[off] + off.toString(16) : currentLabelPrefix + "_" + off.toString(16);
             labelNames[off] = n;
             return n;
         }
@@ -564,22 +676,22 @@
                 let raw = readU32LE(b, vo);
                 if (raw === null) return "?";
                 if (ft === "p") {
-    // --- Punteros nulos especiales (sin conversión a offset) ---
-    if (raw === 0xFFFFFFFF) {
-        return "@offset_0xFFFFFFFF";
-    }
-    if (raw === 0x00000000) {
-        return "@offset_0x00000000";
-    }
-    // ---------------------------------------------------------
-    let t = labelValueToOffset(raw);
-    if (t >= 0 && t < b.length) {
-        if (opNum !== undefined) applyLabelSuffix(opNum, t);
-        let l = getLabel(t);
-        return "@" + l;
-    }
-    return "@?";
-}
+                    // --- Punteros nulos especiales (sin conversión a offset) ---
+                    if (raw === 4294967295) {
+                        return "@offset_0xFFFFFFFF";
+                    }
+                    if (raw === 0) {
+                        return "@offset_0x00000000";
+                    }
+                    // ---------------------------------------------------------
+                    let t = labelValueToOffset(raw);
+                    if (t >= 0 && t < b.length) {
+                        if (opNum !== undefined) applyLabelSuffix(opNum, t);
+                        let l = getLabel(t);
+                        return "@" + l;
+                    }
+                    return "@?";
+                }
                 return String(readI32LE(b, vo));
             }
             if (tc === 4) return String(b[vo] > 127 ? b[vo] - 256 : b[vo]);
@@ -796,7 +908,10 @@
                 if (op === 932 && params.length > 0) {
                     let rawName = params[0].val.replace(/^['"`]|['"`]$/g, "");
                     let clean = rawName.replace(/[^a-zA-Z0-9_]/g, "_").toUpperCase();
-                    if (clean) currentLabelPrefix = clean;
+                    if (clean) {
+                        currentLabelPrefix = clean;
+                        currentScriptPrefix = clean; // <-- actualiza el prefijo global
+                    }
                 }
                 instructions.push({
                     offset: off,
@@ -863,13 +978,14 @@
             instructions: instructions
         };
     }
+    function isValueState(st) {
+        return st === STATE_VALUE || st === STATE_FLOAT || st >= STATE_GVAR && st <= STATE_LVAR_ARRAY_STRING16;
+    }
     // ========== REFERENCIAS CRUZADAS (variables y arrays) ==========
     function getVariableKeyAtOffset(offset) {
         if (!rawBytes || !classification) return null;
         const st = classification[offset];
-        if (st !== STATE_TYPE && st !== STATE_VALUE && st !== STATE_FLOAT && st !== STATE_LABEL_POINTER && st !== STATE_STRING_OPCODE && st !== STATE_STRING_UNKNOWN && st !== STATE_NULL) {
-            return null;
-        }
+        if (!isValueState(st) && st !== STATE_TYPE) return null;
         // Buscar el STATE_TYPE que inicia este parámetro
         let typeOff = offset;
         while (typeOff > 0 && classification[typeOff] !== STATE_TYPE) typeOff--;
@@ -1076,20 +1192,32 @@
     }
     function updateStats(bytes, cls) {
         let cnts = {};
-        for (let i = 0; i <= 10; i++) cnts[i] = 0;
+        for (let i = 0; i <= 22; i++) cnts[i] = 0;
         cls.forEach(v => cnts[v] = (cnts[v] || 0) + 1);
         document.getElementById("statsBar").innerHTML = `
-    <span class="stat-badge" style="background:#2a5a2a;color:#8fdf8f">Op:${cnts[STATE_OPCODE]}</span>
-    <span class="stat-badge" style="background:#2a2a5a;color:#8f8fdf">Tp:${cnts[STATE_TYPE]}</span>
-    <span class="stat-badge" style="background:#3a2a4a;color:#cfafdf">Val:${cnts[STATE_VALUE]}</span>
-    <span class="stat-badge" style="background:#4a2a2a;color:#df8f8f">Nul:${cnts[STATE_NULL]}</span>
-    <span class="stat-badge" style="background:#4a4a1a;color:#dfdf8f">Rd:${cnts[STATE_READING]}</span>
-    <span class="stat-badge" style="background:#3a3a3a;color:#aaa">Unk:${cnts[STATE_UNKNOWN]}</span>
-    <span class="stat-badge" style="background:#ff69b4;color:#fff">StrOp:${cnts[STATE_STRING_OPCODE]}</span>
-    <span class="stat-badge" style="background:#ffff00;color:#000">StrUnk:${cnts[STATE_STRING_UNKNOWN]}</span>
-    <span class="stat-badge" style="background:#800000;color:#fff">Str?:${cnts[STATE_POSSIBLE_STRING]}</span>
-    <span class="stat-badge" style="background:#ff8c00;color:#fff">Flt:${cnts[STATE_FLOAT]}</span>
-    <span class="stat-badge" style="background:#d0a0ff;color:#000">Lbl:${cnts[STATE_LABEL_POINTER]}</span>`;
+            <span class="stat-badge" style="background:#2a5a2a;color:#8fdf8f">Op:${cnts[STATE_OPCODE]}</span>
+            <span class="stat-badge" style="background:#2a2a5a;color:#8f8fdf">Tp:${cnts[STATE_TYPE]}</span>
+            <span class="stat-badge" style="background:#3a2a4a;color:#cfafdf">Val:${cnts[STATE_VALUE]}</span>
+            <span class="stat-badge" style="background:#4a2a2a;color:#df8f8f">Nul:${cnts[STATE_NULL]}</span>
+            <span class="stat-badge" style="background:#4a4a1a;color:#dfdf8f">Rd:${cnts[STATE_READING]}</span>
+            <span class="stat-badge" style="background:#3a3a3a;color:#aaa">Unk:${cnts[STATE_UNKNOWN]}</span>
+            <span class="stat-badge" style="background:#ff69b4;color:#fff">StrOp:${cnts[STATE_STRING_OPCODE]}</span>
+            <span class="stat-badge" style="background:#ffff00;color:#000">StrUnk:${cnts[STATE_STRING_UNKNOWN]}</span>
+            <span class="stat-badge" style="background:#800000;color:#fff">Str?:${cnts[STATE_POSSIBLE_STRING]}</span>
+            <span class="stat-badge" style="background:#ff8c00;color:#fff">Flt:${cnts[STATE_FLOAT]}</span>
+            <span class="stat-badge" style="background:#d0a0ff;color:#000">Lbl:${cnts[STATE_LABEL_POINTER]}</span>
+            <span class="stat-badge" style="background:#8fbc8f;color:#000">GV:${cnts[STATE_GVAR]}</span>
+            <span class="stat-badge" style="background:#20b2aa;color:#000">LV:${cnts[STATE_LVAR]}</span>
+            <span class="stat-badge" style="background:#daa520;color:#000">GS8:${cnts[STATE_GVAR_STRING8]}</span>
+            <span class="stat-badge" style="background:#cd853f;color:#000">LS8:${cnts[STATE_LVAR_STRING8]}</span>
+            <span class="stat-badge" style="background:#b8860b;color:#000">GS16:${cnts[STATE_GVAR_STRING16]}</span>
+            <span class="stat-badge" style="background:#d2691e;color:#000">LS16:${cnts[STATE_LVAR_STRING16]}</span>
+            <span class="stat-badge" style="background:#4682b4;color:#fff">GA:${cnts[STATE_GVAR_ARRAY]}</span>
+            <span class="stat-badge" style="background:#5f9ea0;color:#000">LA:${cnts[STATE_LVAR_ARRAY]}</span>
+            <span class="stat-badge" style="background:#6a5acd;color:#fff">GAS8:${cnts[STATE_GVAR_ARRAY_STRING8]}</span>
+            <span class="stat-badge" style="background:#7b68ee;color:#fff">LAS8:${cnts[STATE_LVAR_ARRAY_STRING8]}</span>
+            <span class="stat-badge" style="background:#6495ed;color:#000">GAS16:${cnts[STATE_GVAR_ARRAY_STRING16]}</span>
+            <span class="stat-badge" style="background:#4169e1;color:#fff">LAS16:${cnts[STATE_LVAR_ARRAY_STRING16]}</span>`;
     }
     function getByteIndexFromEvent(e) {
         const rect = hexContainer.getBoundingClientRect();
@@ -1261,10 +1389,15 @@
         if (st === STATE_OPCODE) {
             let start = offset;
             while (start > 0 && classification[start - 1] === STATE_OPCODE) start--;
+            // Los opcodes siempre comienzan en offset par
+            if (start % 2 !== 0) return null;
             if (start + 1 >= rawBytes.length) return null;
             const op = readU16LE(rawBytes, start);
             if (op === null) return null;
+            // Solo procesamos si el opcode es conocido (definición o flujo)
             const def = getDefinition(op, sascmDB);
+            if (!def && !FLOW_OPCODES[op]) return null; // <-- evita falsos positivos
+            // El resto del código de previsualización se mantiene igual...
             const opHex = op.toString(16).toUpperCase().padStart(4, "0");
             let previewLine = "";
             if (def && def.formatStr) {
@@ -1283,10 +1416,33 @@
                                 let fp = def.formatParts.find(p => p.paramNum === i + 1);
                                 if (fp) ft = fp.type;
                             }
-                            let valStr = tc === 1 && vs === 4 && ft === "p" ? (() => {
+                            let valStr;
+                            if (tc === 1 && vs === 4 && ft === "p") {
                                 let raw = readU32LE(rawBytes, idx);
-                                return raw !== null ? "@offset_" + labelValueToOffset(raw) : "?";
-                            })() : fmtValBasic(tc, idx, vs);
+                                if (raw !== null) {
+                                    // Punteros nulos especiales
+                                    if (raw === 4294967295) {
+                                        valStr = "@offset_0xFFFFFFFF";
+                                    } else if (raw === 0) {
+                                        valStr = "@offset_0x00000000";
+                                    } else {
+                                        let target = labelValueToOffset(raw);
+                                        // Obtener el sufijo según el opcode que invoca
+                                        let suffix = OPCODE_LABEL_SUFFIX[op & 32767] || "";
+                                        let labelName;
+                                        if (suffix) {
+                                            labelName = suffix + target.toString(16);
+                                        } else {
+                                            labelName = "offset_" + target.toString(16);
+                                        }
+                                        valStr = "@" + labelName;
+                                    }
+                                } else {
+                                    valStr = "?";
+                                }
+                            } else {
+                                valStr = fmtValBasic(tc, idx, vs);
+                            }
                             params.push({
                                 val: valStr
                             });
@@ -1328,26 +1484,27 @@
             return {
                 text: previewLine
             };
-        } else if (st === STATE_FLOAT) {
-            let start = offset;
-            while (start > 0 && classification[start - 1] === STATE_FLOAT) start--;
-            if (start + 3 >= rawBytes.length) return null;
-            let f = readFloat32LE(rawBytes, start);
-            return {
-                text: f !== null ? f.toFixed(6) : "?"
-            };
-        } else if (st === STATE_VALUE) {
-            let start = offset;
-            while (start > 0 && classification[start - 1] === STATE_VALUE) start--;
-            if (start === 0) return null;
-            let tc = rawBytes[start - 1];
-            if (tc === undefined) return null;
-            let vs = tc === 14 && start < rawBytes.length ? 1 + rawBytes[start] : TYPE_SIZE[tc];
-            if (vs > 0 && start + vs <= rawBytes.length) {
-                return {
-                    text: fmtValBasic(tc, start, vs)
-                };
+        } else if (isValueState(st)) {
+            // Buscar el STATE_TYPE que inicia este parámetro
+            let typeOff = offset;
+            while (typeOff > 0 && classification[typeOff] !== STATE_TYPE) typeOff--;
+            if (classification[typeOff] === STATE_TYPE) {
+                let tc = rawBytes[typeOff];
+                if (tc === undefined) return null;
+                let vs;
+                if (tc === 14) {
+                    if (typeOff + 1 >= rawBytes.length) return null;
+                    vs = 1 + rawBytes[typeOff + 1];
+                } else {
+                    vs = TYPE_SIZE[tc];
+                }
+                if (vs > 0 && typeOff + 1 + vs <= rawBytes.length) {
+                    return {
+                        text: fmtValBasic(tc, typeOff + 1, vs)
+                    };
+                }
             }
+            return null;
         } else if (st === STATE_LABEL_POINTER) {
             let start = offset;
             while (start > 0 && classification[start - 1] === STATE_LABEL_POINTER) start--;
@@ -1356,7 +1513,7 @@
             if (raw === null) return null;
             let target = labelValueToOffset(raw);
             let direction = target > start ? "→" : "←";
-            let arrowText = `${direction} ${target.toString(16)}`;
+            let arrowText = `${direction} 0x${target.toString(16).padStart(8, "0").toUpperCase()}`;
             return {
                 text: `Offset ${arrowText}`,
                 targetOffset: target
@@ -1542,10 +1699,10 @@
                 const idx2 = row * BYTES_PER_ROW + col;
                 if (idx2 < rawBytes.length) {
                     const st = classification ? classification[idx2] : 0;
-                    const sts = [ "desconocido", "leyendo", "opcode", "type_code", "value", "terminal_null", "string_opcode", "posible_string", "string_unknown", "float", "label_pointer" ];
+                    const stateName = STATE_NAMES[st] || "?";
                     const hex = rawBytes[idx2].toString(16).padStart(2, "0");
                     const ascii = rawBytes[idx2] >= 32 && rawBytes[idx2] < 127 ? String.fromCharCode(rawBytes[idx2]) : ".";
-                    let tipText = `Offset:0x${idx2.toString(16).padStart(6, "0")} | ${hex} | ${ascii} | ${sts[st]}`;
+                    let tipText = `Offset:0x${idx2.toString(16).padStart(6, "0")} | ${hex} | ${ascii} | ${stateName}`;
                     const extra = getValueInfo(idx2);
                     if (extra && extra.text) tipText += "\n" + extra.text;
                     tip.style.display = "block";
@@ -1659,35 +1816,31 @@
         await saveToDB("sascmConfig", text).catch(console.error);
     }
     function runDecompile() {
-    if (!rawBytes || !rawBytes.length) {
-        alert('Carga un archivo o pega hex.');
-        return;
-    }
-    applyConfigSilent();
-    // Clasificación inicial (opcodes, tipos, valores...)
-    classification = new Array(rawBytes.length).fill(0);
-    classification = classifyBytes(rawBytes, sascmDB);
-    
-    // Descompilar y obtener instrucciones (también marca strings válidos en cls)
-    const result = decompileLinear(rawBytes, classification, sascmDB);
-    
-    // --- NUEVO ORDEN: primero anulamos los bytes de instrucciones inválidas ---
-    if (result.instructions) {
-        for (const inst of result.instructions) {
-            if (inst.isUnknown) {
-                for (let i = inst.offset; i < inst.offset + inst.byteLen && i < classification.length; i++) {
-                    classification[i] = STATE_UNKNOWN;
+        if (!rawBytes || !rawBytes.length) {
+            alert("Carga un archivo o pega hex.");
+            return;
+        }
+        applyConfigSilent();
+        // Clasificación inicial (opcodes, tipos, valores...)
+        classification = new Array(rawBytes.length).fill(0);
+        classification = classifyBytes(rawBytes, sascmDB);
+        // Descompilar y obtener instrucciones (también marca strings válidos en cls)
+        const result = decompileLinear(rawBytes, classification, sascmDB);
+        // --- NUEVO ORDEN: primero anulamos los bytes de instrucciones inválidas ---
+        if (result.instructions) {
+            for (const inst of result.instructions) {
+                if (inst.isUnknown) {
+                    for (let i = inst.offset; i < inst.offset + inst.byteLen && i < classification.length; i++) {
+                        classification[i] = STATE_UNKNOWN;
+                    }
                 }
             }
         }
+        // --- DESPUÉS detectamos cadenas en las zonas que han quedado como UNKNOWN ---
+        detectUnknownStrings(rawBytes, classification);
+        document.getElementById("outputCode").value = result.lines.join("\n");
+        setupVirtualHex(); // ahora verás los colores de cadenas en los bloques undefined
     }
-    
-    // --- DESPUÉS detectamos cadenas en las zonas que han quedado como UNKNOWN ---
-    detectUnknownStrings(rawBytes, classification);
-    
-    document.getElementById('outputCode').value = result.lines.join('\n');
-    setupVirtualHex(); // ahora verás los colores de cadenas en los bloques undefined
-}
     function applyConfigSilent() {
         sascmDB = parseSASCM(document.getElementById("sascmEditor").value);
         let defs = {
@@ -1791,13 +1944,16 @@
                     type: "s"
                 } ]
             },
-            0x0DD0: {
+            3536: {
                 numParams: 2,
-                formatStr: '%1d% = get_label_addr %2p%',
-                formatParts: [
-                    { paramNum: 1, type: 'd' },
-                    { paramNum: 2, type: 'p' }
-                ]
+                formatStr: "%1d% = get_label_addr %2p%",
+                formatParts: [ {
+                    paramNum: 1,
+                    type: "d"
+                }, {
+                    paramNum: 2,
+                    type: "p"
+                } ]
             }
         };
         Object.entries(defs).forEach(([ k, v ]) => {
