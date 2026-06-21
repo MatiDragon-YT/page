@@ -1,4 +1,8 @@
 (function() {
+    const SETTINGS = {
+        ADD_OFFSET_AT_LABELS : false,
+    }
+
     // ========== IndexedDB Persistence ==========
     const DB_NAME = "SCMDecompiler";
     const DB_VERSION = 1;
@@ -280,10 +284,6 @@
     const asciiHighlight = document.createElement("div");
     asciiHighlight.className = "hex-highlight";
     hexScrollArea.appendChild(asciiHighlight);
-    const opcodePairHighlight = document.createElement("div");
-    opcodePairHighlight.className = "hex-highlight";
-    opcodePairHighlight.style.background = "rgba(76,175,132,0.5)";
-    hexScrollArea.appendChild(opcodePairHighlight);
     const targetFlash = document.createElement("div");
     targetFlash.className = "target-flash";
     hexScrollArea.appendChild(targetFlash);
@@ -298,6 +298,7 @@
     let xrefIndices = new Set();
     const ctxMenu = document.getElementById("ctxMenu");
     let ctxMenuTarget = null;
+
     // ========== FUNCIONES DE ESCAPE DE CADENAS ==========
     function escapeStringForSCM(str, quoteType) {
         let out = "";
@@ -334,6 +335,36 @@
             }
         }
         return out;
+    }
+
+    /**
+     * Convierte un número/string en una cadena con formato de float:
+     * - Enteros → "X.0"
+     * - Decimales → recorta ceros finales, pero mantiene al menos un dígito tras el punto.
+     * @param {number|string} value
+     * @returns {string}
+     */
+    function formatFloat(value) {
+        // Acepta strings numéricos o números
+        const num = Number(value);
+        if (isNaN(num)) return "NaN";
+
+        // Caso entero exacto
+        if (Number.isInteger(num)) {
+            return num.toString() + ".0";
+        }
+
+        // Convertir a cadena sin notación exponencial (hasta 15 decimales significativos)
+        let str = num.toFixed(15);
+        // Quitar ceros finales después del punto
+        str = str.replace(/\.?0+$/, '');
+        // Si después de limpiar no tiene punto (era un entero con .000...), añadimos .0
+        if (!str.includes('.')) {
+            str += '.0';
+        }
+        // Si el número es negativo pequeño y se convirtió en "-0.0", lo normalizamos a "0.0"
+        if (str === '-0.0') str = '0.0';
+        return str;
     }
     // ============================================================
     // UTILIDADES DE LECTURA BINARIA
@@ -677,10 +708,10 @@
                 if (raw === null) return "?";
                 if (ft === "p") {
                     // --- Punteros nulos especiales (sin conversión a offset) ---
-                    if (raw === 4294967295) {
+                    if (raw === 0x00000000) {
                         return "@offset_0xFFFFFFFF";
                     }
-                    if (raw === 0) {
+                    if (raw === 0xFFFFFFFF) {
                         return "@offset_0x00000000";
                     }
                     // ---------------------------------------------------------
@@ -698,7 +729,7 @@
             if (tc === 5) return String(readI16LE(b, vo));
             if (tc === 6 && vs === 4) {
                 let f = readFloat32LE(b, vo);
-                return f !== null ? parseFloat(f.toFixed(6)).toString() : "?";
+                return f !== null ? formatFloat(f) : "?";
             }
             if (tc === 2) {
                 let v = readU16LE(b, vo);
@@ -938,11 +969,12 @@
                 off++;
             }
         }
+        
         let finalLines = [], used = new Set();
         for (let inst of instructions) {
             if (!inst.isUnknown) {
                 if (labelNames[inst.offset] && !used.has(inst.offset)) {
-                    finalLines.push(`/* ${inst.offset.toString(16)} */ :` + labelNames[inst.offset]);
+                    finalLines.push((SETTINGS.ADD_OFFSET_AT_LABELS ? `/* ${inst.offset.toString(16)} */ :` : ':') + labelNames[inst.offset]);
                     used.add(inst.offset);
                 }
                 for (let l of inst.lines) finalLines.push(l);
@@ -957,7 +989,7 @@
                         finalLines.push(`/* ${cur.toString(16)} */ <undefined> ` + unk.join(" ") + " </undefined>");
                     }
                     if (!used.has(lo)) {
-                        finalLines.push(`/* ${lo.toString(16)} */ :` + labelNames[lo]);
+                        finalLines.push((SETTINGS.ADD_OFFSET_AT_LABELS ? `/* ${lo.toString(16)} */ :` : ':') + labelNames[lo]);
                         used.add(lo);
                     }
                     cur = lo;
@@ -971,7 +1003,8 @@
         }
         let rem = Object.keys(labelNames).map(Number).filter(o => !used.has(o)).sort((a, b) => a - b);
         for (let o of rem) {
-            finalLines.push(`/* ${o.toString(16)} */ :` + labelNames[o]);
+            // si no se pudo insertar, no la queremos...
+            //finalLines.push(`/* ${o.toString(16)} CLEAR_THIS_LINE!! */ :` + labelNames[o]);
         }
         return {
             lines: finalLines,
@@ -1243,7 +1276,6 @@
     function hideHoverHighlights() {
         hexHighlight.style.display = "none";
         asciiHighlight.style.display = "none";
-        opcodePairHighlight.style.display = "none";
         targetHoverHighlight.style.display = "none";
     }
     function getSelectedSortedIndices() {
@@ -1327,7 +1359,7 @@
         if (tc === 5) return String(readI16LE(rawBytes, off));
         if (tc === 6 && vs === 4) {
             let f = readFloat32LE(rawBytes, off);
-            return f !== null ? f.toFixed(6) : "?";
+            return f !== null ? formatFloat(f) : "?";
         }
         if (tc === 2) {
             let v = readU16LE(rawBytes, off);
@@ -1383,107 +1415,150 @@
         for (let i = off; i < off + vs && i < rawBytes.length; i++) hex += rawBytes[i].toString(16).padStart(2, "0").toUpperCase();
         return "0x" + hex;
     }
+
     function getValueInfo(offset) {
         if (!rawBytes || !classification) return null;
         const st = classification[offset];
         if (st === STATE_OPCODE) {
+            // ---- NUEVO ALGORITMO ----
+            // 1. Encontrar el inicio de la secuencia consecutiva de STATE_OPCODE hacia atrás
             let start = offset;
-            while (start > 0 && classification[start - 1] === STATE_OPCODE) start--;
-            // Los opcodes siempre comienzan en offset par
-            if (start % 2 !== 0) return null;
-            if (start + 1 >= rawBytes.length) return null;
-            const op = readU16LE(rawBytes, start);
+            while (start > 0 && classification[start - 1] === STATE_OPCODE) {
+                start--;
+            }
+            // 2. Encontrar el fin de la secuencia hacia adelante
+            let end = start;
+            while (end < classification.length && classification[end] === STATE_OPCODE) {
+                end++;
+            }
+            // 3. Calcular el índice relativo dentro de la secuencia
+            const relOffset = offset - start;
+            // 4. Determinar el inicio del opcode (par de 2 bytes) que contiene el byte actual
+            const opcodeStart = start + (relOffset - (relOffset % 2));
+            if (opcodeStart + 1 >= end) return null; // el opcode está incompleto
+
+            // 5. Leer el opcode de 16 bits
+            const op = readU16LE(rawBytes, opcodeStart);
             if (op === null) return null;
-            // Solo procesamos si el opcode es conocido (definición o flujo)
+
             const def = getDefinition(op, sascmDB);
-            if (!def && !FLOW_OPCODES[op]) return null; // <-- evita falsos positivos
-            // El resto del código de previsualización se mantiene igual...
-            const opHex = op.toString(16).toUpperCase().padStart(4, "0");
-            let previewLine = "";
+            const opHex = op.toString(16).toUpperCase().padStart(4, '0');
+            let previewLine = '';
+            let isError = false; // <-- para fondo rojo si hay problemas
+
+            // Intentar formatear con la definición, si existe
             if (def && def.formatStr) {
-                let idx = start + 2;
+                let idx = opcodeStart + 2;
                 let params = [];
+                let paramError = false;
                 if (def.numParams >= 0) {
                     for (let i = 0; i < def.numParams; i++) {
-                        if (idx >= rawBytes.length) break;
+                        if (idx >= rawBytes.length) { paramError = true; break; }
                         let tc = rawBytes[idx];
-                        if (tc === 0) break;
+                        if (tc === 0) {
+                            idx++;
+                            // Si se esperaban más parámetros, es inválido
+                            if (i + 1 < def.numParams) paramError = true;
+                            break;
+                        }
                         idx++;
-                        let vs = tc === 14 && idx < rawBytes.length ? 1 + rawBytes[idx] : TYPE_SIZE[tc];
+                        let vs = (tc === 14 && idx < rawBytes.length) ? 1 + rawBytes[idx] : TYPE_SIZE[tc];
                         if (vs > 0 && idx + vs <= rawBytes.length) {
-                            let ft = "d";
+                            let ft = 'd';
                             if (def.formatParts) {
                                 let fp = def.formatParts.find(p => p.paramNum === i + 1);
                                 if (fp) ft = fp.type;
                             }
                             let valStr;
-                            if (tc === 1 && vs === 4 && ft === "p") {
+                            if (tc === 1 && vs === 4 && ft === 'p') {
                                 let raw = readU32LE(rawBytes, idx);
                                 if (raw !== null) {
-                                    // Punteros nulos especiales
-                                    if (raw === 4294967295) {
-                                        valStr = "@offset_0xFFFFFFFF";
-                                    } else if (raw === 0) {
-                                        valStr = "@offset_0x00000000";
+                                    if (raw === 0xFFFFFFFF) {
+                                        valStr = '@offset_0x00000000';
+                                    } else if (raw === 0x00000000) {
+                                        valStr = '@offset_0xFFFFFFFF';
                                     } else {
                                         let target = labelValueToOffset(raw);
-                                        // Obtener el sufijo según el opcode que invoca
-                                        let suffix = OPCODE_LABEL_SUFFIX[op & 32767] || "";
-                                        let labelName;
-                                        if (suffix) {
-                                            labelName = suffix + target.toString(16);
-                                        } else {
-                                            labelName = "offset_" + target.toString(16);
-                                        }
-                                        valStr = "@" + labelName;
+                                        let suffix = OPCODE_LABEL_SUFFIX[op & 0x7FFF] || '';
+                                        let labelName = suffix ? suffix + target.toString(16) : 'offset_' + target.toString(16);
+                                        valStr = '@' + labelName;
                                     }
                                 } else {
-                                    valStr = "?";
+                                    valStr = '?';
                                 }
                             } else {
                                 valStr = fmtValBasic(tc, idx, vs);
                             }
-                            params.push({
-                                val: valStr
-                            });
+                            // Detectar valores inválidos (?, hex crudo, etc.)
+                            if (valStr === '?' || valStr === '@?' || (typeof valStr === 'string' && valStr.startsWith('0x'))) {
+                                paramError = true;
+                            }
+                            params.push({ val: valStr });
                             idx += vs;
-                        } else break;
+                        } else {
+                            paramError = true;
+                            break;
+                        }
                     }
                 } else if (def.numParams === -1) {
                     let cnt = 0;
                     while (idx < rawBytes.length) {
                         let tc = rawBytes[idx];
-                        if (tc === 0) break;
+                        if (tc === 0) { idx++; break; }
                         idx++;
                         cnt++;
-                        let vs = tc === 14 && idx < rawBytes.length ? 1 + rawBytes[idx] : TYPE_SIZE[tc];
+                        let vs = (tc === 14 && idx < rawBytes.length) ? 1 + rawBytes[idx] : TYPE_SIZE[tc];
                         if (vs > 0 && idx + vs <= rawBytes.length) {
-                            let ft = "d";
+                            let ft = 'd';
                             if (def.formatParts) {
                                 let fp = def.formatParts.find(p => p.paramNum === cnt);
                                 if (fp) ft = fp.type;
                             }
-                            let valStr = tc === 1 && vs === 4 && ft === "p" ? (() => {
+                            let valStr = (tc === 1 && vs === 4 && ft === 'p') ? (() => {
                                 let raw = readU32LE(rawBytes, idx);
-                                return raw !== null ? "@offset_" + labelValueToOffset(raw) : "?";
+                                return raw !== null ? '@offset_' + labelValueToOffset(raw) : '?';
                             })() : fmtValBasic(tc, idx, vs);
-                            params.push({
-                                val: valStr
-                            });
+                            if (valStr === '?' || valStr === '@?' || (typeof valStr === 'string' && valStr.startsWith('0x'))) {
+                                paramError = true;
+                            }
+                            params.push({ val: valStr });
                             idx += vs;
-                        } else break;
+                        } else {
+                            paramError = true;
+                            break;
+                        }
                     }
                 }
-                previewLine = opHex + ": " + def.formatStr.replace(/%(\d+)([bdpomgxsh])%/g, (match, numStr) => {
-                    let i = parseInt(numStr) - 1;
-                    return i >= 0 && i < params.length ? params[i].val : "?";
-                });
+                if (paramError) {
+                    isError = true;
+                    previewLine = opHex + ': ' + def.formatStr.replace(/%(\d+)([bdpomgxsh])%/g, (match, numStr) => {
+                        let i = parseInt(numStr) - 1;
+                        return (i >= 0 && i < params.length) ? params[i].val : '?';
+                    });
+                    if (previewLine.includes('?')) {
+                        // Reemplazar los ? por algo más visible
+                        previewLine = previewLine.replace(/\?/g, '???');
+                    }
+                } else {
+                    previewLine = opHex + ': ' + def.formatStr.replace(/%(\d+)([bdpomgxsh])%/g, (match, numStr) => {
+                        let i = parseInt(numStr) - 1;
+                        return (i >= 0 && i < params.length) ? params[i].val : '';
+                    });
+                }
             } else {
-                previewLine = opHex + ": <opcode desconocido>";
+                // Sin definición: mostramos el opcode y los bytes siguientes como hexadecimal
+                previewLine = opHex + ': <sin definición>';
+                let extra = [];
+                for (let i = opcodeStart + 2; i < opcodeStart + 8 && i < rawBytes.length; i++) {
+                    extra.push(rawBytes[i].toString(16).padStart(2, '0').toUpperCase());
+                }
+                if (extra.length > 0) {
+                    previewLine += ' [' + extra.join(' ') + '...]';
+                }
+                isError = true; // consideramos error para que se resalte
             }
-            return {
-                text: previewLine
-            };
+
+            return { text: previewLine, isError: isError };
         } else if (isValueState(st)) {
             // Buscar el STATE_TYPE que inicia este parámetro
             let typeOff = offset;
@@ -1704,11 +1779,21 @@
                     const ascii = rawBytes[idx2] >= 32 && rawBytes[idx2] < 127 ? String.fromCharCode(rawBytes[idx2]) : ".";
                     let tipText = `Offset:0x${idx2.toString(16).padStart(6, "0")} | ${hex} | ${ascii} | ${stateName}`;
                     const extra = getValueInfo(idx2);
-                    if (extra && extra.text) tipText += "\n" + extra.text;
-                    tip.style.display = "block";
-                    tip.style.left = e.clientX + 16 + "px";
-                    tip.style.top = e.clientY - 30 + "px";
-                    tip.innerHTML = tipText.replace(/\n/g, "<br>");
+if (extra && extra.text) {
+    tipText += "\n" + extra.text;
+    // Fondo rojo si hay error
+    if (extra.isError) {
+        tip.style.background = "#8b0000"; // rojo oscuro
+    } else {
+        tip.style.background = "#1a1a2e"; // color normal
+    }
+} else {
+    tip.style.background = "#1a1a2e";
+}
+tip.style.display = "block";
+tip.style.left = e.clientX + 16 + "px";
+tip.style.top = e.clientY - 30 + "px";
+tip.innerHTML = tipText.replace(/\n/g, "<br>");
                     const hexX = OFFSET_W + col * (CELL_W + 1);
                     const hexY = row * CELL_H + 2;
                     hexHighlight.style.display = "block";
@@ -1723,24 +1808,7 @@
                     asciiHighlight.style.top = asciiY + "px";
                     asciiHighlight.style.width = ASCII_CELL_W + "px";
                     asciiHighlight.style.height = CELL_H + "px";
-                    if (classification && classification[idx2] === STATE_OPCODE) {
-                        const pairIdx = idx2 % 2 === 0 ? idx2 + 1 : idx2 - 1;
-                        if (pairIdx >= 0 && pairIdx < rawBytes.length && classification[pairIdx] === STATE_OPCODE) {
-                            const pairCol = pairIdx % BYTES_PER_ROW;
-                            const pairRow = Math.floor(pairIdx / BYTES_PER_ROW);
-                            const pairHexX = OFFSET_W + pairCol * (CELL_W + 1);
-                            const pairHexY = pairRow * CELL_H + 2;
-                            opcodePairHighlight.style.display = "block";
-                            opcodePairHighlight.style.left = pairHexX + "px";
-                            opcodePairHighlight.style.top = pairHexY + "px";
-                            opcodePairHighlight.style.width = CELL_W + "px";
-                            opcodePairHighlight.style.height = CELL_H + "px";
-                        } else {
-                            opcodePairHighlight.style.display = "none";
-                        }
-                    } else {
-                        opcodePairHighlight.style.display = "none";
-                    }
+                    
                     if (extra && extra.targetOffset !== undefined) {
                         const targetOff = extra.targetOffset;
                         const targetRow = Math.floor(targetOff / BYTES_PER_ROW);
@@ -1815,6 +1883,71 @@
         const text = document.getElementById("sascmEditor").value;
         await saveToDB("sascmConfig", text).catch(console.error);
     }
+
+    /**
+     * Reemplaza las referencias a etiquetas no definidas usando un prefijo dado.
+     * @param {string} code - Código descompilado.
+     * @param {string} prefix - Prefijo para las nuevas etiquetas.
+     * @returns {string} Código con las referencias corregidas.
+     */
+    function resolveUndefinedLabels(code, prefix = "offset_", subfix_ = "") {
+
+
+        //return code; // Esta linea se borrara cuando ya no se generen referencias (:label_xx) en lugares incorrectos
+
+
+        // 1. Encontrar todas las etiquetas definidas (:nombre)
+        const definedLabels = new Set();
+        const defRegex = /:\s*([A-Za-z0-9_]+)/g;
+        let match;
+        while ((match = defRegex.exec(code)) !== null) {
+            definedLabels.add(match[1]);
+        }
+
+        // 2. Encontrar todas las referencias a etiquetas (@nombre)
+        const references = [];
+        const refRegex = /@([A-Za-z0-9_]+)/g;
+        while ((match = refRegex.exec(code)) !== null) {
+            references.push({
+                start: match.index,
+                end: match.index + match[0].length,
+                full: match[0],
+                name: match[1]
+            });
+        }
+
+        // 3. Filtrar las referencias que NO están definidas
+        const unresolved = references.filter(ref => !definedLabels.has(ref.name));
+        if (unresolved.length === 0) return code; // nada que corregir
+
+        // 4. Función auxiliar para extraer el offset hexadecimal de un nombre de etiqueta
+        function extractOffset(label) {
+            const lastUnderscore = label.lastIndexOf('_');
+            if (lastUnderscore === -1) return null;
+            let offsetPart = label.substring(lastUnderscore + 1);
+            // Quitar posible prefijo "0x" (casos especiales como offset_0x00000000)
+            if (offsetPart.startsWith('0x') || offsetPart.startsWith('0X')) {
+                offsetPart = offsetPart.substring(2);
+            }
+            // Validar que sea una cadena hexadecimal
+            return /^[0-9A-Fa-f]+$/.test(offsetPart) ? offsetPart.toUpperCase() : null;
+        }
+
+        // 5. Reemplazar de atrás hacia adelante para no alterar los índices
+        let result = code;
+        // Ordenar por inicio descendente
+        unresolved.sort((a, b) => b.start - a.start);
+        for (const ref of unresolved) {
+            const offsetHex = extractOffset(ref.name);
+            const newLabel = offsetHex 
+                ? `@${prefix}${offsetHex}${subfix_}` 
+                : `@${prefix}unknown${subfix_}`; // fallback si no se pudo extraer el offset
+            result = result.substring(0, ref.start) + newLabel + result.substring(ref.end);
+        }
+
+        return result;
+    }
+
     function runDecompile() {
         if (!rawBytes || !rawBytes.length) {
             alert("Carga un archivo o pega hex.");
@@ -1824,22 +1957,15 @@
         // Clasificación inicial (opcodes, tipos, valores...)
         classification = new Array(rawBytes.length).fill(0);
         classification = classifyBytes(rawBytes, sascmDB);
-        // Descompilar y obtener instrucciones (también marca strings válidos en cls)
+
+        // Descompilar y obtener instrucciones
         const result = decompileLinear(rawBytes, classification, sascmDB);
-        // --- NUEVO ORDEN: primero anulamos los bytes de instrucciones inválidas ---
-        if (result.instructions) {
-            for (const inst of result.instructions) {
-                if (inst.isUnknown) {
-                    for (let i = inst.offset; i < inst.offset + inst.byteLen && i < classification.length; i++) {
-                        classification[i] = STATE_UNKNOWN;
-                    }
-                }
-            }
-        }
-        // --- DESPUÉS detectamos cadenas en las zonas que han quedado como UNKNOWN ---
-        detectUnknownStrings(rawBytes, classification);
-        document.getElementById("outputCode").value = result.lines.join("\n");
-        setupVirtualHex(); // ahora verás los colores de cadenas en los bloques undefined
+
+        // La clasificación NO se modifica; se usa para la vista Hex y tooltips
+        detectUnknownStrings(rawBytes, classification);  // solo añade color a strings en zonas desconocidas
+
+        document.getElementById("outputCode").value = resolveUndefinedLabels(result.lines.join("\n"), "*(0x", ")");
+        setupVirtualHex();
     }
     function applyConfigSilent() {
         sascmDB = parseSASCM(document.getElementById("sascmEditor").value);
