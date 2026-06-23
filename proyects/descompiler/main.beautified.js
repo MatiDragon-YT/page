@@ -254,6 +254,7 @@
     let rawBytes = null, classification = null, sascmDB = {};
     let currentScriptPrefix = "Noname";
     const OPCODE_LABEL_SUFFIX = {
+        2: "",
         80: "subrutine_",
         2720: "subrutine_",
         2737: "function_",
@@ -674,7 +675,7 @@
             const suffix = OPCODE_LABEL_SUFFIX[baseOp];
             if (suffix && !labelSuffixes[off]) {
                 labelSuffixes[off] = suffix;
-                if (labelNames[off]) labelNames[off] = currentLabelPrefix + "_" + suffix + off.toString(16);
+                if (labelNames[off]) labelNames[off] = currentLabelPrefix + "_" + suffix + off.toString(16).toUpperCase();
             }
         }
         function getLabel(off) {
@@ -685,7 +686,7 @@
                 return name;
             }
             if (labelNames[off]) return labelNames[off];
-            let n = labelSuffixes[off] ? currentLabelPrefix + "_" + labelSuffixes[off] + off.toString(16) : currentLabelPrefix + "_" + off.toString(16);
+            let n = labelSuffixes[off] ? currentLabelPrefix + "_" + labelSuffixes[off] + off.toString(16).toUpperCase() : currentLabelPrefix + "_" + off.toString(16).toUpperCase();
             labelNames[off] = n;
             return n;
         }
@@ -704,10 +705,10 @@
                 if (ft === "p") {
                     // --- Punteros nulos especiales (sin conversión a offset) ---
                     if (raw === 0) {
-                        return "@offset_0xFFFFFFFF";
+                        return "@offset_0x00000000";
                     }
                     if (raw === 4294967295) {
-                        return "@offset_0x00000000";
+                        return "@offset_0xFFFFFFFF";
                     }
                     // ---------------------------------------------------------
                     let t = labelValueToOffset(raw);
@@ -1467,9 +1468,9 @@
                                 let raw = readU32LE(rawBytes, idx);
                                 if (raw !== null) {
                                     if (raw === 4294967295) {
-                                        valStr = "@offset_0x00000000";
-                                    } else if (raw === 0) {
                                         valStr = "@offset_0xFFFFFFFF";
+                                    } else if (raw === 0) {
+                                        valStr = "@offset_0x00000000";
                                     } else {
                                         let target = labelValueToOffset(raw);
                                         let suffix = OPCODE_LABEL_SUFFIX[op & 32767] || "";
@@ -1885,23 +1886,45 @@
         await saveToDB("sascmConfig", text).catch(console.error);
     }
     /**
-     * Reemplaza las referencias a etiquetas no definidas usando un prefijo dado.
-     * @param {string} code - Código descompilado.
-     * @param {string} prefix - Prefijo para las nuevas etiquetas.
-     * @returns {string} Código con las referencias corregidas.
-     */
+ * Reemplaza las referencias a etiquetas no definidas usando un prefijo dado.
+ * Si una referencia comparte offset con una definición existente, se crea
+ * una etiqueta adicional con el nombre adecuado al opcode que la invoca.
+ * @param {string} code - Código descompilado.
+ * @param {string} prefix - Prefijo para el formato fallback (ej: "*(0x").
+ * @param {string} subfix_ - Sufijo para el formato fallback (ej: ")").
+ * @returns {string} Código con las referencias corregidas.
+ */
     function resolveUndefinedLabels(code, prefix = "offset_", subfix_ = "") {
-        //return code; // Esta linea se borrara cuando ya no se generen referencias (:label_xx) en lugares incorrectos
-        // 1. Encontrar todas las etiquetas definidas (:nombre)
-        const definedLabels = new Set();
-        const defRegex = /:\s*([A-Za-z0-9_]+)/g;
-        let match;
-        while ((match = defRegex.exec(code)) !== null) {
-            definedLabels.add(match[1]);
+        // ----- utilidad: extraer offset hexadecimal de un nombre de etiqueta -----
+        function extractOffset(label) {
+            const hexMatch = label.match(/0x([0-9A-Fa-f]+)/);
+            if (hexMatch) return hexMatch[1].toUpperCase();
+            const lastUnderscore = label.lastIndexOf("_");
+            if (lastUnderscore === -1) return null;
+            const offsetPart = label.substring(lastUnderscore + 1);
+            if (/^[0-9A-Fa-f]+$/.test(offsetPart)) return offsetPart.toUpperCase();
+            return null;
         }
-        // 2. Encontrar todas las referencias a etiquetas (@nombre)
+        // ----- 1. Obtener todas las definiciones (:nombre) con sus offsets -----
+        const definedLabels = new Map(); // nombre -> { start, end, offsetHex, fullLine, name }
+        const defLineRegex = /^(.*?):\s*([A-Za-z0-9_]+)(.*)$/gm;
+        let match;
+        while ((match = defLineRegex.exec(code)) !== null) {
+            const name = match[2];
+            const offset = extractOffset(name);
+            if (offset) {
+                definedLabels.set(name, {
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    offsetHex: offset,
+                    fullLine: match[0],
+                    name: name
+                });
+            }
+        }
+        // ----- 2. Obtener todas las referencias (@nombre) -----
         const references = [];
-        const refRegex = /@([A-Za-z0-9_]+)/g;
+        const refRegex = /@([A-Za-z0-9_*()]+)/g;
         while ((match = refRegex.exec(code)) !== null) {
             references.push({
                 start: match.index,
@@ -1910,29 +1933,79 @@
                 name: match[1]
             });
         }
-        // 3. Filtrar las referencias que NO están definidas
+        // ----- 3. Filtrar referencias no definidas -----
         const unresolved = references.filter(ref => !definedLabels.has(ref.name));
-        if (unresolved.length === 0) return code; // nada que corregir
-        // 4. Función auxiliar para extraer el offset hexadecimal de un nombre de etiqueta
-        function extractOffset(label) {
-            const lastUnderscore = label.lastIndexOf("_");
-            if (lastUnderscore === -1) return null;
-            let offsetPart = label.substring(lastUnderscore + 1);
-            // Quitar posible prefijo "0x" (casos especiales como offset_0x00000000)
-            if (offsetPart.startsWith("0x") || offsetPart.startsWith("0X")) {
-                offsetPart = offsetPart.substring(2);
+        if (unresolved.length === 0) return code;
+        // ----- 4. Obtener el opcode de la línea de código anterior a una posición -----
+        function getOpcodeFromLineBefore(pos) {
+            const before = code.substring(0, pos);
+            const lines = before.split("\n");
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const line = lines[i];
+                const opMatch = line.match(/\/\* [0-9a-fA-F]+ \*\/ ([0-9a-fA-F]+):/);
+                if (opMatch) {
+                    return parseInt(opMatch[1], 16);
+                }
             }
-            // Validar que sea una cadena hexadecimal
-            return /^[0-9A-Fa-f]+$/.test(offsetPart) ? offsetPart.toUpperCase() : null;
+            return null;
         }
-        // 5. Reemplazar de atrás hacia adelante para no alterar los índices
-        let result = code;
-        // Ordenar por inicio descendente
-        unresolved.sort((a, b) => b.start - a.start);
+        // ----- 5. Recopilar cambios -----
+        const replacements = [];
+        const insertedOffsets = new Set();
         for (const ref of unresolved) {
-            const offsetHex = extractOffset(ref.name);
-            const newLabel = offsetHex ? `@${prefix}${offsetHex}${subfix_}` : `@${prefix}unknown${subfix_}`; // fallback si no se pudo extraer el offset
-            result = result.substring(0, ref.start) + newLabel + result.substring(ref.end);
+            const refOffset = extractOffset(ref.name);
+            if (!refOffset) continue;
+            // Buscar definición existente con el mismo offset
+            let foundDef = null;
+            for (const [ defName, defInfo ] of definedLabels) {
+                if (defInfo.offsetHex === refOffset) {
+                    foundDef = defInfo;
+                    break;
+                }
+            }
+            if (foundDef) {
+                // ---- Hay una definición con el mismo offset ----
+                const opcode = getOpcodeFromLineBefore(ref.start);
+                const baseOp = opcode !== null ? opcode & 32767 : null;
+                let suffix = "";
+                if (baseOp !== null && typeof OPCODE_LABEL_SUFFIX !== "undefined") {
+                    suffix = OPCODE_LABEL_SUFFIX[baseOp] || "";
+                }
+                const scriptName = typeof currentScriptPrefix !== "undefined" && currentScriptPrefix ? currentScriptPrefix : "Noname";
+                const newName = suffix ? `${scriptName}_${suffix}_${refOffset}` : `${scriptName}_${refOffset}`;
+                // Reemplazar la referencia
+                replacements.push({
+                    start: ref.start,
+                    end: ref.end,
+                    newText: `@${newName}`
+                });
+                // Insertar una nueva definición encima de la existente (solo una vez por offset)
+                if (!insertedOffsets.has(refOffset)) {
+                    insertedOffsets.add(refOffset);
+                    const origLine = foundDef.fullLine;
+                    // Usamos foundDef.name en lugar de foundDef.defName (¡corregido!)
+                    const newLine = origLine.replace(`:${foundDef.name}`, `:${newName}`);
+                    replacements.push({
+                        start: foundDef.start,
+                        end: foundDef.end,
+                        newText: `${newLine}\n${origLine}`
+                    });
+                }
+            } else {
+                // Sin definición coincidente -> formato fallback
+                const fallbackName = `@${prefix}${refOffset}${subfix_}`;
+                replacements.push({
+                    start: ref.start,
+                    end: ref.end,
+                    newText: fallbackName
+                });
+            }
+        }
+        // ----- 6. Aplicar reemplazos de atrás hacia adelante -----
+        replacements.sort((a, b) => b.start - a.start);
+        let result = code;
+        for (const rep of replacements) {
+            result = result.substring(0, rep.start) + rep.newText + result.substring(rep.end);
         }
         return result;
     }
