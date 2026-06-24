@@ -4537,26 +4537,26 @@ Los tipos de argumentos incluyen enteros, números de punto flotante, cadenas de
 */
 
 const TYPE_CODE = {
-	TERMINAL_NULL		:'00',
-	INT32				:'01', // 4 bytes : INT & LABEL
-	GVAR				:'02', // 2 bytes
-	LVAR				:'03', // 2 bytes
-	INT8				:'04', // 1 byte : INT of -128 to 127
-	INT16				:'05', // 2 bytes
-	FLOAT32			:'06', // 4 bytes
-	GVAR_ARRAY  :'07', // 6 bytes
-	LVAR_ARRAY	:'08', // 6 bytes
-	STRING8				      :'09', // 7 bytes + null
-	GVAR_STRING8		    :'0A', // 2 bytes
-	LVAR_STRING8	    	:'0B', // 2 bytes
-	GVAR_ARRAY_STRING8	:'0C', // 2 bytes
-	LVAR_ARRAY_STRING8	:'0D', // 2 bytea
-	STRING_VARIABLE	  	:'0E', // 1 byte + str_length
-	STRING16			      :'0F', // 15 bytes + null
-	GVAR_STRING16		    :'10', // 2 bytes
-	LVAR_STRING16		    :'11', // 2 bytea
-	GVAR_ARRAY_STRING16	:'12', // 6 bytes
-	LVAR_ARRAY_STRING16	:'13'  // 6 bytes
+  TERMINAL_NULL       :'00',
+  INT32               :'01', // 4 bytes : INT || LABEL
+  GVAR                :'02', // 2 bytes
+  LVAR                :'03', // 2 bytes
+  INT8                :'04', // 1 byte  : (-128 to 127) || 255
+  INT16               :'05', // 2 bytes : (-32768 to 32767) || 65535
+  FLOAT32             :'06', // 4 bytes
+  GVAR_ARRAY          :'07', // 6 bytes
+  LVAR_ARRAY          :'08', // 6 bytes
+  STRING8             :'09', // 7 bytes + TERMINAL_NULL(1 byte)
+  GVAR_STRING8        :'0A', // 2 bytes
+  LVAR_STRING8        :'0B', // 2 bytes
+  GVAR_ARRAY_STRING8  :'0C', // 6 bytes
+  LVAR_ARRAY_STRING8  :'0D', // 6 bytes
+  STRING_VARIABLE     :'0E', // 1 byte + 1*n_leght
+  STRING16            :'0F', // 15 bytes + TERMINAL_NULL(1 byte)
+  GVAR_STRING16       :'10', // 6 bytes
+  LVAR_STRING16       :'11', // 6 bytes
+  GVAR_ARRAY_STRING16 :'12', // 6 bytes
+  LVAR_ARRAY_STRING16 :'13'  // 6 bytes
 }
 // Algo asi es como se traduce:
 //
@@ -4688,7 +4688,7 @@ SP.toHex = function(offset = 0) {
     return result;
 }
 
-SP.toBigEndian = function(){
+SP.toLitteEndian = function(){
     if (this.length % 2 != 0){
       throw new Error('La longitud del String es impar.')
     }
@@ -4763,7 +4763,7 @@ NP.toHex = function(){
 		.map((_, i) => getHex(view.getUint8(i)))
 		.join('');
 
-	return result.toBigEndian()
+	return result.toLitteEndian()
 }
 function IsInRange(VAR, MIN, MAX){
 	return (VAR >= MIN && VAR <= MAX) ? 1 : 0;
@@ -8100,7 +8100,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
   		Number(dataInput.r(/@[a-z]?/i,''))
   		.toString(16)
   		.padStart(4,'0')
-  		.toBigEndian();
+  		.toLitteEndian();
   
   	return dataInput
   }
@@ -8113,7 +8113,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
     dataInput = dataInput.toString(16)
       .substring(0, 4)
       .padStart(4, '0')
-      .toBigEndian()
+      .toLitteEndian()
     
     return dataInput
   }
@@ -8144,7 +8144,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
     dataInput = dataInput.toString(16)
       .substring(0, 4)
       .padStart(4, '0')
-      .toBigEndian()
+      .toLitteEndian()
   
     return dataInput
   }
@@ -8261,7 +8261,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 							setOp = setOp.setOpcodeNegative()
 						}
 					}
-					lineDepurated.push((_addJumpLine ? '\n' : '') + setOp.toBigEndian())
+					lineDepurated.push((_addJumpLine ? '\n' : '') + setOp.toLitteEndian())
 					
 					command = Argument
 					
@@ -8485,7 +8485,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 								return temp
 							})(), '0')
 
-							Argument = dataType + Argument.toBigEndian()
+							Argument = dataType + Argument.toLitteEndian()
 						break;
 
 						case 'float':
@@ -8772,7 +8772,7 @@ SP.Translate = function(_SepareWithComes = false, _addJumpLine = false){
 			return "<@"+label+">"
 		}
 
-		return jump.toBigEndian()
+		return jump.toLitteEndian()
 	})
 	
 	return codeOfFinalDepurated
