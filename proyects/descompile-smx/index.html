@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>SMX Decompiler/Compiler</title>
+	<script src="https://cdn.tailwindcss.com"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ext-language_tools.js"></script>
+	<style>
+		#editor {
+			height: 500px;
+			width: 100%;
+			border: 1px solid #ccc;
+			border-radius: 0.375rem;
+		}
+		.ace_label { color: #f92672 }
+		.ace_reference { color: #f92672; }
+		.ace_command { color: #66d9ef; }
+		.ace_number { color: #ae81ff; }
+		.ace_string { color: #a6e22e; }
+		.drag-over {
+			border: 2px dashed #3b82f6 !important;
+			background-color: rgba(59,130,246,0.05);
+		}
+	</style>
+</head>
+<body class="bg-purple-900 min-h-screen p-4 md:p-8">
+	<div class="max-w-5xl mx-auto" id="dropZone">
+		<h1 class="text-3xl font-bold text-gray-100 mb-6">🔧 SMX Binary Tool</h1>
+
+		<div class="flex flex-wrap gap-3 mb-4">
+			<button id="btnDecompile"
+				class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-5 rounded shadow transition">
+				📂 Decompile
+			</button>
+			<button id="btnCompile"
+				class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-5 rounded shadow transition">
+				💾 Compile
+			</button>
+		</div>
+
+		<div id="infoBox" class="mb-3 text-sm text-gray-900 bg-white p-2 rounded border hidden"></div>
+
+		<div id="editor"></div>
+	</div>
+
+	<input type="file" id="fileInput" accept=".smx" class="hidden">
+
+	<script>
+		(function() {
+			// ---------- Custom Ace Mode ----------
+			ace.define('ace/mode/smx', ['require', 'exports', 'module', 'ace/lib/oop', 'ace/mode/text', 'ace/mode/text_highlight_rules'], function(require, exports, module) {
+				var oop = require("ace/lib/oop");
+				var TextMode = require("ace/mode/text").Mode;
+				var TextHighlightRules = require("ace/mode/text_highlight_rules").TextHighlightRules;
+
+				var SmxHighlightRules = function() {
+					this.$rules = {
+						start: [
+							{ token: "comment.line.number-sign", regex: "^#.*$" },
+							{ token: "label", regex: "^([\x20\t]*)?:\\w+" },
+							{ token: "reference", regex: "@\\w+" },
+							{ token: "command", regex: "^([\x20\t]*)?\\w+\\b" },
+							{ token: "keyword", regex: "\\bAND\\b|\\bOR\\b" },
+							{ token: "variable", regex: "\\$\\d+" },
+							{ token: "number", regex: "\\b\\d+\\.?\\d*\\b" },
+							{ token: "string", regex: '"[^"\n]*"' },
+							{ token: "string", regex: "'[^'\n]*'" }
+						]
+					};
+				};
+				oop.inherits(SmxHighlightRules, TextHighlightRules);
+
+				var SmxMode = function() {
+					this.HighlightRules = SmxHighlightRules;
+				};
+				oop.inherits(SmxMode, TextMode);
+				exports.Mode = SmxMode;
+			});
+
+			/**
+			 * Convierte un número/string en una cadena con formato de float:
+			 * - Enteros → "X.0"
+			 * - Decimales → recorta ceros finales, pero mantiene al menos un dígito tras el punto.
+			 * @param {number|string} value
+			 * @returns {string}
+			 */
+			function formatFloat(value) {
+				// Acepta strings numéricos o números
+				const num = Number(value);
+				if (isNaN(num)) return "NaN";
+
+				// Caso entero exacto
+				if (Number.isInteger(num)) {
+					return num.toString() + ".0";
+				}
+
+				// Convertir a cadena sin notación exponencial (hasta 15 decimales significativos)
+				let str = num.toFixed(4);
+				// Quitar ceros finales después del punto
+				str = str.replace(/\.?0+$/, '');
+				// Si después de limpiar no tiene punto (era un entero con .000...), añadimos .0
+				if (!str.includes('.')) {
+					str += '.0';
+				}
+				// Si el número es negativo pequeño y se convirtió en "-0.0", lo normalizamos a "0.0"
+				if (str === '-0.0') str = '0.0';
+				return str;
+			}
+
+			// ---------- Constants & Command Definitions ----------
+			const ParamType = {
+				INT: 'int',
+				FLOAT: 'float',
+				BYTE: 'byte',
+				STRING: 'string',
+				OFFSET: 'offset'
+			};
+
+			const DEFAULT_VERSION = 300010;
+
+			const COMMANDS = {
+				0x0000: { name: "WAIT",              params: [ParamType.INT] },
+				0x0001: { name: "GOTO",              params: [ParamType.OFFSET] },
+				0x0002: { name: "IF",                params: [ParamType.INT, ParamType.OFFSET], ifTypeParam: 0 },
+				0x0003: { name: "END_THREAD",        params: [] },
+				0x0004: { name: "NOP",               params: [] },
+
+				0x1000: { name: "PLAYER_SET_POSITION", params: [ParamType.FLOAT, ParamType.FLOAT, ParamType.FLOAT] },
+				0x1001: { name: "PLAYER_SET_WANTED",   params: [ParamType.INT] },
+				0x1002: { name: "PLAYER_SET_WEAPON",   params: [ParamType.INT, ParamType.INT, ParamType.INT, ParamType.INT] },
+				0x1004: { name: "PLAYER_SET_ANIM",     params: [ParamType.INT, ParamType.INT, ParamType.INT] },
+				0x1005: { name: "PLAYER_SET_FIGHT",    params: [ParamType.INT] },
+				0x1006: { name: "PLAYER_SET_HEALTH",   params: [ParamType.INT] },
+
+				0x2000: { name: "ACTOR_CREATE",        params: function(ver) {
+					const base = [ParamType.INT, ParamType.INT, ParamType.INT,
+								  ParamType.FLOAT, ParamType.FLOAT, ParamType.FLOAT, ParamType.FLOAT];
+					if (ver > 300010) base.push(ParamType.INT, ParamType.INT);
+					return base;
+				}, actorIdParams: [0] },
+				0x200B: { name: "ACTOR_SET_ANIM",     params: [ParamType.INT, ParamType.INT, ParamType.INT, ParamType.INT], actorIdParams: [0] },
+				0x201B: { name: "TASK_KILL_PLAYER",    params: [ParamType.INT, ParamType.INT, ParamType.FLOAT, ParamType.INT], actorIdParams: [0] },
+
+				0x6000: { name: "FADE",               params: [ParamType.INT, ParamType.INT] },
+				0x6001: { name: "PRINT_FORMATTED",    params: [ParamType.INT, ParamType.STRING] },
+
+				0x8000: { name: "PLAYER_IS_POSITION",      params: [ParamType.FLOAT, ParamType.FLOAT, ParamType.FLOAT] },
+				0x8001: { name: "PLAYER_IS_KILL_TO_ACTOR", params: [ParamType.INT], actorIdParams: [0] },
+			};
+
+			const nameToOpcode = {};
+			for (const [op, def] of Object.entries(COMMANDS)) {
+				nameToOpcode[def.name] = parseInt(op);
+			}
+
+			// ---------- UI Elements ----------
+			const editor = ace.edit("editor");
+			editor.session.setMode("ace/mode/smx");
+			editor.setTheme("ace/theme/dracula");
+			editor.setOptions({
+				fontSize: "14px",
+				showPrintMargin: false,
+				enableBasicAutocompletion: true,
+				enableLiveAutocompletion: true
+			});
+
+			const smxCompleter = {
+				getCompletions: function(ed, session, pos, prefix, callback) {
+					const completions = [];
+					for (const name of Object.keys(nameToOpcode)) {
+						if (name.startsWith(prefix)) completions.push({ name, value: name, score: 100, meta: "SMX Command" });
+					}
+					if ("AND".startsWith(prefix)) completions.push({ name: "AND", value: "AND", score: 95, meta: "IF type" });
+					if ("OR".startsWith(prefix)) completions.push({ name: "OR", value: "OR", score: 95, meta: "IF type" });
+					const lines = session.getValue().split('\n');
+					for (const line of lines) {
+						const trimmed = line.trim();
+						if (trimmed.startsWith(':')) {
+							const labelName = trimmed.substring(1).split(/\s/)[0];
+							if (labelName.startsWith(prefix)) completions.push({ name: labelName, value: labelName, score: 90, meta: "Label" });
+							if (prefix.startsWith('@') && ('@'+labelName).startsWith(prefix)) completions.push({ name: '@'+labelName, value: '@'+labelName, score: 90, meta: "Label Reference" });
+						}
+					}
+					callback(null, completions.filter((c, i, arr) => arr.findIndex(x => x.name === c.name) === i));
+				}
+			};
+			editor.completers = [smxCompleter];
+
+			const infoBox = document.getElementById('infoBox');
+			const fileInput = document.getElementById('fileInput');
+			const dropZone = document.getElementById('dropZone');
+
+			function showInfo(msg, isError = false) {
+				infoBox.textContent = msg;
+				infoBox.classList.remove('hidden', 'bg-red-100', 'bg-blue-100', 'text-red-800', 'text-blue-800');
+				const classList = (isError ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800').split(' ')
+				infoBox.classList.add(classList);
+			}
+
+			function hideInfo() {
+				infoBox.classList.add('hidden');
+			}
+
+			async function processFileBuffer(buffer, fileName) {
+				try {
+					const { text, version } = decompile(buffer);
+					editor.setValue(text, -1);
+					showInfo(`Archivo "${fileName}" descompilado (v${version}).`, false);
+				} catch (err) {
+					showInfo(`Error: ${err.message}`, true);
+				}
+			}
+
+			// ---------- Decompilation (con bloques condicionales reestructurados) ----------
+			function decompile(arrayBuffer) {
+				const view = new DataView(arrayBuffer);
+				if (view.byteLength < 4) throw new Error("Archivo demasiado pequeño.");
+				const version = view.getUint32(0, true);
+				const commands = [];
+				const rawTargetOffsets = new Map(); // ifCmdOffset -> target offset
+
+				let offset = 4;
+				while (offset < view.byteLength) {
+					const cmdOffset = offset;
+					const opcode = view.getUint32(offset, true);
+					offset += 4;
+
+					if (!(opcode in COMMANDS)) {
+						throw new Error(`Opcode desconocido 0x${opcode.toString(16).toUpperCase()} en offset ${cmdOffset}.`);
+					}
+
+					const cmdDef = COMMANDS[opcode];
+					const params = Array.isArray(cmdDef.params) ? cmdDef.params : cmdDef.params(version);
+					const args = [];
+					for (const ptype of params) {
+						if (ptype === ParamType.INT) {
+							args.push({ type: 'int', value: view.getInt32(offset, true) });
+							offset += 4;
+						} else if (ptype === ParamType.FLOAT) {
+							args.push({ type: 'float', value: formatFloat(view.getFloat32(offset, true)) });
+							offset += 4;
+						} else if (ptype === ParamType.BYTE) {
+							args.push({ type: 'byte', value: view.getUint8(offset) });
+							offset += 1;
+						} else if (ptype === ParamType.STRING) {
+							const len = view.getUint8(offset);
+							offset += 1;
+							let str = '';
+							for (let i = 0; i < len; i++) str += String.fromCharCode(view.getUint8(offset++));
+							args.push({ type: 'string', value: str });
+						} else if (ptype === ParamType.OFFSET) {
+							const target = view.getUint32(offset, true);
+							args.push({ type: 'offset', value: target });
+							if (opcode === 0x0002) rawTargetOffsets.set(cmdOffset, target);
+							offset += 4;
+						}
+					}
+					commands.push({ offset: cmdOffset, opcode, args, isConditional: opcode >= 0x8000 });
+				}
+
+				// Construir etiquetas corregidas para IF (por si acaso)
+				const labelPositions = new Set();
+				const correctedIfTargets = new Map();
+				for (const [ifOffset, originalTarget] of rawTargetOffsets.entries()) {
+					let finalTarget = originalTarget;
+					const cmdAtTarget = commands.find(c => c.offset === originalTarget);
+					if (cmdAtTarget && !cmdAtTarget.isConditional) {
+						const nextCond = commands.find(c => c.offset > originalTarget && c.isConditional);
+						if (nextCond) finalTarget = nextCond.offset;
+					}
+					labelPositions.add(finalTarget);
+					correctedIfTargets.set(ifOffset, finalTarget);
+				}
+				for (const cmd of commands) {
+					if (cmd.opcode === 0x0001) labelPositions.add(cmd.args[0].value);
+				}
+
+				const lines = [];
+				lines.push(`# VERSION: ${version}\n`);
+
+				let i = 0;
+				while (i < commands.length) {
+					const cmd = commands[i];
+					// Detectar bloque condicional: secuencia de condicionales seguida de IF con salto al primero
+					if (cmd.isConditional) {
+						let condSeq = [];
+						let j = i;
+						while (j < commands.length && commands[j].isConditional) {
+							condSeq.push(commands[j]);
+							j++;
+						}
+						if (j < commands.length && commands[j].opcode === 0x0002 &&
+							commands[j].args[1].value === commands[i].offset) {
+							// ¡Es un bloque!
+							const ifCmd = commands[j];
+							const ifType = ifCmd.args[0].value; // 0=AND, 1=OR
+							const labelOff = commands[i].offset;
+							const labelName = `label_${labelOff.toString(16).toUpperCase().padStart(4, '0')}`;
+
+							lines.push(`\n:${labelName}`);
+							if (condSeq.length > 1) {
+								lines.push(`IF ${ifType === 0 ? 'AND' : 'OR'}`);
+							} else {
+								lines.push(`IF`);
+							}
+							for (const cond of condSeq) {
+								lines.push(`   ${formatCommandLine(cond, version)}`);
+							}
+							lines.push(`FALSE_JUMP @${labelName}`);
+
+							// Añadir la etiqueta a labelPositions (por si otros saltos la referencian)
+							labelPositions.add(labelOff);
+							i = j + 1; // saltar el IF también
+							continue;
+						}
+					}
+
+					// Comando normal
+					if (labelPositions.has(cmd.offset)) {
+						lines.push(`:label_${cmd.offset.toString(16).toUpperCase().padStart(4, '0')}`);
+					}
+					lines.push(formatCommandLine(cmd, version));
+					i++;
+				}
+
+				return { text: lines.join('\n'), version };
+			}
+
+			function formatCommandLine(cmd, version) {
+				const cmdDef = COMMANDS[cmd.opcode];
+				let line = cmdDef.name;
+				cmd.args.forEach((arg, idx) => {
+					if (arg.type === 'offset') {
+						line += ` @label_${arg.value.toString(16).toUpperCase().padStart(4, '0')}`;
+					} else if (arg.type === 'string') {
+						line += ` ${JSON.stringify(arg.value)}`;
+					} else if (arg.type === 'int') {
+						if (cmdDef.actorIdParams && cmdDef.actorIdParams.includes(idx)) {
+							line += ` $${arg.value}`;
+						} else if (cmdDef.ifTypeParam !== undefined && idx === cmdDef.ifTypeParam) {
+							// solo se usa en IF, pero aquí no se llamará (ya que los IF se manejan en bloques)
+							line += ` ${arg.value === 0 ? 'AND' : 'OR'}`;
+						} else {
+							line += ` ${arg.value}`;
+						}
+					} else {
+						line += ` ${arg.value}`;
+					}
+				});
+				return line;
+			}
+
+			// ---------- Compilation (reconocimiento de bloques con IF / FALSE_JUMP) ----------
+			function tokenizeArgs(str) {
+				if (!str.trim()) return [];
+				const tokens = [];
+				const regex = /@\w+|\$\w+|"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|(\S+)/g;
+				let m;
+				while ((m = regex.exec(str)) !== null) tokens.push(m[0]);
+				return tokens;
+			}
+
+			function compile(source) {
+				// --- Preprocesado de líneas ---
+				const rawLines = source.split('\n').map(l => l.trimRight());
+				const lineObjs = [];
+				for (const l of rawLines) {
+					if (l.trim() === '' || l.trim().startsWith('#')) continue;
+					const indent = l.search(/\S/);
+					const trimmed = l.trim();
+					if (trimmed.startsWith(':')) {
+						lineObjs.push({ type: 'label', name: trimmed.substring(1), indent, trimmed });
+					} else {
+						const parts = trimmed.match(/^(\w+)(.*)$/);
+						if (parts) {
+							lineObjs.push({ type: 'command', mnemonic: parts[1], argsStr: parts[2].trim(), indent, trimmed });
+						} else {
+							throw new Error(`Línea inválida: "${trimmed}"`);
+						}
+					}
+				}
+
+				// --- Construir items (comandos, bloques) ---
+				const items = [];
+				let idx = 0;
+				// Dentro del bucle principal que construye 'items'
+				while (idx < lineObjs.length) {
+					const cur = lineObjs[idx];
+					if (cur.type === 'label') {
+						// Buscar bloque: etiqueta + IF + comandos indentados + FALSE_JUMP
+						let nextIdx = idx + 1;
+						while (nextIdx < lineObjs.length && lineObjs[nextIdx].type !== 'command') nextIdx++;
+						if (nextIdx < lineObjs.length && lineObjs[nextIdx].mnemonic === 'IF') {
+							const ifLine = lineObjs[nextIdx];
+							let condLines = [];
+							let k = nextIdx + 1;
+							while (k < lineObjs.length && lineObjs[k].type === 'command' && lineObjs[k].mnemonic !== 'FALSE_JUMP') {
+								condLines.push(lineObjs[k]);
+								k++;
+							}
+							if (k < lineObjs.length && lineObjs[k].mnemonic === 'FALSE_JUMP') {
+								const jmpRef = lineObjs[k].argsStr.replace(/\s+/g, '').toLowerCase();
+								const expectedRef = `@${cur.name}`.replace(/\s+/g, '').toLowerCase();
+								if (jmpRef === expectedRef) {
+									// Bloque válido
+									let ifType = 0;
+									if (ifLine.argsStr) {
+										const t = ifLine.argsStr.toUpperCase();
+										if (t === 'AND') ifType = 0;
+										else if (t === 'OR') ifType = 1;
+										else throw new Error(`Tipo IF no válido: ${ifLine.argsStr}`);
+									}
+									items.push({
+										type: 'block',
+										labelName: cur.name,
+										ifType,
+										conditionals: condLines
+									});
+									idx = k + 1;
+									continue;
+								} else {
+									throw new Error(`FALSE_JUMP esperaba "@${cur.name}", pero se encontró "${lineObjs[k].argsStr}".`);
+								}
+							}
+						}
+						// No es un bloque → etiqueta normal
+						items.push({ type: 'label', name: cur.name });
+						idx++;
+					} else if (cur.type === 'command') {
+						if (cur.mnemonic === 'FALSE_JUMP') {
+							// Si está fuera de bloque, lo tratamos como un GOTO directo
+							const ref = cur.argsStr.trim();
+							if (!ref.startsWith('@')) throw new Error(`FALSE_JUMP necesita una referencia (@etiqueta).`);
+							const label = ref.substring(1);
+							items.push({ type: 'command', mnemonic: 'GOTO', argsStr: ref }); // lo convertimos internamente
+						} else {
+							items.push({ type: 'command', mnemonic: cur.mnemonic, argsStr: cur.argsStr });
+						}
+						idx++;
+					}
+				}
+
+				// --- Version ---
+				let version = DEFAULT_VERSION;
+				const verMatch = source.match(/^#\s*VERSION:\s*(\d+)/m);
+				if (verMatch) version = parseInt(verMatch[1], 10);
+
+				// --- Construir writeOps y mapeo de etiquetas ---
+				const writeOps = [];
+				const labelToFirstCondIdx = new Map();  // label -> índice del primer condicional
+				let pendingLabel = null;
+
+				for (const item of items) {
+					if (item.type === 'label') {
+						if (pendingLabel) throw new Error(`Etiqueta consecutiva sin comando: ${item.name}`);
+						pendingLabel = item.name;
+					} else if (item.type === 'command') {
+						const opcode = nameToOpcode[item.mnemonic];
+						if (opcode === undefined) throw new Error(`Comando desconocido: ${item.mnemonic}`);
+						const cmdDef = COMMANDS[opcode];
+						const params = Array.isArray(cmdDef.params) ? cmdDef.params : cmdDef.params(version);
+						const tokens = tokenizeArgs(item.argsStr);
+						if (tokens.length !== params.length) {
+							throw new Error(`Nº de argumentos incorrecto en ${item.mnemonic}. Esperado ${params.length}, obtenido ${tokens.length}.`);
+						}
+						const argValues = parseArgValues(tokens, params, cmdDef);
+						writeOps.push({ type: 'cmd', opcode, argValues });
+						if (pendingLabel) {
+							if (labelToFirstCondIdx.has(pendingLabel)) throw new Error(`Etiqueta duplicada: ${pendingLabel}`);
+							labelToFirstCondIdx.set(pendingLabel, writeOps.length - 1);
+							pendingLabel = null;
+						}
+					} else if (item.type === 'block') {
+						// Etiqueta del bloque
+						if (pendingLabel) throw new Error(`Etiqueta antes de bloque inesperada.`);
+						const blockLabel = item.labelName;
+						const firstCondIndex = writeOps.length;  // el primer condicional estará aquí
+						// Añadir comandos condicionales
+						for (const condLine of item.conditionals) {
+							const opcode = nameToOpcode[condLine.mnemonic];
+							if (opcode === undefined) throw new Error(`Comando desconocido: ${condLine.mnemonic}`);
+							if (opcode < 0x8000) throw new Error(`El comando ${condLine.mnemonic} no es condicional (0x8000+).`);
+							const cmdDef = COMMANDS[opcode];
+							const params = Array.isArray(cmdDef.params) ? cmdDef.params : cmdDef.params(version);
+							const tokens = tokenizeArgs(condLine.argsStr);
+							if (tokens.length !== params.length) {
+								throw new Error(`Nº de argumentos incorrecto en ${condLine.mnemonic}.`);
+							}
+							const argValues = parseArgValues(tokens, params, cmdDef);
+							writeOps.push({ type: 'cmd', opcode, argValues });
+						}
+						// Añadir IF especial
+						writeOps.push({ type: 'if_block', ifType: item.ifType, targetLabel: blockLabel });
+						if (labelToFirstCondIdx.has(blockLabel)) throw new Error(`Etiqueta duplicada: ${blockLabel}`);
+						labelToFirstCondIdx.set(blockLabel, firstCondIndex);
+					}
+				}
+
+				// --- Calcular longitudes y offsets ---
+				const lengths = writeOps.map(op => {
+					if (op.type === 'cmd') {
+						let len = 4; // opcode
+						for (const arg of op.argValues) {
+							len += (arg.type === ParamType.STRING) ? 1 + arg.value.length :
+								   (arg.type === ParamType.BYTE) ? 1 : 4;
+						}
+						return len;
+					} else { // if_block
+						return 12; // opcode(4) + type(4) + offset(4)
+					}
+				});
+
+				const offsets = [];
+				let curOff = 4;
+				for (let i = 0; i < writeOps.length; i++) {
+					offsets[i] = curOff;
+					curOff += lengths[i];
+				}
+
+				// --- Resolver etiquetas a offsets reales ---
+				const labelOffsets = new Map(); // label -> offset
+				for (const [label, idx] of labelToFirstCondIdx.entries()) {
+					labelOffsets.set(label, offsets[idx]);
+				}
+
+				// --- Escribir binario ---
+				const buffer = new ArrayBuffer(curOff);
+				const view = new DataView(buffer);
+				view.setUint32(0, version, true);
+				let wOff = 4;
+
+				for (let i = 0; i < writeOps.length; i++) {
+					const op = writeOps[i];
+					if (op.type === 'cmd') {
+						view.setUint32(wOff, op.opcode, true);
+						wOff += 4;
+						for (const arg of op.argValues) {
+							writeArg(view, wOff, arg);
+							wOff += argSize(arg);
+						}
+					} else { // if_block
+						const jumpOff = labelOffsets.get(op.targetLabel);
+						if (jumpOff === undefined) throw new Error(`Etiqueta no definida: ${op.targetLabel}`);
+						view.setUint32(wOff, 0x0002, true); wOff += 4;
+						view.setInt32(wOff, op.ifType, true); wOff += 4;
+						view.setUint32(wOff, jumpOff, true); wOff += 4;
+					}
+				}
+
+				return buffer;
+			}
+
+			function parseArgValues(tokens, params, cmdDef) {
+				const args = [];
+				for (let i = 0; i < params.length; i++) {
+					const ptype = params[i];
+					const token = tokens[i];
+					let value;
+					if (ptype === ParamType.INT || ptype === ParamType.OFFSET) {
+						if (ptype === ParamType.OFFSET) {
+							if (!token.startsWith('@')) throw new Error(`Se esperaba @etiqueta, se obtuvo: ${token}`);
+							value = token.substring(1); // guardamos nombre de etiqueta, se resolverá luego
+						} else {
+							if (token.startsWith('$')) {
+								value = parseInt(token.substring(1), 10);
+							} else if (cmdDef.ifTypeParam !== undefined && i === cmdDef.ifTypeParam) {
+								value = (token.toUpperCase() === 'AND') ? 0 : (token.toUpperCase() === 'OR') ? 1 : parseInt(token, 10);
+							} else {
+								value = parseInt(token, 10);
+							}
+							if (isNaN(value)) throw new Error(`Valor entero inválido: ${token}`);
+						}
+					} else if (ptype === ParamType.FLOAT) {
+						value = parseFloat(token);
+						if (isNaN(value)) throw new Error(`Valor flotante inválido: ${token}`);
+					} else if (ptype === ParamType.BYTE) {
+						value = parseInt(token, 10);
+						if (isNaN(value) || value < 0 || value > 255) throw new Error(`Byte inválido: ${token}`);
+					} else if (ptype === ParamType.STRING) {
+						let t = token;
+						if (t.startsWith("'") && t.endsWith("'")) t = '"' + t.slice(1, -1).replace(/\\'/g, "'").replace(/"/g, '\\"') + '"';
+						try { value = JSON.parse(t); } catch (e) { throw new Error(`Cadena inválida: ${token}`); }
+					}
+					args.push({ type: ptype, value });
+				}
+				return args;
+			}
+
+			function argSize(arg) {
+				return (arg.type === ParamType.STRING) ? 1 + arg.value.length :
+					   (arg.type === ParamType.BYTE) ? 1 : 4;
+			}
+
+			function writeArg(view, offset, arg) {
+				if (arg.type === ParamType.INT || arg.type === ParamType.OFFSET) {
+					view.setInt32(offset, arg.value, true);
+				} else if (arg.type === ParamType.FLOAT) {
+					view.setFloat32(offset, arg.value, true);
+				} else if (arg.type === ParamType.BYTE) {
+					view.setUint8(offset, arg.value);
+				} else if (arg.type === ParamType.STRING) {
+					const str = arg.value;
+					if (str.length > 255) throw new Error("Cadena demasiado larga.");
+					view.setUint8(offset, str.length);
+					offset++;
+					for (let j = 0; j < str.length; j++) {
+						view.setUint8(offset + j, str.charCodeAt(j));
+					}
+				}
+			}
+
+			// ---------- Eventos ----------
+			document.getElementById('btnDecompile').addEventListener('click', () => fileInput.click());
+			fileInput.addEventListener('change', async (e) => {
+				const file = e.target.files[0];
+				if (!file) return;
+				hideInfo();
+				const buffer = await file.arrayBuffer();
+				await processFileBuffer(buffer, file.name);
+				fileInput.value = '';
+			});
+
+			document.getElementById('btnCompile').addEventListener('click', () => {
+				hideInfo();
+				try {
+					const source = editor.getValue();
+					if (!source.trim()) { showInfo("Editor vacío.", true); return; }
+					const buffer = compile(source);
+					const blob = new Blob([buffer], { type: 'application/octet-stream' });
+					const a = document.createElement('a');
+					a.href = URL.createObjectURL(blob);
+					a.download = '0.smx';
+					document.body.appendChild(a);
+					a.click();
+					document.body.removeChild(a);
+					showInfo("Compilado y descargado como 0.smx", false);
+				} catch (err) {
+					showInfo(`Error: ${err.message}`, true);
+				}
+			});
+
+			// Drag & drop
+			dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+			dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+			dropZone.addEventListener('drop', async (e) => {
+				e.preventDefault();
+				dropZone.classList.remove('drag-over');
+				const files = e.dataTransfer.files;
+				if (!files.length) return;
+				const smxFile = [...files].find(f => f.name.toLowerCase().endsWith('.smx'));
+				if (!smxFile) { showInfo("Solo archivos .smx", true); return; }
+				hideInfo();
+				const buffer = await smxFile.arrayBuffer();
+				await processFileBuffer(buffer, smxFile.name);
+			});
+		})();
+	</script>
+</body>
+</html>

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <title>Formato de Instrucciones SCM</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" href="../css/main.css">
+</head>
+<body>
+# Formato de Instrucciones SCM
+
+## State Machine Control
+(Maquina de Estados con Control)
+
+
+Las instrucciones SCM estan compuestas por un opcode(comando de operacion) y sus argumentos.
+Estas se ejecutan cuando se corre el script y se usan para cambiar lo que ocurre en el juego.
+
+```sb3
+SHAKE_CAMERA ...
+WAIT ...
+SHAKE_CAMERA ...
+WAIT ...
+```
+
+## Opcodes de acción (comunes)
+
+Los opcodes enrealidad son 2 bytes, no son palabras claves, clases, funciones o otras cosas como podemos ver en muchos editores.
+Esto solo es un formato para hacerlo visualmente más agradable.
+
+```sb3
+   🤢👎    |         🤓👍
+--------------------------------- 
+0000:       |   NOP
+0001: ...   |   WAIT ...
+0003: ...   |   Camera.Shake(...)
+```
+
+Por ejemplo, todas estas son equivalentes (lo mismo, pero escritas de diferente forma).
+
+```sb3
+SHAKE_CAMERA ...      ->    0003: ...
+Camera.Shake(...)     ->    0003: ...
+cameraShake(...)      ->    0003: ...
+0003: shake_cam ...   ->    0003: ...
+```
+
+## Opcodes de decisión (condicionales)
+
+Hay opcodes que son condicionales, y pueden controlar el flujo de lectura del script.
+Tambien los opcodes solo ocupan 15 bits para determinar que instruccion debe ser ejecutada, reservando el bit más significativo para invertir el valor del retorno.
+
+```sb3
+00AD: actor_is_live { 0000 0000 1010 1101 } ...
+80AD: actor_is_live { 1000 0000 1010 1101 } ...
+```
+
+Los editores que tienen SugarSyntax suelen usar la palabra clave `not` o el simbolo de exclamacion `!` al inicio para invertir el resultado..
+
+```sb3
+not Actor.IsDead(...)   ->   80AD: ...
+!ACTOR_IS_DEAD...       ->   80AD: ...
+```
+
+Esto le suma a cualquier opcode el valor `8000`.
+Ejemplo: `1022:` -> `9022:`
+
+## Opcodes codificados (compilados)
+
+Una vez que el script es compilado, se codifican los opcodes en Little Endian. Invirtiendo el orden de los bytes:
+
+```sb3
+WAIT               ->   0001:...  ->   { 01 00 }
+ACTOR_IS_DEAD...   ->   80AD:...  ->   { AD 08 }
+SHAKE_CAMERA...    ->   0003:...  ->   { 03 00 }
+```
+
+## Opcodes expansivos (de 0 a 35 parámetros)
+
+Todos los opcodes tienen un numero de parametros declarado, y en Sanny Builder podemos encontrar archivos como `SASCM.ini`, que muesta como se van a descompilar cada opcode.
+
+```ini
+0000=0,NOP
+0001=1,WAIT %1d% ms
+0002=1,JUMP %1p%
+0003=1,SHAKE_CAMERA %1d%
+0004=2,SET_VAR_INT %1d% = %2d%
+```
+
+Pueden o no tener parametros, pero hay algunos que pueden no estan declarados
+
+```ini
+004F=-1,start_new_script %1p%
+0AB1=-1,cleo_call %1p%
+0ACE=-1,show_formatted_text_box %1s%
+```
+
+en el caso de estos, solo estan declarado el primer parametro, el resto no. lo que significa que podes más parametros si lo necesitas.
+
+estos al compilarse, agregan 1 byte en 0 (`00`) para indicar que la entrada de parametros termino.
+
+```
+004F: ...   ->   4F 00 ... 00
+0AB1: ...   ->   B1 0A ... 00
+0ACE: ...   ->   CE 0A ... 00
+```
+
+## Argumentos:
+
+Los argumentos, o tipos de datos son varios, y solo por dar un ejemplo, estos son algunos:
+
+```sb3
+INT      :  -354 -33 0 23 753 10000
+FLOAT    :  -23.224 0.0 34.366
+STRING   :  "hello" "" 'word' ''
+VARIABLE :  0@ $40 &8 1@(2@, 1i)
+LABEL    :  @main @loop @end @etc
+```
+
+Son 19 tipos de datos...
+Pero los IDEs no sulen mostrarlos en su totalidad:
+```js
+const TYPE_CODE = {
+  TERMINAL_NULL       :'00',
+  INT32               :'01', // 4 bytes : INT || LABEL
+  GVAR                :'02', // 2 bytes
+  LVAR                :'03', // 2 bytes
+  INT8                :'04', // 1 byte  : (-128 to 127) || 255
+  INT16               :'05', // 2 bytes : (-32768 to 32767) || 65535
+  FLOAT32             :'06', // 4 bytes
+  GVAR_ARRAY          :'07', // 6 bytes
+  LVAR_ARRAY          :'08', // 6 bytes
+  STRING8             :'09', // 7 bytes + TERMINAL_NULL(1 byte)
+  GVAR_STRING8        :'0A', // 2 bytes
+  LVAR_STRING8        :'0B', // 2 bytes
+  GVAR_ARRAY_STRING8  :'0C', // 6 bytes
+  LVAR_ARRAY_STRING8  :'0D', // 6 bytes
+  STRING_VARIABLE     :'0E', // 1 byte + 1*n_leght
+  STRING16            :'0F', // 15 bytes + TERMINAL_NULL(1 byte)
+  GVAR_STRING16       :'10', // 2 bytes
+  LVAR_STRING16       :'11', // 2 bytes
+  GVAR_ARRAY_STRING16 :'12', // 6 bytes
+  LVAR_ARRAY_STRING16 :'13'  // 6 bytes
+}
+```
+
+### Ejemplo hipotetico
+
+El opcode `ABCD` es solo ficticio.
+```
+               ABCD: input 15
+              /            \\
+          [CD AB]  [04-----0F]
+           \\__/     \\/      \\/
+         OPCODE  TYPE_CODE  VALUE
+                   (INT8)
+```
+
+Y si el opcode tiene mas de un parametro, se pone de nuevo el TYPE_CODE y despues el VALUE.
+```
+               0004: 7@ = 15 
+              /      |      \\ 
+            <ins title="OPCODE: 0004">04 00</ins> <ins title="LVAR: 7">03 07 00</ins> <ins title="INT8: 15">04 0F</ins>
+```
+Asi se veria un opcode de parametros expansivo
+```
+            0AD0: printf "ab" 1000
+             /           /      |
+          <ins title="OPCODE: 0AD0">0D 0A</ins> <ins title="STRING_VARIABLE: ´ab´(lenght: 2)">0E 02 61 62</ins> <ins title="INT16: 1000">05 E8 03</ins> <ins title="TERMINAL_NULL">00</ins>
+```
+
+## Tratamiento del INT
+
+Hay varios tipos de INTs, y cada uno esta con el proposito de tener un script lijero.
+
+* `INT8` (0x04) cuando este en el rango de -128 al 127.
+* `INT16` (0x05) cuando este en el rango de -32768 al 32767.
+* `INT32` (0x01) para numeros mas gigantes se usa el.
+
+Estos usan la codificacion Two’s Complement y Little Endian.
+
+Two’s Complement usa el primer bit para cambiar a negativo. Y arrancan por el numero mas bajo, es decir desde el -128 (0x80) y suben hasta el -1 en (0xFF)
+
+Asi con `INT8`:
+```
+hex       int
+-------------- 
+0     ->  0x00
+1     ->  0x01
+-128  ->  0x80
+-127  ->  0x81
+```
+
+Asi con `INT16`:
+```
+int         hex         out
+------------------------------ 
+128     ->  0x0080  ->  0x8000
+129     ->  0x0081  ->  0x8100
+-32768  ->  0x8000  ->  0x0080
+-32767  ->  0x8001  ->  0x0180
+```
+
+Asi con `INT32`:
+```
+int              hex             out
+------------------------------------------- 
+32768        ->  0x00008000  ->  0x00800000
+32769        ->  0x00008001  ->  0x01800000
+-2147483647  ->  0x80000001  ->  0x01000080
+-2147483646  ->  0x80000002  ->  0x02000080
+```
+
+> Podes poner `INT32` para guardar 1 byte, pero es mejor si usas el correspondiente para tener un script optimizado.
+
+## Tratamiento del FLOAT
+
+SCM usa el algoritmo IEEE‑754 y Little Endian, para los datos tipo FLOAT32.
+
+```
+float     hex             out
+------------------------------------ 
+1.5   ->  0x3FC00000  ->  0x0000C03F
+0.0   ->  0x00000000  ->  0x00000000
+-1.5  ->  0xBFC00000  ->  0x0000C0BF
+```
+
+No hay muchas cosas que pueda decir de esto.. Un FLOAT se puede leer como un INT, pero no deberia hacerce nunca al revez.
+
+## Tratamiento del STRING
+
+Hay 3 tipos de Strings en SCM.
+
+* Short. (') guardan 7 caracteres + 1 terminal_null.
+* Long. (") guardan 15 caracteres + 1 terminal_null.
+* Variable. (`) guardan la longitud en 1 byte, y al lado va el texto.
+
+Vista previa:
+```
+0100 09 42616E616E617300                  ->  0001: wait 'Bananas'
+0100 0F 43656C70686F6E6542616E616E617300  ->  0001: wait "CelphoneBananas"
+0100 0E 05 48656C6C6F                     ->  0001: wait \`Hello\`
+```
+
+El STRING8(type_code: 09), ocupa 8 bytes y solo 7 son usables. El ultimo byte siempre es NULL.
+El STRING16(type_code: 0F), ocupa 16 bytes y solo 15 son usables. El ultimo byte siempre es NULL.
+
+Los STRING8 y STRING16 cortan los String cuando llegan a un byte NULL. Asi que no es necesario que esten los 7 o 15 bytes escritos.
+Imagina que tenes esta secuencia: `48 65 00 6C 6C 6F 00 00`.
+El PC solo lee `48 65`, el resto de bytes son ignorados. Si estas haciendo un Descompilador, es importante que no extraigas todos los datos. Son datos basura que muchas veces lo generan los compiladores a proposito para confundir a algunos.
+Lo que si, respeta las comillas de cada uno.
+
+El STRING_VARIABLE(type_code: 0E), ocupa 1 byte, mas los que tenga de texto.
+
+En SannyBuilder se suele usar las comillas doble para compilar los STRING16 y los STRING_VARIABLE como STRING_VARIABLE. Pero nosotros si estamos creando un compilador o descompilador quizas les gustaria usar las comillas Backstick. ya que son diferentes tipos de datos...
+Las STRING_VARIABLE tienen un limite de 255 caracteres.
+
+## Tratamiento de LABEL
+
+Las etiquetas se compilan en Litte Endian y con los bits invertirdos.\
+En lugar de apuntar desde el inicio del archivo con el offset `00 00 00 00` van por `FF FF FF FF`.\
+
+
+```sb3
+nop
+
+:while
+  wait 0
+goto @while
+```
+
+en binario seria esto:
+```
+00 00|
+01 00 04 00
+02 00 01 FE FF FF FF
+```
+
+esto en teoria estaria apuntando a donde deje la barra `|`. 
+el `FE FF FF FF` tiene los bits invertido, si lo arreglamos, tenemos el 1, y el Runner lee desde ese punto.
+
+Para nosotros el script se lee de arriba haca abajo, pero SCM lee de izquierda a derecha. no lee el byte 1, sino que desde ahi empieza a leer.
+Recorda que las maquinas cuentan desde el 0, y no desde el 1. lo que para nosotros es 2, para la maquina es 1.
+
+Para saber a donde apuntan, podes restarle `0xFFFFFFFF` a donde apunta asi sabes realmente a donde van... `0xFFFFFFFF - (0xFEFFFFFF) = 0x01000000 = 1 +1 = 2`. el `+1` es para que no te confundas. lo que va entre parentesis es el valor de la etiqueta.
+
+## Tratamiento de las Variables
+
+### LOCALES
+
+No se como explicarlo.. las variables locales estan formateadas de forma simples..
+```
+lvar       hex
+---------------- 
+0@     ->  00 00
+1@     ->  01 00
+2@     ->  02 00
+3@     ->  03 00
+...        n*1
+1024@  ->  00 04
+```
+Dependiendo de como fue compilado el script, una variable podra llegar a la numero 1024 o al 32 o cualquier otra.
+
+Tambien se compilan con diferente TYPE_CODE dependiendo de lo que guarden.
+
+Para los numeros INT y FLOAT usan el TYPE_CODE.LVAR (0x03).
+Para los textos SHORT usan TYPE_CODE.LVAR_STRING8 (0x0B).
+Para los textos LONG unan TYPE_CODE.LVAR_STRING16 (0x11).
+
+Las variables de Strings, deben tener un subfijo si o si.
+Si es de 8 bytes, usara el subfijo `s`.
+Si es de 16 bytes, usara el subfijo `v`.
+De esta forma:
+```
+0@s 22@s .... 1@v 15@v ....
+```
+
+### GLOBALES
+
+Ohhh aqui las variables globales cambian mucho segun como fueron compiladas pero las 2 formas que hay, se pueden descompilar tomando uno de los dos metodos.
+
+**$alias o $number**:
+```
+alias              gvar       hex
+----------------------------------- 
+                   $0     ->  04 10
+                   $1     ->  08 10
+$PLAYER_CHAR   ->  $2     ->  08 00
+$PLAYER_ACTOR  ->  $3     ->  0C 00
+$BIKE_STAMINA  ->  $4     ->  10 00
+$BIKE_MUSCLE   ->  $5     ->  14 00
+                   ...        n*4
+$WHEEL_BL      ->  $1024  ->  00 10
+```
+
+el juego base usa los IDs desde el $2 hasta el $10948.
+
+ADMA (Advanced Direct Memory Access):
+```
+gvar       hex
+----------------------------------- 
+&0     ->  00 00
+&1     ->  01 00
+&2     ->  02 00
+&3     ->  03 00
+&4     ->  04 00
+&5     ->  05 00
+...        n*1
+&1024  ->  00 04
+```
+
+las variables globales que usa el juego suelen estar con un desplazamiento de multiplo de 4. la razon no se sabe bien.. pero podes tener desplazamientos de multiplo 1, si usas la sintaxis ADMA.
+
+Dado a que ambas se compilan con el mismo tipo de dato, si estas creando un descompilador, te conviene mostrar con el simbolo de Dolar ($) cuando el desplazamiento sea multiplo/divisible de 4, para comprimir de cierta forma los offset y hacerlos mejor visualmente. No es lo mismo ver 492 que 123... el 123 se ve mas comodo. Ahora si el offset no es multiplo de 4, usa el simbolo And (&) asi seguis manteniendo numeros pequeños.
+
+Tambien se compilan con diferente TYPE_CODE dependiendo de lo que guarden.
+
+Para los numeros INT y FLOAT usan el TYPE_CODE.GVAR (0x02).
+Para los textos SHORT usan TYPE_CODE.GVAR_STRING8 (0x0A).
+Para los textos LONG unan TYPE_CODE.GVAR_STRING16 (0x10).
+
+Las variables de Strings, deben tener un prefijo si o si.
+Si es de 8 bytes, usara el prefijo `s`.
+Si es de 16 bytes, usara el prefijo `v`.
+De esta forma:
+```
+s$2 s$24 .... v$452 v$10024 ....
+s&44 s&1025 .... v&4 v&24 ....
+```
+
+## Tratamiento de los ARRAYs
+
+Hay muchas combinaciones y dependen de como inicia y termina la estructura que se use.
+
+Para que sea facil de entender, voy a recordarte que estos son los TYPE_CODE disponible para los ARRAYs.
+
+```js
+  GVAR_ARRAY          :'07', // 6 bytes (para INT o FLOAT)
+  LVAR_ARRAY          :'08', // 6 bytes (para INT o FLOAT)
+  GVAR_ARRAY_STRING8  :'0C', // 6 bytes
+  LVAR_ARRAY_STRING8  :'0D', // 6 bytes
+  GVAR_ARRAY_STRING16 :'12', // 6 bytes
+  LVAR_ARRAY_STRING16 :'13'  // 6 bytes
+```
+
+Todos ocupan 6 bytes desde que se ingreso su TYPE_CODE... 4 bytes para 2 variables (Indice, Offset), 1 byte para el tamaño y 1 byte para saber si son del mismo tipo o diferente las variables y tambien indica que tipo de dato se guarda en el array (int, float, short, long).
+
+```js
+const ELEMENT_TYPE = {
+  LINT      : '00',
+  LFLOAT    : '01',
+  LSTRING8  : '02',
+  LSTRING16 : '03',
+  GINT      : '80',
+  GFLOAT    : '81',
+  GSTRING8  : '82',
+  GSTRING16 : '83'
+}
+```
+
+Ejemplo... tenemos esta cadena de bytes:
+```
+01 00 07 08 00 0C 00 01 80
+```
+
+este seria el orden de todo:
+```
+01 00 // OPCODE: 0001(WAIT)
+
+07 // TYPE_CODE.GVAR_ARRAY
+
+0800 // GVAR: $2
+0C00 // GVAR: $3
+01 // SIZE: 1
+80 // ELEMENT_TYPE.GINT
+```
+
+Asi se veria descompilado:
+```
+0000: wait $2($3,1i)
+```
+
+
+El `SIZE` puede ser cualquier numero, no sirve para nada. En sentido de que eso puede decir 1, pero ser un array de 2, 8 o cualquier numero de elementos.
+El `ELEMENT_TYPE` indica si la segunda variable es LOCAL o GLOBAL con el primer numero, si es 0 o 8. Tambien segun el segundo numero, indica si es INT, FLOAT, u otro.
+
+Te dejo otro ejemplo
+```
+01 00 // OPCODE: 0001(WAIT)
+
+0D // TYPE_CODE.LVAR_ARRAY_STRING8
+
+0400 // LVAR: 4@s
+0800 // GVAR: $2
+05 // SIZE: 5
+82 // ELEMENT_TYPE.GSTRING8
+```
+
+Asi se veria descompilado:
+```
+0000: wait 4@s($2,5s)
+```
+
+---
+
+dejo un par de minitablas de todo
+
+
+| `1@(2@, 123i)` | `LVAR_ARRAY` |`0100 0200 7B 00` |
+| `1@(2@, 123f)` | `LVAR_ARRAY` | `0100 0200 7B 01` |
+| `1@($40, 123i)` | `LVAR_ARRAY` | `0100 A000 7B 80` |
+| `1@($40, 123f)` | `LVAR_ARRAY` | `0100 A000 7B 81` |
+
+
+# Tabla de Ejemplos:
+
+| Entrada | Tipo | Salida |
+|-|-|--:|
+| `12`    | `INT8`    | `0C` |
+| `1234`  | `INT16`   | `D2 04` |
+| `123456`| `INT32`   |`40 E2 01 00` |
+| `12.34` | `FLOAT32` |`A4 70 45 41` |
+| `Hello` | `STRING8` |`48 65 6C 6C 6F 00 00 00` |
+| `Hello World`| `STRING16` |`48 65 6C 6C 6F 20 57 6F 72 6C 64 00 00 00 00 00` |
+| `Hello World`| `STRING_VARIABLE` |<ins title="lenght: 11">`0B`</ins>` `<ins title="string: Hello World">`48 65 6C 6C 6F 20 57 6F 72 6C 64`</ins> |
+| `$2`    | `GVAR`            |`08 00` |
+| `2@`    | `LVAR`            |`02 00` |
+| `s$2`   | `GVAR_STRING8`    |`08 00` |
+| `2@s`   | `LVAR_STRING8`    |`02 00` |
+| `v$2`   | `GVAR_STRING16`   |`08 00` |
+| `2@v`   | `LVAR_STRING16`   |`02 00` |
+| `1@(2@, 123i)` | `LVAR_ARRAY` |`0100 0200 7B 00` |
+| `1@(2@, 123f)` | `LVAR_ARRAY` | `0100 0200 7B 01` |
+| `1@($40, 123i)` | `LVAR_ARRAY` | `0100 A000 7B 80` |
+| `1@($40, 123f)` | `LVAR_ARRAY` | `0100 A000 7B 81` |
+```
+GVAR_ARRAY          :'07', // 6 bytes
+LVAR_ARRAY          :'08', // 6 bytes
+GVAR_ARRAY_STRING8  :'0C', // 6 bytes
+LVAR_ARRAY_STRING8  :'0D', // 6 bytes
+GVAR_ARRAY_STRING16 :'12', // 6 bytes
+LVAR_ARRAY_STRING16 :'13'  // 6 bytes
+```
+
+         0006: 1@(2@, 123i) = 1
+    ____/   ___/  \__  | \     \
+  [0600][08 0100 0200 7B 00][04 01]
+    \__/  | \__/ \__/  |  |  \   \
+   opcode |  id   id   | lint \   \
+     lvar_array      lenght  int8  num
+
+
+         0007: 1@(2@, 123f) = 1.0
+    ____/   ___/  \__  | \     \__________
+    0700 08 0100 0200 7B 01 06 00 00 80 3F
+    \__/  | \__/ \__/  |  |  \         |
+   opcode |  id   id   |lfloat\        |
+     lvar_array      lenght  float32  num
+
+
+         05AA: 1@s(2@, 123s) = 'test'
+    ____/   ___/  \__  |  |    \______________________
+    AA05 0D 0100 0200 7B 02 09 74 65 73 74 00 00 00 00
+    \__/  | \__/ \__/  |  |  \            |
+   opcode |  id   id   |lstr8 \           |
+lvar_array_string8  lenght  string8     string
+
+
+         06D2: 1@v(2@, 123v) = "test"
+    ____/   ___/  \__  |  |    \_____________
+    D206 13 0100 0200 7B 03 0E 04 74 65 73 74
+    \__/  | \__/ \__/  |  |  \            |
+   opcode |  id   id   |lstr16\           |
+lvar_array_string16 lenght  string_v    string
+
+     op  @            l  &  values
+    0600 08 0100 2800 7B 80 04 01
+    0700 08 0100 2800 7B 81 06 00 00 80 3F
+    AA05 0D 0100 2800 7B 82 09 74 65 73 74 00 00 00 00
+    D206 13 0100 2800 7B 83 0E 04 74 65 73 74
+         &               &
+    0400 07 2C03 0200 7B 00 04 01
+    0500 07 2C03 0200 7B 01 06 00 00 80 3F
+    A905 0C 2C03 0200 7B 02 09 74 65 73 74 00 00 00 00
+    D106 12 2C03 0200 7B 03 0E 04 74 65 73 74
+         &               @
+    0400 07 2C03 2800 7B 80 04 01
+    0500 07 2C03 2800 7B 81 06 00 00 80 3F
+    A905 0C 2C03 2800 7B 82 09 74 65 73 74 00 00 00 00
+    D106 12 2C03 2800 7B 83 0E 04 74 65 73 74 
+
+<script src="../js/main.js"></script>

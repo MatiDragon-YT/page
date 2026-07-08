@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Comparador Binario Pro</title>
+
+<style>
+
+body{
+background:black;
+color:white;
+font-family:Consolas,monospace;
+margin:10px;
+}
+
+h1{
+text-align:center;
+}
+h3{
+    margin: 0 0 1rem 0;
+}
+
+.controls{
+display:flex;
+gap:10px;
+margin-bottom:15px;
+flex-wrap:wrap;
+}
+
+.panelContainer{
+display:flex;
+}
+
+.panel{
+    flex: 1;
+    padding: 10px;
+    border: solid green 1px;
+}
+
+.hexView{
+
+height:600px;
+overflow:auto;
+background:black;
+padding:10px;
+font-size:13px;
+line-height:20px;
+}
+
+.line{
+
+display:flex;
+margin-bottom:2px;
+}
+
+.offset{
+color:cyan;
+}
+
+.bytes{
+    display:flex;
+    gap:2px;
+    margin: 0px 1.5rem;
+    color:green;
+}
+
+.ascii{
+
+display:flex;
+gap:2px;
+    color: yellow;
+}
+
+.byte{
+
+width:24px;
+text-align:center;
+border-radius:3px;
+cursor:pointer;
+
+}
+
+.diff{
+
+color:red;
+background:brown;
+}
+.ascii .same {
+    width: 0.5rem;
+    border-radius: 1px;
+}
+.bytes .same {
+    text-transform: uppercase;
+}
+.hover{
+
+outline:2px solid yellow;
+background:#444;
+}
+
+.info{
+
+margin-top:10px;
+background:#222;
+padding:15px;
+border-radius:8px;
+white-space:pre-wrap;
+}
+
+.letter{
+  color:cyan;
+}
+
+.number{
+  color:pink;
+}
+</style>
+</head>
+<body>
+
+<h1>Comparador Binario Pro</h1>
+
+<div class="controls">
+
+<input type="file" id="fileA">
+<input type="file" id="fileB">
+
+<button onclick="compare()">
+Comparar
+</button>
+
+</div>
+
+<div class="panelContainer">
+
+<div class="panel">
+
+<h3>Archivo A</h3>
+
+<div
+id="viewA"
+class="hexView"
+></div>
+
+</div>
+
+<div class="panel">
+
+<h3>Archivo B</h3>
+
+<div
+id="viewB"
+class="hexView"
+></div>
+
+</div>
+
+</div>
+
+<div
+class="info"
+id="info"
+>
+
+Esperando archivos...
+
+</div>
+
+<script>
+
+let dataA;
+let dataB;
+
+
+async function compare(){
+
+let fileA=
+fileAInput=
+document.getElementById(
+"fileA"
+).files[0];
+
+let fileB=
+document.getElementById(
+"fileB"
+).files[0];
+
+if(
+!fileA||
+!fileB
+){
+
+alert(
+"Elegí ambos archivos"
+);
+
+return;
+
+}
+
+dataA=
+new Uint8Array(
+await fileA.arrayBuffer()
+);
+
+dataB=
+new Uint8Array(
+await fileB.arrayBuffer()
+);
+
+render();
+
+}
+
+
+function render(){
+
+let max=
+Math.max(
+dataA.length,
+dataB.length
+);
+
+let htmlA="";
+let htmlB="";
+
+for(
+let i=0;
+i<max;
+i+=16
+){
+
+let offset=
+i.toString(16)
+.padStart(
+8,
+"0"
+);
+
+htmlA+=createLine(
+dataA,
+dataB,
+i,
+offset
+);
+
+htmlB+=createLine(
+dataB,
+dataA,
+i,
+offset
+);
+
+}
+
+viewA.innerHTML=
+htmlA;
+
+viewB.innerHTML=
+htmlB;
+
+syncScroll();
+
+}
+
+
+
+function createLine(
+current,
+other,
+start,
+offset
+){
+
+let html=
+`
+<div class='line'>
+
+<div class='offset'>
+${offset}
+</div>
+
+<div class='bytes'>
+`;
+
+let ascii=
+"<div class='ascii'>";
+
+for(
+let i=0;
+i<16;
+i++
+){
+
+let p=
+start+i;
+
+if(
+p>=Math.max(
+dataA.length,
+dataB.length
+)
+)
+break;
+
+let v=
+current[p];
+
+let o=
+other[p];
+
+let equal=
+v===o;
+
+let c=
+equal
+?
+"same"
+:
+"diff";
+
+let hex=
+(v??0)
+.toString(16)
+.padStart(
+2,
+"0"
+);
+
+let ch='.';
+
+if(
+v>=32&&
+v<=255
+){
+
+ch=
+String.fromCharCode(
+v
+);
+
+}
+
+html+=`
+
+<span
+class='byte ${c}'
+data-pos='${p}'
+onmouseenter='hoverByte(${p})'
+onmouseleave='clearHover()'
+>
+
+${hex}
+
+</span>
+
+`;
+
+let asciiClass=c;
+
+if(/[A-Za-z]/.test(ch))
+asciiClass+=" letter";
+
+if(/[0-9]/.test(ch))
+asciiClass+=" number";
+
+ascii+=`
+
+<span
+class='byte ${asciiClass}'
+data-pos='${p}'
+onmouseenter='hoverByte(${p})'
+onmouseleave='clearHover()'
+>
+
+${ch}
+
+</span>
+
+`;
+
+}
+
+html+="</div>";
+ascii+="</div></div>";
+
+return html+ascii;
+
+}
+
+
+
+function hoverByte(pos){
+
+clearHover();
+
+document
+.querySelectorAll(
+`[data-pos="${pos}"]`
+)
+.forEach(
+e=>e.classList.add(
+"hover"
+)
+);
+
+updateInfo(
+pos
+);
+
+}
+
+
+
+function clearHover(){
+
+document
+.querySelectorAll(
+".hover"
+)
+.forEach(
+e=>e.classList.remove(
+"hover"
+)
+);
+
+}
+
+
+
+function getBytes(
+arr,
+pos,
+count
+){
+
+let out=[];
+
+for(
+let i=0;
+i<count;
+i++
+){
+
+out.push(
+arr[pos+i]??0
+);
+
+}
+
+return out;
+
+}
+
+
+
+function toDataView(bytes){
+
+return new DataView(
+new Uint8Array(
+bytes
+).buffer
+);
+
+}
+
+
+
+function updateInfo(pos){
+
+let bytes=
+getBytes(
+dataA,
+pos,
+4
+);
+
+let dv=
+toDataView(
+bytes
+);
+
+let bin=
+bytes
+.map(
+v=>
+v.toString(2)
+.padStart(
+8,
+"0"
+)
+)
+.join(
+" "
+);
+
+let ascii=
+bytes
+.map(
+v=>
+(v>=32&&v<=126)
+?
+String.fromCharCode(v)
+:
+"."
+)
+.join("");
+
+info.innerText=`
+
+Offset:
+0x${pos.toString(16)}
+(${pos})
+
+Bytes:
+${bytes.map(
+v=>
+v.toString(16)
+.padStart(2,"0")
+).join(" ")}
+
+UINT8:
+${bytes[0]}
+
+INT8:
+${dv.getInt8(0)}
+
+------------------
+
+UINT16 LE:
+${dv.getUint16(0,true)}
+
+UINT16 BE:
+${dv.getUint16(0,false)}
+
+INT16 LE:
+${dv.getInt16(0,true)}
+
+INT16 BE:
+${dv.getInt16(0,false)}
+
+------------------
+
+UINT32 LE:
+${dv.getUint32(0,true)}
+
+UINT32 BE:
+${dv.getUint32(0,false)}
+
+INT32 LE:
+${dv.getInt32(0,true)}
+
+INT32 BE:
+${dv.getInt32(0,false)}
+
+------------------
+
+FLOAT32 LE:
+${dv.getFloat32(0,true)}
+
+FLOAT32 BE:
+${dv.getFloat32(0,false)}
+
+------------------
+
+ASCII:
+${ascii}
+
+Binario:
+${bin}
+
+`;
+
+}
+
+
+
+function syncScroll(){
+
+viewA.onscroll=()=>{
+
+viewB.scrollTop=
+viewA.scrollTop;
+
+};
+
+viewB.onscroll=()=>{
+
+viewA.scrollTop=
+viewB.scrollTop;
+
+};
+
+}
+
+</script>
+
+</body>
+</html>
