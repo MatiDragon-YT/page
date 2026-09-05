@@ -369,7 +369,8 @@
                     } else {
                         const parts = trimmed.match(/^(\w+)(.*)$/);
                         if (parts) {
-                            lineObjs.push({ type: 'command', mnemonic: parts[1], argsStr: parts[2].trim(), indent, trimmed });
+                            const mnemonic = parts[1].toUpperCase();
+                            lineObjs.push({ type: 'command', mnemonic, argsStr: parts[2].trim(), indent, trimmed });
                         } else {
                             throw new Error(`Línea inválida: "${trimmed}"`);
                         }
@@ -381,43 +382,44 @@
                 while (idx < lineObjs.length) {
                     const cur = lineObjs[idx];
                     if (cur.type === 'label') {
-                        let nextIdx = idx + 1;
-                        while (nextIdx < lineObjs.length && lineObjs[nextIdx].type !== 'command') nextIdx++;
-                        if (nextIdx < lineObjs.length && lineObjs[nextIdx].mnemonic === 'IF') {
-                            const ifLine = lineObjs[nextIdx];
-                            let condLines = [];
-                            let k = nextIdx + 1;
-                            while (k < lineObjs.length && lineObjs[k].type === 'command' && lineObjs[k].mnemonic !== 'FALSE_JUMP') {
-                                condLines.push(lineObjs[k]);
-                                k++;
-                            }
-                            if (k < lineObjs.length && lineObjs[k].mnemonic === 'FALSE_JUMP') {
-                                const jmpRef = lineObjs[k].argsStr.replace(/\s+/g, '').toLowerCase();
-                                const expectedRef = `@${cur.name}`.replace(/\s+/g, '').toLowerCase();
-                                if (jmpRef === expectedRef) {
-                                    let ifType = 0;
-                                    if (ifLine.argsStr) {
-                                        const t = ifLine.argsStr.toUpperCase();
-                                        if (t === 'AND') ifType = 0;
-                                        else if (t === 'OR') ifType = 1;
-                                        else throw new Error(`Tipo IF no válido: ${ifLine.argsStr}`);
-                                    }
-                                    items.push({
-                                        type: 'block',
-                                        labelName: cur.name,
-                                        ifType,
-                                        conditionals: condLines
-                                    });
-                                    idx = k + 1;
-                                    continue;
-                                } else {
-                                    throw new Error(`FALSE_JUMP esperaba "@${cur.name}", pero se encontró "${lineObjs[k].argsStr}".`);
-                                }
-                            }
+                    let nextIdx = idx + 1;
+                    while (nextIdx < lineObjs.length && lineObjs[nextIdx].type !== 'command') nextIdx++;
+                    if (nextIdx < lineObjs.length && lineObjs[nextIdx].mnemonic === 'IF') {
+                        const ifLine = lineObjs[nextIdx];
+                        let condLines = [];
+                        let k = nextIdx + 1;
+                        while (k < lineObjs.length && lineObjs[k].type === 'command' && lineObjs[k].mnemonic !== 'FALSE_JUMP') {
+                            condLines.push(lineObjs[k]);
+                            k++;
                         }
-                        items.push({ type: 'label', name: cur.name });
-                        idx++;
-                    } else if (cur.type === 'command') {
+                        if (k < lineObjs.length && lineObjs[k].mnemonic === 'FALSE_JUMP') {
+                            const jmpRef = lineObjs[k].argsStr.trim();
+                            if (!jmpRef.startsWith('@')) {
+                                throw new Error(`FALSE_JUMP necesita una referencia (@etiqueta).`);
+                            }
+                            const targetLabel = jmpRef.substring(1); // quitar @
+                            let ifType = 0;
+                            if (ifLine.argsStr) {
+                                const t = ifLine.argsStr.toUpperCase();
+                                if (t === 'AND') ifType = 0;
+                                else if (t === 'OR') ifType = 1;
+                                else throw new Error(`Tipo IF no válido: ${ifLine.argsStr}`);
+                            }
+                            items.push({
+                                type: 'block',
+                                labelName: cur.name,      // etiqueta que marca el inicio del bloque condicional
+                                targetLabel: targetLabel, // destino real del salto falso
+                                ifType,
+                                conditionals: condLines
+                            });
+                            idx = k + 1;
+                            continue;
+                        }
+                    }
+                    // Si no es un bloque IF, tratar como etiqueta normal
+                    items.push({ type: 'label', name: cur.name });
+                    idx++;
+                } else if (cur.type === 'command') {
                         if (cur.mnemonic === 'FALSE_JUMP') {
                             const ref = cur.argsStr.trim();
                             if (!ref.startsWith('@')) throw new Error(`FALSE_JUMP necesita una referencia (@etiqueta).`);
@@ -461,6 +463,7 @@
                     } else if (item.type === 'block') {
                         if (pendingLabel) throw new Error(`Etiqueta antes de bloque inesperada.`);
                         const blockLabel = item.labelName;
+                        const targetLabel = item.targetLabel;
                         const firstCondIndex = writeOps.length;
                         for (const condLine of item.conditionals) {
                             const opcode = nameToOpcode[condLine.mnemonic];
@@ -475,7 +478,7 @@
                             const argValues = parseArgValues(tokens, params, cmdDef);
                             writeOps.push({ type: 'cmd', opcode, argValues });
                         }
-                        writeOps.push({ type: 'if_block', ifType: item.ifType, targetLabel: blockLabel });
+                        writeOps.push({ type: 'if_block', ifType: item.ifType, targetLabel: targetLabel });
                         if (labelToFirstCondIdx.has(blockLabel)) throw new Error(`Etiqueta duplicada: ${blockLabel}`);
                         labelToFirstCondIdx.set(blockLabel, firstCondIndex);
                     }
