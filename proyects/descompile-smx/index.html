@@ -263,16 +263,9 @@
 
                 // Etiquetas y bloques (sin cambios)
                 const labelPositions = new Set();
-                const correctedIfTargets = new Map();
-                for (const [ifOffset, originalTarget] of rawTargetOffsets.entries()) {
-                    let finalTarget = originalTarget;
-                    const cmdAtTarget = commands.find(c => c.offset === originalTarget);
-                    if (cmdAtTarget && !cmdAtTarget.isConditional) {
-                        const nextCond = commands.find(c => c.offset > originalTarget && c.isConditional);
-                        if (nextCond) finalTarget = nextCond.offset;
-                    }
-                    labelPositions.add(finalTarget);
-                    correctedIfTargets.set(ifOffset, finalTarget);
+                // Simplemente añadimos todos los destinos de IF como etiquetas
+                for (const target of rawTargetOffsets.values()) {
+                    labelPositions.add(target);
                 }
                 for (const cmd of commands) {
                     if (cmd.opcode === 0x0001) labelPositions.add(cmd.args[0].value);
@@ -291,20 +284,21 @@
                             condSeq.push(commands[j]);
                             j++;
                         }
-                        if (j < commands.length && commands[j].opcode === 0x0002 &&
-                            commands[j].args[1].value === commands[i].offset) {
+                        if (j < commands.length && commands[j].opcode === 0x0002) {
                             const ifCmd = commands[j];
                             const ifType = ifCmd.args[0].value;
-                            const labelOff = commands[i].offset;
-                            const labelName = `label_${labelOff.toString(16).toUpperCase().padStart(4, '0')}`;
+                            const blockLabelOff = commands[i].offset;
+                            const blockLabelName = `label_${blockLabelOff.toString(16).toUpperCase().padStart(4, '0')}`;
+                            const targetOff = commands[j].args[1].value; // destino real del IF
+                            const targetLabelName = `label_${targetOff.toString(16).toUpperCase().padStart(4, '0')}`;
 
-                            lines.push(`\n:${labelName}`);
+                            lines.push(`\n:${blockLabelName}`);
                             lines.push(`IF ${condSeq.length > 1 ? (ifType === 0 ? 'AND' : 'OR') : ''}`);
                             for (const cond of condSeq) {
                                 lines.push(`   ${formatCommandLine(cond, version)}`);
                             }
-                            lines.push(`FALSE_JUMP @${labelName}`);
-                            labelPositions.add(labelOff);
+                            lines.push(`FALSE_JUMP @${targetLabelName}`);
+                            labelPositions.add(blockLabelOff);
                             i = j + 1;
                             continue;
                         }
@@ -564,7 +558,16 @@
                     if (op.type === 'cmd') {
                         view.setUint32(wOff, op.opcode, true);
                         wOff += 4;
+                        // Resolver etiquetas en argumentos OFFSET antes de escribir
                         for (const arg of op.argValues) {
+                            if (arg.type === ParamType.OFFSET) {
+                                const targetLabel = arg.value; // nombre de etiqueta sin '@'
+                                const jumpOff = labelOffsets.get(targetLabel);
+                                if (jumpOff === undefined) {
+                                    throw new Error(`Etiqueta no definida: ${targetLabel}`);
+                                }
+                                arg.value = jumpOff; // ahora es numérico
+                            }
                             wOff = writeArg(wOff, arg);
                         }
                     } else { // if_block
