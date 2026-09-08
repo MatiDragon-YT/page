@@ -100,26 +100,26 @@
                 0x0003: { name: "END_THREAD",        params: [] },
                 0x0004: { name: "NOP",               params: [] },
 
-                0x1000: { name: "PLAYER_SET_POSITION", params: [ParamType.FLOAT, ParamType.FLOAT, ParamType.FLOAT] },
-                0x1001: { name: "PLAYER_SET_WANTED",   params: [ParamType.INT] },
-                0x1002: { name: "PLAYER_SET_WEAPON",   params: [ParamType.INT, ParamType.INT, ParamType.INT, ParamType.INT] },
-                0x1004: { name: "PLAYER_SET_ANIM",     params: [ParamType.INT, ParamType.INT, ParamType.INT] },
-                0x1005: { name: "PLAYER_SET_FIGHT",    params: [ParamType.INT] },
-                0x1006: { name: "PLAYER_SET_HEALTH",   params: [ParamType.INT] },
+                0x0005: { name: "PLAYER_SET_POSITION", params: [ParamType.FLOAT, ParamType.FLOAT, ParamType.FLOAT] },
+                0x0006: { name: "PLAYER_SET_WANTED",   params: [ParamType.INT] },
+                0x0007: { name: "PLAYER_SET_WEAPON",   params: [ParamType.INT, ParamType.INT, ParamType.INT, ParamType.INT] },
+                0x0008: { name: "PLAYER_SET_ANIM",     params: [ParamType.INT, ParamType.INT, ParamType.INT] },
+                0x0009: { name: "PLAYER_SET_FIGHT",    params: [ParamType.INT] },
+                0x000A: { name: "PLAYER_SET_HEALTH",   params: [ParamType.INT] },
 
-                0x2000: { name: "ACTOR_CREATE",        params: function(ver) {
+                0x000B: { name: "ACTOR_CREATE",        params: function(ver) {
                     const base = [ParamType.INT, ParamType.INT, ParamType.INT,
                                   ParamType.FLOAT, ParamType.FLOAT, ParamType.FLOAT, ParamType.FLOAT];
                     if (ver > 300010) base.push(ParamType.INT, ParamType.INT);
                     return base;
                 }, actorIdParams: [0] },
-                0x200B: { name: "ACTOR_SET_ANIM",     params: [ParamType.INT, ParamType.INT, ParamType.INT, ParamType.INT], actorIdParams: [0] },
-                0x201B: { name: "TASK_KILL_PLAYER",    params: [ParamType.INT, ParamType.INT, ParamType.FLOAT, ParamType.INT], actorIdParams: [0] },
+                0x000C: { name: "ACTOR_SET_ANIM",     params: [ParamType.INT, ParamType.INT, ParamType.INT, ParamType.INT], actorIdParams: [0] },
+                0x000D: { name: "TASK_KILL_PLAYER",    params: [ParamType.INT, ParamType.INT, ParamType.FLOAT, ParamType.INT], actorIdParams: [0] },
 
-                0x6000: { name: "FADE",               params: [ParamType.INT, ParamType.INT] },
-                0x6001: { name: "PRINT_FORMATTED",    params: [ParamType.INT, ParamType.STRING] },
+                0x000E: { name: "FADE",               params: [ParamType.INT, ParamType.INT] },
+                0x000F: { name: "PRINT_FORMATTED",    params: [ParamType.INT, ParamType.STRING] },
 
-                0x8000: { name: "PLAYER_IS_POSITION",      params: [ParamType.FLOAT, ParamType.FLOAT, ParamType.FLOAT] },
+                0x8000: { name: "SPHERE_CREATE_BETA",      params: [ParamType.FLOAT, ParamType.FLOAT, ParamType.FLOAT] },
                 0x8001: { name: "PLAYER_IS_KILL_TO_ACTOR", params: [ParamType.INT], actorIdParams: [0] },
             };
 
@@ -141,22 +141,42 @@
 
             const smxCompleter = {
                 getCompletions: function(ed, session, pos, prefix, callback) {
+                    const prefixLower = prefix.toLowerCase(); // para comparar sin distinción de mayúsculas
                     const completions = [];
+
+                    // Comandos SMX
                     for (const name of Object.keys(nameToOpcode)) {
-                        if (name.startsWith(prefix)) completions.push({ name, value: name, score: 100, meta: "SMX Command" });
+                        if (name.toLowerCase().startsWith(prefixLower)) {
+                            completions.push({ name, value: name, score: 100, meta: "SMX Command" });
+                        }
                     }
-                    if ("AND".startsWith(prefix)) completions.push({ name: "AND", value: "AND", score: 95, meta: "IF type" });
-                    if ("OR".startsWith(prefix)) completions.push({ name: "OR", value: "OR", score: 95, meta: "IF type" });
+
+                    // Palabras clave AND/OR
+                    if ("and".startsWith(prefixLower)) completions.push({ name: "AND", value: "AND", score: 95, meta: "IF type" });
+                    if ("or".startsWith(prefixLower)) completions.push({ name: "OR", value: "OR", score: 95, meta: "IF type" });
+
+                    // Etiquetas definidas en el script
                     const lines = session.getValue().split('\n');
                     for (const line of lines) {
                         const trimmed = line.trim();
                         if (trimmed.startsWith(':')) {
-                            const labelName = trimmed.substring(1).split(/\s/)[0];
-                            if (labelName.startsWith(prefix)) completions.push({ name: labelName, value: labelName, score: 90, meta: "Label" });
-                            if (prefix.startsWith('@') && ('@'+labelName).startsWith(prefix)) completions.push({ name: '@'+labelName, value: '@'+labelName, score: 90, meta: "Label Reference" });
+                            const labelName = trimmed.substring(1).split(/\s/)[0]; // nombre sin ':'
+                            const fullLabel = '@' + labelName; // versión con @
+                            
+                            // Coincidencia para etiqueta sin @
+                            if (labelName.toLowerCase().startsWith(prefixLower)) {
+                                completions.push({ name: labelName, value: labelName, score: 90, meta: "Label" });
+                            }
+                            // Coincidencia para etiqueta con @
+                            if (fullLabel.toLowerCase().startsWith(prefixLower)) {
+                                completions.push({ name: fullLabel, value: fullLabel, score: 90, meta: "Label Reference" });
+                            }
                         }
                     }
-                    callback(null, completions.filter((c, i, arr) => arr.findIndex(x => x.name === c.name) === i));
+
+                    // Eliminar duplicados (por si acaso)
+                    const unique = completions.filter((c, i, arr) => arr.findIndex(x => x.name === c.name) === i);
+                    callback(null, unique);
                 }
             };
             editor.completers = [smxCompleter];
