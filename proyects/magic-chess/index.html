@@ -126,6 +126,10 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
   cursor:pointer;font-family:inherit;transition:all .15s}
 .abtn:active{transform:scale(.97)}
 .abtn.hidden{display:none}
+#undoBtn{border-color:#3a5a8a;background:linear-gradient(#1a2a40,#0d1520);color:#a8c8ff;
+  box-shadow:0 0 10px rgba(90,150,255,.2)}
+#undoBtn:active{background:linear-gradient(#24406a,#12203a)}
+#undoBtn.dis{opacity:.35;filter:grayscale(.7);cursor:default}
 #achStrip{display:flex;gap:4px;align-items:center;padding:3px 6px;background:#0f0d09;
   border-radius:8px;border:1px solid #2a2018;min-height:30px;overflow-x:auto;scrollbar-width:none}
 #achStrip::-webkit-scrollbar{display:none}
@@ -169,6 +173,7 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
 .mbtn:active{transform:scale(.95)}
 .mbtn.glyph{font-size:22px;padding:8px 12px;line-height:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:auto}
 .mbtn.glyph small{font-size:9px;color:#7ac0ff;font-weight:800}
+.mbtn.glyph.dis{opacity:.35;filter:grayscale(.7);cursor:not-allowed;border-color:#3a3020}
 .mbtn.yes{border-color:#4a7a3a;background:linear-gradient(#1e3a18,#0e1c0a);color:#b8e898}
 .mbtn.no{border-color:#7a3a3a;background:linear-gradient(#3a1818,#1c0a0a);color:#e89898}
 .mbtn.replay{border-color:#5a7ac0;background:linear-gradient(#1a2848,#0d1628);color:#a8c8ff}
@@ -256,6 +261,7 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
     <div id="powerGrid"></div>
     <div id="actionRow">
       <button class="abtn hidden" id="cancelBtn">Cancelar poder</button>
+      <button class="abtn hidden" id="undoBtn">↶ Deshacer</button>
     </div>
   </div>
 </div>
@@ -332,6 +338,7 @@ function sfx(kind){
     case 'promo': [523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,.2,'sine',.05),i*70)); break;
     case 'end': [440,554,659,880].forEach((f,i)=>setTimeout(()=>tone(f,.3,'triangle',.05),i*120)); break;
     case 'ach': [659,880,1174].forEach((f,i)=>setTimeout(()=>tone(f,.25,'sine',.07),i*90)); break;
+    case 'undo': tone(340,.18,'triangle',.05,-80); tone(220,.22,'sine',.04,-60); break;
   }
 }
 
@@ -362,7 +369,6 @@ let iraResolve = null;
 
 const playerDecks = { w: { hand: [], queue: [] }, b: { hand: [], queue: [] } };
 
-// ---- IA ----
 let aiEnabled = false;
 let aiColor = 'b';
 let humanColor = 'w';
@@ -370,7 +376,11 @@ let aiDifficulty = 'normal';
 let rubyMode = false;
 let aiThinking = false;
 
-// ---- LOGROS ----
+const undoStack = [];
+let undoUsed = 0;
+let turnSnapshotTaken = false;
+const UNDO_LIMITS = { easy: Infinity, normal: 3, hard: 0, ruby: 0, pvp: 0 };
+
 const ACH = {
   primeraSangre: { name:'Primera Sangre', icon:'🩸', desc:'Primera captura de la partida' },
   dobleFilo: { name:'Doble Filo', icon:'⚔️', desc:'Primera Ira de Batalla' },
@@ -389,7 +399,7 @@ const achState = {
   w: { unlocked:{}, streak:0, kingCaptures:0, lostPieces:0, powersUsed:0 },
   b: { unlocked:{}, streak:0, kingCaptures:0, lostPieces:0, powersUsed:0 }
 };
-let firstBloodClaimed = false;  // NUEVO: solo uno puede tener Primera Sangre
+let firstBloodClaimed = false;
 
 const historyLog = [];
 const replay = { active: false, index: 0, playing: false, speed: 950 };
@@ -670,7 +680,6 @@ function generateTerrain(){
     if(h[yi*N+xi] < 0.34) continue;
     rocks.push({ x: rx, y: ry, r: rnd(0.004, 0.011), rot: rnd(0,6.28) });
   }
-  // Más luciérnagas
   const fireflies = [];
   for(let i=0;i<N*N && fireflies.length<160;i++){
     if(water[i]) continue;
@@ -770,13 +779,13 @@ function renderTerrain(W, H){
 }
 
 /* =========================================================
-   CLIMA / DÍA-NOCHE  (NOCHE MÁS VISIBLE)
+   CLIMA / DÍA-NOCHE
    ========================================================= */
 const PHASES = [
-  { t:0.00, tint:[255,185,125], a:0.14, dark:0.05 },  // Amanecer — claro
-  { t:0.25, tint:[255,245,200], a:0.04, dark:0.00 },  // Día
-  { t:0.50, tint:[255,150,90],  a:0.20, dark:0.10 },  // Atardecer
-  { t:0.75, tint:[120,140,190], a:0.32, dark:0.14 },  // Noche más clara y azulada
+  { t:0.00, tint:[255,185,125], a:0.14, dark:0.05 },
+  { t:0.25, tint:[255,245,200], a:0.04, dark:0.00 },
+  { t:0.50, tint:[255,150,90],  a:0.20, dark:0.10 },
+  { t:0.75, tint:[120,140,190], a:0.32, dark:0.14 },
   { t:1.00, tint:[255,185,125], a:0.14, dark:0.05 }
 ];
 const CYCLE_SECONDS = 150;
@@ -906,14 +915,11 @@ async function animateMove(from, to, capturedSquare, duration = 200){
   if(targetEl) pieceEls.delete(capturedSquare || to);
   pieceEls.set(to, el);
   spawnDust(from, to);
-
-  // Duración personalizada para animaciones lentas (IA Ira)
   if(duration !== 200){
     el.style.transition = `transform ${duration}ms cubic-bezier(.18,.75,.28,1)`;
   } else {
     el.style.transition = '';
   }
-
   el.getBoundingClientRect();
   positionPiece(el, to);
   if(targetEl){
@@ -946,6 +952,54 @@ function switchTurnInFen(){
   const fen = parts.join(' ');
   try { const ok = chess.load(fen, { skipValidation: true }); if(ok !== false) return; } catch(e){}
   try { chess.load(fen); } catch(e){}
+}
+function addToGraveyard(capturedType, capturedColor){
+  if(!capturedType || !capturedColor) return;
+  if(!state.graveyard[capturedColor]) return;
+  state.graveyard[capturedColor].push(capturedType);
+}
+
+/* =========================================================
+   VALIDACIÓN: jaque propio / casilla atacada
+   ========================================================= */
+function simMoveLeavesKingInCheck(fromSq, toSq, color){
+  const savedFen = chess.fen();
+  let result = true;
+  try {
+    const piece = chess.get(fromSq);
+    if(!piece){ return true; }
+    if(!chess.remove(fromSq)){ return true; }
+    if(!chess.put(piece, toSq)){
+      try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+      return true;
+    }
+    const parts = chess.fen().split(' ');
+    parts[1] = color;
+    parts[3] = '-'; parts[4] = '0';
+    chess.load(parts.join(' '), { skipValidation: true });
+    result = chess.in_check();
+  } catch(e){
+    result = true;
+  }
+  try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+  return result;
+}
+function isSquareAttackedByEnemy(sq, color){
+  const savedFen = chess.fen();
+  let result = false;
+  try {
+    const enemy = color === 'w' ? 'b' : 'w';
+    const parts = savedFen.split(' ');
+    parts[1] = enemy;
+    parts[3] = '-'; parts[4] = '0';
+    chess.load(parts.join(' '), { skipValidation: true });
+    const moves = chess.moves({ verbose: true });
+    result = moves.some(m => m.to === sq);
+  } catch(e){
+    result = false;
+  }
+  try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+  return result;
 }
 
 /* =========================================================
@@ -1113,6 +1167,101 @@ function highlightLegalMoves(){
 }
 
 /* =========================================================
+   UNDO
+   ========================================================= */
+function undoLimitForMode(){
+  if(!aiEnabled) return 0;
+  return UNDO_LIMITS[aiDifficulty] !== undefined ? UNDO_LIMITS[aiDifficulty] : 0;
+}
+function canUndo(){
+  if(!aiEnabled) return false;
+  if(rubyMode) return false;
+  if(state.gameOver || state.busy || replay.active) return false;
+  if(chess.turn() !== humanColor) return false;
+  const limit = undoLimitForMode();
+  if(limit <= 0) return false;
+  if(undoUsed >= limit) return false;
+  if(undoStack.length === 0) return false;
+  return true;
+}
+function ensureTurnSnapshot(){
+  if(!aiEnabled || rubyMode) return;
+  if(chess.turn() !== humanColor) return;
+  if(turnSnapshotTaken) return;
+  turnSnapshotTaken = true;
+  pushUndoSnapshot();
+}
+function pushUndoSnapshot(){
+  const snap = {
+    fen: chess.fen(),
+    mana: { ...state.mana },
+    specialCount: { ...state.specialCount },
+    iraCharge: { ...state.iraCharge },
+    shields: { w: [...state.shields.w], b: [...state.shields.b] },
+    graveyard: { w: [...state.graveyard.w], b: [...state.graveyard.b] },
+    achState: JSON.parse(JSON.stringify(achState)),
+    firstBloodClaimed,
+    historyLen: historyLog.length,
+    decks: {
+      w: { hand: [...playerDecks.w.hand], queue: [...playerDecks.w.queue] },
+      b: { hand: [...playerDecks.b.hand], queue: [...playerDecks.b.queue] }
+    }
+  };
+  undoStack.push(snap);
+}
+function performUndo(){
+  if(!canUndo()) return;
+  const snap = undoStack.pop();
+  if(!snap) return;
+  try { chess.load(snap.fen, { skipValidation: true }); }
+  catch(e){ try { chess.load(snap.fen); } catch(e2){ return; } }
+  state.mana = { ...snap.mana };
+  state.specialCount = { ...snap.specialCount };
+  state.iraCharge = { ...snap.iraCharge };
+  state.shields = { w: [...snap.shields.w], b: [...snap.shields.b] };
+  state.graveyard = { w: [...snap.graveyard.w], b: [...snap.graveyard.b] };
+  for(const color of ['w','b']){
+    achState[color] = JSON.parse(JSON.stringify(snap.achState[color]));
+  }
+  firstBloodClaimed = snap.firstBloodClaimed;
+  playerDecks.w.hand = [...snap.decks.w.hand];
+  playerDecks.w.queue = [...snap.decks.w.queue];
+  playerDecks.b.hand = [...snap.decks.b.hand];
+  playerDecks.b.queue = [...snap.decks.b.queue];
+  while(historyLog.length > snap.historyLen){
+    historyLog.pop();
+    if(historyEl.lastChild) historyEl.removeChild(historyEl.lastChild);
+  }
+  state.selected = null; state.legalMoves = []; state.targeting = null;
+  if(iraResolve){ const r = iraResolve; iraResolve = null; r(null); }
+  clearHighlights();
+  rebuildPieces();
+  renderAchStrip();
+  undoUsed++;
+  turnSnapshotTaken = false;
+  sfx('undo');
+  const limit = undoLimitForMode();
+  const remaining = limit === Infinity ? '∞' : (limit - undoUsed);
+  toast(`↶ Deshacer (${remaining} restantes)`, '#8ad0ff');
+  updateUI();
+}
+function updateUndoButton(){
+  const btn = $('#undoBtn');
+  if(!btn) return;
+  const limit = undoLimitForMode();
+  const visible = aiEnabled && !rubyMode && limit > 0 && !state.gameOver && !replay.active;
+  if(!visible){ btn.classList.add('hidden'); return; }
+  btn.classList.remove('hidden');
+  if(limit === Infinity){
+    btn.textContent = '↶ Deshacer (∞)';
+  } else {
+    const remaining = Math.max(0, limit - undoUsed);
+    btn.textContent = `↶ Deshacer (${remaining})`;
+  }
+  btn.classList.toggle('dis', !canUndo());
+}
+
+/* =========================================================
    UI
    ========================================================= */
 function renderPlayerHand(){
@@ -1174,6 +1323,7 @@ function updateUI(){
     btn.classList.toggle('active', !!(state.targeting && state.targeting.target === key));
   }
   $('#cancelBtn').classList.toggle('hidden', !state.targeting);
+  updateUndoButton();
 
   let msg = '';
   if(state.gameOver) msg = 'Partida finalizada';
@@ -1192,6 +1342,7 @@ function endTurn(){
   state.selected = null; state.legalMoves = []; state.targeting = null;
   if(iraResolve){ const r = iraResolve; iraResolve = null; r(null); }
   clearHighlights();
+  turnSnapshotTaken = false;
   checkGameEnd();
   updateUI();
   if(aiEnabled && !state.gameOver && chess.turn() === aiColor && !replay.active){
@@ -1251,10 +1402,9 @@ async function onSquareClick(sq){
   if(state.busy || state.gameOver || replay.active) return;
   if(aiEnabled && chess.turn() === aiColor) return;
   if(state.targeting) return handleTargetingClick(sq);
-
+  ensureTurnSnapshot();
   const turn = chess.turn();
   const piece = chess.get(sq);
-
   if(state.selected){
     const mv = state.legalMoves.find(m => m.to === sq);
     if(mv){
@@ -1275,41 +1425,24 @@ async function onSquareClick(sq){
 }
 
 /* =========================================================
-   IA — elección de promoción
-   Prueba cada pieza; valora:
-   - Dama por defecto
-   - Caballo si da jaque y la dama no, o si hace una horquilla
-   - Torre si da mate y la dama no (raro, pero posible)
+   IA — PROMOCIÓN
    ========================================================= */
+const PIECE_VALUE = { p:100, n:320, b:330, r:500, q:900, k:20000 };
 function aiChoosePromotion(mv){
-  const turn = chess.turn();  // turno del que mueve (la IA)
+  const turn = chess.turn();
   const opp = turn === 'w' ? 'b' : 'w';
   const candidates = ['q', 'n', 'r', 'b'];
   let bestPick = 'q';
   let bestScore = -Infinity;
-
   for(const piece of candidates){
-    // Simular promoción
     let sim;
     try { sim = chess.move({ from: mv.from, to: mv.to, promotion: piece }); }
     catch(e){ continue; }
     if(!sim){ continue; }
-
-    let score = PIECE_VALUE[piece]; // valor material base
-
-    // Bonus fuerte por dar jaque mate
-    if(chess.in_checkmate()){
-      score += 100000;
-    }
-    // Bonus por dar jaque
-    else if(chess.in_check()){
-      score += 500;
-    }
-    // Bonus si captura algo (sim.captured ya está aplicado, esto es informativo)
+    let score = PIECE_VALUE[piece];
+    if(chess.in_checkmate()) score += 100000;
+    else if(chess.in_check()) score += 500;
     if(sim.captured) score += PIECE_VALUE[sim.captured] * 0.5;
-
-    // Penalización si tras la promoción la pieza queda indefensa
-    // (heurística simple: contar atacantes enemigos a la casilla de destino)
     try {
       const savedFen = chess.fen();
       const parts = savedFen.split(' ');
@@ -1317,23 +1450,12 @@ function aiChoosePromotion(mv){
       chess.load(parts.join(' '), { skipValidation: true });
       const enemyMoves = chess.moves({ verbose: true });
       const attacked = enemyMoves.some(m => m.to === mv.to);
-      const defended = (() => {
-        // Un aliado puede recapturar si otro movimiento propio apunta a la casilla
-        return false; // simplificado
-      })();
       if(attacked) score -= PIECE_VALUE[piece] * 0.6;
-      // Restaurar
       chess.load(savedFen, { skipValidation: true });
     } catch(e){}
-
     chess.undo();
-
-    if(score > bestScore){
-      bestScore = score;
-      bestPick = piece;
-    }
+    if(score > bestScore){ bestScore = score; bestPick = piece; }
   }
-
   return bestPick;
 }
 
@@ -1343,13 +1465,13 @@ function aiChoosePromotion(mv){
 async function doPlayerMove(mv){
   state.busy = true;
   const turn = chess.turn();
+  const opp = turn === 'w' ? 'b' : 'w';
   const movingPiece = chess.get(mv.from);
 
   let capturedSquare = null;
   if(mv.flags.includes('e')) capturedSquare = mv.to[0] + mv.from[1];
   else if(mv.flags.includes('c')) capturedSquare = mv.to;
 
-  // Escudo absorbe
   if(capturedSquare){
     const targetPiece = chess.get(capturedSquare);
     if(targetPiece && state.shields[targetPiece.color].includes(capturedSquare)){
@@ -1361,9 +1483,7 @@ async function doPlayerMove(mv){
       unlockAch(targetPiece.color, 'escudoSalvador');
       const idx = state.shields[targetPiece.color].indexOf(capturedSquare);
       if(idx >= 0) state.shields[targetPiece.color].splice(idx,1);
-
       switchTurnInFen();
-      // El atacante NO capturó → su racha se resetea
       achState[turn].streak = 0;
       recordHistory({
         type: 'shield-absorb', color: turn, powerIcon: '🛡️',
@@ -1383,9 +1503,9 @@ async function doPlayerMove(mv){
   if(mv.flags.includes('p')){
     const isAIMove = aiEnabled && chess.turn() === aiColor;
     if(isAIMove){
-      promotion = aiChoosePromotion(mv);   // IA decide sola
+      promotion = aiChoosePromotion(mv);
     } else {
-      promotion = await askPromotion();    // humano elige
+      promotion = await askPromotion();
     }
   }
 
@@ -1409,32 +1529,25 @@ async function doPlayerMove(mv){
   const didCapture = !!(moveResult.captured || mv.flags.includes('e'));
 
   if(moveResult.captured){
-    state.graveyard[turn].push(moveResult.captured);
-  }
-  if(mv.flags.includes('e')){
-    state.graveyard[turn].push('p');
+    addToGraveyard(moveResult.captured, opp);
+  } else if(mv.flags.includes('e')){
+    addToGraveyard('p', opp);
   }
 
-  // ===== LOGROS: Primera Sangre es única por partida =====
   if(didCapture){
     if(!firstBloodClaimed){
       firstBloodClaimed = true;
       unlockAch(turn, 'primeraSangre');
     }
-    // Racha del que captura sube
     achState[turn].streak++;
     checkStreakAch(turn);
-    // Racha del que pierde la pieza se resetea
-    const opp = turn === 'w' ? 'b' : 'w';
     achState[opp].streak = 0;
     achState[opp].lostPieces++;
-
     if(movingPiece && movingPiece.type === 'k'){
       achState[turn].kingCaptures++;
       if(achState[turn].kingCaptures >= 3) unlockAch(turn, 'reyCazador3');
     }
   } else {
-    // NUEVO: racha se resetea al NO capturar
     achState[turn].streak = 0;
   }
 
@@ -1442,7 +1555,7 @@ async function doPlayerMove(mv){
     type: 'move', color: turn,
     piece: { type: moveResult.piece, color: turn },
     from: moveResult.from, to: moveResult.to,
-    captured: moveResult.captured ? { type: moveResult.captured, color: turn === 'w' ? 'b' : 'w' } : null,
+    captured: moveResult.captured ? { type: moveResult.captured, color: opp } : null,
     san: moveResult.san, promotion: moveResult.promotion || null
   });
 
@@ -1467,7 +1580,6 @@ async function doPlayerMove(mv){
   syncPieces();
   updateUI();
 
-  // Ira de Batalla automática
   if(movingPiece && isSpecial(movingPiece.type) && didCapture && state.iraCharge[turn]){
     state.busy = true;
     const iraResult = await iraTargeting(mv.to, turn);
@@ -1479,12 +1591,11 @@ async function doPlayerMove(mv){
         type: 'ira', color: turn, powerIcon: '⚔️', powerName: 'Ira de Batalla',
         piece: { type: movingPiece.type, color: turn },
         from: iraResult.from, to: iraResult.to,
-        captured: iraResult.captured ? { type: iraResult.captured, color: turn === 'w' ? 'b' : 'w' } : null
+        captured: iraResult.captured ? { type: iraResult.captured, color: opp } : null
       });
       if(iraResult.captured){
         achState[turn].streak++;
         checkStreakAch(turn);
-        const opp = turn === 'w' ? 'b' : 'w';
         achState[opp].streak = 0;
         achState[opp].lostPieces++;
       }
@@ -1506,22 +1617,18 @@ async function iraTargeting(fromSq, color){
     parts[1] = color;
     try { chess.load(parts.join(' '), { skipValidation: true }); } catch(e){}
   }
-
-  // FIX: excluir movimientos que capturen al rey
   const moves = chess.moves({ square: fromSq, verbose: true })
     .filter(m => {
       if(!(m.flags.includes('c') || m.flags.includes('e'))) return false;
       const target = chess.get(m.to);
-      if(target && target.type === 'k') return false;   // NO Ira al rey
+      if(target && target.type === 'k') return false;
       return true;
     });
-
   if(moves.length === 0){
     try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
     return null;
   }
-
-  // ---------- IA: elegir la mejor captura y animar lento ----------
+  const oppColor = color === 'w' ? 'b' : 'w';
   if(aiEnabled && color === aiColor){
     let best = moves[0], bestVal = -Infinity;
     for(const m of moves){
@@ -1531,16 +1638,12 @@ async function iraTargeting(fromSq, color){
       if(v > bestVal){ bestVal = v; best = m; }
     }
     const capturedSquare = best.flags.includes('e') ? (best.to[0] + best.from[1]) : best.to;
-
-    // Pausa dramática antes de la segunda captura
     await sleep(450);
-
     let res;
     try { res = chess.move({ from: best.from, to: best.to }); } catch(e){ res = null; }
     if(res){
-      // Animación LENTA (~700ms) para que se vea claramente
       await animateMove(best.from, best.to, capturedSquare, 700);
-      if(res.captured) state.graveyard[color].push(res.captured);
+      if(res.captured) addToGraveyard(res.captured, oppColor);
       state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
       for(const col of ['w','b']){
         const i = state.shields[col].indexOf(capturedSquare);
@@ -1551,8 +1654,6 @@ async function iraTargeting(fromSq, color){
     }
     return null;
   }
-
-  // ---------- Humano: mismo flujo con modal de selección ----------
   const result = await new Promise(resolve => {
     clearHighlights();
     const c = gridEl.querySelector(`[data-sq="${fromSq}"]`);
@@ -1566,7 +1667,6 @@ async function iraTargeting(fromSq, color){
     iraResolve = resolve;
     toast('Elige la segunda víctima (clic derecho = omitir)', '#ffa040');
     updateUI();
-
     const cleanup = () => {
       gridEl.removeEventListener('click', clickH, true);
       gridEl.removeEventListener('contextmenu', ctxH, true);
@@ -1586,7 +1686,7 @@ async function iraTargeting(fromSq, color){
       if(res){
         sfx('capture');
         await animateMove(mv.from, mv.to, capturedSquare, 400);
-        if(res.captured) state.graveyard[color].push(res.captured);
+        if(res.captured) addToGraveyard(res.captured, oppColor);
         state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
         for(const col of ['w','b']){
           const i = state.shields[col].indexOf(capturedSquare);
@@ -1609,23 +1709,18 @@ async function iraTargeting(fromSq, color){
 }
 
 /* =========================================================
-   PODERES — entrada
+   PODERES — ENTRADA
    ========================================================= */
 function startPower(key){
   if(state.busy || state.gameOver || replay.active) return;
   if(aiEnabled && chess.turn() === aiColor) return;
   initAudio();
-
-  // TOGGLE: si el mismo poder ya está seleccionado, cancelarlo
-  if(state.targeting && state.targeting.key === key){
-    cancelTargeting();
-    return;
-  }
-
+  if(state.targeting && state.targeting.key === key){ cancelTargeting(); return; }
   const turn = chess.turn();
   if(!playerDecks[turn].hand.includes(key)){ toast('No tienes esa carta en la mano'); return; }
   const minCost = minCostOf(key);
   if(state.mana[turn] < minCost){ toast('Maná insuficiente'); return; }
+  ensureTurnSnapshot();
   if(key === 'heal'){ handleHealStart(turn); return; }
   state.targeting = { key, step: 1, data: {}, target: key };
   state.selected = null; state.legalMoves = [];
@@ -1633,25 +1728,44 @@ function startPower(key){
 }
 async function handleHealStart(turn){
   const pile = state.graveyard[turn];
-  if(!pile.length){ toast('No hay piezas caídas'); return; }
+  if(!pile.length){ toast('No tienes piezas caídas para revivir', '#ff8080'); return; }
+
   const counts = {};
   for(const t of pile) counts[t] = (counts[t] || 0) + 1;
   const entries = Object.entries(counts)
     .map(([t, n]) => ({ type: t, n, cost: healCostFor(t) }))
     .sort((a,b) => a.cost - b.cost);
-  const affordable = entries.filter(e => state.mana[turn] >= e.cost);
-  if(!affordable.length){ toast(`Necesitas ${entries[0].cost} maná para revivir`, '#ff8080'); return; }
-  const btns = affordable.map(e => ({
-    html: `<span>${GLYPH[e.type]}</span><small>${e.cost}💧${e.n>1?' ×'+e.n:''}</small>`,
-    value: e.type, cls: 'glyph'
-  }));
+
+  const btns = entries.map(e => {
+    const affordable = state.mana[turn] >= e.cost;
+    return {
+      html: `<span>${GLYPH[e.type]}</span><small>${e.cost}💧${e.n>1?' ×'+e.n:''}</small>`,
+      value: affordable ? e.type : ('__unaffordable_' + e.type),
+      cls: 'glyph' + (affordable ? '' : ' dis')
+    };
+  });
   btns.push({ label:'✕', value:null, cls:'no' });
-  const chosen = await showModal('💚 Toque Curativo', `Maná: ${state.mana[turn]} · Elige qué revivir`, btns);
-  if(!chosen) return;
+
+  const chosenRaw = await showModal('💚 Toque Curativo',
+    `Maná: ${state.mana[turn]} · Elige qué revivir`, btns);
+  if(!chosenRaw) return;
+
+  if(typeof chosenRaw === 'string' && chosenRaw.startsWith('__unaffordable_')){
+    const t = chosenRaw.replace('__unaffordable_', '');
+    toast(`Necesitas ${healCostFor(t)} maná para revivir esa pieza`, '#ff8080');
+    return handleHealStart(turn);
+  }
+
+  const chosen = chosenRaw;
+  const cost = healCostFor(chosen);
+  if(state.mana[turn] < cost){ toast('Maná insuficiente', '#ff8080'); return; }
+  if(!pile.includes(chosen)){ toast('Esa pieza ya no está en tu cementerio', '#ff8080'); return; }
+
   const empties = getAdjacentEmptySquares(turn);
-  if(!empties.length){ toast('No hay casillas disponibles'); return; }
+  if(!empties.length){ toast('No hay casillas vacías disponibles', '#ff8080'); return; }
+
   state.targeting = { key: 'heal', step: 2, target: 'heal',
-    data: { type: chosen, emptySquares: empties, cost: healCostFor(chosen) } };
+    data: { type: chosen, emptySquares: empties, cost } };
   highlightTargeting(); updateUI();
 }
 function cancelTargeting(){
@@ -1693,9 +1807,11 @@ function highlightTargeting(){
         if(board[r][c]) continue;
         const sq = rcToSquare(r,c);
         const cost = teleportCost(from, sq);
-        if(cost <= mana) gridEl.querySelector(`[data-sq="${sq}"]`).classList.add('tgt2');
+        if(cost > mana) continue;
+        if(simMoveLeavesKingInCheck(from, sq, turn)) continue;
+        gridEl.querySelector(`[data-sq="${sq}"]`).classList.add('tgt2');
       }
-      toast(`Destino (2/4/6 según distancia · maná: ${mana})`, '#7affa0');
+      toast(`Destino (2/4/6 · maná: ${mana})`, '#7affa0');
     }
   } else if(T.key === 'shield'){
     if(state.shields[turn].length > 0) toast('Ya tienes un escudo activo — solo uno a la vez', '#7ac0ff');
@@ -1766,7 +1882,7 @@ function getAdjacentEmptySquares(color){
       if(!board[r][c]) empties.push({ sq: rcToSquare(r,c), d: 99 });
     }
   }
-  return empties.slice(0, 12).map(e=>e.sq);
+  return empties.slice(0, 16).map(e=>e.sq);
 }
 function findKing(color){
   const board = chess.board();
@@ -1792,17 +1908,20 @@ async function handleTargetingClick(sq){
       highlightTargeting();
       return;
     } else {
-      // FIX: si el jugador pulsa otra pieza propia, cambiar el origen sin cancelar
       if(piece && piece.color === turn){
-        T.data.from = sq;   // nuevo origen
+        T.data.from = sq;
         highlightTargeting();
         return;
       }
-      if(piece) return; // pieza enemiga: ignorar
+      if(piece) return;
       const from = T.data.from;
       const cost = teleportCost(from, sq);
       if(!isFinite(cost)){ toast('Fuera de alcance (máx 3 casillas)', '#ff8080'); return; }
       if(cost > state.mana[turn]){ toast('Maná insuficiente para esa distancia', '#ff8080'); return; }
+      if(simMoveLeavesKingInCheck(from, sq, turn)){
+        toast('¡Ese salto dejaría a tu Rey en Jaque!', '#ff8080');
+        return;
+      }
       state.targeting = null; clearHighlights();
       await execTeleport(from, sq, cost); return;
     }
@@ -1867,7 +1986,7 @@ async function execTeleport(from, to, cost){
   const el2 = pieceEls.get(to);
   if(el2){ el2.style.opacity = '0'; el2.getBoundingClientRect(); el2.style.opacity = '1'; }
   spawnVortex(B.x, B.y, '#d0a0ff', false);
-  ripples.push({ x:B.x, y:B.y, r:2, maxR: cellSize*1.3, life:.55, maxLife:.55, color:'190,140,255' });
+  ripples.push({ x:B.x, y:B.y, r:2, maxR: cellSize*1.3, life:.55, lifeMax:.55, color:'190,140,255' });
   burst(B.x, B.y, 24, { color:'#c890ff', spMin:30, spMax:150, lifeMin:.3, lifeMax:.7 });
   state.mana[turn] -= cost;
   achState[turn].powersUsed++;
@@ -1903,7 +2022,7 @@ async function execShield(sq){
     }
     frame();
   });
-  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.6, maxLife:.6, color:'130,190,255' });
+  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.6, lifeMax:.6, color:'130,190,255' });
   burst(C.x, C.y, 26, { color:'#8ecbff', spMin:30, spMax:140, lifeMin:.3, lifeMax:.7 });
   if(!state.shields[turn].includes(sq)) state.shields[turn].push(sq);
   state.mana[turn] -= POWERS.shield.cost;
@@ -1935,7 +2054,7 @@ async function execRay(sq, cost){
   spawnSmokeAt(C.x, C.y, 'rgba(70,70,70,0.55)');
   removePieceOnBoard(sq);
   if(victim){
-    state.graveyard[turn].push(victim.type);
+    addToGraveyard(victim.type, victim.color);
     if(!firstBloodClaimed){ firstBloodClaimed = true; unlockAch(turn, 'primeraSangre'); }
     achState[turn].streak++;
     checkStreakAch(turn);
@@ -1971,7 +2090,7 @@ async function execZombie(sq){
   const oldColor = victim.color;
   const si = state.shields[oldColor].indexOf(sq);
   if(si >= 0){ state.shields[oldColor].splice(si,1); state.shields[turn].push(sq); }
-  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.7, life:.7, maxLife:.7, color:'160,90,230' });
+  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.7, life:.7, lifeMax:.7, color:'160,90,230' });
   burst(C.x, C.y, 30, { color:'#a060e0', spMin:30, spMax:160, lifeMin:.3, lifeMax:.8 });
   const el = pieceEls.get(sq);
   if(el){ el.classList.add('spawn'); setTimeout(()=>el.classList.remove('spawn'), 420); }
@@ -1984,11 +2103,35 @@ async function execZombie(sq){
   state.busy = false;
   finishPower({ type:'spell', color: turn, powerIcon:'🧟', powerName:'Zombosis', powerKey:'zombie',
     piece: { type: victim.type, color: turn },
-    targetPiece: { type: victim.type, color: turn === 'w' ? 'b' : 'w' },
+    targetPiece: { type: victim.type, color: oldColor },
     to: sq, cost: POWERS.zombie.cost });
 }
 async function execHeal(sq, type, color, cost){
   state.busy = true;
+
+  const validTypes = ['p','n','b','r','q'];
+  if(!validTypes.includes(type)){
+    toast('Tipo de pieza inválido', '#ff8080');
+    state.busy = false; finishPower(null); return;
+  }
+  if(!state.graveyard[color].includes(type)){
+    toast('Esa pieza ya no está en tu cementerio', '#ff8080');
+    state.busy = false; finishPower(null); return;
+  }
+  if(chess.get(sq)){
+    toast('Esa casilla está ocupada', '#ff8080');
+    state.busy = false;
+    const empties = getAdjacentEmptySquares(color);
+    if(empties.length){
+      state.targeting = { key: 'heal', step: 2, target: 'heal',
+        data: { type, emptySquares: empties, cost } };
+      highlightTargeting(); updateUI();
+    } else {
+      finishPower(null);
+    }
+    return;
+  }
+
   const C = squareCenter(sq);
   sfx('heal');
   const start = performance.now(); const dur = 620;
@@ -2012,17 +2155,33 @@ async function execHeal(sq, type, color, cost){
     }
     frame();
   });
+
   const placed = placePieceOnBoard(sq, color, type);
-  if(!placed){ toast('No se pudo revivir la pieza', '#ff8080'); state.busy = false; finishPower(null); return; }
+  const verify = chess.get(sq);
+  if(!placed || !verify || verify.type !== type || verify.color !== color){
+    toast('No se pudo revivir la pieza en esa casilla', '#ff8080');
+    state.busy = false;
+    const empties = getAdjacentEmptySquares(color);
+    if(empties.length){
+      state.targeting = { key: 'heal', step: 2, target: 'heal',
+        data: { type, emptySquares: empties, cost } };
+      highlightTargeting(); updateUI();
+    } else finishPower(null);
+    return;
+  }
+
   const idx = state.graveyard[color].indexOf(type);
   if(idx >= 0) state.graveyard[color].splice(idx,1);
+
   const prevEl = pieceEls.get(sq);
   if(prevEl){ prevEl.remove(); pieceEls.delete(sq); }
   syncPieces();
   const el = pieceEls.get(sq);
   if(el){ el.classList.add('spawn'); setTimeout(()=>el.classList.remove('spawn'), 420); }
-  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.7, maxLife:.7, color:'140,255,180' });
+
+  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.7, lifeMax:.7, color:'140,255,180' });
   burst(C.x, C.y, 26, { color:'#a8ffc0', spMin:20, spMax:130, lifeMin:.4, lifeMax:.9, g:-40 });
+
   state.mana[color] -= cost;
   achState[color].powersUsed++;
   if(achState[color].powersUsed >= 5) unlockAch(color, 'magoDeMagos');
@@ -2071,15 +2230,37 @@ async function execQuake(centerSq){
     const el = pieceEls.get(sq);
     if(p && el) snapshot.push({ sq, piece: p, el });
   }
-  const targetSqs = [...squares];
-  for(let i=targetSqs.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [targetSqs[i], targetSqs[j]] = [targetSqs[j], targetSqs[i]];
+  const savedFen = chess.fen();
+  let chosenArrangement = null;
+  for(let attempt=0; attempt<8; attempt++){
+    const trial = [...squares];
+    for(let i=trial.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [trial[i],trial[j]] = [trial[j],trial[i]];
+    }
+    for(const sq of squares) chess.remove(sq);
+    for(let i=0;i<snapshot.length;i++){
+      try { chess.put(snapshot[i].piece, trial[i]); } catch(e){}
+    }
+    let safe = true;
+    try {
+      const parts = chess.fen().split(' ');
+      parts[1] = turn;
+      parts[3] = '-'; parts[4] = '0';
+      chess.load(parts.join(' '), { skipValidation: true });
+      safe = !chess.in_check();
+    } catch(e){ safe = true; }
+    try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+    chosenArrangement = trial;
+    if(safe) break;
   }
+  if(!chosenArrangement) chosenArrangement = [...squares];
+
   for(const sq of squares) chess.remove(sq);
   for(let i=0;i<snapshot.length;i++){
-    try { chess.put(snapshot[i].piece, targetSqs[i]); } catch(e){}
+    try { chess.put(snapshot[i].piece, chosenArrangement[i]); } catch(e){}
   }
+
   const fenParts = chess.fen().split(' ');
   let castle = fenParts[2] === '-' ? '' : fenParts[2];
   const check = (sq, type, color) => {
@@ -2094,9 +2275,10 @@ async function execQuake(centerSq){
   if(!check('a8','r','b')) castle = castle.replace('q','');
   fenParts[2] = castle || '-'; fenParts[3] = '-'; fenParts[4] = '0';
   try { chess.load(fenParts.join(' '), { skipValidation: true }); } catch(e){}
+
   for(const sq of squares) pieceEls.delete(sq);
   for(let i=0;i<snapshot.length;i++){
-    const item = snapshot[i], el = item.el, newSq = targetSqs[i], pc = item.piece;
+    const item = snapshot[i], el = item.el, newSq = chosenArrangement[i], pc = item.piece;
     const code = pc.color + pc.type;
     if(el.dataset.code !== code){
       el.dataset.code = code;
@@ -2142,8 +2324,6 @@ function finishPower(entry){
 /* =========================================================
    IA — MINIMAX
    ========================================================= */
-const PIECE_VALUE = { p:100, n:320, b:330, r:500, q:900, k:20000 };
-
 function centerBonus(p, r, c){
   const centerDist = Math.abs(r - 3.5) + Math.abs(c - 3.5);
   if(p.type === 'n' || p.type === 'b') return (7 - centerDist) * 4;
@@ -2179,7 +2359,6 @@ function minimax(depth, alpha, beta, maximizing, rootColor){
   if(maximizing){
     let best = -Infinity;
     for(const mv of moves){
-      // Añadir promoción a dama por defecto si es promoción
       const moveObj = (mv.piece === 'p' && (mv.to[1] === '8' || mv.to[1] === '1') && !mv.promotion)
         ? { ...mv, promotion: 'q' } : mv;
       chess.move(moveObj);
@@ -2205,6 +2384,103 @@ function minimax(depth, alpha, beta, maximizing, rootColor){
     return best;
   }
 }
+
+/* =========================================================
+   IA — AMENAZAS POR CARTAS DEL RIVAL
+   =========================================================
+   Penaliza al bando `color` por tener piezas expuestas
+   a los poderes del rival (Rayo, Zombosis, Terremoto).
+   No modela el turno futuro completo (eso es minimax), pero
+   sí refleja en la evaluación que dejar una dama a la vista
+   de un Rayo enemigo es peligroso.
+   ========================================================= */
+function computeCardThreatPenalty(color){
+  const enemy = color === 'w' ? 'b' : 'w';
+  const enemyMana = state.mana[enemy];
+  const enemyHand = playerDecks[enemy].hand;
+  if(!enemyHand.length) return 0;
+  const board = chess.board();
+  let penalty = 0;
+
+  // ---- RAYO: el rival puede matar cualquier pieza no-rey con maná suficiente ----
+  if(enemyHand.includes('ray')){
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      const p = board[r][c];
+      if(!p || p.color !== color || p.type === 'k') continue;
+      const cost = rayCostFor(p.type);
+      if(cost > enemyMana) continue;
+      // Cuanto más valiosa, más duele que te la fundan con un Rayo.
+      if(p.type === 'q') penalty += 200;
+      else if(p.type === 'r') penalty += 100;
+      else if(p.type === 'b' || p.type === 'n') penalty += 45;
+      // peones: no vale la pena
+    }
+  }
+
+  // ---- ZOMBOSIS: convierte enemigos adyacentes a aliados ----
+  if(enemyHand.includes('zombie') && enemyMana >= POWERS.zombie.cost){
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      const p = board[r][c];
+      if(!p || p.color !== color || p.type === 'k') continue;
+      const sq = rcToSquare(r,c);
+      // ¿Esta pieza nuestra tiene un enemigo pegado? -> puede ser zombificada
+      if(isAdjacentToAlly(sq, enemy)){
+        if(p.type === 'q') penalty += 450;
+        else if(p.type === 'r') penalty += 300;
+        else if(p.type === 'b' || p.type === 'n') penalty += 160;
+        else penalty += 45;
+      }
+    }
+  }
+
+  // ---- TERREMOTO: castiga concentración de piezas propias con ventaja enemiga ----
+  if(enemyHand.includes('quake') && enemyMana >= POWERS.quake.cost){
+    for(let cr=0;cr<6;cr++) for(let cc=0;cc<6;cc++){
+      let ownVal = 0, enemyVal = 0, enemyCount = 0;
+      for(let dr=0;dr<=2;dr++) for(let dc=0;dc<=2;dc++){
+        const p = board[cr+dr][cc+dc];
+        if(!p) continue;
+        if(p.color === color) ownVal += PIECE_VALUE[p.type];
+        else { enemyVal += PIECE_VALUE[p.type]; enemyCount++; }
+      }
+      if(enemyCount > 0 && ownVal > enemyVal * 1.4 && ownVal > PIECE_VALUE.r){
+        penalty += 60; // amenaza difusa, se acumula por zona
+      }
+    }
+  }
+
+  // ---- TELETRANSPORTE: no genera daño directo, pero el rival puede colocar
+  //      una pieza amenazante sin gastar movimiento. Pequeña penalización
+  //      si tenemos piezas valiosas en el radio de acción del teletransporte enemigo.
+  if(enemyHand.includes('teleport') && enemyMana >= 2){
+    // Verificamos si alguna pieza propia valiosa está a distancia 1-3 de alguna enemiga
+    // (posible salto amenazante)
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      const p = board[r][c];
+      if(!p || p.color !== color || (p.type !== 'q' && p.type !== 'r')) continue;
+      let threatened = false;
+      for(let rr=0;rr<8 && !threatened;rr++) for(let cc2=0;cc2<8 && !threatened;cc2++){
+        const ep = board[rr][cc2];
+        if(!ep || ep.color !== enemy) continue;
+        const d = Math.max(Math.abs(r-rr), Math.abs(c-cc2));
+        if(d >= 1 && d <= TELEPORT_MAX_DIST){
+          const cost = d * 2;
+          if(cost <= enemyMana){
+            // ¿Podría el enemigo capturar de forma natural ya? Si sí, ya está contado como amenaza normal
+            const sq = rcToSquare(r,c);
+            if(!isSquareAttackedByEnemy(sq, color)){
+              threatened = true;
+            }
+          }
+        }
+      }
+      if(threatened) penalty += p.type === 'q' ? 70 : 35;
+    }
+  }
+
+  return penalty;
+}
+
 function findBestMove(depth, rootColor){
   const moves = chess.moves({ verbose: true });
   if(!moves.length) return null;
@@ -2214,6 +2490,7 @@ function findBestMove(depth, rootColor){
     for(const mv of moves){
       chess.move(mv);
       let v = evaluateFor(rootColor) + rnd(-80, 80);
+      v -= computeCardThreatPenalty(rootColor) * 0.6; // suavizado en fácil
       chess.undo();
       if(v > bestVal){ bestVal = v; best = mv; }
     }
@@ -2221,15 +2498,18 @@ function findBestMove(depth, rootColor){
   }
   let bestMove = null, bestScore = -Infinity;
   let alpha = -Infinity, beta = Infinity;
+  // Pesos de amenaza según dificultad — RUBY/Difícil lo valoran más
+  const threatWeight = rubyMode ? 1.15 : (aiDifficulty === 'hard' ? 1.0 : (aiDifficulty === 'normal' ? 0.75 : 0.5));
   for(const mv of moves){
-    // Si es promoción, elegir la mejor pieza
     const moveObj = mv.promotion ? mv : (mv.piece === 'p' && (mv.to[1] === '8' || mv.to[1] === '1')
       ? { ...mv, promotion: 'q' } : mv);
     chess.move(moveObj);
     const score = minimax(depth - 1, alpha, beta, false, rootColor);
+    // *** NUEVO: penalizar según amenazas del rival con cartas ***
+    const threat = computeCardThreatPenalty(rootColor) * threatWeight;
     chess.undo();
     const noise = (depth === 2 && !rubyMode) ? rnd(-15, 15) : 0;
-    const finalScore = score + noise;
+    const finalScore = score - threat + noise;
     if(finalScore > bestScore){ bestScore = finalScore; bestMove = mv; }
     if(finalScore > alpha) alpha = finalScore;
   }
@@ -2237,82 +2517,261 @@ function findBestMove(depth, rootColor){
 }
 
 /* =========================================================
-   IA — USO DE PODERES
-   Score = valor de la pieza afectada - coste * 30 (ajustable)
+   IA — BÚSQUEDA DE PODERES
    ========================================================= */
+function aiFindRayOption(color, mana, hand){
+  if(!hand.includes('ray')) return null;
+  const board = chess.board();
+  const opts = [];
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    if(!p || p.color === color || p.type === 'k') continue;
+    const cost = rayCostFor(p.type);
+    if(cost > mana) continue;
+    const score = PIECE_VALUE[p.type] - cost * 30;
+    opts.push({ key:'ray', sq: rcToSquare(r,c), cost, score });
+  }
+  if(!opts.length) return null;
+  opts.sort((a,b)=>b.score-a.score);
+  return opts[0];
+}
+function aiFindZombieOption(color, mana, hand){
+  if(!hand.includes('zombie') || mana < POWERS.zombie.cost) return null;
+  const board = chess.board();
+  const opts = [];
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    if(!p || p.color === color || p.type === 'k') continue;
+    const sq = rcToSquare(r,c);
+    if(!isAdjacentToAlly(sq, color)) continue;
+    const score = PIECE_VALUE[p.type] * 2 - POWERS.zombie.cost * 30;
+    opts.push({ key:'zombie', sq, cost: POWERS.zombie.cost, score });
+  }
+  if(!opts.length) return null;
+  opts.sort((a,b)=>b.score-a.score);
+  return opts[0];
+}
+function aiFindHealOption(color, mana, hand){
+  if(!hand.includes('heal')) return null;
+  const pile = state.graveyard[color];
+  const seen = new Set();
+  const opts = [];
+  for(const t of pile){
+    if(seen.has(t)) continue;
+    seen.add(t);
+    const cost = healCostFor(t);
+    if(cost > mana) continue;
+    const score = PIECE_VALUE[t] - cost * 30 - 60;
+    opts.push({ key:'heal', type:t, cost, score });
+  }
+  if(!opts.length) return null;
+  opts.sort((a,b)=>b.score-a.score);
+  return opts[0];
+}
+function aiFindShieldOption(color, mana, hand){
+  if(!hand.includes('shield') || mana < POWERS.shield.cost) return null;
+  if(state.shields[color].length > 0) return null;
+  const board = chess.board();
+  const opts = [];
+  const enemyColor = color === 'w' ? 'b' : 'w';
+  const savedTurn = chess.turn();
+  const parts = chess.fen().split(' ');
+  parts[1] = enemyColor;
+  let enemyMoves = [];
+  try {
+    chess.load(parts.join(' '), { skipValidation: true });
+    enemyMoves = chess.moves({ verbose: true });
+    const fen2 = chess.fen().split(' ');
+    fen2[1] = savedTurn;
+    chess.load(fen2.join(' '), { skipValidation: true });
+  } catch(e){}
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    if(!p || p.color !== color) continue;
+    const sq = rcToSquare(r,c);
+    if(!enemyMoves.some(m => m.to === sq)) continue;
+    let score = 0;
+    if(p.type === 'k') score = 5000;
+    else if(p.type === 'q') score = 700;
+    else if(p.type === 'r') score = 400;
+    else if(p.type === 'b' || p.type === 'n') score = 250;
+    else continue;
+    score -= POWERS.shield.cost * 30;
+    opts.push({ key:'shield', sq, cost: POWERS.shield.cost, score });
+  }
+  if(!opts.length) return null;
+  opts.sort((a,b)=>b.score-a.score);
+  return opts[0];
+}
+/* =========================================================
+   TELETRANSPORTE PARA IA — reescrito
+   Reglas estrictas:
+   1. Solo se consideran destinos NO alcanzables por movimiento normal.
+   2. Debe existir una razón concreta (escape, jaque, ataque al rey,
+      o mejora posicional grande).
+   3. Nunca si deja al Rey propio en Jaque.
+   4. Coste de maná penalizado con fuerza.
+   ========================================================= */
+function aiFindTeleportOption(color, mana, hand){
+  if(!hand.includes('teleport')) return null;
+  if(mana < 2) return null;
+  const enemyKing = findKing(color === 'w' ? 'b' : 'w');
+  const ek = enemyKing ? sqToRC(enemyKing) : null;
+  const board = chess.board();
+  const opts = [];
+
+  for(let r1=0;r1<8;r1++) for(let c1=0;c1<8;c1++){
+    const p = board[r1][c1];
+    if(!p || p.color !== color) continue;
+    const fromSq = rcToSquare(r1,c1);
+
+    // Destinos alcanzables normalmente (mover a pie) → excluidos
+    const normalMoves = new Set();
+    try {
+      const savedFen = chess.fen();
+      const parts = savedFen.split(' ');
+      parts[1] = color;
+      parts[3] = '-'; parts[4] = '0';
+      chess.load(parts.join(' '), { skipValidation: true });
+      chess.moves({ square: fromSq, verbose: true }).forEach(m => normalMoves.add(m.to));
+      chess.load(savedFen, { skipValidation: true });
+    } catch(e){}
+
+    const srcAttacked = isSquareAttackedByEnemy(fromSq, color);
+    const srcValue = PIECE_VALUE[p.type];
+
+    for(let r2=0;r2<8;r2++) for(let c2=0;c2<8;c2++){
+      if(board[r2][c2]) continue;
+      const toSq = rcToSquare(r2,c2);
+
+      // *** FILTRO CLAVE 1 ***
+      if(normalMoves.has(toSq)) continue;   // ya lo alcanzabas a pie
+
+      const cost = teleportCost(fromSq, toSq);
+      if(!isFinite(cost) || cost > mana) continue;
+
+      // *** FILTRO CLAVE 2 ***
+      if(simMoveLeavesKingInCheck(fromSq, toSq, color)) continue;
+
+      const dstAttacked = isSquareAttackedByEnemy(toSq, color);
+
+      // *** RAZONES CONCRETAS (need at least one) ***
+      let reason = 0;
+
+      // R1. Escape: la pieza está siendo atacada y el destino está a salvo
+      if(srcAttacked && !dstAttacked) reason += srcValue * 0.5;
+
+      // R2. Jaque forzado desde el destino
+      let givesCheck = false;
+      const savedFen2 = chess.fen();
+      try {
+        chess.remove(fromSq);
+        chess.put(p, toSq);
+        givesCheck = chess.in_check();
+      } catch(e){}
+      try { chess.load(savedFen2, { skipValidation: true }); } catch(e){}
+      if(givesCheck) reason += 150;
+
+      // R3. Ataque al Rey enemigo (acercar dama/torre)
+      if(ek && (p.type === 'q' || p.type === 'r')){
+        const distFrom = Math.max(Math.abs(r1-ek.r), Math.abs(c1-ek.c));
+        const distTo = Math.max(Math.abs(r2-ek.r), Math.abs(c2-ek.c));
+        if(distTo < distFrom - 1 && distTo <= 3) reason += 55;
+      }
+
+      // R4. Caballo en la esquina / pieza mal ubicada que salta al centro
+      if(p.type === 'n' || p.type === 'b'){
+        const bonusFrom = centerBonus(p, r1, c1);
+        const bonusTo = centerBonus(p, r2, c2);
+        if(bonusTo - bonusFrom >= 16) reason += 45;
+      }
+
+      // Si no hay razón clara → NO vale la pena gastar maná
+      if(reason <= 0) continue;
+
+      // Penalización por destino inseguro
+      if(dstAttacked && !srcAttacked) reason -= srcValue * 0.35;
+      else if(dstAttacked && srcAttacked) reason -= srcValue * 0.15;
+
+      // Coste de maná: castigo duro
+      reason -= cost * 22;
+
+      if(reason > 0) opts.push({ key:'teleport', from: fromSq, to: toSq, cost, score: reason });
+    }
+  }
+  if(!opts.length) return null;
+  opts.sort((a,b)=>b.score-a.score);
+  return opts[0];
+}
+function aiFindQuakeOption(color, mana, hand){
+  if(!hand.includes('quake') || mana < POWERS.quake.cost) return null;
+  const board = chess.board();
+  const opts = [];
+  for(let cr=0;cr<8;cr++) for(let cc=0;cc<8;cc++){
+    let enemyVal = 0, ownVal = 0, enemyCount = 0;
+    const squares = [];
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+      const r = cr+dr, c = cc+dc;
+      if(r<0||c<0||r>=8||c>=8) continue;
+      squares.push(rcToSquare(r,c));
+      const p = board[r][c];
+      if(!p) continue;
+      if(p.color === color) ownVal += PIECE_VALUE[p.type];
+      else { enemyVal += PIECE_VALUE[p.type]; enemyCount++; }
+    }
+    if(enemyCount === 0) continue;
+    const net = enemyVal - ownVal;
+    if(net < PIECE_VALUE.n) continue;
+    const snapshot = [];
+    for(const sq of squares){
+      const p = chess.get(sq);
+      if(p) snapshot.push({ sq, piece: p });
+    }
+    const savedFen = chess.fen();
+    let safeCount = 0, totalTries = 5;
+    for(let attempt=0; attempt<totalTries; attempt++){
+      const trial = [...squares];
+      for(let i=trial.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [trial[i],trial[j]] = [trial[j],trial[i]];
+      }
+      for(const sq of squares) chess.remove(sq);
+      for(let i=0;i<snapshot.length;i++){
+        try { chess.put(snapshot[i].piece, trial[i]); } catch(e){}
+      }
+      let safe = true;
+      try {
+        const parts = chess.fen().split(' ');
+        parts[1] = color;
+        parts[3] = '-'; parts[4] = '0';
+        chess.load(parts.join(' '), { skipValidation: true });
+        safe = !chess.in_check();
+      } catch(e){ safe = true; }
+      try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+      if(safe) safeCount++;
+    }
+    if(safeCount < totalTries * 0.6) continue;
+    const score = net * 0.35 - POWERS.quake.cost * 30;
+    if(score > 0) opts.push({ key:'quake', sq: rcToSquare(cr,cc), cost: POWERS.quake.cost, score });
+  }
+  if(!opts.length) return null;
+  opts.sort((a,b)=>b.score-a.score);
+  return opts[0];
+}
 function aiFindBestPower(color){
   const mana = state.mana[color];
   const hand = playerDecks[color].hand;
   const candidates = [];
-  const board = chess.board();
-
-  // RAY: matar la pieza de mayor valor accesible
-  if(hand.includes('ray')){
-    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
-      const p = board[r][c];
-      if(!p || p.color === color || p.type === 'k') continue;
-      const cost = rayCostFor(p.type);
-      if(cost > mana) continue;
-      const score = PIECE_VALUE[p.type] - cost * 30;
-      candidates.push({ key:'ray', sq: rcToSquare(r,c), cost, score });
-    }
-  }
-  // ZOMBIE: convertir enemigo adyacente valioso
-  if(hand.includes('zombie') && mana >= POWERS.zombie.cost){
-    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
-      const p = board[r][c];
-      if(!p || p.color === color || p.type === 'k') continue;
-      const sq = rcToSquare(r,c);
-      if(!isAdjacentToAlly(sq, color)) continue;
-      const score = PIECE_VALUE[p.type] * 2 - POWERS.zombie.cost * 30;
-      candidates.push({ key:'zombie', sq, cost: POWERS.zombie.cost, score });
-    }
-  }
-  // HEAL: revivir piezas valiosas del cementerio
-  if(hand.includes('heal')){
-    const pile = state.graveyard[color];
-    const counted = {};
-    for(const t of pile){
-      counted[t] = (counted[t] || 0) + 1;
-      const cost = healCostFor(t);
-      if(cost > mana) continue;
-      const score = PIECE_VALUE[t] - cost * 30 - 60;
-      candidates.push({ key:'heal', type:t, cost, score });
-    }
-  }
-  // SHIELD: proteger la reina si está viva y sin escudo aún
-  if(hand.includes('shield') && mana >= POWERS.shield.cost && state.shields[color].length === 0){
-    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
-      const p = board[r][c];
-      if(!p || p.color !== color) continue;
-      if(p.type === 'q'){
-        // Detectar si está atacada por alguna pieza enemiga
-        let attacked = false;
-        const sq = rcToSquare(r,c);
-        const enemyColor = color === 'w' ? 'b' : 'w';
-        // Simulamos: si el enemigo tiene algún movimiento que capture esa casilla
-        const savedTurn = chess.turn();
-        const parts = chess.fen().split(' ');
-        parts[1] = enemyColor;
-        try {
-          chess.load(parts.join(' '), { skipValidation: true });
-          const eMoves = chess.moves({ verbose: true });
-          if(eMoves.some(m => m.to === sq)) attacked = true;
-          const fen2 = chess.fen().split(' ');
-          fen2[1] = savedTurn;
-          chess.load(fen2.join(' '), { skipValidation: true });
-        } catch(e){}
-        if(attacked){
-          candidates.push({ key:'shield', sq, cost: POWERS.shield.cost,
-            score: PIECE_VALUE.q * 0.6 - POWERS.shield.cost * 30 });
-        }
-      }
-    }
-  }
+  const push = c => { if(c) candidates.push(c); };
+  push(aiFindRayOption(color, mana, hand));
+  push(aiFindZombieOption(color, mana, hand));
+  push(aiFindHealOption(color, mana, hand));
+  push(aiFindShieldOption(color, mana, hand));
+  push(aiFindTeleportOption(color, mana, hand));
+  push(aiFindQuakeOption(color, mana, hand));
   candidates.sort((a,b) => b.score - a.score);
   return candidates[0] || null;
 }
-
 async function aiExecutePower(opt){
   switch(opt.key){
     case 'ray': await execRay(opt.sq, opt.cost); break;
@@ -2325,10 +2784,17 @@ async function aiExecutePower(opt){
       } else endTurn();
       break;
     }
+    case 'teleport': {
+      await execTeleport(opt.from, opt.to, opt.cost);
+      break;
+    }
+    case 'quake': {
+      await execQuake(opt.sq);
+      break;
+    }
     default: endTurn();
   }
 }
-
 async function aiTurn(){
   if(aiThinking) return;
   if(!aiEnabled || state.gameOver || replay.active) return;
@@ -2336,31 +2802,23 @@ async function aiTurn(){
   aiThinking = true;
   updateUI();
   await sleep(200);
-
-  // RUBY = profundidad 3 (igual que Hard) pero juega perfecto y usa poderes siempre
   const depth = rubyMode ? 3
               : (aiDifficulty === 'easy' ? 1
               : aiDifficulty === 'normal' ? 2
               : 3);
-
   let bestMove = null;
   try { bestMove = findBestMove(depth, aiColor); } catch(e){ console.warn('AI error:', e); }
 
-  // ---- Evaluar poder ----
   const powerOption = aiFindBestPower(aiColor);
   let usePower = false;
   if(powerOption){
     let threshold;
-    if(rubyMode) threshold = -100;           // RUBY: usa cualquier poder con score positivo
+    if(rubyMode) threshold = 0;
     else if(aiDifficulty === 'hard') threshold = 80;
     else if(aiDifficulty === 'normal') threshold = 150;
     else threshold = 500;
-
     usePower = powerOption.score >= threshold;
-
-    // RUBY: si tiene maná ≥ 6 y hay poder positivo, casi siempre lo usa
     if(rubyMode && state.mana[aiColor] >= 6 && powerOption.score > 0) usePower = true;
-    // RUBY: si puede matar dama/torre, siempre
     if(rubyMode && powerOption.score > PIECE_VALUE.r * 0.5) usePower = true;
   }
 
@@ -2421,7 +2879,7 @@ function playReplayEffects(entry){
   }
   if(entry.type === 'shield-absorb' && entry.to){
     const c = squareCenter(entry.to);
-    ripples.push({ x:c.x, y:c.y, r:2, maxR: cellSize*1.5, life:.6, maxLife:.6, color:'120,190,255' });
+    ripples.push({ x:c.x, y:c.y, r:2, maxR: cellSize*1.5, life:.6, lifeMax:.6, color:'120,190,255' });
     burst(c.x, c.y, 26, { color:'#8ecbff', spMin:40, spMax:180, lifeMin:.3, lifeMax:.7, sizeMin:1.5, sizeMax:3.5 });
     sfx('shield'); return;
   }
@@ -2434,14 +2892,14 @@ function playReplayEffects(entry){
       setTimeout(() => {
         if(!alive()) return;
         spawnVortex(B.x, B.y, '#d0a0ff', false);
-        ripples.push({ x:B.x, y:B.y, r:2, maxR: cellSize*1.3, life:.55, maxLife:.55, color:'190,140,255' });
+        ripples.push({ x:B.x, y:B.y, r:2, maxR: cellSize*1.3, life:.55, lifeMax:.55, color:'190,140,255' });
         burst(B.x, B.y, 24, { color:'#c890ff', spMin:30, spMax:150, lifeMin:.3, lifeMax:.7 });
       }, 260);
       return;
     }
     if(name === 'Escudo' && entry.to){
       const C = squareCenter(entry.to);
-      ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.6, maxLife:.6, color:'130,190,255' });
+      ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.6, lifeMax:.6, color:'130,190,255' });
       burst(C.x, C.y, 26, { color:'#8ecbff', spMin:30, spMax:140, lifeMin:.3, lifeMax:.7 });
       sfx('shield'); return;
     }
@@ -2471,21 +2929,21 @@ function playReplayEffects(entry){
       }
       setTimeout(() => {
         if(!alive()) return;
-        ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.7, life:.7, maxLife:.7, color:'160,90,230' });
+        ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.7, life:.7, lifeMax:.7, color:'160,90,230' });
         burst(C.x, C.y, 30, { color:'#a060e0', spMin:30, spMax:160, lifeMin:.3, lifeMax:.8 });
       }, 480); return;
     }
     if(name === 'Toque Curativo' && entry.to){
       const C = squareCenter(entry.to);
       sfx('heal');
-      ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.7, maxLife:.7, color:'140,255,180' });
+      ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.7, lifeMax:.7, color:'140,255,180' });
       burst(C.x, C.y, 26, { color:'#a8ffc0', spMin:20, spMax:130, lifeMin:.4, lifeMax:.9, g:-40 });
       for(let i=0;i<10;i++){
         setTimeout(() => {
           if(!alive()) return;
           addParticle({ x: C.x + rnd(-cellSize*0.4, cellSize*0.4),
             y: C.y + rnd(-cellSize*0.2, cellSize*0.4),
-            vx: rnd(-12,12), vy: rnd(-70,-30), life: rnd(.4,.9), maxLife:.9,
+            vx: rnd(-12,12), vy: rnd(-70,-30), life: rnd(.4,.9), lifeMax:.9,
             size: rnd(1.2,3), color: '#a8ffc0', g:-15, drag:.96 });
         }, i*60);
       }
@@ -2504,7 +2962,7 @@ function playReplayEffects(entry){
       }
       for(let i=0;i<50;i++){
         addParticle({ x: C.x + rnd(-cellSize*1.5, cellSize*1.5), y: C.y + rnd(-cellSize*1.5, cellSize*1.5),
-          vx: rnd(-70,70), vy: rnd(-260,-90), life: rnd(.6,1.3), maxLife:1.3, size: rnd(2,5),
+          vx: rnd(-70,70), vy: rnd(-260,-90), life: rnd(.6,1.3), lifeMax:1.3, size: rnd(2,5),
           color: i%3===0 ? '#a08c6a' : i%3===1 ? '#7a6a4a' : '#c0b090', g: 520, drag:.99 });
       }
       spawnSmokeAt(C.x, C.y, 'rgba(120,100,70,0.5)');
@@ -2513,7 +2971,7 @@ function playReplayEffects(entry){
         const r2 = cr+dr, c2 = cc+dc;
         if(r2<0||c2<0||r2>=8||c2>=8) continue;
         const c3 = squareCenter(rcToSquare(r2,c2));
-        ripples.push({ x:c3.x, y:c3.y, r:2, maxR: cellSize*0.9, life:.5, maxLife:.5, color:'200,170,120' });
+        ripples.push({ x:c3.x, y:c3.y, r:2, maxR: cellSize*0.9, life:.5, lifeMax:.5, color:'200,170,120' });
       }
       return;
     }
@@ -2670,11 +3128,11 @@ $('#rClose').onclick = closeReplay;
    ========================================================= */
 async function showStartMenu(){
   const mode = await showModal('♚ Ajedrez Mágico', 'Elige el modo de juego:', [
-    { label:'👥 2 Jugadores', value:'pvp', cls:'ai' },
-    { label:'🤖 IA Fácil', value:'easy', cls:'ai' },
-    { label:'🤖 IA Normal', value:'normal', cls:'ai' },
-    { label:'🤖 IA Difícil', value:'hard', cls:'ai' },
-    { html:'💎<br><small style="font-size:9px">MODO RUBY</small>', value:'ruby', cls:'ruby' }
+    { html:'👥<br><small style="font-size:9px">2 Jugadores</small>', value:'pvp', cls:'ai' },
+    { html:'🤖<br><small style="font-size:9px">IA Fácil</small>', value:'easy', cls:'ai' },
+    { html:'🤖<br><small style="font-size:9px">IA Normal</small>', value:'normal', cls:'ai' },
+    { html:'🤖<br><small style="font-size:9px">IA Difícil</small>', value:'hard', cls:'ai' },
+    { html:'💎<br><small style="font-size:9px">RUBY</small>', value:'ruby', cls:'ruby' }
   ]);
 
   if(mode === 'pvp'){
@@ -2687,17 +3145,15 @@ async function showStartMenu(){
   aiDifficulty = mode;
   rubyMode = (mode === 'ruby');
 
-  // Elegir color
   const side = await showModal('Elige tu lado',
     '¿Con qué color quieres jugar?',
     [
-      { html:'♔<br><small style="font-size:9px">Blancas (mueves 1º)</small>', value:'w', cls:'ai' },
+      { html:'♔<br><small style="font-size:9px">Blancas (1º)</small>', value:'w', cls:'ai' },
       { html:'♚<br><small style="font-size:9px">Negras</small>', value:'b', cls:'ai' }
     ]);
   humanColor = side;
   aiColor = side === 'w' ? 'b' : 'w';
 }
-
 async function doDraft(){
   let wPicks, bPicks;
   if(!aiEnabled){
@@ -2712,20 +3168,16 @@ async function doDraft(){
   }
   setupDecks(wPicks, bPicks);
 }
-
 async function startGame(){
   await showStartMenu();
   await doDraft();
   newGame();
   renderPlayerHand();
   renderOppHand();
-
-  // Si la IA juega primero (es blancas)
   if(aiEnabled && aiColor === 'w'){
     setTimeout(aiTurn, 900);
   }
 }
-
 function newGame(){
   chess = new Chess();
   state.mana = { w: 0, b: 0 };
@@ -2742,12 +3194,14 @@ function newGame(){
   if(replay.active){ stopReplayAuto(); replay.active = false; }
   replayAnimating = false;
   $('#replayUI').classList.add('hidden');
+  undoStack.length = 0;
+  undoUsed = 0;
+  turnSnapshotTaken = false;
   resetAchState();
   syncPieces();
   recordHistory({ type: 'start', color: 'w' });
   updateUI();
 }
-
 function layout(){
   const rect = boardWrap.getBoundingClientRect();
   boardW = rect.width; boardH = rect.height; cellSize = rect.width / 8;
@@ -2785,8 +3239,6 @@ function loop(now){
     ctx.fillStyle = `rgba(6,8,22,${ph.dark})`;
     ctx.fillRect(0,0,W,H);
   }
-
-  // Luciérnagas
   if(ph.dark > 0.08){
     const inten = clamp((ph.dark - 0.08) / 0.20, 0, 1);
     for(const f of terr.fireflies){
@@ -2806,7 +3258,6 @@ function loop(now){
       ctx.globalAlpha = 1;
     }
   }
-
   ctx.save();
   for(const f of fogBlobs){
     f.x += f.spd * dt;
@@ -2823,7 +3274,6 @@ function loop(now){
     ctx.beginPath(); ctx.ellipse(px, py, pr, pr*0.55, 0, 0, 6.2832); ctx.fill();
   }
   ctx.restore();
-
   if(rainAmt > 0.02){
     const n = Math.floor(rainDrops.length * rainAmt);
     ctx.strokeStyle = `rgba(180,210,240,${0.35 * rainAmt + 0.15})`;
@@ -2863,6 +3313,10 @@ gridEl.addEventListener('contextmenu', (e) => {
   if(state.targeting && state.targeting.key !== 'ira') cancelTargeting();
 });
 $('#cancelBtn').onclick = () => cancelTargeting();
+$('#undoBtn').onclick = () => {
+  initAudio();
+  performUndo();
+};
 
 window.addEventListener('resize', () => setTimeout(layout, 60));
 window.addEventListener('orientationchange', () => setTimeout(layout, 250));
