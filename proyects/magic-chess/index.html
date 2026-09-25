@@ -407,7 +407,9 @@ let actx = null;
 let masterGain = null;
 function initAudio(){
   if(actx){
-    if(actx.state === 'suspended') actx.resume();
+    if(actx.state === 'suspended') {
+      actx.resume().catch(()=>{});
+    }
     return;
   }
   try {
@@ -416,8 +418,18 @@ function initAudio(){
     masterGain.gain.value = soundEnabled ? 1 : 0;
     masterGain.connect(actx.destination);
     initAmbience();
+    // *** FIX: despertar el contexto apenas se crea ***
+    if(actx.state === 'suspended') {
+      actx.resume().catch(()=>{});
+    }
   } catch(e){}
 }
+
+document.addEventListener('pointerdown', function wakeAudio(){
+  initAudio();
+  document.removeEventListener('pointerdown', wakeAudio);
+}, { once: true });
+
 let soundEnabled = (localStorage.getItem('ajedrez_sound') !== 'off');
 function updateSoundButton(){
   const b = $('#btnSound');
@@ -2062,6 +2074,16 @@ function togglePause(){
   state.paused = !state.paused;
   $('#pauseOverlay').classList.toggle('hidden', !state.paused);
   $('#btnPause').textContent = state.paused ? '▶' : '⏸';
+
+  // Fade maestro: silencia TODO el audio (ambience + efectos) al pausar
+  if(actx && masterGain){
+    const target = (state.paused || !soundEnabled) ? 0 : 1;
+    try {
+      masterGain.gain.cancelScheduledValues(actx.currentTime);
+      masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.10);
+    } catch(e){}
+  }
+
   if(state.paused){
     gameTimer.running = false;
   } else if(gameTimer.enabled && !state.gameOver){
@@ -4374,6 +4396,7 @@ async function doDraft(){
   setupDecks(wPicks, bPicks);
 }
 async function startGame() {
+  initAudio();
   const mode = await showStartMenu();
   if (mode !== 'start') return; // 'cancel' o 'replay' → no iniciar partida nueva
   await doDraft();
@@ -4477,24 +4500,33 @@ function layout(){
 
 let lastT = performance.now();
 function loop(now){
-  const dt = Math.min(0.05, (now - lastT)/1000);
+  const rawDt = Math.min(0.05, (now - lastT)/1000);
   lastT = now;
+
+  // Cuando está pausado, congelar TODO el avance de simulación.
+  // El render sigue corriendo para no dejar la pantalla en negro.
+  const dt = state.paused ? 0 : rawDt;
+
   worldTime += dt;
-  updateWeather(dt);
-  updateParticles(dt);
-  updateAmbience();
+  if(dt > 0){
+    updateWeather(dt);
+    updateParticles(dt);
+  }
+  updateAmbience();   // siempre corre, usa pauseFactor para hacer fade a 0
   // --- Scheduler de rayos (cada 500ms revisa si toca) ---
   {
     const now_ms = performance.now();
     if(now_ms - lightning.lastCheck > 500){
       lightning.lastCheck = now_ms;
-      const r = ambience.rainLevel;
-      if(r > 0.16){
-        // Probabilidad por tick de 0.5s: sube cuadráticamente con la lluvia
-        const norm = (r - 0.16) / 0.84;
-        const ratePerSec = Math.pow(norm, 2.3) * 0.55;   // ~0.55/s a lluvia máxima
-        if(Math.random() < ratePerSec * 0.5){
-          triggerLightning(r);
+      // No generar rayos nuevos mientras está pausado
+      if(!state.paused && !state.gameOver){
+        const r = ambience.rainLevel;
+        if(r > 0.16){
+          const norm = (r - 0.16) / 0.84;
+          const ratePerSec = Math.pow(norm, 2.3) * 0.55;
+          if(Math.random() < ratePerSec * 0.5){
+            triggerLightning(r);
+          }
         }
       }
     }
@@ -4744,9 +4776,11 @@ $('#btnSound').onclick = () => {
   localStorage.setItem('ajedrez_sound', soundEnabled ? 'on' : 'off');
   updateSoundButton();
   if(masterGain){
-    masterGain.gain.setTargetAtTime(soundEnabled ? 1 : 0, actx.currentTime, 0.08);
+    const target = (soundEnabled && !state.paused) ? 1 : 0;
+    masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.08);
   }
-  if(soundEnabled) tone(660, .12, 'sine', .05, 200);
+  // Solo suena el "ping" si activás el sonido Y no estás pausado
+  if(soundEnabled && !state.paused) tone(660, .12, 'sine', .05, 200);
 };
 $('#btnConfig').onclick = () => {
   togglePause();
@@ -4762,9 +4796,8 @@ async function openQuickConfig(){
     { label:'🚪 Salir al menú', value:'exit', cls:'danger' }
   ]);
   if(res === 'continue'){
-    state.paused = false;
-    $('#pauseOverlay').classList.add('hidden');
-    $('#btnPause').textContent = '⏸';
+    // Usar togglePause para que restaure masterGain, gameTimer y el overlay
+    if(state.paused) togglePause();
     return;
   }
   if(res === 'restart'){ restartGame(); return; }
@@ -4776,7 +4809,7 @@ window.addEventListener('orientationchange', () => setTimeout(layout, 250));
 
 document.addEventListener('visibilitychange', () => {
   if(!actx || !ambience.started) return;
-  const target = (document.hidden || !soundEnabled) ? 0 : 1;
+  const target = (document.hidden || !soundEnabled || state.paused) ? 0 : 1;
   try { masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.3); } catch(e){}
 });
 
