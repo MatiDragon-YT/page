@@ -404,7 +404,20 @@ function formatTime(sec){ if(sec < 0) sec = 0; const m = Math.floor(sec/60), s =
    AUDIO
    ========================================================= */
 let actx = null;
-function initAudio(){ if(actx) return; try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+let masterGain = null;
+function initAudio(){
+  if(actx){
+    if(actx.state === 'suspended') actx.resume();
+    return;
+  }
+  try {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = actx.createGain();
+    masterGain.gain.value = soundEnabled ? 1 : 0;
+    masterGain.connect(actx.destination);
+    initAmbience();
+  } catch(e){}
+}
 let soundEnabled = (localStorage.getItem('ajedrez_sound') !== 'off');
 function updateSoundButton(){
   const b = $('#btnSound');
@@ -415,6 +428,440 @@ function updateSoundButton(){
 function vibrate(pattern){
   try { if(navigator.vibrate) navigator.vibrate(pattern); } catch(e){}
 }
+
+/* ===== AMBIENCE con generadores orgánicos ===== */
+const ambience = {
+  started: false,
+  rainLevel: 0,
+  nightLevel: 0,
+  lastUpdate: 0,
+  rainSrc: null, rainHiSrc: null, windSrc: null,
+  rainLpGain: null, rainBpGain: null,
+  rainLp: null, rainBp: null,
+  windGain: null,
+  cricketGain: null,
+  cricketTimer: null
+};
+
+// ---- Generadores de valores "cada tanto cambia el target" ----
+const org = {
+  wind:      { level: 0,    target: 0,    nextChange: 0 },
+  rainWobble:{ level: 0.85, target: 0.85, nextChange: 0 },
+  crickets:  { level: 0,    target: 0,    nextChange: 0 }
+};
+
+function randWindTarget(){
+  const r = rainAmt;
+  const u = Math.random();
+  // Lluvia FUERTE → viento asegurado
+  if(r > 0.70) return 0.55 + Math.random() * 0.45;
+  // Lluvia MEDIA → 75% chance de viento marcado
+  if(r > 0.35){
+    if(u < 0.75) return 0.25 + Math.random() * 0.55;
+    return 0.02 + Math.random() * 0.12;
+  }
+  // Lluvia LIGERA → 45% chance de viento suave
+  if(r > 0.08){
+    if(u < 0.45) return 0.10 + Math.random() * 0.40;
+    return 0;
+  }
+  // Día SECO → 20% chance de brisa suave, 80% calma total
+  if(u < 0.20) return 0.06 + Math.random() * 0.22;
+  return 0;
+}
+
+function scheduleWindChange(){
+  const now = performance.now();
+  const isRainy = rainAmt > 0.30;
+  const base  = isRainy ? 1.5 : 4.0;
+  const range = isRainy ? 4.0 : 11.0;
+  org.wind.nextChange = now + (base + Math.random() * range) * 1000;
+}
+
+function updateWind(dt){
+  const now = performance.now();
+  if(org.wind.nextChange === 0) scheduleWindChange();
+  if(now >= org.wind.nextChange){
+    org.wind.target = randWindTarget();
+    scheduleWindChange();
+  }
+  // Sube rápido (ráfaga), baja más lento (calma)
+  const speed = org.wind.target > org.wind.level ? 0.7 : 2.0;
+  const k = 1 - Math.exp(-dt / speed);
+  org.wind.level += (org.wind.target - org.wind.level) * k;
+  // Micro-ráfagas: una señal de alta frecuencia encima del nivel base
+  const micro = (Math.sin(now * 0.0029) * 0.5 + 0.5) *
+                (Math.sin(now * 0.0073 + 1.7) * 0.5 + 0.5) * 0.12;
+  return clamp(org.wind.level + micro * org.wind.level, 0, 1);
+}
+
+function updateRainWobble(dt){
+  const now = performance.now();
+  if(org.rainWobble.nextChange === 0){
+    org.rainWobble.nextChange = now + 700 + Math.random() * 1800;
+  }
+  if(now >= org.rainWobble.nextChange){
+    org.rainWobble.target = 0.68 + Math.random() * 0.32;   // 0.68..1.00
+    org.rainWobble.nextChange = now + 700 + Math.random() * 1800;
+  }
+  const k = 1 - Math.exp(-dt / 0.35);
+  org.rainWobble.level += (org.rainWobble.target - org.rainWobble.level) * k;
+  return org.rainWobble.level;
+}
+
+function updateCricketEnergy(dt){
+  const now = performance.now();
+  if(org.crickets.nextChange === 0){
+    org.crickets.nextChange = now + 6000 + Math.random() * 12000;
+  }
+  if(now >= org.crickets.nextChange){
+    org.crickets.target = 0.25 + Math.random() * 0.75;     // 0.25..1.0
+    org.crickets.nextChange = now + 6000 + Math.random() * 12000;
+  }
+  const k = 1 - Math.exp(-dt / 2.5);
+  org.crickets.level += (org.crickets.target - org.crickets.level) * k;
+  return org.crickets.level;
+}
+
+function createNoiseBuffer(seconds){
+  const n = Math.floor(actx.sampleRate * seconds);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i] = Math.random()*2 - 1;
+  return buf;
+}
+
+function initAmbience(){
+  if(!actx || ambience.started) return;
+  ambience.started = true;
+  ambience.lastUpdate = performance.now();
+
+  const noiseBuf = createNoiseBuffer(4);
+
+  // --- LLUVIA: dos ramas (retumbo grave + siseo agudo) ---
+  const rainSrc = actx.createBufferSource();
+  rainSrc.buffer = noiseBuf; rainSrc.loop = true;
+  const rainLp = actx.createBiquadFilter();
+  rainLp.type = 'lowpass'; rainLp.frequency.value = 260; rainLp.Q.value = 0.6;
+  const rainLpGain = actx.createGain(); rainLpGain.gain.value = 0;
+  rainSrc.connect(rainLp).connect(rainLpGain).connect(masterGain);
+
+  const rainHiSrc = actx.createBufferSource();
+  rainHiSrc.buffer = noiseBuf; rainHiSrc.loop = true;
+  const rainBp = actx.createBiquadFilter();
+  rainBp.type = 'bandpass'; rainBp.frequency.value = 2400; rainBp.Q.value = 0.35;
+  const rainBpGain = actx.createGain(); rainBpGain.gain.value = 0;
+  rainHiSrc.connect(rainBp).connect(rainBpGain).connect(masterGain);
+
+  // --- VIENTO: ruido grave filtrado ---
+  const windSrc = actx.createBufferSource();
+  windSrc.buffer = noiseBuf; windSrc.loop = true;
+  const windLp = actx.createBiquadFilter();
+  windLp.type = 'lowpass'; windLp.frequency.value = 160; windLp.Q.value = 0.5;
+  const windGain = actx.createGain(); windGain.gain.value = 0;
+  windSrc.connect(windLp).connect(windGain).connect(masterGain);
+
+  // --- GRILLOS ---
+  const cricketGain = actx.createGain();
+  cricketGain.gain.value = 0;
+  cricketGain.connect(masterGain);
+
+  rainSrc.start();
+  rainHiSrc.start();
+  windSrc.start();
+
+  Object.assign(ambience, {
+    rainSrc, rainHiSrc, windSrc,
+    rainLp, rainBp, rainLpGain, rainBpGain,
+    windGain, cricketGain
+  });
+
+  scheduleCricket();
+}
+
+function updateAmbience(){
+  if(!actx || !ambience.started) return;
+  const now = performance.now();
+  const elapsed = Math.min(0.5, (now - ambience.lastUpdate) / 1000);
+  ambience.lastUpdate = now;
+
+  // --- Suavizado de los niveles "maestros" ---
+  const kRain  = 1 - Math.exp(-elapsed / 1.4);
+  const kNight = 1 - Math.exp(-elapsed / 3.0);
+  ambience.rainLevel  += (rainAmt - ambience.rainLevel) * kRain;
+
+  const ph = getPhase();
+  const nightTarget = ph.dark > 0.15 ? Math.min(1, (ph.dark - 0.15) / 0.40) : 0;
+  ambience.nightLevel += (nightTarget - ambience.nightLevel) * kNight;
+
+  // --- Generadores orgánicos (aportan la irregularidad) ---
+  const windLevel   = updateWind(elapsed);
+  const wobble      = updateRainWobble(elapsed);
+  const cricketEner = updateCricketEnergy(elapsed);
+
+  const rl = ambience.rainLevel;
+  const nl = ambience.nightLevel;
+  const pauseFactor = state.paused ? 0 : 1;
+  const t = actx.currentTime;
+
+  // --- LLUVIA: sin base, arranca de 0 ---
+  // El wobble modula la intensidad entre ~0.68 y 1.00, tipo "rachas"
+    // Curva exponencial: con poca lluvia suena MUCHO más bajo, pero el pico se mantiene
+  const rainCurve = Math.pow(rl, 1.7);
+  const lpGain = (rainCurve * 0.22 * wobble) * pauseFactor;
+  const hiGain = (rainCurve * 0.18 * wobble) * pauseFactor;
+  ambience.rainLpGain.gain.setTargetAtTime(lpGain, t, 0.35);
+  ambience.rainBpGain.gain.setTargetAtTime(hiGain, t, 0.35);
+  // Con más lluvia, filtro más abierto (retumbo más grave y presente)
+  ambience.rainLp.frequency.setTargetAtTime(200 + rl * 380, t, 0.6);
+  ambience.rainBp.frequency.setTargetAtTime(2100 + rl * 1900, t, 0.6);
+
+  // --- VIENTO: sin base fija. Si el generador dice 0, no se oye nada ---
+  const windG = windLevel * 0.055 * pauseFactor;
+  ambience.windGain.gain.setTargetAtTime(windG, t, 0.35);
+
+  // --- GRILLOS: energía propia + noche + castigo por lluvia ---
+  const cricketLevel = nl * cricketEner * (1 - rl * 0.9);
+  ambience.cricketTarget = cricketLevel;
+  ambience.cricketGain.gain.setTargetAtTime(cricketLevel * 0.6 * pauseFactor, t, 1.8);
+}
+
+function scheduleCricket(){
+  if(!actx || !ambience.started) return;
+  // Ráfagas más irregulares, y se espacian si hay poca energía
+  const energy = ambience.cricketTarget;
+  const baseDelay = 900 + (1 - energy) * 3500;
+  const delay = baseDelay + Math.random() * 3500;
+  ambience.cricketTimer = setTimeout(() => {
+    if(actx && ambience.started && ambience.cricketTarget > 0.06 && Math.random() < 0.5 + ambience.cricketTarget * 0.5){
+      playCricketChirp();
+    }
+    scheduleCricket();
+  }, delay);
+}
+
+function playCricketChirp(){
+  if(!actx || !soundEnabled) return;
+  const t0 = actx.currentTime + 0.02;
+  const baseFreq = 3800 + Math.random() * 1100;
+  const pulses = 2 + Math.floor(Math.random() * 4);
+  const pulseDur = 0.024 + Math.random() * 0.016;
+  const gap = 0.028 + Math.random() * 0.020;
+  let t = t0;
+  for(let i=0;i<pulses;i++){
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = 'triangle';
+    o.frequency.value = baseFreq * (0.97 + Math.random() * 0.06);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.5, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + pulseDur);
+    o.connect(g); g.connect(ambience.cricketGain);
+    o.start(t); o.stop(t + pulseDur + 0.015);
+    t += pulseDur + gap;
+  }
+}
+
+/* ===== RAYOS Y TRUENOS ===== */
+const lightning = {
+  strikes: [],
+  lastCheck: 0
+};
+
+function triggerLightning(rainLevel){
+  const now = performance.now();
+  // Intensidad base según lluvia, con mucha variabilidad
+  const intensity = clamp(0.35 + rainLevel * 0.65 * (0.35 + Math.random() * 0.75), 0.2, 1);
+
+  // Distancia: 0=cercano, 1.8=lejano
+  const distance = 0.1 + Math.random() * 1.7;
+
+  // A mayor distancia, retraso mayor y menor volumen
+  // Duración del flash
+  const dur = 100 + Math.random() * 400;
+  // Peak visual
+  const peak = clamp(0.40 + intensity * 0.65, 0, 0.90);
+
+  // Color: cuanto más fuerte, más blanco-cálido; cuanto más lejos, más azul
+  const warmth = intensity * (1 - distance * 0.4);
+  const r = Math.floor(210 + warmth * 45);
+  const g = Math.floor(220 + warmth * 35);
+  const b = 255;
+  const col = `${r},${g},${b}`;
+
+  // Flash principal
+  lightning.strikes.push({ startTime: now, peak, dur, color: col });
+
+  // Doble flash muy común en rayos reales
+  if(Math.random() < 0.55){
+    const delay = dur * (0.25 + Math.random() * 0.5);
+    lightning.strikes.push({
+      startTime: now + delay,
+      peak: peak * (0.55 + Math.random() * 0.4),
+      dur: dur * (0.55 + Math.random() * 0.6),
+      color: col
+    });
+  }
+  // Triple flash ocasional en tormentas fuertes
+  if(intensity > 0.75 && Math.random() < 0.4){
+    const delay = dur * (1.0 + Math.random() * 0.9);
+    lightning.strikes.push({
+      startTime: now + delay,
+      peak: peak * 0.45,
+      dur: dur * 0.6,
+      color: col
+    });
+  }
+
+  // Sonido: el trueno llega después (distancia)
+  setTimeout(() => playThunder(intensity, distance), distance * 1000);
+}
+
+function startBoom(tStart, dur, vol, cutoff, intensity, near){
+  if(!actx) return;
+
+  // ===== CAPA 1: retumbo grave (se siente en buenos parlantes) =====
+  const n = Math.floor(actx.sampleRate * dur);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for(let i=0;i<n;i++){
+    const white = Math.random()*2 - 1;
+    last = (last + 0.05*white) / 1.05;      // ruido marrón, cutoff ~350Hz
+    const p = i/n;
+    // Ataque SUAVE (15% de la duración), cuerpo, decay
+    let env;
+    if(p < 0.15)      env = p / 0.15;
+    else if(p < 0.30) env = 1.0;
+    else              env = Math.pow(1 - (p - 0.30)/0.70, 1.5);
+    d[i] = last * env * 3.2;
+  }
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const lp = actx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = cutoff;
+  lp.Q.value = 0.9;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, tStart);
+  g.gain.linearRampToValueAtTime(vol, tStart + dur * 0.15);
+  g.gain.setValueAtTime(vol, tStart + dur * 0.30);
+  g.gain.exponentialRampToValueAtTime(0.0001, tStart + dur);
+  src.connect(lp).connect(g).connect(masterGain);
+  src.start(tStart);
+  src.stop(tStart + dur + 0.05);
+
+  // ===== CAPA 2: "punch" en medios para el celular =====
+  // Sin esto, los truenos lejanos serían totalmente inaudibles en un teléfono.
+  if(near > 0.15){
+    const pn = Math.floor(actx.sampleRate * dur * 0.75);
+    const pbuf = actx.createBuffer(1, pn, actx.sampleRate);
+    const pd = pbuf.getChannelData(0);
+    for(let i=0;i<pn;i++){
+      const p = i/pn;
+      let env;
+      if(p < 0.10)      env = p / 0.10;
+      else if(p < 0.22) env = 1.0;
+      else              env = Math.pow(1 - (p - 0.22)/0.78, 2.0);
+      pd[i] = (Math.random()*2 - 1) * env;
+    }
+    const ps = actx.createBufferSource(); ps.buffer = pbuf;
+    const bp = actx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 380 + rnd(-60, 180);
+    bp.Q.value = 0.65;
+    const pg = actx.createGain();
+    const pvol = vol * near * 0.55;
+    pg.gain.setValueAtTime(0.0001, tStart);
+    pg.gain.linearRampToValueAtTime(pvol, tStart + dur * 0.10);
+    pg.gain.exponentialRampToValueAtTime(0.0001, tStart + dur * 0.75);
+    ps.connect(bp).connect(pg).connect(masterGain);
+    ps.start(tStart);
+  }
+}
+
+function playThunder(intensity, distance){
+  if(!actx || !soundEnabled) return;
+  const t0 = actx.currentTime + 0.02;
+
+  // Volumen según distancia e intensidad
+  const distFactor = 1 / (0.55 + distance * 1.05);
+  const vol = clamp(intensity * distFactor * 0.85, 0, 1.0);
+  const near = Math.max(0, 1 - distance * 0.95);   // 1=cerca, 0=lejos
+
+  // ===== CRACK inicial (solo si el rayo es cercano) =====
+  // Es lo que hace "¡CRAC!" antes del boom en tormentas sobre tu cabeza.
+  if(near > 0.45){
+    const cdur = 0.28 + intensity * 0.35;
+    const cn = Math.floor(actx.sampleRate * cdur);
+    const cbuf = actx.createBuffer(1, cn, actx.sampleRate);
+    const cd = cbuf.getChannelData(0);
+    for(let i=0;i<cn;i++){
+      const p = i/cn;
+      // Envolvente con doble caída: un pequeño pico después del ataque
+      let env = Math.pow(1 - p, 1.7);
+      if(p < 0.05) env *= p / 0.05;    // mini fade-in de 5% para que no clickee
+      cd[i] = (Math.random()*2 - 1) * env;
+    }
+    const cs = actx.createBufferSource(); cs.buffer = cbuf;
+    const hp = actx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 260;
+    const peak = actx.createBiquadFilter();
+    peak.type = 'peaking';
+    peak.frequency.value = 1300;
+    peak.gain.value = 5;
+    peak.Q.value = 0.8;
+    const cg = actx.createGain();
+    const cvol = vol * near * 0.85;
+    cg.gain.setValueAtTime(0.0001, t0);
+    cg.gain.linearRampToValueAtTime(cvol, t0 + 0.012);   // ataque 12ms
+    cg.gain.exponentialRampToValueAtTime(0.0001, t0 + cdur);
+    cs.connect(hp).connect(peak).connect(cg).connect(masterGain);
+    cs.start(t0);
+  }
+
+  // ===== CUERPO: varias "olas" desfasadas (PUMPUM pam) =====
+  // 2-5 golpes con delays y filtros distintos, imitando la reflexión
+  // de la onda de choque contra nubes y terreno.
+  const numBooms = 2 + Math.floor(Math.random() * 3 + intensity * 2);
+  let cursor = 0.10;  // pequeño respiro después del crack
+  for(let i=0;i<numBooms;i++){
+    // Cada boom se desfasa un poco más que el anterior
+    const delay = cursor + rnd(0.06, 0.42);
+    const boomDur = rnd(0.9, 2.1) + intensity * 0.7;
+    const boomVol = vol * Math.max(0.15, 1 - i * 0.18) * rnd(0.7, 1.0);
+    // Los booms tardíos suenan más graves y más "lejos"
+    const boomFreq = Math.max(70, 210 - i * 28 + rnd(-35, 35) - near * 30);
+    startBoom(t0 + delay, boomDur, boomVol, boomFreq, intensity, near * Math.max(0.4, 1 - i*0.2));
+    cursor = delay + boomDur * 0.65;
+  }
+
+  // ===== COLA LARGA =====
+  // Un rugido bajo que se desvanece lentamente, como cuando el trueno
+  // se aleja y retumba en el horizonte.
+  const tailDelay = cursor + rnd(0.15, 0.55);
+  const tailDur = 2.0 + intensity * 2.8;
+  const tn = Math.floor(actx.sampleRate * tailDur);
+  const tbuf = actx.createBuffer(1, tn, actx.sampleRate);
+  const td = tbuf.getChannelData(0);
+  let tl = 0;
+  for(let i=0;i<tn;i++){
+    const white = Math.random()*2 - 1;
+    tl = (tl + 0.08 * white) / 1.08;   // cutoff ~500Hz
+    const p = i/tn;
+    td[i] = tl * Math.pow(1 - p, 1.3) * 2.6;
+  }
+  const ts = actx.createBufferSource(); ts.buffer = tbuf;
+  const tlp = actx.createBiquadFilter();
+  tlp.type = 'lowpass'; tlp.frequency.value = 320;
+  const tg = actx.createGain();
+  const tvol = vol * 0.42;
+  tg.gain.setValueAtTime(0.0001, t0 + tailDelay);
+  tg.gain.linearRampToValueAtTime(tvol, t0 + tailDelay + 0.35);
+  tg.gain.exponentialRampToValueAtTime(0.0001, t0 + tailDelay + tailDur);
+  ts.connect(tlp).connect(tg).connect(masterGain);
+  ts.start(t0 + tailDelay);
+}
+
 function tone(freq, dur, type='sine', vol=0.06, slide=0){
   if(!actx || !soundEnabled) return;
   const o = actx.createOscillator(), g = actx.createGain();
@@ -422,7 +869,7 @@ function tone(freq, dur, type='sine', vol=0.06, slide=0){
   if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(40,freq+slide), actx.currentTime+dur);
   g.gain.setValueAtTime(vol, actx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+dur);
-  o.connect(g); g.connect(actx.destination);
+  o.connect(g); g.connect(masterGain);
   o.start(); o.stop(actx.currentTime+dur);
 }
 function noiseBurst(dur, vol=0.05, filterFreq=1200){
@@ -434,7 +881,7 @@ function noiseBurst(dur, vol=0.05, filterFreq=1200){
   const src = actx.createBufferSource(); src.buffer = buf;
   const f = actx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=filterFreq;
   const g = actx.createGain(); g.gain.value = vol;
-  src.connect(f); f.connect(g); g.connect(actx.destination); src.start();
+  src.connect(f); f.connect(g); g.connect(masterGain); src.start();
 }
 function sfx(kind){
   if(!actx) return;
@@ -476,6 +923,7 @@ const state = {
   specialCount: { w: 0, b: 0 },
   iraCharge: { w: false, b: false },
   shields: { w: [], b: [] },
+  shieldTurns: { w: {}, b: {} },
   graveyard: { w: [], b: [] },
   busy: false, gameOver: false, selected: null, legalMoves: [], targeting: null,
   paused: false,
@@ -957,15 +1405,27 @@ function getPhase(){
 }
 let rainAmt = 0, rainTarget = 0, rainTimer = 0;
 const rainDrops = [];
-for(let i=0;i<420;i++) rainDrops.push({ x: Math.random(), y: Math.random(), len: rnd(0.012,0.035), spd: rnd(0.55,1.35) });
+for(let i=0;i<1000;i++) rainDrops.push({
+  x: Math.random(), y: Math.random(),
+  len: rnd(0.010, 0.042),
+  spd: rnd(0.50, 1.55)
+});
+let weatherTransitionSpeed = 0.25;
 function updateWeather(dt){
   rainTimer -= dt;
   if(rainTimer <= 0){
-    rainTimer = rnd(12, 30);
+    // Intervalos más irregulares (2-40s en vez de 12-30s)
+    rainTimer = rnd(2, 40);
     const r = Math.random();
-    rainTarget = r < 0.55 ? 0 : (r < 0.85 ? rnd(0.2,0.45) : rnd(0.6,1.0));
+    // Distribución más variada: 50% seco, 22% llovizna, 15% media, 13% tormenta
+    if(r < 0.50)      rainTarget = 0;
+    else if(r < 0.72) rainTarget = rnd(0.05, 0.25);
+    else if(r < 0.87) rainTarget = rnd(0.25, 0.55);
+    else              rainTarget = rnd(0.60, 1.00);
+    // Velocidad de transición variable por evento
+    weatherTransitionSpeed = 0.10 + Math.random() * 0.55;
   }
-  rainAmt = lerp(rainAmt, rainTarget, dt*0.25);
+  rainAmt = lerp(rainAmt, rainTarget, dt * weatherTransitionSpeed);
 }
 const fogBlobs = [];
 for(let i=0;i<7;i++){
@@ -1398,6 +1858,7 @@ function pushUndoSnapshot(){
     specialCount: { ...state.specialCount },
     iraCharge: { ...state.iraCharge },
     shields: { w: [...state.shields.w], b: [...state.shields.b] },
+    shieldTurns: { w: { ...state.shieldTurns.w }, b: { ...state.shieldTurns.b } },
     graveyard: { w: [...state.graveyard.w], b: [...state.graveyard.b] },
     achState: JSON.parse(JSON.stringify(achState)),
     firstBloodClaimed,
@@ -1420,6 +1881,9 @@ function performUndo(){
   state.specialCount = { ...snap.specialCount };
   state.iraCharge = { ...snap.iraCharge };
   state.shields = { w: [...snap.shields.w], b: [...snap.shields.b] };
+  if(snap.shieldTurns){
+    state.shieldTurns = { w: { ...snap.shieldTurns.w }, b: { ...snap.shieldTurns.b } };
+  }
   state.graveyard = { w: [...snap.graveyard.w], b: [...snap.graveyard.b] };
   for(const color of ['w','b']){
     achState[color] = JSON.parse(JSON.stringify(snap.achState[color]));
@@ -1617,6 +2081,28 @@ function updateUI(){
    TURNO
    ========================================================= */
 function endTurn(){
+  // === Descontar contadores de escudos del jugador que acaba de terminar ===
+  const justEnded = chess.turn() === 'w' ? 'b' : 'w';
+  const st = state.shieldTurns[justEnded];
+  if(st && state.shields[justEnded].length){
+    const stillAlive = [];
+    for(const sq of state.shields[justEnded]){
+      if(st[sq] !== undefined){
+        st[sq]--;
+        if(st[sq] > 0){
+          stillAlive.push(sq);
+        } else {
+          delete st[sq];
+          // Aviso cuando se desvanece
+          toast(`🛡️ Escudo expirado en ${sq}`, '#7ac0ff');
+        }
+      } else {
+        stillAlive.push(sq);
+      }
+    }
+    state.shields[justEnded] = stillAlive;
+  }
+
   state.selected = null; state.legalMoves = []; state.targeting = null;
   if(iraResolve){ const r = iraResolve; iraResolve = null; r(null); }
   clearHighlights();
@@ -1771,6 +2257,7 @@ async function doPlayerMove(mv){
       unlockAch(targetPiece.color, 'escudoSalvador');
       const idx = state.shields[targetPiece.color].indexOf(capturedSquare);
       if(idx >= 0) state.shields[targetPiece.color].splice(idx,1);
+      delete state.shieldTurns[targetPiece.color][capturedSquare];
       switchTurnInFen();
       achState[turn].streak = 0;
       recordHistory({
@@ -1803,7 +2290,14 @@ async function doPlayerMove(mv){
   if(!moveResult){ state.busy = false; return; }
 
   const shIdx = state.shields[turn].indexOf(mv.from);
-  if(shIdx >= 0){ state.shields[turn].splice(shIdx,1); state.shields[turn].push(mv.to); }
+  if(shIdx >= 0){
+    state.shields[turn].splice(shIdx,1);
+    state.shields[turn].push(mv.to);
+    if(state.shieldTurns[turn][mv.from] !== undefined){
+      state.shieldTurns[turn][mv.to] = state.shieldTurns[turn][mv.from];
+      delete state.shieldTurns[turn][mv.from];
+    }
+  }
   if(capturedSquare){
     for(const col of ['w','b']){
       const i = state.shields[col].indexOf(capturedSquare);
@@ -2263,7 +2757,14 @@ async function execTeleport(from, to, cost){
     try { chess.load(parts.join(' '), { skipValidation: true }); } catch(e){}
   }
   const si = state.shields[turn].indexOf(from);
-  if(si >= 0){ state.shields[turn].splice(si,1); state.shields[turn].push(to); }
+  if(si >= 0){
+    state.shields[turn].splice(si,1);
+    state.shields[turn].push(to);
+    if(state.shieldTurns[turn][from] !== undefined){
+      state.shieldTurns[turn][to] = state.shieldTurns[turn][from];
+      delete state.shieldTurns[turn][from];
+    }
+  }
   validateAndFixBoard();
   const el2 = pieceEls.get(to);
   if(el2){ el2.style.opacity = '0'; el2.getBoundingClientRect(); el2.style.opacity = '1'; }
@@ -2307,7 +2808,10 @@ async function execShield(sq){
   });
   ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.6, lifeMax:.6, color:'130,190,255' });
   burst(C.x, C.y, 26, { color:'#8ecbff', spMin:30, spMax:140, lifeMin:.3, lifeMax:.7 });
-  if(!state.shields[turn].includes(sq)) state.shields[turn].push(sq);
+    if(!state.shields[turn].includes(sq)){
+    state.shields[turn].push(sq);
+    state.shieldTurns[turn][sq] = 2;    // 3 turnos del dueño
+  }
   state.mana[turn] -= POWERS.shield.cost;
   achState[turn].powersUsed++;
   if(achState[turn].powersUsed >= 5) unlockAch(turn, 'magoDeMagos');
@@ -2571,11 +3075,15 @@ async function execQuake(centerSq){
     const c2 = squareCenter(newSq);
     ripples.push({ x:c2.x, y:c2.y, r:2, maxR: cellSize*0.9, life:.5, lifeMax:.5, color:'200,170,120' });
   }
-  for(const col of ['w','b']){
+    for(const col of ['w','b']){
     state.shields[col] = state.shields[col].filter(sq => {
       const p = chess.get(sq);
       return p && p.color === col;
     });
+    // Limpiar contadores huérfanos
+    for(const sq of Object.keys(state.shieldTurns[col])){
+      if(!state.shields[col].includes(sq)) delete state.shieldTurns[col][sq];
+    }
   }
   state.mana[turn] -= POWERS.quake.cost;
   achState[turn].powersUsed++;
@@ -3844,12 +4352,25 @@ function newGame(){
   state.specialCount = { w: 0, b: 0 };
   state.iraCharge = { w: false, b: false };
   state.shields = { w: [], b: [] };
+  state.shieldTurns = { w: {}, b: {} };
   state.graveyard = { w: [], b: [] };
   state.busy = false; state.gameOver = false;
   state.selected = null; state.legalMoves = []; state.targeting = null;
   state.paused = false;
   iraResolve = null;
   state.lastMove = { from: null, to: null, prevFrom: null, prevTo: null };
+
+  if(typeof lightning !== 'undefined') lightning.strikes.length = 0;
+
+  // Resetear generadores para que la partida arranque en calma
+  if(typeof org !== 'undefined'){
+    org.wind.level = 0; org.wind.target = 0; org.wind.nextChange = 0;
+    org.rainWobble.level = 0.85; org.rainWobble.target = 0.85; org.rainWobble.nextChange = 0;
+    org.crickets.level = 0; org.crickets.target = 0; org.crickets.nextChange = 0;
+    ambience.rainLevel = 0;
+    ambience.nightLevel = 0;
+  }
+
   historyLog.length = 0; historyEl.innerHTML = '';
   pieceEls.forEach(el => el.remove()); pieceEls.clear();
   particles.length = 0; bolts.length = 0; curves.length = 0; ripples.length = 0;
@@ -3895,6 +4416,23 @@ function loop(now){
   worldTime += dt;
   updateWeather(dt);
   updateParticles(dt);
+  updateAmbience();
+  // --- Scheduler de rayos (cada 500ms revisa si toca) ---
+  {
+    const now_ms = performance.now();
+    if(now_ms - lightning.lastCheck > 500){
+      lightning.lastCheck = now_ms;
+      const r = ambience.rainLevel;
+      if(r > 0.16){
+        // Probabilidad por tick de 0.5s: sube cuadráticamente con la lluvia
+        const norm = (r - 0.16) / 0.84;
+        const ratePerSec = Math.pow(norm, 2.3) * 0.55;   // ~0.55/s a lluvia máxima
+        if(Math.random() < ratePerSec * 0.5){
+          triggerLightning(r);
+        }
+      }
+    }
+  }
   const W = boardW, H = boardH;
   ctx.clearRect(0, 0, W, H);
   if(terrainOffscreen) ctx.drawImage(terrainOffscreen, 0, 0, W, H);
@@ -4030,28 +4568,87 @@ function loop(now){
     ctx.beginPath(); ctx.ellipse(px, py, pr, pr*0.55, 0, 0, 6.2832); ctx.fill();
   }
   ctx.restore();
-  if(rainAmt > 0.02){
-    const n = Math.floor(rainDrops.length * rainAmt);
-    ctx.strokeStyle = `rgba(180,210,240,${0.35 * rainAmt + 0.15})`;
-    ctx.lineWidth = 1;
+    if(rainAmt > 0.012){
+    const visible = Math.floor(rainDrops.length * (0.05 + 0.90 * Math.pow(rainAmt, 0.55)));
+
+    // Alpha: crece poco. Con poca lluvia se ve tenue, con mucha no llega a "manchar".
+    const alpha   = 0.20 + rainAmt * 0.24;      // 0.20 → 0.44
+
+    // LARGO: acá está el truco. De cortitas a estelas larguísimas.
+    const lenScale = 0.65 + rainAmt * 4.20;     // 0.65x → 4.85x la longitud base
+
+    // Grosor: crece lento (evita el efecto "sábana blanca")
+    const lw = 0.55 + rainAmt * 0.75;
+
+    // Velocidad: caen más rápido cuando arrecia
+    const speedMul = 0.85 + rainAmt * 1.15;
+
+    // Inclinación: más diagonal con más viento
+    const slant = 0.14 + rainAmt * 0.14;
+
+    ctx.strokeStyle = `rgba(180,210,240,${alpha})`;
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    for(let i=0;i<n;i++){
+    for(let i=0;i<visible;i++){
       const d = rainDrops[i];
-      d.y += d.spd * dt;
-      d.x += d.spd * dt * 0.18;
+      d.y += d.spd * speedMul * dt;
+      d.x += d.spd * speedMul * dt * 0.18;
       if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); }
       if(d.x > 1.05) d.x -= 1.1;
-      const px = d.x*W, py = d.y*H;
+
+      const px = d.x * W, py = d.y * H;
+      const L = d.len * lenScale;               // longitud efectiva de esta gota
       ctx.moveTo(px, py);
-      ctx.lineTo(px - d.len*W*0.18, py + d.len*H);
+      ctx.lineTo(px - L * W * slant, py + L * H);
     }
     ctx.stroke();
+    ctx.lineCap = 'butt';
   }
+  // VIÑETA
   const vg = ctx.createRadialGradient(W/2, H/2, H*0.32, W/2, H/2, H*0.78);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
   vg.addColorStop(1, 'rgba(0,0,0,0.42)');
   ctx.fillStyle = vg;
   ctx.fillRect(0,0,W,H);
+
+    // --- Flash de rayo ---
+  if(lightning.strikes.length > 0){
+    const now_ms = performance.now();
+    let bestA = 0, bestCol = '210,225,255';
+    for(let i = lightning.strikes.length - 1; i >= 0; i--){
+      const s = lightning.strikes[i];
+      const elapsed = now_ms - s.startTime;
+      if(elapsed < 0) continue;
+      if(elapsed > s.dur){ lightning.strikes.splice(i, 1); continue; }
+      const t = elapsed / s.dur;
+      let a;
+      if(t < 0.07){
+        a = s.peak * (t / 0.07);
+      } else {
+        a = s.peak * Math.pow(1 - (t - 0.07) / 0.93, 1.6);
+      }
+      if(a > bestA){ bestA = a; bestCol = s.color; }
+    }
+    if(bestA > 0.012){
+      // Capa 1: relleno general
+      ctx.fillStyle = `rgba(${bestCol},${bestA * 0.75})`;
+      ctx.fillRect(0, 0, W, H);
+      // Capa 2: brillo extra en el punto de impacto (radial)
+      const cx = rnd(W * 0.15, W * 0.85);
+      const cy = rnd(H * 0.10, H * 0.60); // siempre desde el cielo hacia abajo
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 1.0);
+      grad.addColorStop(0, `rgba(255,255,255,${bestA * 0.85})`);
+      grad.addColorStop(0.4, `rgba(${bestCol},${bestA * 0.5})`);
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+  }
+
   drawParticles();
   requestAnimationFrame(loop);
 }
@@ -4080,7 +4677,10 @@ $('#btnSound').onclick = () => {
   soundEnabled = !soundEnabled;
   localStorage.setItem('ajedrez_sound', soundEnabled ? 'on' : 'off');
   updateSoundButton();
-  if (soundEnabled) tone(660, .12, 'sine', .05, 200);
+  if(masterGain){
+    masterGain.gain.setTargetAtTime(soundEnabled ? 1 : 0, actx.currentTime, 0.08);
+  }
+  if(soundEnabled) tone(660, .12, 'sine', .05, 200);
 };
 $('#btnConfig').onclick = () => {
   togglePause();
@@ -4107,6 +4707,12 @@ async function openQuickConfig(){
 
 window.addEventListener('resize', () => setTimeout(layout, 60));
 window.addEventListener('orientationchange', () => setTimeout(layout, 250));
+
+document.addEventListener('visibilitychange', () => {
+  if(!actx || !ambience.started) return;
+  const target = (document.hidden || !soundEnabled) ? 0 : 1;
+  try { masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.3); } catch(e){}
+});
 
 function boot(){
   if(typeof Chess === 'undefined'){
