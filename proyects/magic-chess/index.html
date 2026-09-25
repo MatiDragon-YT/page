@@ -1024,7 +1024,8 @@ function saveCurrentMatch(result, resultColor){
     mode, humanColor, aiColor, rubyMode, aiEnabled,
     result, resultColor,
     moves: JSON.parse(JSON.stringify(historyLog)),
-    finalFen: chess ? chess.fen() : null
+    finalFen: chess ? chess.fen() : null,
+    weather: captureWeatherState()          // snapshot del clima al terminar
   };
   const list = loadMatchList();
   list.unshift(match);
@@ -1411,6 +1412,75 @@ for(let i=0;i<1000;i++) rainDrops.push({
   spd: rnd(0.50, 1.55)
 });
 let weatherTransitionSpeed = 0.25;
+/* ===== ESTADO DEL CLIMA: capturar / aplicar / randomizar ===== */
+function captureWeatherState(){
+  return {
+    worldTime: worldTime,
+    rainAmt: rainAmt,
+    rainTarget: rainTarget,
+    rainTimer: rainTimer,
+    weatherTransitionSpeed: weatherTransitionSpeed
+  };
+}
+
+function applyWeatherState(w){
+  if(!w) return;
+
+  if(typeof w.worldTime === 'number')              worldTime = w.worldTime;
+  if(typeof w.rainAmt === 'number')                rainAmt = clamp(w.rainAmt, 0, 1);
+  if(typeof w.rainTarget === 'number')             rainTarget = clamp(w.rainTarget, 0, 1);
+  if(typeof w.rainTimer === 'number')              rainTimer = Math.max(0, w.rainTimer);
+  if(typeof w.weatherTransitionSpeed === 'number') weatherTransitionSpeed = clamp(w.weatherTransitionSpeed, 0.05, 1);
+
+  // Limpiar rayos activos
+  if(typeof lightning !== 'undefined') lightning.strikes.length = 0;
+
+  // Resetear suavizados de audio para que arranquen coherentes con el estado nuevo
+  if(typeof ambience !== 'undefined' && ambience.started){
+    ambience.rainLevel  = rainAmt * 0.9;
+    ambience.nightLevel = 0;   // el loop lo sube o baja rápido
+    ambience.lastUpdate = performance.now();
+  }
+  // Resetear generadores orgánicos
+  if(typeof org !== 'undefined'){
+    org.wind.level = 0;  org.wind.target = 0;  org.wind.nextChange = 0;
+    org.rainWobble.level = 0.85; org.rainWobble.target = 0.85; org.rainWobble.nextChange = 0;
+    org.crickets.level = 0;  org.crickets.target = 0;  org.crickets.nextChange = 0;
+  }
+}
+
+function randomizeWeatherForNewGame(){
+  // Día aleatorio dentro del ciclo (amanecer, día, atardecer o noche)
+  worldTime = Math.random() * CYCLE_SECONDS;
+
+  // Clima aleatorio con la misma distribución que el scheduler
+  const r = Math.random();
+  if(r < 0.55)      rainTarget = 0;
+  else if(r < 0.75) rainTarget = rnd(0.05, 0.30);   // llovizna
+  else if(r < 0.90) rainTarget = rnd(0.30, 0.60);   // lluvia moderada
+  else              rainTarget = rnd(0.60, 1.00);   // tormenta
+
+  // La lluvia actual arranca a medio camino del target — así si va a llover,
+  // ya se ve algo de lluvia al empezar, sin el "pop" de la transición.
+  rainAmt = rainTarget * rnd(0.25, 0.65);
+  rainTimer = rnd(4, 20);                                    // próximo cambio en 4-20 s
+  weatherTransitionSpeed = 0.12 + Math.random() * 0.42;      // ritmo de transición variado
+
+  // Limpiar rayos activos
+  if(typeof lightning !== 'undefined') lightning.strikes.length = 0;
+
+  // Resetear suavizados de audio y generadores orgánicos
+  if(typeof ambience !== 'undefined' && ambience.started){
+    ambience.rainLevel  = rainAmt * 0.9;
+    ambience.nightLevel = 0;
+    ambience.lastUpdate = performance.now();
+  }
+  if(typeof org !== 'undefined'){
+    org.wind.level = 0;  org.wind.target = 0;  org.wind.nextChange = 0;
+    org.rainWobble.level = 0.85; org.rainWobble.target = 0.85; org.rainWobble.nextChange = 0;
+    org.crickets.level = 0;  org.crickets.target = 0;  org.crickets.nextChange = 0;
+  }
+}
 function updateWeather(dt){
   rainTimer -= dt;
   if(rainTimer <= 0){
@@ -3676,8 +3746,8 @@ clearHighlights();
   updateReplayUI(entry, 0);
   updateReplayControls();
 }
-function startReplayFromStored(match) {
-  if (!match || !match.moves || !match.moves.length) {
+function startReplayFromStored(match){
+  if(!match || !match.moves || !match.moves.length){
     toast('Partida vacía o corrupta', '#ff8080');
     return false;
   }
@@ -3688,13 +3758,15 @@ function startReplayFromStored(match) {
   historyLog.length = 0;
   match.moves.forEach(m => historyLog.push(JSON.parse(JSON.stringify(m))));
   historyEl.innerHTML = '';
-  for (const m of historyLog) {
+  for(const m of historyLog){
     const el = renderHistoryItem(m);
     historyEl.appendChild(el);
   }
-  replayFromMenu = true; // marca que venimos del menú principal
+  // *** FIX: aplicar el clima guardado de esa partida ***
+  if(match.weather) applyWeatherState(match.weather);
+  replayFromMenu = true;
   startReplay();
-  return replay.active; // true si se inició correctamente
+  return replay.active;
 }
 function closeReplay(){
   stopReplayAuto();
@@ -4362,14 +4434,8 @@ function newGame(){
 
   if(typeof lightning !== 'undefined') lightning.strikes.length = 0;
 
-  // Resetear generadores para que la partida arranque en calma
-  if(typeof org !== 'undefined'){
-    org.wind.level = 0; org.wind.target = 0; org.wind.nextChange = 0;
-    org.rainWobble.level = 0.85; org.rainWobble.target = 0.85; org.rainWobble.nextChange = 0;
-    org.crickets.level = 0; org.crickets.target = 0; org.crickets.nextChange = 0;
-    ambience.rainLevel = 0;
-    ambience.nightLevel = 0;
-  }
+    // Randomizar clima al iniciar partida nueva
+  randomizeWeatherForNewGame();
 
   historyLog.length = 0; historyEl.innerHTML = '';
   pieceEls.forEach(el => el.remove()); pieceEls.clear();
