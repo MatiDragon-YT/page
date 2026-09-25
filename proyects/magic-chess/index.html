@@ -11,6 +11,21 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
   color:#e8e0d0;user-select:none;-webkit-user-select:none}
 #app{display:flex;flex-direction:column;height:100dvh;height:100vh}
+#topBar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  padding:4px 8px;background:linear-gradient(#1b1710,#0c0a07);
+  border-bottom:1px solid #2a2018;gap:6px;min-height:38px}
+#topBar .tbTitle{font-size:12px;font-weight:700;color:#d8c8a0;letter-spacing:.4px;
+  text-shadow:0 0 8px rgba(255,200,90,.35);white-space:nowrap;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis}
+#topBar .tbBtns{display:flex;gap:5px;flex-shrink:0}
+.topBtn{width:30px;height:30px;border-radius:7px;border:1px solid #4a3a22;
+  background:linear-gradient(#221c14,#141009);color:#d8c8a8;font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-family:inherit;transition:all .13s;padding:0;line-height:1;flex-shrink:0}
+.topBtn:active{transform:scale(.9)}
+.topBtn:hover{background:linear-gradient(#2a2416,#1a140c);color:#fff}
+.topBtn.warn{border-color:#8a4a4a;color:#ffb0b0}
+.topBtn.good{border-color:#4a7a4a;color:#a8e8b0}
 #history{flex:0 0 auto;height:42px;background:linear-gradient(#1b1710,#0c0a07);
   border-bottom:1px solid #3a2e1e;display:flex;align-items:center;
   overflow-x:auto;overflow-y:hidden;white-space:nowrap;padding:0 6px;gap:4px;scrollbar-width:none}
@@ -32,7 +47,7 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
 .hist-sym{font-size:13px;line-height:1}
 .hist-arrow{font-size:11px;color:#8a8070;margin:0 1px}
 .hist-cost{font-size:9px;color:#6fa8ff;font-weight:800;margin-left:2px}
-#boardWrap{position:relative;width:min(100%,calc(100dvh - 260px));aspect-ratio:1/1;
+#boardWrap{position:relative;width:min(100%,calc(100dvh - 300px));aspect-ratio:1/1;
   margin:0 auto;flex:0 0 auto;overflow:hidden;background:#0a0d0a;
   box-shadow:0 8px 34px rgba(0,0,0,.8), inset 0 0 60px rgba(0,0,0,.4)}
 #fx{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
@@ -55,6 +70,24 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
 @keyframes pulseGreen{0%,100%{opacity:.5}50%{opacity:1}}
 @keyframes pulseRed{0%,100%{opacity:.45}50%{opacity:1}}
 @keyframes spinPulse{0%,100%{opacity:.55}50%{opacity:1}}
+#pauseOverlay{position:absolute;inset:0;z-index:15;background:rgba(0,0,0,.72);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;
+  backdrop-filter:blur(5px);animation:fadeIn .18s}
+#pauseOverlay.hidden{display:none}
+#pauseOverlay .pt{font-size:38px;color:#ffe0a0;font-weight:800;letter-spacing:3px;
+  text-shadow:0 0 24px rgba(255,200,90,.7)}
+#pauseOverlay .ps{font-size:12px;color:#a89c86;letter-spacing:1px}
+#clockBar{display:flex;gap:6px;padding:0 4px;margin-top:-2px}
+.clock{flex:1;text-align:center;padding:4px 8px;border-radius:6px;
+  background:#0a0c14;border:1px solid #2a3040;
+  font-family:ui-monospace,monospace;font-size:14px;font-weight:700;
+  color:#c8d8f0;transition:all .25s;position:relative}
+.clock .who{font-size:9px;color:#6a7a9a;font-weight:600;letter-spacing:.5px;margin-right:4px}
+.clock.active{border-color:#6a8ac0;color:#fff;box-shadow:0 0 10px rgba(90,140,220,.5)}
+.clock.low{color:#ff8080;border-color:#8a4a4a;animation:clockPulse .7s infinite}
+.clock.wout{color:#505050;background:#050505}
+.clock.hidden{display:none}
+@keyframes clockPulse{0%,100%{opacity:1}50%{opacity:.45}}
 #pieces{position:absolute;inset:0;z-index:3;pointer-events:none}
 .piece{position:absolute;left:0;top:0;display:flex;align-items:center;justify-content:center;
   transition:transform 190ms cubic-bezier(.18,.75,.28,1);will-change:transform;z-index:5}
@@ -160,17 +193,22 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
   animation:fadeIn .18s;padding:12px}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .modal{background:linear-gradient(#1c1812,#0f0d09);border:1px solid #5a4526;border-radius:14px;
-  padding:18px 20px;max-width:360px;width:100%;max-height:88vh;overflow-y:auto;text-align:center;
+  padding:18px 20px;max-width:420px;width:100%;max-height:88vh;overflow-y:auto;text-align:center;
   box-shadow:0 14px 50px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,220,160,.12);
   animation:popIn .22s cubic-bezier(.2,1.3,.5,1)}
+.modal.wide{max-width:520px}
 @keyframes popIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
 .modal h3{margin:0 0 8px;font-size:17px;color:#f0d9a0;letter-spacing:.4px}
 .modal p{margin:0 0 14px;font-size:12.5px;color:#a89c86;line-height:1.5}
-.modal-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.modal .section{text-align:left;margin:10px 0 4px}
+.modal .section-title{font-size:11px;color:#8a8070;letter-spacing:1.2px;font-weight:700;
+  margin-bottom:6px;text-transform:uppercase}
+.modal-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
 .mbtn{padding:10px 16px;border-radius:9px;border:1px solid #5a4526;
   background:linear-gradient(#2e2416,#1a140c);color:#e8d8b8;font-size:13px;font-weight:600;
   cursor:pointer;font-family:inherit;transition:all .13s;min-width:64px;position:relative}
 .mbtn:active{transform:scale(.95)}
+.mbtn.small{padding:6px 10px;font-size:11px;min-width:auto}
 .mbtn.glyph{font-size:22px;padding:8px 12px;line-height:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:auto}
 .mbtn.glyph small{font-size:9px;color:#7ac0ff;font-weight:800}
 .mbtn.glyph.dis{opacity:.35;filter:grayscale(.7);cursor:not-allowed;border-color:#3a3020}
@@ -182,6 +220,39 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
   box-shadow:0 0 12px rgba(255,80,140,.35)}
 .mbtn.picked{border-color:#ffd070;background:linear-gradient(#3a2e1a,#20180e);
   box-shadow:0 0 14px rgba(255,200,90,.6);transform:scale(1.05)}
+.mbtn.danger{border-color:#8a3a3a;background:linear-gradient(#3a1a1a,#1c0a0a);color:#ffb0b0}
+.cfgGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}
+.cfgGrid.c3{grid-template-columns:repeat(3,1fr)}
+.cfgOpt{padding:10px 6px;border-radius:9px;border:2px solid #3a2f20;
+  background:linear-gradient(#221c14,#141009);color:#c8bca4;cursor:pointer;
+  font-size:11px;font-weight:700;text-align:center;font-family:inherit;
+  transition:all .13s;display:flex;flex-direction:column;align-items:center;gap:2px}
+.cfgOpt .ic{font-size:20px;line-height:1}
+.cfgOpt.small{font-size:11px;padding:8px 6px}
+.cfgOpt.picked{border-color:#ffd070;background:linear-gradient(#3a2e1a,#20180e);
+  box-shadow:0 0 12px rgba(255,200,90,.45);color:#ffe8b0}
+.cfgOpt:active{transform:scale(.95)}
+.cfgOpt.dis{opacity:.4;filter:grayscale(.7);cursor:default}
+.timeRow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.timeRow .cfgOpt{flex:1;min-width:56px}
+.matchList{max-height:56vh;overflow-y:auto;margin:8px 0;display:flex;flex-direction:column;gap:6px}
+.matchItem{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;
+  background:#1a150e;border:1px solid #3a2e1e;text-align:left}
+.matchItem .info{flex:1;min-width:0;overflow:hidden}
+.matchItem .nm{font-size:12px;font-weight:700;color:#e8d8b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.matchItem .meta{font-size:10px;color:#8a8070;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.matchItem .acts{display:flex;gap:3px;flex-shrink:0}
+.matchItem .acts button{width:28px;height:28px;border-radius:6px;border:1px solid #3a2e1e;
+  background:#221c14;color:#a89878;font-size:13px;cursor:pointer;padding:0;line-height:1;
+  display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .12s}
+.matchItem .acts button:active{transform:scale(.9)}
+.matchItem .acts button.del{border-color:#6a2a2a;color:#ff9090}
+.matchItem .acts button:hover{background:#2a2416;color:#ffe0a0}
+.matchItem .res{font-size:10px;padding:2px 6px;border-radius:5px;font-weight:700;
+  background:#0e1a0c;color:#b8e898;border:1px solid #3a7a3a;flex-shrink:0}
+.matchItem .res.b{background:#2a1a0c;color:#e8c898;border-color:#7a5a3a}
+.matchItem .res.d{background:#1a1a20;color:#a8a8b8;border-color:#4a4a5a}
+.emptyMsg{padding:20px;color:#8a8070;font-size:12px;font-style:italic;text-align:center}
 .draftGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
 .draftCard{background:linear-gradient(#221c14,#141009);border:2px solid #3a2f20;border-radius:10px;
   padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;
@@ -238,16 +309,33 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
 </head>
 <body>
 <div id="app">
+  <div id="topBar">
+    <div class="tbTitle">♚ Ajedrez Mágico</div>
+    <div class="tbBtns">
+      <button class="topBtn" id="btnPause" title="Pausa">⏸</button>
+      <button class="topBtn" id="btnConfig" title="Opciones">⚙</button>
+      <button class="topBtn warn" id="btnRestart" title="Reiniciar">↻</button>
+      <button class="topBtn warn" id="btnExit" title="Salir al menú">✖</button>
+    </div>
+  </div>
   <div id="history"></div>
   <div id="boardWrap">
     <canvas id="fx"></canvas>
     <div id="grid"></div>
     <div id="pieces"></div>
+    <div id="pauseOverlay" class="hidden">
+      <div class="pt">PAUSA</div>
+      <div class="ps">Toca ⏸ para continuar</div>
+    </div>
   </div>
   <div id="controls">
     <div id="turnBar">
       <div id="turnInfo"><span id="turnDot"></span><span id="turnText">Turno Blancas</span></div>
       <div id="statusMsg">—</div>
+    </div>
+    <div id="clockBar">
+      <div class="clock hidden" id="clockW"><span class="who">BLANCAS</span><span class="t">--:--</span></div>
+      <div class="clock hidden" id="clockB"><span class="who">NEGRAS</span><span class="t">--:--</span></div>
     </div>
     <div id="manaRow">
       <div class="manaBar" id="manaW"><div class="fill"></div><div class="shine"></div><div class="lbl">0 / 10</div></div>
@@ -296,6 +384,7 @@ function vnoise(x,y,s){
   return lerp(lerp(a,b,u), lerp(c,d,u), v);
 }
 function fbm(x,y,s){ let v=0,a=0.5,f=1; for(let i=0;i<4;i++){ v+=a*vnoise(x*f,y*f,s+i*31.7); f*=2; a*=0.5; } return v; }
+function formatTime(sec){ if(sec < 0) sec = 0; const m = Math.floor(sec/60), s = Math.floor(sec%60); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
 
 /* =========================================================
    AUDIO
@@ -339,6 +428,7 @@ function sfx(kind){
     case 'end': [440,554,659,880].forEach((f,i)=>setTimeout(()=>tone(f,.3,'triangle',.05),i*120)); break;
     case 'ach': [659,880,1174].forEach((f,i)=>setTimeout(()=>tone(f,.25,'sine',.07),i*90)); break;
     case 'undo': tone(340,.18,'triangle',.05,-80); tone(220,.22,'sine',.04,-60); break;
+    case 'timeout': [330,262,196].forEach((f,i)=>setTimeout(()=>tone(f,.35,'sawtooth',.06,-40),i*130)); break;
   }
 }
 
@@ -363,10 +453,13 @@ const state = {
   iraCharge: { w: false, b: false },
   shields: { w: [], b: [] },
   graveyard: { w: [], b: [] },
-  busy: false, gameOver: false, selected: null, legalMoves: [], targeting: null
+  busy: false, gameOver: false, selected: null, legalMoves: [], targeting: null,
+  paused: false,
+  aiBusy: false
 };
 let iraResolve = null;
 
+const gameTimer = { enabled: false, initial: 300, w: 300, b: 300, running: false, intervalId: null };
 const playerDecks = { w: { hand: [], queue: [] }, b: { hand: [], queue: [] } };
 
 let aiEnabled = false;
@@ -402,9 +495,11 @@ const achState = {
 let firstBloodClaimed = false;
 
 const historyLog = [];
-const replay = { active: false, index: 0, playing: false, speed: 950 };
+const replay = { active: false, index: 0, playing: false, speed: 950,
+                 storedMatch: null, originalHistory: null };
 let replayAnimating = false;
 let playToken = 0;
+let replayFromMenu = false;
 
 const GLYPH = { k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
 const PIECE_NAME = { k:'Rey', q:'Dama', r:'Torre', b:'Alfil', n:'Caballo', p:'Peón' };
@@ -432,6 +527,37 @@ function rayCostFor(type){ return { p:3, n:4, b:4, r:5, q:7 }[type] || 99; }
 function healCostFor(type){ return { p:2, n:3, b:3, r:4, q:6 }[type] || 2; }
 function minCostOf(key){ const p = POWERS[key]; return p.minCost !== undefined ? p.minCost : p.cost; }
 const COST_LABEL = { teleport:'2-6', shield:'4', ray:'3-7', heal:'2-6', zombie:'6', quake:'6' };
+
+/* =========================================================
+   HISTORIAL DE PARTIDAS (localStorage)
+   ========================================================= */
+const STORAGE_KEY = 'ajedrez_magico_history_v2';
+function loadMatchList(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e){ return []; }
+}
+function saveMatchList(list){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch(e){
+    toast('No se pudo guardar el historial', '#ff8080');
+  }
+}
+function saveCurrentMatch(result, resultColor){
+  if(!historyLog.length || historyLog.length < 3) return;
+  const mode = aiEnabled ? (rubyMode ? 'ruby' : aiDifficulty) : 'pvp';
+  const now = new Date();
+  const name = now.toLocaleString('es', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+  const match = {
+    id: 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    name, date: now.getTime(),
+    mode, humanColor, aiColor, rubyMode, aiEnabled,
+    result, resultColor,
+    moves: JSON.parse(JSON.stringify(historyLog)),
+    finalFen: chess ? chess.fen() : null
+  };
+  const list = loadMatchList();
+  list.unshift(match);
+  if(list.length > 50) list.length = 50;
+  saveMatchList(list);
+}
 
 /* =========================================================
    MAZO / MANO
@@ -761,7 +887,7 @@ function renderTerrain(W, H){
     o.beginPath(); o.ellipse(px - rr*0.32, py - rr*0.42, rr*0.30, rr*0.20, rk.rot, 0, 6.2832); o.fill();
   }
   const step = oc.width / 8;
-  o.strokeStyle = 'rgba(255,240,205,0.10)';
+  o.strokeStyle = 'rgba(255,240,205,0.05)';
   o.lineWidth = Math.max(1, oc.width/500);
   for(let i=0;i<=8;i++){
     o.beginPath(); o.moveTo(i*step, 0); o.lineTo(i*step, oc.height); o.stroke();
@@ -857,11 +983,11 @@ function positionPiece(el, sq){
 }
 function updatePieceClass(el, p, sq){
   const code = p.color + p.type;
-  if(el.dataset.code !== code){
-    el.dataset.code = code;
-    el.className = 'piece ' + (p.color === 'w' ? 'white' : 'black');
-    el.querySelector('.tok').textContent = GLYPH[p.type];
-  }
+  el.classList.toggle('white', p.color === 'w');
+  el.classList.toggle('black', p.color === 'b');
+  const tok = el.querySelector('.tok');
+  if(tok && tok.textContent !== GLYPH[p.type]) tok.textContent = GLYPH[p.type];
+  el.dataset.code = code;
   const shielded = !replay.active && state.shields[p.color].includes(sq);
   const iraReady = !replay.active && state.iraCharge[p.color] && 'nrb'.includes(p.type);
   el.classList.toggle('shielded', shielded);
@@ -958,10 +1084,13 @@ function addToGraveyard(capturedType, capturedColor){
   if(!state.graveyard[capturedColor]) return;
   state.graveyard[capturedColor].push(capturedType);
 }
-
-/* =========================================================
-   VALIDACIÓN: jaque propio / casilla atacada
-   ========================================================= */
+function validateAndFixBoard(){
+  try {
+    const fen = chess.fen();
+    chess.load(fen, { skipValidation: true });
+  } catch(e){ console.warn('FEN inválido:', e); }
+  rebuildPieces();
+}
 function simMoveLeavesKingInCheck(fromSq, toSq, color){
   const savedFen = chess.fen();
   let result = true;
@@ -974,36 +1103,47 @@ function simMoveLeavesKingInCheck(fromSq, toSq, color){
       return true;
     }
     const parts = chess.fen().split(' ');
-    parts[1] = color;
-    parts[3] = '-'; parts[4] = '0';
+    parts[1] = color; parts[3] = '-'; parts[4] = '0';
     chess.load(parts.join(' '), { skipValidation: true });
     result = chess.in_check();
-  } catch(e){
-    result = true;
-  }
+  } catch(e){ result = true; }
   try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
   return result;
 }
-function isSquareAttackedByEnemy(sq, color){
-  const savedFen = chess.fen();
+// Ahora recibe una instancia de Chess (antes usaba la global)
+function isSquareAttackedByEnemyOn(chessObj, sq, color){
+  const savedFen = chessObj.fen();
   let result = false;
   try {
     const enemy = color === 'w' ? 'b' : 'w';
     const parts = savedFen.split(' ');
-    parts[1] = enemy;
-    parts[3] = '-'; parts[4] = '0';
-    chess.load(parts.join(' '), { skipValidation: true });
-    const moves = chess.moves({ verbose: true });
+    parts[1] = enemy; parts[3] = '-'; parts[4] = '0';
+    chessObj.load(parts.join(' '), { skipValidation: true });
+    const moves = chessObj.moves({ verbose: true });
     result = moves.some(m => m.to === sq);
-  } catch(e){
-    result = false;
-  }
-  try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+  } catch(e){ result = false; }
+  try { chessObj.load(savedFen, { skipValidation: true }); } catch(e){}
   return result;
+}
+// Wrapper para el juego real
+function isSquareAttackedByEnemy(sq, color){
+  return isSquareAttackedByEnemyOn(chess, sq, color);
+}
+// Versión que recibe instancia (para la búsqueda IA)
+function isAdjacentToAllyOn(chessObj, sq, color){
+  const { r, c } = sqToRC(sq);
+  for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+    if(dr === 0 && dc === 0) continue;
+    const nr = r + dr, nc = c + dc;
+    if(nr < 0 || nc < 0 || nr >= 8 || nc >= 8) continue;
+    const p = chessObj.get(rcToSquare(nr, nc));
+    if(p && p.color === color) return true;
+  }
+  return false;
 }
 
 /* =========================================================
-   HISTORIAL
+   HISTORIAL / REPLAY
    ========================================================= */
 function renderHistoryItem(entry){
   const el = document.createElement('div');
@@ -1059,6 +1199,7 @@ function describeEntry(entry){
 function recordHistory(entry){
   entry.fen = chess.fen();
   entry.index = historyLog.length;
+  entry.manaState = { w: state.mana.w, b: state.mana.b };
   historyLog.push(entry);
   const el = renderHistoryItem(entry);
   historyEl.appendChild(el);
@@ -1075,16 +1216,16 @@ function toast(text, color){
 /* =========================================================
    MODALES
    ========================================================= */
-function showModal(title, body, buttons){
+function showModal(title, body, buttons, opts){
   return new Promise(resolve => {
     const ov = document.createElement('div');
     ov.className = 'modal-overlay';
     const m = document.createElement('div');
-    m.className = 'modal';
-    m.innerHTML = `<h3>${title}</h3><p>${body}</p>`;
+    m.className = 'modal' + (opts && opts.wide ? ' wide' : '');
+    m.innerHTML = `<h3>${title}</h3>` + (body ? `<p>${body}</p>` : '');
     const bw = document.createElement('div');
     bw.className = 'modal-btns';
-    buttons.forEach(b => {
+    (buttons || []).forEach(b => {
       const el = document.createElement('button');
       el.className = 'mbtn' + (b.cls ? ' ' + b.cls : '');
       if(b.html) el.innerHTML = b.html;
@@ -1176,7 +1317,7 @@ function undoLimitForMode(){
 function canUndo(){
   if(!aiEnabled) return false;
   if(rubyMode) return false;
-  if(state.gameOver || state.busy || replay.active) return false;
+  if(state.gameOver || state.busy || replay.active || state.paused || state.aiBusy) return false;
   if(chess.turn() !== humanColor) return false;
   const limit = undoLimitForMode();
   if(limit <= 0) return false;
@@ -1205,7 +1346,8 @@ function pushUndoSnapshot(){
     decks: {
       w: { hand: [...playerDecks.w.hand], queue: [...playerDecks.w.queue] },
       b: { hand: [...playerDecks.b.hand], queue: [...playerDecks.b.queue] }
-    }
+    },
+    timer: { w: gameTimer.w, b: gameTimer.b }
   };
   undoStack.push(snap);
 }
@@ -1228,6 +1370,8 @@ function performUndo(){
   playerDecks.w.queue = [...snap.decks.w.queue];
   playerDecks.b.hand = [...snap.decks.b.hand];
   playerDecks.b.queue = [...snap.decks.b.queue];
+  gameTimer.w = snap.timer.w; gameTimer.b = snap.timer.b;
+  updateClocks();
   while(historyLog.length > snap.historyLen){
     historyLog.pop();
     if(historyEl.lastChild) historyEl.removeChild(historyEl.lastChild);
@@ -1259,6 +1403,75 @@ function updateUndoButton(){
     btn.textContent = `↶ Deshacer (${remaining})`;
   }
   btn.classList.toggle('dis', !canUndo());
+}
+
+/* =========================================================
+   RELOJ
+   ========================================================= */
+function startTimer(){
+  stopTimer();
+  if(!gameTimer.enabled) return;
+  gameTimer.running = true;
+  gameTimer.intervalId = setInterval(tickTimer, 100);
+}
+function stopTimer(){
+  if(gameTimer.intervalId){ clearInterval(gameTimer.intervalId); gameTimer.intervalId = null; }
+  gameTimer.running = false;
+}
+function tickTimer(){
+  if(!gameTimer.running || state.paused || state.gameOver || replay.active) return;
+  const turn = chess.turn();
+  if(turn === 'w') gameTimer.w = Math.max(0, gameTimer.w - 0.1);
+  else gameTimer.b = Math.max(0, gameTimer.b - 0.1);
+  updateClocks();
+  if(gameTimer.w <= 0 || gameTimer.b <= 0){
+    stopTimer();
+    handleTimeout(gameTimer.w <= 0 ? 'w' : 'b');
+  }
+}
+function updateClocks(){
+  const cw = $('#clockW'), cb = $('#clockB');
+  if(!gameTimer.enabled){ cw.classList.add('hidden'); cb.classList.add('hidden'); return; }
+  cw.classList.remove('hidden'); cb.classList.remove('hidden');
+  cw.querySelector('.t').textContent = formatTime(gameTimer.w);
+  cb.querySelector('.t').textContent = formatTime(gameTimer.b);
+  const turn = chess ? chess.turn() : 'w';
+  cw.classList.toggle('active', turn === 'w' && !state.gameOver);
+  cb.classList.toggle('active', turn === 'b' && !state.gameOver);
+  cw.classList.toggle('low', gameTimer.w <= 30);
+  cb.classList.toggle('low', gameTimer.b <= 30);
+  cw.classList.toggle('wout', gameTimer.w <= 0);
+  cb.classList.toggle('wout', gameTimer.b <= 0);
+}
+function handleTimeout(loser){
+  state.gameOver = true;
+  aiSearchAbort = true;
+  const winner = loser === 'w' ? 'b' : 'w';
+  const winnerName = winner === 'w' ? 'Blancas' : 'Negras';
+  sfx('timeout');
+  saveCurrentMatch(winnerName, winner);
+  setTimeout(async () => {
+    const choice = await showModal('⏱ ¡Tiempo agotado!',
+      `Las ${winnerName} ganan por tiempo.`,
+      [ { label:'🔄 Ver repetición', value:'replay', cls:'replay' },
+        { label:'Nueva partida', value:'new', cls:'no' } ]);
+    if(choice === 'replay') startReplay(); else restartGame();
+  }, 400);
+}
+
+/* =========================================================
+   PAUSA
+   ========================================================= */
+function togglePause(){
+  if(state.gameOver || replay.active) return;
+  state.paused = !state.paused;
+  $('#pauseOverlay').classList.toggle('hidden', !state.paused);
+  $('#btnPause').textContent = state.paused ? '▶' : '⏸';
+  if(state.paused){
+    gameTimer.running = false;
+  } else if(gameTimer.enabled && !state.gameOver){
+    gameTimer.running = true;
+  }
 }
 
 /* =========================================================
@@ -1297,6 +1510,7 @@ function renderOppHand(){
   $('#oppLabel').textContent = label;
 }
 function updateUI(){
+  if(!chess) return;
   const turn = chess.turn();
   const dot = $('#turnDot');
   dot.style.background = turn === 'w' ? '#f5f0e0' : '#2a2018';
@@ -1314,20 +1528,23 @@ function updateUI(){
   if(!replay.active){ renderPlayerHand(); renderOppHand(); }
 
   const isAITurn = aiEnabled && turn === aiColor && !replay.active;
+  const blockAll = state.aiBusy || isAITurn;
   for(const btn of document.querySelectorAll('.pbtn')){
     const key = btn.dataset.key;
     const minCost = minCostOf(key);
-    const ok = state.mana[turn] >= minCost && !state.gameOver && !state.busy && !replay.active && !isAITurn;
+    const ok = state.mana[turn] >= minCost && !state.gameOver && !state.busy && !replay.active && !blockAll && !state.paused;
     btn.classList.toggle('dis', !ok);
     btn.classList.toggle('ready', ok);
     btn.classList.toggle('active', !!(state.targeting && state.targeting.target === key));
   }
   $('#cancelBtn').classList.toggle('hidden', !state.targeting);
   updateUndoButton();
+  updateClocks();
 
   let msg = '';
   if(state.gameOver) msg = 'Partida finalizada';
-  else if(isAITurn && aiThinking) msg = rubyMode ? '💎 RUBY pensando…' : '🤖 pensando…';
+  else if(state.paused) msg = 'En pausa';
+  else if(aiThinking || state.aiBusy) msg = rubyMode ? '💎 RUBY pensando…' : '🤖 pensando…';
   else if(chess.in_check()) msg = '¡Jaque!';
   else if(state.iraCharge[turn]) msg = '⚔️ Ira lista';
   else msg = 'Especiales: ' + state.specialCount[turn] + '/5';
@@ -1345,7 +1562,7 @@ function endTurn(){
   turnSnapshotTaken = false;
   checkGameEnd();
   updateUI();
-  if(aiEnabled && !state.gameOver && chess.turn() === aiColor && !replay.active){
+  if(aiEnabled && !state.gameOver && chess.turn() === aiColor && !replay.active && !state.paused){
     setTimeout(aiTurn, 650);
   }
 }
@@ -1353,29 +1570,34 @@ function checkGameEnd(){
   if(replay.active) return;
   if(chess.in_checkmate()){
     state.gameOver = true;
+    aiSearchAbort = true;
+    stopTimer();
     const winner = chess.turn() === 'w' ? 'b' : 'w';
     const winnerName = winner === 'w' ? 'Blancas' : 'Negras';
     if(achState[winner].lostPieces === 0) unlockAch(winner, 'inmortal');
     sfx('end');
+    saveCurrentMatch(winnerName, winner);
     setTimeout(async () => {
       const achList = renderAchSummary();
       const choice = await showModal('¡Jaque Mate!',
         `<div style="margin-bottom:10px">Las ${winnerName} ganan la partida.</div>${achList}`,
         [ { label:'🔄 Ver repetición', value:'replay', cls:'replay' },
           { label:'Nueva partida', value:'new', cls:'no' } ]);
-      if(choice === 'replay') startReplay(); else newGame();
+      if(choice === 'replay') startReplay(); else restartGame();
     }, 500);
     return true;
   }
   if(chess.in_stalemate() || chess.in_draw()){
-    state.gameOver = true; sfx('end');
+    state.gameOver = true; aiSearchAbort = true; stopTimer();
+    sfx('end');
+    saveCurrentMatch('Tablas', null);
     setTimeout(async () => {
       const achList = renderAchSummary();
       const choice = await showModal('Tablas',
         `<div style="margin-bottom:10px">La partida termina en empate.</div>${achList}`,
         [ { label:'🔄 Ver repetición', value:'replay', cls:'replay' },
           { label:'Nueva partida', value:'new', cls:'no' } ]);
-      if(choice === 'replay') startReplay(); else newGame();
+      if(choice === 'replay') startReplay(); else restartGame();
     }, 500);
     return true;
   }
@@ -1399,7 +1621,9 @@ function renderAchSummary(){
    ========================================================= */
 function isSpecial(type){ return type === 'n' || type === 'r' || type === 'b'; }
 async function onSquareClick(sq){
-  if(state.busy || state.gameOver || replay.active) return;
+  if(state.busy || state.gameOver || replay.active || state.paused) return;
+  // Bloqueo duro: si la IA está calculando, ignorar clics
+  if(state.aiBusy) return;
   if(aiEnabled && chess.turn() === aiColor) return;
   if(state.targeting) return handleTargetingClick(sq);
   ensureTurnSnapshot();
@@ -1712,7 +1936,8 @@ async function iraTargeting(fromSq, color){
    PODERES — ENTRADA
    ========================================================= */
 function startPower(key){
-  if(state.busy || state.gameOver || replay.active) return;
+  if(state.busy || state.gameOver || replay.active || state.paused) return;
+  if(state.aiBusy) return;
   if(aiEnabled && chess.turn() === aiColor) return;
   initAudio();
   if(state.targeting && state.targeting.key === key){ cancelTargeting(); return; }
@@ -1729,13 +1954,11 @@ function startPower(key){
 async function handleHealStart(turn){
   const pile = state.graveyard[turn];
   if(!pile.length){ toast('No tienes piezas caídas para revivir', '#ff8080'); return; }
-
   const counts = {};
   for(const t of pile) counts[t] = (counts[t] || 0) + 1;
   const entries = Object.entries(counts)
     .map(([t, n]) => ({ type: t, n, cost: healCostFor(t) }))
     .sort((a,b) => a.cost - b.cost);
-
   const btns = entries.map(e => {
     const affordable = state.mana[turn] >= e.cost;
     return {
@@ -1745,25 +1968,20 @@ async function handleHealStart(turn){
     };
   });
   btns.push({ label:'✕', value:null, cls:'no' });
-
   const chosenRaw = await showModal('💚 Toque Curativo',
     `Maná: ${state.mana[turn]} · Elige qué revivir`, btns);
   if(!chosenRaw) return;
-
   if(typeof chosenRaw === 'string' && chosenRaw.startsWith('__unaffordable_')){
     const t = chosenRaw.replace('__unaffordable_', '');
     toast(`Necesitas ${healCostFor(t)} maná para revivir esa pieza`, '#ff8080');
     return handleHealStart(turn);
   }
-
   const chosen = chosenRaw;
   const cost = healCostFor(chosen);
   if(state.mana[turn] < cost){ toast('Maná insuficiente', '#ff8080'); return; }
   if(!pile.includes(chosen)){ toast('Esa pieza ya no está en tu cementerio', '#ff8080'); return; }
-
   const empties = getAdjacentEmptySquares(turn);
   if(!empties.length){ toast('No hay casillas vacías disponibles', '#ff8080'); return; }
-
   state.targeting = { key: 'heal', step: 2, target: 'heal',
     data: { type: chosen, emptySquares: empties, cost } };
   highlightTargeting(); updateUI();
@@ -1776,15 +1994,7 @@ function cancelTargeting(){
   updateUI();
 }
 function isAdjacentToAlly(sq, color){
-  const { r, c } = sqToRC(sq);
-  for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
-    if(dr === 0 && dc === 0) continue;
-    const nr = r + dr, nc = c + dc;
-    if(nr < 0 || nc < 0 || nr >= 8 || nc >= 8) continue;
-    const p = chess.get(rcToSquare(nr, nc));
-    if(p && p.color === color) return true;
-  }
-  return false;
+  return isAdjacentToAllyOn(chess, sq, color);
 }
 function highlightTargeting(){
   clearHighlights();
@@ -1982,7 +2192,7 @@ async function execTeleport(from, to, cost){
   }
   const si = state.shields[turn].indexOf(from);
   if(si >= 0){ state.shields[turn].splice(si,1); state.shields[turn].push(to); }
-  syncPieces();
+  validateAndFixBoard();
   const el2 = pieceEls.get(to);
   if(el2){ el2.style.opacity = '0'; el2.getBoundingClientRect(); el2.style.opacity = '1'; }
   spawnVortex(B.x, B.y, '#d0a0ff', false);
@@ -2065,7 +2275,7 @@ async function execRay(sq, cost){
   achState[turn].powersUsed++;
   if(achState[turn].powersUsed >= 5) unlockAch(turn, 'magoDeMagos');
   toast(`Rayo Destructor · ${cost} maná`, '#ffe070');
-  syncPieces();
+  validateAndFixBoard();
   await sleep(520);
   state.busy = false;
   finishPower({ type:'spell', color: turn, powerIcon:'⚡', powerName:'Rayo', powerKey:'ray',
@@ -2085,30 +2295,30 @@ async function execZombie(sq){
     });
     await sleep(130);
   }
-  chess.remove(sq);
-  try { chess.put({ type: victim.type, color: turn }, sq); } catch(e){}
+  const victimType = victim.type;
   const oldColor = victim.color;
+  chess.remove(sq);
+  try { chess.put({ type: victimType, color: turn }, sq); } catch(e){}
   const si = state.shields[oldColor].indexOf(sq);
   if(si >= 0){ state.shields[oldColor].splice(si,1); state.shields[turn].push(sq); }
   ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.7, life:.7, lifeMax:.7, color:'160,90,230' });
   burst(C.x, C.y, 30, { color:'#a060e0', spMin:30, spMax:160, lifeMin:.3, lifeMax:.8 });
+  validateAndFixBoard();
   const el = pieceEls.get(sq);
   if(el){ el.classList.add('spawn'); setTimeout(()=>el.classList.remove('spawn'), 420); }
   state.mana[turn] -= POWERS.zombie.cost;
   achState[turn].powersUsed++;
   if(achState[turn].powersUsed >= 5) unlockAch(turn, 'magoDeMagos');
   toast(`¡Zombosis! · ${POWERS.zombie.cost} maná`, '#c07aff');
-  syncPieces();
   await sleep(600);
   state.busy = false;
   finishPower({ type:'spell', color: turn, powerIcon:'🧟', powerName:'Zombosis', powerKey:'zombie',
-    piece: { type: victim.type, color: turn },
-    targetPiece: { type: victim.type, color: oldColor },
+    piece: { type: victimType, color: turn },
+    targetPiece: { type: victimType, color: oldColor },
     to: sq, cost: POWERS.zombie.cost });
 }
 async function execHeal(sq, type, color, cost){
   state.busy = true;
-
   const validTypes = ['p','n','b','r','q'];
   if(!validTypes.includes(type)){
     toast('Tipo de pieza inválido', '#ff8080');
@@ -2131,7 +2341,6 @@ async function execHeal(sq, type, color, cost){
     }
     return;
   }
-
   const C = squareCenter(sq);
   sfx('heal');
   const start = performance.now(); const dur = 620;
@@ -2155,7 +2364,6 @@ async function execHeal(sq, type, color, cost){
     }
     frame();
   });
-
   const placed = placePieceOnBoard(sq, color, type);
   const verify = chess.get(sq);
   if(!placed || !verify || verify.type !== type || verify.color !== color){
@@ -2169,19 +2377,15 @@ async function execHeal(sq, type, color, cost){
     } else finishPower(null);
     return;
   }
-
   const idx = state.graveyard[color].indexOf(type);
   if(idx >= 0) state.graveyard[color].splice(idx,1);
-
   const prevEl = pieceEls.get(sq);
   if(prevEl){ prevEl.remove(); pieceEls.delete(sq); }
-  syncPieces();
+  validateAndFixBoard();
   const el = pieceEls.get(sq);
   if(el){ el.classList.add('spawn'); setTimeout(()=>el.classList.remove('spawn'), 420); }
-
   ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.7, lifeMax:.7, color:'140,255,180' });
   burst(C.x, C.y, 26, { color:'#a8ffc0', spMin:20, spMax:130, lifeMin:.4, lifeMax:.9, g:-40 });
-
   state.mana[color] -= cost;
   achState[color].powersUsed++;
   if(achState[color].powersUsed >= 5) unlockAch(color, 'magoDeMagos');
@@ -2245,8 +2449,7 @@ async function execQuake(centerSq){
     let safe = true;
     try {
       const parts = chess.fen().split(' ');
-      parts[1] = turn;
-      parts[3] = '-'; parts[4] = '0';
+      parts[1] = turn; parts[3] = '-'; parts[4] = '0';
       chess.load(parts.join(' '), { skipValidation: true });
       safe = !chess.in_check();
     } catch(e){ safe = true; }
@@ -2255,12 +2458,10 @@ async function execQuake(centerSq){
     if(safe) break;
   }
   if(!chosenArrangement) chosenArrangement = [...squares];
-
   for(const sq of squares) chess.remove(sq);
   for(let i=0;i<snapshot.length;i++){
     try { chess.put(snapshot[i].piece, chosenArrangement[i]); } catch(e){}
   }
-
   const fenParts = chess.fen().split(' ');
   let castle = fenParts[2] === '-' ? '' : fenParts[2];
   const check = (sq, type, color) => {
@@ -2275,16 +2476,14 @@ async function execQuake(centerSq){
   if(!check('a8','r','b')) castle = castle.replace('q','');
   fenParts[2] = castle || '-'; fenParts[3] = '-'; fenParts[4] = '0';
   try { chess.load(fenParts.join(' '), { skipValidation: true }); } catch(e){}
-
   for(const sq of squares) pieceEls.delete(sq);
   for(let i=0;i<snapshot.length;i++){
     const item = snapshot[i], el = item.el, newSq = chosenArrangement[i], pc = item.piece;
     const code = pc.color + pc.type;
-    if(el.dataset.code !== code){
-      el.dataset.code = code;
-      el.className = 'piece ' + (pc.color === 'w' ? 'white' : 'black');
-      el.querySelector('.tok').textContent = GLYPH[pc.type];
-    }
+    el.dataset.code = code;
+    el.classList.toggle('white', pc.color === 'w');
+    el.classList.toggle('black', pc.color === 'b');
+    el.querySelector('.tok').textContent = GLYPH[pc.type];
     const shielded = state.shields[pc.color].includes(newSq);
     const iraReady = state.iraCharge[pc.color] && 'nrb'.includes(pc.type);
     el.classList.toggle('shielded', shielded);
@@ -2322,8 +2521,26 @@ function finishPower(entry){
 }
 
 /* =========================================================
-   IA — MINIMAX
+   IA — MINIMAX ASÍNCRONO CON INSTANCIA SEPARADA
+   =========================================================
+   Toda la búsqueda corre en `searchChess`, una copia local.
+   La instancia global `chess` NUNCA se toca durante la búsqueda,
+   así que el render y el input del usuario siguen viendo el
+   estado real de la partida.
    ========================================================= */
+let aiSearchAbort = false;
+let aiSearchLastYield = 0;
+const AI_YIELD_MS = 8;  // ceder el hilo cada 8ms para no bloquear el paint
+
+function aiYieldIfNeeded(){
+  const now = performance.now();
+  if(now - aiSearchLastYield > AI_YIELD_MS){
+    aiSearchLastYield = now;
+    return new Promise(r => setTimeout(r, 0));
+  }
+  return null;
+}
+
 function centerBonus(p, r, c){
   const centerDist = Math.abs(r - 3.5) + Math.abs(c - 3.5);
   if(p.type === 'n' || p.type === 'b') return (7 - centerDist) * 4;
@@ -2331,8 +2548,8 @@ function centerBonus(p, r, c){
   if(p.type === 'k') return -centerDist * 2;
   return 0;
 }
-function evaluateFor(color){
-  const board = chess.board();
+function evaluateFor(chessObj, color){
+  const board = chessObj.board();
   let score = 0;
   for(let r=0;r<8;r++) for(let c=0;c<8;c++){
     const p = board[r][c];
@@ -2352,18 +2569,24 @@ function orderMoves(moves){
     return bScore - aScore;
   });
 }
-function minimax(depth, alpha, beta, maximizing, rootColor){
-  if(depth === 0 || chess.game_over()) return evaluateFor(rootColor);
-  const moves = chess.moves({ verbose: true });
+
+async function minimax(searchChess, depth, alpha, beta, maximizing, rootColor){
+  if(aiSearchAbort) return 0;
+  if(depth === 0 || searchChess.game_over()) return evaluateFor(searchChess, rootColor);
+  const y = aiYieldIfNeeded();
+  if(y) await y;
+  if(aiSearchAbort) return 0;
+  const moves = searchChess.moves({ verbose: true });
   orderMoves(moves);
   if(maximizing){
     let best = -Infinity;
     for(const mv of moves){
       const moveObj = (mv.piece === 'p' && (mv.to[1] === '8' || mv.to[1] === '1') && !mv.promotion)
         ? { ...mv, promotion: 'q' } : mv;
-      chess.move(moveObj);
-      const v = minimax(depth-1, alpha, beta, false, rootColor);
-      chess.undo();
+      searchChess.move(moveObj);
+      const v = await minimax(searchChess, depth-1, alpha, beta, false, rootColor);
+      searchChess.undo();
+      if(aiSearchAbort) return 0;
       if(v > best) best = v;
       if(v > alpha) alpha = v;
       if(beta <= alpha) break;
@@ -2374,9 +2597,10 @@ function minimax(depth, alpha, beta, maximizing, rootColor){
     for(const mv of moves){
       const moveObj = (mv.piece === 'p' && (mv.to[1] === '8' || mv.to[1] === '1') && !mv.promotion)
         ? { ...mv, promotion: 'q' } : mv;
-      chess.move(moveObj);
-      const v = minimax(depth-1, alpha, beta, true, rootColor);
-      chess.undo();
+      searchChess.move(moveObj);
+      const v = await minimax(searchChess, depth-1, alpha, beta, true, rootColor);
+      searchChess.undo();
+      if(aiSearchAbort) return 0;
       if(v < best) best = v;
       if(v < beta) beta = v;
       if(beta <= alpha) break;
@@ -2384,47 +2608,31 @@ function minimax(depth, alpha, beta, maximizing, rootColor){
     return best;
   }
 }
-
-/* =========================================================
-   IA — AMENAZAS POR CARTAS DEL RIVAL
-   =========================================================
-   Penaliza al bando `color` por tener piezas expuestas
-   a los poderes del rival (Rayo, Zombosis, Terremoto).
-   No modela el turno futuro completo (eso es minimax), pero
-   sí refleja en la evaluación que dejar una dama a la vista
-   de un Rayo enemigo es peligroso.
-   ========================================================= */
-function computeCardThreatPenalty(color){
+// La amenaza de cartas se calcula sobre el searchChess (no toca la global)
+function computeCardThreatPenalty(searchChess, color){
   const enemy = color === 'w' ? 'b' : 'w';
   const enemyMana = state.mana[enemy];
   const enemyHand = playerDecks[enemy].hand;
   if(!enemyHand.length) return 0;
-  const board = chess.board();
+  const board = searchChess.board();
   let penalty = 0;
-
-  // ---- RAYO: el rival puede matar cualquier pieza no-rey con maná suficiente ----
   if(enemyHand.includes('ray')){
     for(let r=0;r<8;r++) for(let c=0;c<8;c++){
       const p = board[r][c];
       if(!p || p.color !== color || p.type === 'k') continue;
       const cost = rayCostFor(p.type);
       if(cost > enemyMana) continue;
-      // Cuanto más valiosa, más duele que te la fundan con un Rayo.
       if(p.type === 'q') penalty += 200;
       else if(p.type === 'r') penalty += 100;
       else if(p.type === 'b' || p.type === 'n') penalty += 45;
-      // peones: no vale la pena
     }
   }
-
-  // ---- ZOMBOSIS: convierte enemigos adyacentes a aliados ----
   if(enemyHand.includes('zombie') && enemyMana >= POWERS.zombie.cost){
     for(let r=0;r<8;r++) for(let c=0;c<8;c++){
       const p = board[r][c];
       if(!p || p.color !== color || p.type === 'k') continue;
       const sq = rcToSquare(r,c);
-      // ¿Esta pieza nuestra tiene un enemigo pegado? -> puede ser zombificada
-      if(isAdjacentToAlly(sq, enemy)){
+      if(isAdjacentToAllyOn(searchChess, sq, enemy)){
         if(p.type === 'q') penalty += 450;
         else if(p.type === 'r') penalty += 300;
         else if(p.type === 'b' || p.type === 'n') penalty += 160;
@@ -2432,8 +2640,6 @@ function computeCardThreatPenalty(color){
       }
     }
   }
-
-  // ---- TERREMOTO: castiga concentración de piezas propias con ventaja enemiga ----
   if(enemyHand.includes('quake') && enemyMana >= POWERS.quake.cost){
     for(let cr=0;cr<6;cr++) for(let cc=0;cc<6;cc++){
       let ownVal = 0, enemyVal = 0, enemyCount = 0;
@@ -2443,18 +2649,10 @@ function computeCardThreatPenalty(color){
         if(p.color === color) ownVal += PIECE_VALUE[p.type];
         else { enemyVal += PIECE_VALUE[p.type]; enemyCount++; }
       }
-      if(enemyCount > 0 && ownVal > enemyVal * 1.4 && ownVal > PIECE_VALUE.r){
-        penalty += 60; // amenaza difusa, se acumula por zona
-      }
+      if(enemyCount > 0 && ownVal > enemyVal * 1.4 && ownVal > PIECE_VALUE.r) penalty += 60;
     }
   }
-
-  // ---- TELETRANSPORTE: no genera daño directo, pero el rival puede colocar
-  //      una pieza amenazante sin gastar movimiento. Pequeña penalización
-  //      si tenemos piezas valiosas en el radio de acción del teletransporte enemigo.
   if(enemyHand.includes('teleport') && enemyMana >= 2){
-    // Verificamos si alguna pieza propia valiosa está a distancia 1-3 de alguna enemiga
-    // (posible salto amenazante)
     for(let r=0;r<8;r++) for(let c=0;c<8;c++){
       const p = board[r][c];
       if(!p || p.color !== color || (p.type !== 'q' && p.type !== 'r')) continue;
@@ -2466,58 +2664,64 @@ function computeCardThreatPenalty(color){
         if(d >= 1 && d <= TELEPORT_MAX_DIST){
           const cost = d * 2;
           if(cost <= enemyMana){
-            // ¿Podría el enemigo capturar de forma natural ya? Si sí, ya está contado como amenaza normal
             const sq = rcToSquare(r,c);
-            if(!isSquareAttackedByEnemy(sq, color)){
-              threatened = true;
-            }
+            if(!isSquareAttackedByEnemyOn(searchChess, sq, color)) threatened = true;
           }
         }
       }
       if(threatened) penalty += p.type === 'q' ? 70 : 35;
     }
   }
-
   return penalty;
 }
 
-function findBestMove(depth, rootColor){
-  const moves = chess.moves({ verbose: true });
+async function findBestMove(depth, rootColor){
+  // Instancia separada: la partida real NO se toca durante la búsqueda
+  const searchChess = new Chess(chess.fen());
+  const moves = searchChess.moves({ verbose: true });
   if(!moves.length) return null;
   orderMoves(moves);
+  aiSearchLastYield = performance.now();
+
   if(depth <= 1){
     let best = null, bestVal = -Infinity;
     for(const mv of moves){
-      chess.move(mv);
-      let v = evaluateFor(rootColor) + rnd(-80, 80);
-      v -= computeCardThreatPenalty(rootColor) * 0.6; // suavizado en fácil
-      chess.undo();
+      if(aiSearchAbort) return null;
+      searchChess.move(mv);
+      let v = evaluateFor(searchChess, rootColor) + rnd(-80, 80);
+      v -= computeCardThreatPenalty(searchChess, rootColor) * 0.6;
+      searchChess.undo();
       if(v > bestVal){ bestVal = v; best = mv; }
+      const y = aiYieldIfNeeded();
+      if(y) await y;
     }
+    if(aiSearchAbort) return null;
     return best;
   }
   let bestMove = null, bestScore = -Infinity;
   let alpha = -Infinity, beta = Infinity;
-  // Pesos de amenaza según dificultad — RUBY/Difícil lo valoran más
   const threatWeight = rubyMode ? 1.15 : (aiDifficulty === 'hard' ? 1.0 : (aiDifficulty === 'normal' ? 0.75 : 0.5));
   for(const mv of moves){
+    if(aiSearchAbort) return null;
     const moveObj = mv.promotion ? mv : (mv.piece === 'p' && (mv.to[1] === '8' || mv.to[1] === '1')
       ? { ...mv, promotion: 'q' } : mv);
-    chess.move(moveObj);
-    const score = minimax(depth - 1, alpha, beta, false, rootColor);
-    // *** NUEVO: penalizar según amenazas del rival con cartas ***
-    const threat = computeCardThreatPenalty(rootColor) * threatWeight;
-    chess.undo();
+    searchChess.move(moveObj);
+    const score = await minimax(searchChess, depth - 1, alpha, beta, false, rootColor);
+    const threat = computeCardThreatPenalty(searchChess, rootColor) * threatWeight;
+    searchChess.undo();
+    if(aiSearchAbort) return null;
     const noise = (depth === 2 && !rubyMode) ? rnd(-15, 15) : 0;
     const finalScore = score - threat + noise;
     if(finalScore > bestScore){ bestScore = finalScore; bestMove = mv; }
     if(finalScore > alpha) alpha = finalScore;
+    const y = aiYieldIfNeeded();
+    if(y) await y;
   }
   return bestMove;
 }
 
 /* =========================================================
-   IA — BÚSQUEDA DE PODERES
+   IA — BÚSQUEDA DE PODERES (async con yields en los pesados)
    ========================================================= */
 function aiFindRayOption(color, mana, hand){
   if(!hand.includes('ray')) return null;
@@ -2543,7 +2747,7 @@ function aiFindZombieOption(color, mana, hand){
     const p = board[r][c];
     if(!p || p.color === color || p.type === 'k') continue;
     const sq = rcToSquare(r,c);
-    if(!isAdjacentToAlly(sq, color)) continue;
+    if(!isAdjacentToAllyOn(chess, sq, color)) continue;
     const score = PIECE_VALUE[p.type] * 2 - POWERS.zombie.cost * 30;
     opts.push({ key:'zombie', sq, cost: POWERS.zombie.cost, score });
   }
@@ -2603,65 +2807,42 @@ function aiFindShieldOption(color, mana, hand){
   opts.sort((a,b)=>b.score-a.score);
   return opts[0];
 }
-/* =========================================================
-   TELETRANSPORTE PARA IA — reescrito
-   Reglas estrictas:
-   1. Solo se consideran destinos NO alcanzables por movimiento normal.
-   2. Debe existir una razón concreta (escape, jaque, ataque al rey,
-      o mejora posicional grande).
-   3. Nunca si deja al Rey propio en Jaque.
-   4. Coste de maná penalizado con fuerza.
-   ========================================================= */
-function aiFindTeleportOption(color, mana, hand){
+async function aiFindTeleportOption(color, mana, hand){
   if(!hand.includes('teleport')) return null;
   if(mana < 2) return null;
   const enemyKing = findKing(color === 'w' ? 'b' : 'w');
   const ek = enemyKing ? sqToRC(enemyKing) : null;
   const board = chess.board();
   const opts = [];
-
+  aiSearchLastYield = performance.now();
   for(let r1=0;r1<8;r1++) for(let c1=0;c1<8;c1++){
+    const y = aiYieldIfNeeded();
+    if(y) await y;
+    if(aiSearchAbort) return null;
     const p = board[r1][c1];
     if(!p || p.color !== color) continue;
     const fromSq = rcToSquare(r1,c1);
-
-    // Destinos alcanzables normalmente (mover a pie) → excluidos
     const normalMoves = new Set();
     try {
       const savedFen = chess.fen();
       const parts = savedFen.split(' ');
-      parts[1] = color;
-      parts[3] = '-'; parts[4] = '0';
+      parts[1] = color; parts[3] = '-'; parts[4] = '0';
       chess.load(parts.join(' '), { skipValidation: true });
       chess.moves({ square: fromSq, verbose: true }).forEach(m => normalMoves.add(m.to));
       chess.load(savedFen, { skipValidation: true });
     } catch(e){}
-
     const srcAttacked = isSquareAttackedByEnemy(fromSq, color);
     const srcValue = PIECE_VALUE[p.type];
-
     for(let r2=0;r2<8;r2++) for(let c2=0;c2<8;c2++){
       if(board[r2][c2]) continue;
       const toSq = rcToSquare(r2,c2);
-
-      // *** FILTRO CLAVE 1 ***
-      if(normalMoves.has(toSq)) continue;   // ya lo alcanzabas a pie
-
+      if(normalMoves.has(toSq)) continue;
       const cost = teleportCost(fromSq, toSq);
       if(!isFinite(cost) || cost > mana) continue;
-
-      // *** FILTRO CLAVE 2 ***
       if(simMoveLeavesKingInCheck(fromSq, toSq, color)) continue;
-
       const dstAttacked = isSquareAttackedByEnemy(toSq, color);
-
-      // *** RAZONES CONCRETAS (need at least one) ***
       let reason = 0;
-
-      // R1. Escape: la pieza está siendo atacada y el destino está a salvo
       if(srcAttacked && !dstAttacked) reason += srcValue * 0.5;
-
-      // R2. Jaque forzado desde el destino
       let givesCheck = false;
       const savedFen2 = chess.fen();
       try {
@@ -2671,31 +2852,20 @@ function aiFindTeleportOption(color, mana, hand){
       } catch(e){}
       try { chess.load(savedFen2, { skipValidation: true }); } catch(e){}
       if(givesCheck) reason += 150;
-
-      // R3. Ataque al Rey enemigo (acercar dama/torre)
       if(ek && (p.type === 'q' || p.type === 'r')){
         const distFrom = Math.max(Math.abs(r1-ek.r), Math.abs(c1-ek.c));
         const distTo = Math.max(Math.abs(r2-ek.r), Math.abs(c2-ek.c));
         if(distTo < distFrom - 1 && distTo <= 3) reason += 55;
       }
-
-      // R4. Caballo en la esquina / pieza mal ubicada que salta al centro
       if(p.type === 'n' || p.type === 'b'){
         const bonusFrom = centerBonus(p, r1, c1);
         const bonusTo = centerBonus(p, r2, c2);
         if(bonusTo - bonusFrom >= 16) reason += 45;
       }
-
-      // Si no hay razón clara → NO vale la pena gastar maná
       if(reason <= 0) continue;
-
-      // Penalización por destino inseguro
       if(dstAttacked && !srcAttacked) reason -= srcValue * 0.35;
       else if(dstAttacked && srcAttacked) reason -= srcValue * 0.15;
-
-      // Coste de maná: castigo duro
       reason -= cost * 22;
-
       if(reason > 0) opts.push({ key:'teleport', from: fromSq, to: toSq, cost, score: reason });
     }
   }
@@ -2703,62 +2873,67 @@ function aiFindTeleportOption(color, mana, hand){
   opts.sort((a,b)=>b.score-a.score);
   return opts[0];
 }
-function aiFindQuakeOption(color, mana, hand){
+async function aiFindQuakeOption(color, mana, hand){
   if(!hand.includes('quake') || mana < POWERS.quake.cost) return null;
   const board = chess.board();
   const opts = [];
-  for(let cr=0;cr<8;cr++) for(let cc=0;cc<8;cc++){
-    let enemyVal = 0, ownVal = 0, enemyCount = 0;
-    const squares = [];
-    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
-      const r = cr+dr, c = cc+dc;
-      if(r<0||c<0||r>=8||c>=8) continue;
-      squares.push(rcToSquare(r,c));
-      const p = board[r][c];
-      if(!p) continue;
-      if(p.color === color) ownVal += PIECE_VALUE[p.type];
-      else { enemyVal += PIECE_VALUE[p.type]; enemyCount++; }
-    }
-    if(enemyCount === 0) continue;
-    const net = enemyVal - ownVal;
-    if(net < PIECE_VALUE.n) continue;
-    const snapshot = [];
-    for(const sq of squares){
-      const p = chess.get(sq);
-      if(p) snapshot.push({ sq, piece: p });
-    }
-    const savedFen = chess.fen();
-    let safeCount = 0, totalTries = 5;
-    for(let attempt=0; attempt<totalTries; attempt++){
-      const trial = [...squares];
-      for(let i=trial.length-1;i>0;i--){
-        const j = Math.floor(Math.random()*(i+1));
-        [trial[i],trial[j]] = [trial[j],trial[i]];
+  aiSearchLastYield = performance.now();
+  for(let cr=0;cr<8;cr++){
+    const y = aiYieldIfNeeded();
+    if(y) await y;
+    if(aiSearchAbort) return null;
+    for(let cc=0;cc<8;cc++){
+      let enemyVal = 0, ownVal = 0, enemyCount = 0;
+      const squares = [];
+      for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+        const r = cr+dr, c = cc+dc;
+        if(r<0||c<0||r>=8||c>=8) continue;
+        squares.push(rcToSquare(r,c));
+        const p = board[r][c];
+        if(!p) continue;
+        if(p.color === color) ownVal += PIECE_VALUE[p.type];
+        else { enemyVal += PIECE_VALUE[p.type]; enemyCount++; }
       }
-      for(const sq of squares) chess.remove(sq);
-      for(let i=0;i<snapshot.length;i++){
-        try { chess.put(snapshot[i].piece, trial[i]); } catch(e){}
+      if(enemyCount === 0) continue;
+      const net = enemyVal - ownVal;
+      if(net < PIECE_VALUE.n) continue;
+      const snapshot = [];
+      for(const sq of squares){
+        const p = chess.get(sq);
+        if(p) snapshot.push({ sq, piece: p });
       }
-      let safe = true;
-      try {
-        const parts = chess.fen().split(' ');
-        parts[1] = color;
-        parts[3] = '-'; parts[4] = '0';
-        chess.load(parts.join(' '), { skipValidation: true });
-        safe = !chess.in_check();
-      } catch(e){ safe = true; }
-      try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
-      if(safe) safeCount++;
+      const savedFen = chess.fen();
+      let safeCount = 0, totalTries = 5;
+      for(let attempt=0; attempt<totalTries; attempt++){
+        const trial = [...squares];
+        for(let i=trial.length-1;i>0;i--){
+          const j = Math.floor(Math.random()*(i+1));
+          [trial[i],trial[j]] = [trial[j],trial[i]];
+        }
+        for(const sq of squares) chess.remove(sq);
+        for(let i=0;i<snapshot.length;i++){
+          try { chess.put(snapshot[i].piece, trial[i]); } catch(e){}
+        }
+        let safe = true;
+        try {
+          const parts = chess.fen().split(' ');
+          parts[1] = color; parts[3] = '-'; parts[4] = '0';
+          chess.load(parts.join(' '), { skipValidation: true });
+          safe = !chess.in_check();
+        } catch(e){ safe = true; }
+        try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+        if(safe) safeCount++;
+      }
+      if(safeCount < totalTries * 0.6) continue;
+      const score = net * 0.35 - POWERS.quake.cost * 30;
+      if(score > 0) opts.push({ key:'quake', sq: rcToSquare(cr,cc), cost: POWERS.quake.cost, score });
     }
-    if(safeCount < totalTries * 0.6) continue;
-    const score = net * 0.35 - POWERS.quake.cost * 30;
-    if(score > 0) opts.push({ key:'quake', sq: rcToSquare(cr,cc), cost: POWERS.quake.cost, score });
   }
   if(!opts.length) return null;
   opts.sort((a,b)=>b.score-a.score);
   return opts[0];
 }
-function aiFindBestPower(color){
+async function aiFindBestPower(color){
   const mana = state.mana[color];
   const hand = playerDecks[color].hand;
   const candidates = [];
@@ -2767,8 +2942,8 @@ function aiFindBestPower(color){
   push(aiFindZombieOption(color, mana, hand));
   push(aiFindHealOption(color, mana, hand));
   push(aiFindShieldOption(color, mana, hand));
-  push(aiFindTeleportOption(color, mana, hand));
-  push(aiFindQuakeOption(color, mana, hand));
+  push(await aiFindTeleportOption(color, mana, hand));
+  push(await aiFindQuakeOption(color, mana, hand));
   candidates.sort((a,b) => b.score - a.score);
   return candidates[0] || null;
 }
@@ -2784,32 +2959,63 @@ async function aiExecutePower(opt){
       } else endTurn();
       break;
     }
-    case 'teleport': {
-      await execTeleport(opt.from, opt.to, opt.cost);
-      break;
-    }
-    case 'quake': {
-      await execQuake(opt.sq);
-      break;
-    }
+    case 'teleport': await execTeleport(opt.from, opt.to, opt.cost); break;
+    case 'quake': await execQuake(opt.sq); break;
     default: endTurn();
   }
 }
 async function aiTurn(){
   if(aiThinking) return;
-  if(!aiEnabled || state.gameOver || replay.active) return;
+  if(!aiEnabled || state.gameOver || replay.active || state.paused) return;
   if(chess.turn() !== aiColor) return;
+
   aiThinking = true;
+  state.aiBusy = true;       // bloquea inputs mientras piensa
+  aiSearchAbort = false;
+  aiSearchLastYield = performance.now();
   updateUI();
-  await sleep(200);
+  await sleep(180);
+
+  if(state.gameOver || replay.active || state.paused || aiSearchAbort){
+    aiThinking = false;
+    state.aiBusy = false;
+    updateUI();
+    return;
+  }
+  // Doble chequeo: si la partida cambió de turno por algún motivo, abortar
+  if(chess.turn() !== aiColor){
+    aiThinking = false;
+    state.aiBusy = false;
+    updateUI();
+    return;
+  }
+
   const depth = rubyMode ? 3
               : (aiDifficulty === 'easy' ? 1
               : aiDifficulty === 'normal' ? 2
               : 3);
   let bestMove = null;
-  try { bestMove = findBestMove(depth, aiColor); } catch(e){ console.warn('AI error:', e); }
+  try { bestMove = await findBestMove(depth, aiColor); }
+  catch(e){ console.warn('AI error:', e); }
 
-  const powerOption = aiFindBestPower(aiColor);
+  if(aiSearchAbort || state.gameOver || replay.active || state.paused){
+    aiThinking = false;
+    state.aiBusy = false;
+    updateUI();
+    return;
+  }
+
+  let powerOption = null;
+  try { powerOption = await aiFindBestPower(aiColor); }
+  catch(e){ console.warn('AI power error:', e); }
+
+  if(aiSearchAbort || state.gameOver || replay.active || state.paused){
+    aiThinking = false;
+    state.aiBusy = false;
+    updateUI();
+    return;
+  }
+
   let usePower = false;
   if(powerOption){
     let threshold;
@@ -2823,6 +3029,9 @@ async function aiTurn(){
   }
 
   aiThinking = false;
+  state.aiBusy = false;
+
+  // Ya no estamos bloqueando: ahora sí aplicamos el resultado al juego real
   if(usePower){
     await aiExecutePower(powerOption);
   } else if(bestMove){
@@ -2837,16 +3046,108 @@ async function aiTurn(){
    ========================================================= */
 function startReplay(){
   if(historyLog.length < 2){ toast('Sin acciones para reproducir'); return; }
+  aiSearchAbort = true;
+  state.aiBusy = false;
+  if(!replay.storedMatch){ replay.originalHistory = null; }
   replay.active = true; replay.index = 0; replay.playing = false; playToken++;
+  stopTimer();
+
+  // *** FIX: garantizar instancia válida de chess ***
+  if(!chess) chess = new Chess();
+
   $('#replayUI').classList.remove('hidden');
+
   const entry = historyLog[0];
-  try { chess.load(entry.fen, { skipValidation: true }); } catch(e){
-    try { chess.load(entry.fen); } catch(e2){}
+  if(!entry || !entry.fen){
+    console.error('Replay: entrada inicial sin FEN', entry);
+    toast('Datos de partida corruptos', '#ff8080');
+    replay.active = false;
+    $('#replayUI').classList.add('hidden');
+    return;
   }
+
+  // *** FIX: cargar el FEN y comprobar que realmente se aplicó ***
+  let loaded = false;
+  try {
+    const res = chess.load(entry.fen, { skipValidation: true });
+    loaded = (res !== false);
+  } catch(e){ loaded = false; }
+  if(!loaded){
+    try {
+      const res = chess.load(entry.fen);
+      loaded = (res !== false);
+    } catch(e2){ loaded = false; }
+  }
+  if(!loaded){
+    console.error('Replay: FEN inválido, se reinicia tablero', entry.fen);
+    chess = new Chess();
+    try { chess.load(entry.fen); } catch(e){}
+  }
+
   rebuildPieces();
   particles.length = 0; bolts.length = 0; curves.length = 0; ripples.length = 0;
   updateReplayUI(entry, 0);
   updateReplayControls();
+}
+function startReplayFromStored(match) {
+  if (!match || !match.moves || !match.moves.length) {
+    toast('Partida vacía o corrupta', '#ff8080');
+    return false;
+  }
+  aiSearchAbort = true;
+  state.aiBusy = false;
+  replay.storedMatch = match;
+  replay.originalHistory = historyLog.slice();
+  historyLog.length = 0;
+  match.moves.forEach(m => historyLog.push(JSON.parse(JSON.stringify(m))));
+  historyEl.innerHTML = '';
+  for (const m of historyLog) {
+    const el = renderHistoryItem(m);
+    historyEl.appendChild(el);
+  }
+  replayFromMenu = true; // marca que venimos del menú principal
+  startReplay();
+  return replay.active; // true si se inició correctamente
+}
+function closeReplay(){
+  stopReplayAuto();
+  replay.active = false; replayAnimating = false;
+  $('#replayUI').classList.add('hidden');
+
+  const wasFromMenu = replayFromMenu;
+  replayFromMenu = false;
+
+  // Restaurar el historial de la partida anterior (si lo había)
+  if(replay.storedMatch && replay.originalHistory){
+    historyLog.length = 0;
+    replay.originalHistory.forEach(m => historyLog.push(m));
+    historyEl.innerHTML = '';
+    for(const m of historyLog){
+      const el = renderHistoryItem(m);
+      historyEl.appendChild(el);
+    }
+    replay.storedMatch = null;
+    replay.originalHistory = null;
+  }
+
+  // *** FIX: si el replay vino desde el menú principal, volver al menú ***
+  if(wasFromMenu){
+    setTimeout(() => { startGame(); }, 150);
+    return;
+  }
+
+  // Cierre normal (si hubiera partida en curso, aunque hoy no se da el caso)
+  if(!chess) chess = new Chess();
+  const last = historyLog[historyLog.length - 1];
+  if(last && last.fen){
+    try { chess.load(last.fen, { skipValidation: true }); } catch(e){
+      try { chess.load(last.fen); } catch(e2){}
+    }
+  }
+  rebuildPieces();
+  particles.length = 0; bolts.length = 0; curves.length = 0; ripples.length = 0;
+  for(const el of historyEl.children) el.classList.remove('replay-active');
+  updateUI();
 }
 function updateReplayUI(entry, i){
   const descRow = $('#replayDescRow');
@@ -2858,6 +3159,15 @@ function updateReplayUI(entry, i){
   if(target){
     target.classList.add('replay-active');
     try { target.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'}); } catch(e){}
+  }
+  if(entry && entry.manaState){
+    state.mana.w = entry.manaState.w;
+    state.mana.b = entry.manaState.b;
+    const mw = $('#manaW'), mb = $('#manaB');
+    mw.querySelector('.fill').style.width = (state.mana.w / state.maxMana * 100) + '%';
+    mb.querySelector('.fill').style.width = (state.mana.b / state.maxMana * 100) + '%';
+    mw.querySelector('.lbl').textContent = state.mana.w + ' / ' + state.maxMana;
+    mb.querySelector('.lbl').textContent = state.mana.b + ' / ' + state.maxMana;
   }
 }
 function playReplayEffects(entry){
@@ -3051,12 +3361,10 @@ async function applyReplayFrameAnimated(i){
     let el;
     if(m && m.el){
       el = m.el;
-      const code = np.piece.color + np.piece.type;
-      if(el.dataset.code !== code){
-        el.dataset.code = code;
-        el.className = 'piece ' + (np.piece.color === 'w' ? 'white' : 'black');
-        el.querySelector('.tok').textContent = GLYPH[np.piece.type];
-      }
+      el.classList.toggle('white', np.piece.color === 'w');
+      el.classList.toggle('black', np.piece.color === 'b');
+      el.querySelector('.tok').textContent = GLYPH[np.piece.type];
+      el.dataset.code = np.piece.color + np.piece.type;
       positionPiece(el, np.sq);
     } else {
       el = createPieceEl(np.piece, np.sq);
@@ -3103,56 +3411,294 @@ function updateReplayControls(){
   $('#rPrev').disabled = disabled || replay.index <= 0;
   $('#rNext').disabled = disabled || replay.index >= historyLog.length - 1;
 }
-function closeReplay(){
-  stopReplayAuto();
-  replay.active = false; replayAnimating = false;
-  $('#replayUI').classList.add('hidden');
-  const last = historyLog[historyLog.length - 1];
-  if(last){
-    try { chess.load(last.fen, { skipValidation: true }); } catch(e){
-      try { chess.load(last.fen); } catch(e2){}
-    }
-  }
-  rebuildPieces();
-  particles.length = 0; bolts.length = 0; curves.length = 0; ripples.length = 0;
-  for(const el of historyEl.children) el.classList.remove('replay-active');
-  updateUI();
-}
 $('#rPrev').onclick = replayPrev;
 $('#rNext').onclick = replayNext;
 $('#rPlay').onclick = replayPlayPause;
 $('#rClose').onclick = closeReplay;
 
 /* =========================================================
-   INICIO
+   HISTORIAL DE PARTIDAS — UI
+   ========================================================= */
+function openMatchHistory(){
+  return new Promise(resolve => {
+    const list = loadMatchList();
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    const m = document.createElement('div');
+    m.className = 'modal wide';
+    m.innerHTML = `<h3>📚 Historial de partidas</h3>
+      <p style="margin-bottom:8px">${list.length} ${list.length === 1 ? 'partida' : 'partidas'} guardadas</p>`;
+    const listEl = document.createElement('div');
+    listEl.className = 'matchList';
+
+    const closeModal = (result) => { ov.remove(); resolve(result || { action: 'close' }); };
+
+    if(!list.length){
+      listEl.innerHTML = '<div class="emptyMsg">Aún no has guardado ninguna partida.<br>Las partidas se guardan automáticamente al terminar.</div>';
+    } else {
+      for(const match of list){
+        const item = document.createElement('div');
+        item.className = 'matchItem';
+        const modeLabel = match.mode === 'pvp' ? '2J' : (match.mode === 'ruby' ? '💎' : match.mode === 'easy' ? 'IA-F' : match.mode === 'normal' ? 'IA-N' : 'IA-D');
+        const resCls = match.result === 'Tablas' ? 'd' : (match.resultColor === 'w' ? '' : 'b');
+        const moveCount = (match.moves && match.moves.length) ? match.moves.length : 0;
+        item.innerHTML = `<div class="info">
+          <div class="nm">${match.name || '—'}</div>
+          <div class="meta">${modeLabel} · ${moveCount} acciones · ${new Date(match.date).toLocaleString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+        <span class="res ${resCls}">${match.result || '?'}</span>
+        <div class="acts">
+          <button class="replay" title="Reproducir">▶</button>
+          <button class="rename" title="Renombrar">✏</button>
+          <button class="export" title="Exportar">⬇</button>
+          <button class="del" title="Eliminar">🗑</button>
+        </div>`;
+        // *** FIX: resolver con {action:'replay', match} para que showStartMenu lo maneje ***
+        item.querySelector('.replay').onclick = () => {
+          closeModal({ action: 'replay', match });
+        };
+        item.querySelector('.rename').onclick = async () => {
+          const newName = prompt('Nuevo nombre para la partida:', match.name);
+          if(newName === null) return;
+          const trimmed = newName.trim().slice(0, 60);
+          if(!trimmed) return;
+          match.name = trimmed;
+          const l = loadMatchList();
+          const idx = l.findIndex(x => x.id === match.id);
+          if(idx >= 0){ l[idx].name = trimmed; saveMatchList(l); }
+          item.querySelector('.nm').textContent = trimmed;
+        };
+        item.querySelector('.export').onclick = () => exportMatch(match);
+        item.querySelector('.del').onclick = async () => {
+          const ok = await showModal('Eliminar partida',
+            `¿Eliminar "${match.name}"? Esta acción no se puede deshacer.`,
+            [ { label:'Cancelar', value:false, cls:'no' },
+              { label:'Eliminar', value:true, cls:'danger' } ]);
+          if(!ok) return;
+          const l = loadMatchList();
+          const idx = l.findIndex(x => x.id === match.id);
+          if(idx >= 0){ l.splice(idx, 1); saveMatchList(l); }
+          item.remove();
+          const cnt = l.length;
+          m.querySelector('p').textContent = `${cnt} ${cnt === 1 ? 'partida' : 'partidas'} guardadas`;
+          if(cnt === 0){
+            listEl.innerHTML = '<div class="emptyMsg">Aún no has guardado ninguna partida.<br>Las partidas se guardan automáticamente al terminar.</div>';
+          }
+        };
+        listEl.appendChild(item);
+      }
+    }
+    m.appendChild(listEl);
+    const bw = document.createElement('div');
+    bw.className = 'modal-btns';
+    const importBtn = document.createElement('button');
+    importBtn.className = 'mbtn';
+    importBtn.textContent = '📥 Importar';
+    importBtn.onclick = () => importMatchFromFile(ov);
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'mbtn no';
+    closeBtn.textContent = 'Cerrar';
+    closeBtn.onclick = () => closeModal();
+    bw.appendChild(importBtn); bw.appendChild(closeBtn);
+    m.appendChild(bw);
+    ov.appendChild(m);
+    document.body.appendChild(ov);
+  });
+}
+function exportMatch(match){
+  const data = JSON.stringify(match, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fname = 'ajedrez_' + (match.name || match.id).replace(/[^a-z0-9_\-]/gi, '_') + '.json';
+  a.href = url; a.download = fname; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+  toast('Partida exportada', '#a8e8b0');
+}
+function importMatchFromFile(parentOverlay){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json,.json';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if(!data || !data.moves || !Array.isArray(data.moves)){
+        toast('Archivo inválido', '#ff8080');
+        return;
+      }
+      if(!data.id) data.id = 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+      if(!data.name) data.name = new Date(data.date || Date.now()).toLocaleString('es',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      if(!data.date) data.date = Date.now();
+      const l = loadMatchList();
+      if(l.some(x => x.id === data.id)){
+        data.id = 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+      }
+      l.unshift(data);
+      if(l.length > 50) l.length = 50;
+      saveMatchList(l);
+      toast('Partida importada ✓', '#a8e8b0');
+      if(parentOverlay) parentOverlay.remove();
+      setTimeout(openMatchHistory, 250);
+    } catch(err){
+      console.error(err);
+      toast('No se pudo importar el archivo', '#ff8080');
+    }
+  };
+  input.click();
+}
+
+/* =========================================================
+   MODAL DE CONFIGURACIÓN
+   ========================================================= */
+async function showConfigMenu(){
+  return new Promise(resolve => {
+    const cfg = {
+      mode: aiEnabled ? (rubyMode ? 'ruby' : aiDifficulty) : 'pvp',
+      side: humanColor,
+      timerMinutes: gameTimer.enabled ? gameTimer.initial/60 : 0
+    };
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    const m = document.createElement('div');
+    m.className = 'modal wide';
+    m.innerHTML = `
+      <h3>⚙ Configurar partida</h3>
+      <div class="section">
+        <div class="section-title">Modo de juego</div>
+        <div class="cfgGrid c3" id="cfgMode">
+          <button class="cfgOpt" data-v="pvp"><span class="ic">👥</span>2 Jugadores</button>
+          <button class="cfgOpt" data-v="easy"><span class="ic">🤖</span>IA Fácil</button>
+          <button class="cfgOpt" data-v="normal"><span class="ic">🤖</span>IA Normal</button>
+          <button class="cfgOpt" data-v="hard"><span class="ic">🤖</span>IA Difícil</button>
+          <button class="cfgOpt" data-v="ruby"><span class="ic">💎</span>RUBY</button>
+          <button class="cfgOpt" data-v="history"><span class="ic">📚</span>Historial</button>
+        </div>
+      </div>
+      <div class="section" id="cfgSideSection">
+        <div class="section-title">Tu color (vs IA)</div>
+        <div class="cfgGrid" id="cfgSide">
+          <button class="cfgOpt" data-v="w"><span class="ic">♔</span>Blancas</button>
+          <button class="cfgOpt" data-v="b"><span class="ic">♚</span>Negras</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Tiempo por jugador</div>
+        <div class="timeRow" id="cfgTime">
+          <button class="cfgOpt small" data-v="0">Sin límite</button>
+          <button class="cfgOpt small" data-v="1">1 min</button>
+          <button class="cfgOpt small" data-v="3">3 min</button>
+          <button class="cfgOpt small" data-v="5">5 min</button>
+          <button class="cfgOpt small" data-v="10">10 min</button>
+          <button class="cfgOpt small" data-v="custom">Personalizado</button>
+        </div>
+      </div>
+    `;
+    ov.appendChild(m);
+    document.body.appendChild(ov);
+
+    function refreshPicked(){
+      m.querySelectorAll('#cfgMode .cfgOpt').forEach(b => b.classList.toggle('picked', b.dataset.v === cfg.mode));
+      m.querySelectorAll('#cfgSide .cfgOpt').forEach(b => b.classList.toggle('picked', b.dataset.v === cfg.side));
+      m.querySelectorAll('#cfgTime .cfgOpt').forEach(b => {
+        const v = b.dataset.v;
+        let match = false;
+        if(v === '0') match = cfg.timerMinutes === 0;
+        else if(v === 'custom') match = ![0,1,3,5,10].includes(cfg.timerMinutes) && cfg.timerMinutes > 0;
+        else match = cfg.timerMinutes === parseInt(v, 10);
+        b.classList.toggle('picked', match);
+      });
+      m.querySelector('#cfgSideSection').style.display = cfg.mode === 'pvp' ? 'none' : 'block';
+    }
+    m.querySelector('#cfgMode').onclick = (e) => {
+      const b = e.target.closest('.cfgOpt');
+      if(!b) return;
+      if(b.dataset.v === 'history'){
+        ov.remove();
+        resolve({ action: 'history' });
+        return;
+      }
+      cfg.mode = b.dataset.v;
+      refreshPicked();
+    };
+    m.querySelector('#cfgSide').onclick = (e) => {
+      const b = e.target.closest('.cfgOpt');
+      if(!b) return;
+      cfg.side = b.dataset.v;
+      refreshPicked();
+    };
+    m.querySelector('#cfgTime').onclick = async (e) => {
+      const b = e.target.closest('.cfgOpt');
+      if(!b) return;
+      const v = b.dataset.v;
+      if(v === 'custom'){
+        const raw = prompt('Minutos por jugador (1-120):', '7');
+        if(raw === null) return;
+        const n = parseInt(raw, 10);
+        if(!n || n < 1 || n > 120){ toast('Valor inválido', '#ff8080'); return; }
+        cfg.timerMinutes = n;
+      } else {
+        cfg.timerMinutes = parseInt(v, 10);
+      }
+      refreshPicked();
+    };
+
+    const bw = document.createElement('div');
+    bw.className = 'modal-btns';
+    const startB = document.createElement('button');
+    startB.className = 'mbtn yes';
+    startB.textContent = '▶ Empezar partida';
+    startB.onclick = () => { ov.remove(); resolve({ action: 'start', cfg }); };
+    const cancelB = document.createElement('button');
+    cancelB.className = 'mbtn no';
+    cancelB.textContent = 'Cancelar';
+    cancelB.onclick = () => { ov.remove(); resolve({ action: 'cancel' }); };
+    bw.appendChild(startB); bw.appendChild(cancelB);
+    m.appendChild(bw);
+    refreshPicked();
+  });
+}
+
+/* =========================================================
+   INICIO / REINICIO
    ========================================================= */
 async function showStartMenu(){
-  const mode = await showModal('♚ Ajedrez Mágico', 'Elige el modo de juego:', [
-    { html:'👥<br><small style="font-size:9px">2 Jugadores</small>', value:'pvp', cls:'ai' },
-    { html:'🤖<br><small style="font-size:9px">IA Fácil</small>', value:'easy', cls:'ai' },
-    { html:'🤖<br><small style="font-size:9px">IA Normal</small>', value:'normal', cls:'ai' },
-    { html:'🤖<br><small style="font-size:9px">IA Difícil</small>', value:'hard', cls:'ai' },
-    { html:'💎<br><small style="font-size:9px">RUBY</small>', value:'ruby', cls:'ruby' }
-  ]);
-
-  if(mode === 'pvp'){
-    aiEnabled = false; rubyMode = false;
-    humanColor = 'w'; aiColor = 'b';
-    return;
+  while(true){
+    const res = await showConfigMenu();
+    if(res.action === 'cancel') return 'cancel';
+    if(res.action === 'history'){
+      const histRes = await openMatchHistory();
+      if(histRes && histRes.action === 'replay' && histRes.match){
+        const started = startReplayFromStored(histRes.match);
+        if(started){
+          // *** FIX: salir del bucle SIN volver a abrir el menú ***
+          return 'replay';
+        }
+        // si no arrancó (datos corruptos), seguir el bucle normalmente
+      }
+      continue;
+    }
+    if(res.action === 'start'){
+      const cfg = res.cfg;
+      if(cfg.mode === 'pvp'){
+        aiEnabled = false; rubyMode = false;
+        humanColor = 'w'; aiColor = 'b';
+      } else {
+        aiEnabled = true;
+        aiDifficulty = cfg.mode;
+        rubyMode = (cfg.mode === 'ruby');
+        humanColor = cfg.side;
+        aiColor = cfg.side === 'w' ? 'b' : 'w';
+      }
+      gameTimer.enabled = cfg.timerMinutes > 0;
+      gameTimer.initial = cfg.timerMinutes * 60;
+      gameTimer.w = gameTimer.initial;
+      gameTimer.b = gameTimer.initial;
+      return 'start';
+    }
   }
-
-  aiEnabled = true;
-  aiDifficulty = mode;
-  rubyMode = (mode === 'ruby');
-
-  const side = await showModal('Elige tu lado',
-    '¿Con qué color quieres jugar?',
-    [
-      { html:'♔<br><small style="font-size:9px">Blancas (1º)</small>', value:'w', cls:'ai' },
-      { html:'♚<br><small style="font-size:9px">Negras</small>', value:'b', cls:'ai' }
-    ]);
-  humanColor = side;
-  aiColor = side === 'w' ? 'b' : 'w';
 }
 async function doDraft(){
   let wPicks, bPicks;
@@ -3168,17 +3714,52 @@ async function doDraft(){
   }
   setupDecks(wPicks, bPicks);
 }
-async function startGame(){
-  await showStartMenu();
+async function startGame() {
+  const mode = await showStartMenu();
+  if (mode !== 'start') return; // 'cancel' o 'replay' → no iniciar partida nueva
   await doDraft();
   newGame();
   renderPlayerHand();
   renderOppHand();
-  if(aiEnabled && aiColor === 'w'){
+  if (aiEnabled && aiColor === 'w') {
     setTimeout(aiTurn, 900);
   }
 }
+async function restartGame(){
+  if(!state.gameOver && historyLog.length > 2){
+    const ok = await showModal('Reiniciar partida', '¿Seguro que quieres reiniciar? La partida actual se perderá.', [
+      { label:'Cancelar', value:false, cls:'no' },
+      { label:'Reiniciar', value:true, cls:'danger' }
+    ]);
+    if(!ok) return;
+  }
+  aiSearchAbort = true;
+  state.aiBusy = false;
+  stopTimer();
+  state.paused = false;
+  $('#pauseOverlay').classList.add('hidden');
+  $('#btnPause').textContent = '⏸';
+  await startGame();
+}
+async function exitToMenu(){
+  if(!state.gameOver && historyLog.length > 2){
+    const ok = await showModal('Salir', '¿Seguro que quieres salir de la partida actual?', [
+      { label:'Cancelar', value:false, cls:'no' },
+      { label:'Salir', value:true, cls:'danger' }
+    ]);
+    if(!ok) return;
+  }
+  aiSearchAbort = true;
+  state.aiBusy = false;
+  stopTimer();
+  state.paused = false;
+  $('#pauseOverlay').classList.add('hidden');
+  $('#btnPause').textContent = '⏸';
+  await startGame();
+}
 function newGame(){
+  aiSearchAbort = true;
+  state.aiBusy = false;
   chess = new Chess();
   state.mana = { w: 0, b: 0 };
   state.specialCount = { w: 0, b: 0 };
@@ -3187,13 +3768,17 @@ function newGame(){
   state.graveyard = { w: [], b: [] };
   state.busy = false; state.gameOver = false;
   state.selected = null; state.legalMoves = []; state.targeting = null;
+  state.paused = false;
   iraResolve = null;
   historyLog.length = 0; historyEl.innerHTML = '';
   pieceEls.forEach(el => el.remove()); pieceEls.clear();
   particles.length = 0; bolts.length = 0; curves.length = 0; ripples.length = 0;
   if(replay.active){ stopReplayAuto(); replay.active = false; }
   replayAnimating = false;
+  replay.storedMatch = null; replay.originalHistory = null;
   $('#replayUI').classList.add('hidden');
+  $('#pauseOverlay').classList.add('hidden');
+  $('#btnPause').textContent = '⏸';
   undoStack.length = 0;
   undoUsed = 0;
   turnSnapshotTaken = false;
@@ -3201,7 +3786,15 @@ function newGame(){
   syncPieces();
   recordHistory({ type: 'start', color: 'w' });
   updateUI();
+  startTimer();
+  updateClocks();
+  // Permitir que empiece una nueva búsqueda de IA
+  setTimeout(() => { aiSearchAbort = false; }, 100);
 }
+
+/* =========================================================
+   LAYOUT / LOOP
+   ========================================================= */
 function layout(){
   const rect = boardWrap.getBoundingClientRect();
   boardW = rect.width; boardH = rect.height; cellSize = rect.width / 8;
@@ -3226,6 +3819,89 @@ function loop(now){
   ctx.clearRect(0, 0, W, H);
   if(terrainOffscreen) ctx.drawImage(terrainOffscreen, 0, 0, W, H);
   else { ctx.fillStyle = '#1a2418'; ctx.fillRect(0,0,W,H); }
+
+// ===== Cuadrícula con ola diagonal 🌊 =====
+{
+  const period = 5000; // ms por barrido completo
+  const phase = (performance.now() % period) / period; // 0 → 1 (frente de onda)
+  const step = W / 8;
+  const lw = Math.max(1, W / 480);
+  
+  // Función de onda: campana gaussiana centrada en `phase`, con wrap circular
+  const waveWidth = 0.16;
+  const brightnessAt = (fase) => {
+    let d = fase - phase;
+    if (d < -0.5) d += 1;
+    if (d > 0.5) d -= 1;
+    return Math.exp(-(d * d) / (waveWidth * waveWidth)); // 0..1
+  };
+  
+  const baseA = 0.045; // opacidad en el valle de la ola
+  const peakA = 0.42; // opacidad en la cresta
+  
+  ctx.save();
+  ctx.lineWidth = lw;
+  ctx.lineCap = 'round';
+  
+  // --- Líneas verticales ---
+  for (let i = 0; i <= 8; i++) {
+    // Sobre la vertical i, la fase del punto (x=i/8, y) es (i/8 + y)/2
+    // Va desde i/16 (arriba) hasta i/16 + 0.5 (abajo)
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    for (let s = 0; s <= 8; s++) {
+      const f = s / 8;
+      const fase = i / 16 + f * 0.5;
+      const b = brightnessAt(fase);
+      const a = baseA + b * (peakA - baseA);
+      grad.addColorStop(f, `rgba(255,248,225,${a})`);
+    }
+    ctx.strokeStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(i * step + lw * 0.5, 0);
+    ctx.lineTo(i * step + lw * 0.5, H);
+    ctx.stroke();
+  }
+  
+  // --- Líneas horizontales ---
+  for (let i = 0; i <= 8; i++) {
+    // Sobre la horizontal i, la fase del punto (x, y=i/8) es (x + i/8)/2
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    for (let s = 0; s <= 8; s++) {
+      const f = s / 8;
+      const fase = i / 16 + f * 0.5;
+      const b = brightnessAt(fase);
+      const a = baseA + b * (peakA - baseA);
+      grad.addColorStop(f, `rgba(255,248,225,${a})`);
+    }
+    ctx.strokeStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(0, i * step + lw * 0.5);
+    ctx.lineTo(W, i * step + lw * 0.5);
+    ctx.stroke();
+  }
+  
+  // --- Cruces brillantes donde la ola está en su pico (pequeños destellos) ---
+  for (let i = 0; i <= 8; i++) {
+    for (let j = 0; j <= 8; j++) {
+      const fase = (i + j) / 16;
+      const b = brightnessAt(fase);
+      if (b < 0.55) continue;
+      const a = (b - 0.55) / 0.45 * 0.85;
+      const px = i * step;
+      const py = j * step;
+      const r = lw * 2.2;
+      const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+      g.addColorStop(0, `rgba(255,252,235,${a})`);
+      g.addColorStop(1, 'rgba(255,252,235,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, 6.2832);
+      ctx.fill();
+    }
+  }
+  
+  ctx.restore();
+}
 
   const ph = getPhase();
   ctx.save();
@@ -3300,23 +3976,47 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 
+/* =========================================================
+   EVENTOS
+   ========================================================= */
 gridEl.addEventListener('click', (e) => {
   initAudio();
-  if(replay.active) return;
+  if(replay.active || state.paused) return;
+  if(state.aiBusy) return;
   const cell = e.target.closest('.cell');
   if(!cell) return;
   onSquareClick(cell.dataset.sq);
 });
 gridEl.addEventListener('contextmenu', (e) => {
   e.preventDefault();
-  if(replay.active) return;
+  if(replay.active || state.paused || state.aiBusy) return;
   if(state.targeting && state.targeting.key !== 'ira') cancelTargeting();
 });
 $('#cancelBtn').onclick = () => cancelTargeting();
-$('#undoBtn').onclick = () => {
-  initAudio();
-  performUndo();
+$('#undoBtn').onclick = () => { initAudio(); performUndo(); };
+$('#btnPause').onclick = () => togglePause();
+$('#btnConfig').onclick = () => {
+  togglePause();
+  setTimeout(() => { openQuickConfig(); }, 50);
 };
+$('#btnRestart').onclick = () => restartGame();
+$('#btnExit').onclick = () => exitToMenu();
+
+async function openQuickConfig(){
+  const res = await showModal('Opciones', '¿Qué deseas hacer?', [
+    { label:'▶ Continuar', value:'continue', cls:'yes' },
+    { label:'🔄 Reiniciar', value:'restart', cls:'no' },
+    { label:'🚪 Salir al menú', value:'exit', cls:'danger' }
+  ]);
+  if(res === 'continue'){
+    state.paused = false;
+    $('#pauseOverlay').classList.add('hidden');
+    $('#btnPause').textContent = '⏸';
+    return;
+  }
+  if(res === 'restart'){ restartGame(); return; }
+  if(res === 'exit'){ exitToMenu(); return; }
+}
 
 window.addEventListener('resize', () => setTimeout(layout, 60));
 window.addEventListener('orientationchange', () => setTimeout(layout, 250));
