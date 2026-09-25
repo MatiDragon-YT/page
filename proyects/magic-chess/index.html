@@ -55,6 +55,9 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
   grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr)}
 .cell{position:relative;cursor:pointer}
 .cell::after{content:'';position:absolute;inset:0;pointer-events:none;transition:background .12s}
+.cell.last-prev::after{background:rgba(200,180,120,.13);box-shadow:inset 0 0 0 2px rgba(200,180,120,.32)}
+.cell.last-from::after{background:rgba(255,215,120,.15);box-shadow:inset 0 0 0 2px rgba(255,215,120,.38)}
+.cell.last-to::after{background:rgba(255,215,120,.20);box-shadow:inset 0 0 0 2px rgba(255,215,120,.65)}
 .cell.sel::after{background:rgba(255,228,120,.30);box-shadow:inset 0 0 0 3px rgba(255,215,90,.95)}
 .cell.mv::after{background:radial-gradient(circle at 50% 50%,rgba(130,235,150,.85) 0 16%,rgba(130,235,150,.25) 17% 26%,transparent 27%)}
 .cell.cap::after{background:radial-gradient(circle at 50% 50%,transparent 0 60%,rgba(255,80,80,.75) 62% 78%,transparent 80%)}
@@ -107,6 +110,16 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
 .piece.shielded .tok{box-shadow:0 0 0 3px rgba(90,180,255,.85),0 0 16px 4px rgba(90,180,255,.6),0 2px 6px rgba(0,0,0,.65)}
 .piece.ira .tok{box-shadow:0 0 0 3px rgba(255,150,40,.85),0 0 16px 5px rgba(255,140,20,.55),0 2px 6px rgba(0,0,0,.65);
   animation:iraGlow .9s infinite alternate}
+.piece.in-check .tok{
+  box-shadow: 0 0 0 3px rgba(255,60,60,.9),
+              0 0 18px 6px rgba(255,40,40,.7),
+              0 2px 6px rgba(0,0,0,.65);
+  animation: checkPulse .8s infinite alternate;
+}
+@keyframes checkPulse{
+  from{filter:brightness(1) saturate(1.15)}
+  to  {filter:brightness(1.35) saturate(1.55)}
+}
 @keyframes iraGlow{from{filter:brightness(1)}to{filter:brightness(1.28)}}
 .piece.shake .tok{animation:quakeShake 0.12s infinite}
 @keyframes quakeShake{
@@ -313,6 +326,7 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
     <div class="tbTitle">♚ Ajedrez Mágico</div>
     <div class="tbBtns">
       <button class="topBtn" id="btnPause" title="Pausa">⏸</button>
+      <button class="topBtn" id="btnSound" title="Sonido">🔊</button>
       <button class="topBtn" id="btnConfig" title="Opciones">⚙</button>
       <button class="topBtn warn" id="btnRestart" title="Reiniciar">↻</button>
       <button class="topBtn warn" id="btnExit" title="Salir al menú">✖</button>
@@ -391,8 +405,18 @@ function formatTime(sec){ if(sec < 0) sec = 0; const m = Math.floor(sec/60), s =
    ========================================================= */
 let actx = null;
 function initAudio(){ if(actx) return; try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+let soundEnabled = (localStorage.getItem('ajedrez_sound') !== 'off');
+function updateSoundButton(){
+  const b = $('#btnSound');
+  if(!b) return;
+  b.textContent = soundEnabled ? '🔊' : '🔇';
+  b.classList.toggle('warn', !soundEnabled);
+}
+function vibrate(pattern){
+  try { if(navigator.vibrate) navigator.vibrate(pattern); } catch(e){}
+}
 function tone(freq, dur, type='sine', vol=0.06, slide=0){
-  if(!actx) return;
+  if(!actx || !soundEnabled) return;
   const o = actx.createOscillator(), g = actx.createGain();
   o.type = type; o.frequency.setValueAtTime(freq, actx.currentTime);
   if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(40,freq+slide), actx.currentTime+dur);
@@ -402,7 +426,7 @@ function tone(freq, dur, type='sine', vol=0.06, slide=0){
   o.start(); o.stop(actx.currentTime+dur);
 }
 function noiseBurst(dur, vol=0.05, filterFreq=1200){
-  if(!actx) return;
+  if(!actx || !soundEnabled) return;
   const n = Math.floor(actx.sampleRate * dur);
   const buf = actx.createBuffer(1, n, actx.sampleRate);
   const d = buf.getChannelData(0);
@@ -455,7 +479,8 @@ const state = {
   graveyard: { w: [], b: [] },
   busy: false, gameOver: false, selected: null, legalMoves: [], targeting: null,
   paused: false,
-  aiBusy: false
+  aiBusy: false,
+  lastMove: { from: null, to: null, prevFrom: null, prevTo: null }
 };
 let iraResolve = null;
 
@@ -992,6 +1017,8 @@ function updatePieceClass(el, p, sq){
   const iraReady = !replay.active && state.iraCharge[p.color] && 'nrb'.includes(p.type);
   el.classList.toggle('shielded', shielded);
   el.classList.toggle('ira', iraReady);
+  const inCheck = !replay.active && p.type === 'k' && chess && chess.turn() === p.color && chess.in_check();
+  el.classList.toggle('in-check', inCheck);
 }
 function syncPieces(){
   const board = chess.board();
@@ -1286,12 +1313,44 @@ function showDraftModal(color){
 /* =========================================================
    RESALTADOS
    ========================================================= */
+function paintLastMove(){
+  const lm = state.lastMove;
+  if(!lm) return;
+  const currentSet = new Set();
+  if(lm.from) currentSet.add(lm.from);
+  if(lm.to) currentSet.add(lm.to);
+  const prevSet = new Set();
+  if(lm.prevFrom) prevSet.add(lm.prevFrom);
+  if(lm.prevTo) prevSet.add(lm.prevTo);
+  for(const sq of currentSet) prevSet.delete(sq);
+  for(const sq of prevSet){
+    const c = gridEl.querySelector(`[data-sq="${sq}"]`);
+    if(c) c.classList.add('last-prev');
+  }
+  if(lm.from){
+    const c = gridEl.querySelector(`[data-sq="${lm.from}"]`);
+    if(c) c.classList.add('last-from');
+  }
+  if(lm.to){
+    const c = gridEl.querySelector(`[data-sq="${lm.to}"]`);
+    if(c) c.classList.add('last-to');
+  }
+}
+function setLastMove(from, to, prev){
+  state.lastMove = {
+    from: from || null,
+    to: to || null,
+    prevFrom: prev && prev.from ? prev.from : null,
+    prevTo: prev && prev.to ? prev.to : null
+  };
+}
 function clearHighlights(){
   for(const c of gridEl.children){
     c.className = 'cell';
     const tag = c.querySelector('.costTag');
     if(tag) tag.remove();
   }
+  paintLastMove();
 }
 function highlightLegalMoves(){
   clearHighlights();
@@ -1377,9 +1436,10 @@ function performUndo(){
     if(historyEl.lastChild) historyEl.removeChild(historyEl.lastChild);
   }
   state.selected = null; state.legalMoves = []; state.targeting = null;
-  if(iraResolve){ const r = iraResolve; iraResolve = null; r(null); }
-  clearHighlights();
-  rebuildPieces();
+state.lastMove = { from: null, to: null, prevFrom: null, prevTo: null };
+if(iraResolve){ const r = iraResolve; iraResolve = null; r(null); }
+clearHighlights();
+rebuildPieces();
   renderAchStrip();
   undoUsed++;
   turnSnapshotTaken = false;
@@ -1450,6 +1510,7 @@ function handleTimeout(loser){
   const winnerName = winner === 'w' ? 'Blancas' : 'Negras';
   sfx('timeout');
   saveCurrentMatch(winnerName, winner);
+  vibrate([200, 100, 200, 100, 400]);
   setTimeout(async () => {
     const choice = await showModal('⏱ ¡Tiempo agotado!',
       `Las ${winnerName} ganan por tiempo.`,
@@ -1560,7 +1621,8 @@ function endTurn(){
   if(iraResolve){ const r = iraResolve; iraResolve = null; r(null); }
   clearHighlights();
   turnSnapshotTaken = false;
-  checkGameEnd();
+  const ended = checkGameEnd();
+  if(!ended && chess && chess.in_check()) vibrate([40, 60, 40]);
   updateUI();
   if(aiEnabled && !state.gameOver && chess.turn() === aiColor && !replay.active && !state.paused){
     setTimeout(aiTurn, 650);
@@ -1576,6 +1638,7 @@ function checkGameEnd(){
     const winnerName = winner === 'w' ? 'Blancas' : 'Negras';
     if(achState[winner].lostPieces === 0) unlockAch(winner, 'inmortal');
     sfx('end');
+    vibrate([80, 80, 80, 80, 220]);
     saveCurrentMatch(winnerName, winner);
     setTimeout(async () => {
       const achList = renderAchSummary();
@@ -1590,6 +1653,7 @@ function checkGameEnd(){
   if(chess.in_stalemate() || chess.in_draw()){
     state.gameOver = true; aiSearchAbort = true; stopTimer();
     sfx('end');
+    vibrate([100, 60, 100, 60, 200]);
     saveCurrentMatch('Tablas', null);
     setTimeout(async () => {
       const achList = renderAchSummary();
@@ -1752,6 +1816,9 @@ async function doPlayerMove(mv){
 
   const didCapture = !!(moveResult.captured || mv.flags.includes('e'));
 
+  if (didCapture) vibrate(35);
+  setLastMove(mv.from, mv.to, null);
+
   if(moveResult.captured){
     addToGraveyard(moveResult.captured, opp);
   } else if(mv.flags.includes('e')){
@@ -1817,6 +1884,8 @@ async function doPlayerMove(mv){
         from: iraResult.from, to: iraResult.to,
         captured: iraResult.captured ? { type: iraResult.captured, color: opp } : null
       });
+      setLastMove(iraResult.from, iraResult.to, { from: mv.from, to: mv.to });
+      vibrate([20, 40, 55]);
       if(iraResult.captured){
         achState[turn].streak++;
         checkStreakAch(turn);
@@ -1868,6 +1937,7 @@ async function iraTargeting(fromSq, color){
     if(res){
       await animateMove(best.from, best.to, capturedSquare, 700);
       if(res.captured) addToGraveyard(res.captured, oppColor);
+      if(res.captured) vibrate([20, 40, 55]);
       state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
       for(const col of ['w','b']){
         const i = state.shields[col].indexOf(capturedSquare);
@@ -1911,6 +1981,7 @@ async function iraTargeting(fromSq, color){
         sfx('capture');
         await animateMove(mv.from, mv.to, capturedSquare, 400);
         if(res.captured) addToGraveyard(res.captured, oppColor);
+        if(res.captured) vibrate([20, 40, 55]);
         state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
         for(const col of ['w','b']){
           const i = state.shields[col].indexOf(capturedSquare);
@@ -2173,6 +2244,7 @@ async function handleTargetingClick(sq){
    ========================================================= */
 async function execTeleport(from, to, cost){
   state.busy = true;
+  vibrate([15, 30, 40]);
   const turn = chess.turn();
   const A = squareCenter(from), B = squareCenter(to);
   const el = pieceEls.get(from);
@@ -2209,6 +2281,7 @@ async function execTeleport(from, to, cost){
 }
 async function execShield(sq){
   state.busy = true;
+  vibrate([20, 20, 20, 20, 60]);
   const turn = chess.turn();
   const C = squareCenter(sq);
   const piece = chess.get(sq);
@@ -2247,6 +2320,7 @@ async function execShield(sq){
 }
 async function execRay(sq, cost){
   state.busy = true;
+  vibrate([40, 30, 80]);
   const turn = chess.turn();
   const C = squareCenter(sq);
   const victim = chess.get(sq);
@@ -2283,6 +2357,7 @@ async function execRay(sq, cost){
 }
 async function execZombie(sq){
   state.busy = true;
+  vibrate([30, 30, 30, 30, 100]);
   const turn = chess.turn();
   const C = squareCenter(sq);
   const victim = chess.get(sq);
@@ -2319,6 +2394,7 @@ async function execZombie(sq){
 }
 async function execHeal(sq, type, color, cost){
   state.busy = true;
+  vibrate([25, 25, 25, 25, 401]);
   const validTypes = ['p','n','b','r','q'];
   if(!validTypes.includes(type)){
     toast('Tipo de pieza inválido', '#ff8080');
@@ -2397,6 +2473,7 @@ async function execHeal(sq, type, color, cost){
 }
 async function execQuake(centerSq){
   state.busy = true;
+  vibrate([80, 40, 80, 40, 1501]);
   const turn = chess.turn();
   const { r:cr, c:cc } = sqToRC(centerSq);
   const C = squareCenter(centerSq);
@@ -3051,6 +3128,8 @@ function startReplay(){
   if(!replay.storedMatch){ replay.originalHistory = null; }
   replay.active = true; replay.index = 0; replay.playing = false; playToken++;
   stopTimer();
+  state.lastMove = { from: null, to: null, prevFrom: null, prevTo: null };
+clearHighlights();
 
   // *** FIX: garantizar instancia válida de chess ***
   if(!chess) chess = new Chess();
@@ -3770,6 +3849,7 @@ function newGame(){
   state.selected = null; state.legalMoves = []; state.targeting = null;
   state.paused = false;
   iraResolve = null;
+  state.lastMove = { from: null, to: null, prevFrom: null, prevTo: null };
   historyLog.length = 0; historyEl.innerHTML = '';
   pieceEls.forEach(el => el.remove()); pieceEls.clear();
   particles.length = 0; bolts.length = 0; curves.length = 0; ripples.length = 0;
@@ -3995,6 +4075,13 @@ gridEl.addEventListener('contextmenu', (e) => {
 $('#cancelBtn').onclick = () => cancelTargeting();
 $('#undoBtn').onclick = () => { initAudio(); performUndo(); };
 $('#btnPause').onclick = () => togglePause();
+$('#btnSound').onclick = () => {
+  initAudio();
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('ajedrez_sound', soundEnabled ? 'on' : 'off');
+  updateSoundButton();
+  if (soundEnabled) tone(660, .12, 'sine', .05, 200);
+};
 $('#btnConfig').onclick = () => {
   togglePause();
   setTimeout(() => { openQuickConfig(); }, 50);
@@ -4029,6 +4116,7 @@ function boot(){
   }
   buildGrid();
   generateTerrain();
+  updateSoundButton();
   setupDecks(['ray','shield','teleport'], ['ray','shield','teleport']);
   requestAnimationFrame(() => {
     layout();
