@@ -3479,7 +3479,6 @@ function simTeleportResolvesCheck(from, to, color){
   return resolved;
 }
 
-// ¿Revivir `type` en `sq` resuelve el jaque?
 function aiFindEmergencyPower(color){
   const mana = state.mana[color];
   const hand = playerDecks[color].hand;
@@ -3487,18 +3486,16 @@ function aiFindEmergencyPower(color){
   const checkers = aiGetCheckers(color);
   const single = checkers.length === 1;
 
-  // -------- 1. Rayo sobre el checker --------
+  // -------- 1. Rayo sobre el checker (mata la pieza → valor extra real) --------
   if(hand.includes('ray') && checkers.length > 0){
     for(const sq of checkers){
       const target = chess.get(sq);
       if(!target || target.type === 'k') continue;
       const cost = rayCostFor(target.type);
       if(cost > mana) continue;
-      // Solo es jugada salvadora si elimina el ÚNICO jaque
       if(single){
         opts.push({ key:'ray', sq, cost, score: 200000 + PIECE_VALUE[target.type] });
       } else {
-        // Múltiples checkers: matar uno probablemente no salva, pero puntúa bajo
         opts.push({ key:'ray', sq, cost, score: 200 - cost * 10 });
       }
     }
@@ -3514,34 +3511,73 @@ function aiFindEmergencyPower(color){
     }
   }
 
-  // -------- 3. Teletransporte: huir con el rey o bloquear con otra pieza --------
+  // -------- 3. Teletransporte --------
   if(hand.includes('teleport')){
     const board = chess.board();
-    // 3a. Huir con el rey
+
+    // 3a. Huir con el rey — solo a casillas que NO son movimientos normales del rey
     const kingSq = findKing(color);
     if(kingSq){
+      const normalKingMoves = new Set();
+      try {
+        const savedFen = chess.fen();
+        const parts = savedFen.split(' ');
+        parts[1] = color; parts[3] = '-'; parts[4] = '0';
+        chess.load(parts.join(' '), { skipValidation: true });
+        chess.moves({ square: kingSq, verbose: true }).forEach(m => normalKingMoves.add(m.to));
+        chess.load(savedFen, { skipValidation: true });
+      } catch(e){}
+
+      const hasNormalEscape = normalKingMoves.size > 0;
+
       for(let r=0;r<8;r++) for(let c=0;c<8;c++){
         if(board[r][c]) continue;
         const toSq = rcToSquare(r,c);
+
+        // *** FIX 1: descartar destinos alcanzables por movimiento normal del rey ***
+        if(normalKingMoves.has(toSq)) continue;
+
         const cost = teleportCost(kingSq, toSq);
         if(!isFinite(cost) || cost > mana) continue;
-        if(simTeleportResolvesCheck(kingSq, toSq, color)){
-          // Prefiere destinos lejanos del enemigo y casillas baratas
+        if(!simTeleportResolvesCheck(kingSq, toSq, color)) continue;
+
+        // *** FIX 2: si el rey ya tiene escape normal, teleport solo vale si
+        // va a un destino claramente periférico y barato (huida "larga") ***
+        if(hasNormalEscape){
           const toRC = sqToRC(toSq);
-          const center = Math.abs(toRC.r - 3.5) + Math.abs(toRC.c - 3.5);
-          opts.push({ key:'teleport', from: kingSq, to: toSq, cost, score: 200000 - cost * 10 + center * 5 });
+          const centerDist = Math.abs(toRC.r - 3.5) + Math.abs(toRC.c - 3.5);
+          if(centerDist < 5 || cost > 4) continue;
         }
+
+        const toRC = sqToRC(toSq);
+        const center = Math.abs(toRC.r - 3.5) + Math.abs(toRC.c - 3.5);
+        opts.push({ key:'teleport', from: kingSq, to: toSq, cost, score: 200000 - cost * 10 + center * 5 });
       }
     }
-    // 3b. Bloquear con otra pieza
+
+    // 3b. Bloquear con otra pieza — solo a casillas que esa pieza NO alcanza normal
     for(let r1=0;r1<8;r1++) for(let c1=0;c1<8;c1++){
       const p = board[r1][c1];
       if(!p || p.color !== color || p.type === 'k') continue;
       const fromSq = rcToSquare(r1,c1);
-      // Solo vale la pena si la pieza bloquea con poco coste
+
+      const pieceNormalMoves = new Set();
+      try {
+        const savedFen = chess.fen();
+        const parts = savedFen.split(' ');
+        parts[1] = color; parts[3] = '-'; parts[4] = '0';
+        chess.load(parts.join(' '), { skipValidation: true });
+        chess.moves({ square: fromSq, verbose: true }).forEach(m => pieceNormalMoves.add(m.to));
+        chess.load(savedFen, { skipValidation: true });
+      } catch(e){}
+
       for(let r2=0;r2<8;r2++) for(let c2=0;c2<8;c2++){
         if(board[r2][c2]) continue;
         const toSq = rcToSquare(r2,c2);
+
+        // *** FIX 3: descartar destinos que esa pieza alcanza normalmente ***
+        if(pieceNormalMoves.has(toSq)) continue;
+
         const cost = teleportCost(fromSq, toSq);
         if(!isFinite(cost) || cost > mana) continue;
         if(simTeleportResolvesCheck(fromSq, toSq, color)){
@@ -3551,7 +3587,10 @@ function aiFindEmergencyPower(color){
     }
   }
 
-  // -------- 4. Toque Curativo: revivir bloqueando el jaque --------
+  // -------- 4. Toque Curativo bloqueando (última prioridad) --------
+  // chess.js ya garantiza un movimiento legal cuando no es mate,
+  // así que revivir para bloquear es redundante casi siempre.
+  // Se deja con score bajo para no competir con Ray/Zombosis.
   if(hand.includes('heal')){
     const pile = state.graveyard[color];
     const types = [...new Set(pile)];
@@ -3563,15 +3602,12 @@ function aiFindEmergencyPower(color){
           if(chess.board()[r][c]) continue;
           const sq = rcToSquare(r,c);
           if(simPlacedPieceResolvesCheck(sq, t, color)){
-            opts.push({ key:'heal', type:t, sq, cost, score: 100000 - cost * 20 });
+            opts.push({ key:'heal', type:t, sq, cost, score: 50000 - cost * 20 });
           }
         }
       }
     }
   }
-
-  // Escudo no resuelve jaque (absorbe ataques directos, pero el jaque sigue).
-  // Terremoto es aleatorio → tampoco se considera en emergencia.
 
   if(!opts.length) return null;
   opts.sort((a,b) => b.score - a.score);
