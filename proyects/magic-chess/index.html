@@ -107,8 +107,40 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
 .piece.captured .tok{opacity:0;transform:scale(.35) rotate(25deg);transition:all .26s ease-in}
 .piece.spawn .tok{animation:spawnIn .35s cubic-bezier(.2,1.4,.4,1)}
 @keyframes spawnIn{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
-.piece.shielded .tok{box-shadow:0 0 0 3px rgba(90,180,255,.85),0 0 16px 4px rgba(90,180,255,.6),0 2px 6px rgba(0,0,0,.65)}
-.piece.ira .tok{box-shadow:0 0 0 3px rgba(255,150,40,.85),0 0 16px 5px rgba(255,140,20,.55),0 2px 6px rgba(0,0,0,.65);
+/* ---------- Escudo: anillo EXTERIOR (pseudo-elemento) ---------- */
+.piece.shielded .tok::before{
+  content:'';
+  position:absolute;
+  inset:-4px;
+  border-radius:50%;
+  border:2px solid rgba(120,200,255,0.90);
+  box-shadow:
+    0 0 10px 2px rgba(90,180,255,0.55),
+    inset 0 0 6px rgba(90,180,255,0.35);
+  animation:shieldHalo 1.9s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes shieldHalo{
+  0%,100%{ transform:scale(1);    opacity:.82; }
+  50%    { transform:scale(1.06); opacity:1;   }
+}
+
+/* ---------- Ira: anillo INTERIOR (box-shadow del tok) ---------- */
+.piece.ira .tok{
+  box-shadow:
+    0 0 0 3px rgba(255,150,40,.90),
+    0 0 14px 4px rgba(255,140,20,.55),
+    0 2px 6px rgba(0,0,0,.65);
+  animation:iraGlow .9s infinite alternate;
+}
+
+/* ---------- Cuando coinciden: el escudo sigue afuera y la Ira adentro ---------- */
+.piece.shielded.ira .tok::before{
+  border-color:rgba(160,220,255,0.95);
+  box-shadow:
+    0 0 14px 3px rgba(90,180,255,0.65),
+    inset 0 0 8px rgba(90,180,255,0.40);
+}
   animation:iraGlow .9s infinite alternate}
 .piece.in-check .tok{
   box-shadow: 0 0 0 3px rgba(255,60,60,.9),
@@ -5298,6 +5330,36 @@ function loop(now){
     ctx.fillRect(0,0,W,H);
   }
   if(ph.dark > 0.08){
+
+    // ===== Lluvia: oscurecimiento y viraje frío del ambiente =====
+    if(rainAmt > 0.04){
+      const t = clamp((rainAmt - 0.04) / 0.96, 0, 1);
+      const smooth = t * t * (3 - 2 * t);   // smoothstep: sin arranque brusco
+
+      // 1. Multiply gris-azulado → baja luminosidad y satura
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      const g = Math.round(255 - 95 * smooth);                       // 255 → 160
+      const rC = g;
+      const gC = Math.min(255, g + Math.round(10 * smooth));          // verde un poco más alto
+      const bC = Math.min(255, g + Math.round(18 * smooth));          // azul más alto → tinte frío
+      ctx.fillStyle = `rgb(${rC},${gC},${bC})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+
+      // 2. Velo frío sobre toda la escena (source-over, alpha baja)
+      ctx.fillStyle = `rgba(70,90,120,${0.20 * smooth})`;
+      ctx.fillRect(0, 0, W, H);
+
+      // 3. Niebla gris cerca del horizonte (más densa con lluvia fuerte)
+      const horiz = ctx.createLinearGradient(0, H * 0.35, 0, H);
+      horiz.addColorStop(0, 'rgba(180,190,205,0)');
+      horiz.addColorStop(1, `rgba(180,190,205,${0.22 * smooth})`);
+      ctx.fillStyle = horiz;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+
     const inten = clamp((ph.dark - 0.08) / 0.20, 0, 1);
     for(const f of terr.fireflies){
       f.t += dt * f.spd;
