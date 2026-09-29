@@ -3398,6 +3398,187 @@ async function findBestMove(depth, rootColor){
 }
 
 /* =========================================================
+   IA — Detección de jaque y simulación de escapes
+   ========================================================= */
+function aiIsInCheck(color){
+  const savedFen = chess.fen();
+  let result = false;
+  try {
+    const parts = savedFen.split(' ');
+    parts[1] = color; parts[3] = '-'; parts[4] = '0';
+    chess.load(parts.join(' '), { skipValidation: true });
+    result = chess.in_check();
+  } catch(e){ result = false; }
+  try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+  return result;
+}
+
+function aiGetCheckers(color){
+  // Devuelve las casillas de las piezas enemigas que dan jaque al rey de `color`
+  const savedFen = chess.fen();
+  const checkers = [];
+  try {
+    const board = chess.board();
+    let kingSq = null;
+    for(let r=0;r<8 && !kingSq;r++) for(let c=0;c<8;c++){
+      const p = board[r][c];
+      if(p && p.type === 'k' && p.color === color){ kingSq = rcToSquare(r,c); break; }
+    }
+    if(kingSq){
+      const opp = color === 'w' ? 'b' : 'w';
+      const parts = savedFen.split(' ');
+      parts[1] = opp; parts[3] = '-'; parts[4] = '0';
+      chess.load(parts.join(' '), { skipValidation: true });
+      const moves = chess.moves({ verbose: true });
+      const seen = new Set();
+      for(const m of moves){
+        if(m.to === kingSq && !seen.has(m.from)){
+          seen.add(m.from);
+          checkers.push(m.from);
+        }
+      }
+    }
+  } catch(e){}
+  try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+  return checkers;
+}
+
+// ¿Si coloco una pieza `type` de `color` en `sq`, se resuelve el jaque?
+function simPlacedPieceResolvesCheck(sq, type, color){
+  const savedFen = chess.fen();
+  let resolved = false;
+  try {
+    const parts = savedFen.split(' ');
+    parts[1] = color; parts[3] = '-'; parts[4] = '0';
+    chess.load(parts.join(' '), { skipValidation: true });
+    if(!chess.get(sq)){
+      chess.put({ type, color }, sq);
+      resolved = !chess.in_check();
+    }
+  } catch(e){ resolved = false; }
+  try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+  return resolved;
+}
+
+// ¿Teletransportar de `from` a `to` resuelve el jaque?
+function simTeleportResolvesCheck(from, to, color){
+  const savedFen = chess.fen();
+  let resolved = false;
+  try {
+    const parts = savedFen.split(' ');
+    parts[1] = color; parts[3] = '-'; parts[4] = '0';
+    chess.load(parts.join(' '), { skipValidation: true });
+    const piece = chess.get(from);
+    if(piece && !chess.get(to)){
+      chess.remove(from);
+      chess.put(piece, to);
+      resolved = !chess.inCheck || !chess.in_check();
+    }
+  } catch(e){ resolved = false; }
+  try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+  return resolved;
+}
+
+// ¿Revivir `type` en `sq` resuelve el jaque?
+function aiFindEmergencyPower(color){
+  const mana = state.mana[color];
+  const hand = playerDecks[color].hand;
+  const opts = [];
+  const checkers = aiGetCheckers(color);
+  const single = checkers.length === 1;
+
+  // -------- 1. Rayo sobre el checker --------
+  if(hand.includes('ray') && checkers.length > 0){
+    for(const sq of checkers){
+      const target = chess.get(sq);
+      if(!target || target.type === 'k') continue;
+      const cost = rayCostFor(target.type);
+      if(cost > mana) continue;
+      // Solo es jugada salvadora si elimina el ÚNICO jaque
+      if(single){
+        opts.push({ key:'ray', sq, cost, score: 200000 + PIECE_VALUE[target.type] });
+      } else {
+        // Múltiples checkers: matar uno probablemente no salva, pero puntúa bajo
+        opts.push({ key:'ray', sq, cost, score: 200 - cost * 10 });
+      }
+    }
+  }
+
+  // -------- 2. Zombosis sobre un checker adyacente a un aliado --------
+  if(hand.includes('zombie') && mana >= POWERS.zombie.cost && single){
+    for(const sq of checkers){
+      const target = chess.get(sq);
+      if(!target || target.type === 'k') continue;
+      if(!isAdjacentToAllyOn(chess, sq, color)) continue;
+      opts.push({ key:'zombie', sq, cost: POWERS.zombie.cost, score: 200000 });
+    }
+  }
+
+  // -------- 3. Teletransporte: huir con el rey o bloquear con otra pieza --------
+  if(hand.includes('teleport')){
+    const board = chess.board();
+    // 3a. Huir con el rey
+    const kingSq = findKing(color);
+    if(kingSq){
+      for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+        if(board[r][c]) continue;
+        const toSq = rcToSquare(r,c);
+        const cost = teleportCost(kingSq, toSq);
+        if(!isFinite(cost) || cost > mana) continue;
+        if(simTeleportResolvesCheck(kingSq, toSq, color)){
+          // Prefiere destinos lejanos del enemigo y casillas baratas
+          const toRC = sqToRC(toSq);
+          const center = Math.abs(toRC.r - 3.5) + Math.abs(toRC.c - 3.5);
+          opts.push({ key:'teleport', from: kingSq, to: toSq, cost, score: 200000 - cost * 10 + center * 5 });
+        }
+      }
+    }
+    // 3b. Bloquear con otra pieza
+    for(let r1=0;r1<8;r1++) for(let c1=0;c1<8;c1++){
+      const p = board[r1][c1];
+      if(!p || p.color !== color || p.type === 'k') continue;
+      const fromSq = rcToSquare(r1,c1);
+      // Solo vale la pena si la pieza bloquea con poco coste
+      for(let r2=0;r2<8;r2++) for(let c2=0;c2<8;c2++){
+        if(board[r2][c2]) continue;
+        const toSq = rcToSquare(r2,c2);
+        const cost = teleportCost(fromSq, toSq);
+        if(!isFinite(cost) || cost > mana) continue;
+        if(simTeleportResolvesCheck(fromSq, toSq, color)){
+          opts.push({ key:'teleport', from: fromSq, to: toSq, cost, score: 100000 - cost * 10 });
+        }
+      }
+    }
+  }
+
+  // -------- 4. Toque Curativo: revivir bloqueando el jaque --------
+  if(hand.includes('heal')){
+    const pile = state.graveyard[color];
+    const types = [...new Set(pile)];
+    if(types.length){
+      for(const t of types){
+        const cost = healCostFor(t);
+        if(cost > mana) continue;
+        for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+          if(chess.board()[r][c]) continue;
+          const sq = rcToSquare(r,c);
+          if(simPlacedPieceResolvesCheck(sq, t, color)){
+            opts.push({ key:'heal', type:t, sq, cost, score: 100000 - cost * 20 });
+          }
+        }
+      }
+    }
+  }
+
+  // Escudo no resuelve jaque (absorbe ataques directos, pero el jaque sigue).
+  // Terremoto es aleatorio → tampoco se considera en emergencia.
+
+  if(!opts.length) return null;
+  opts.sort((a,b) => b.score - a.score);
+  return opts[0];
+}
+
+/* =========================================================
    IA — BÚSQUEDA DE PODERES (async con yields en los pesados)
    ========================================================= */
 function aiFindRayOption(color, mana, hand){
@@ -3435,6 +3616,8 @@ function aiFindZombieOption(color, mana, hand){
 function aiFindHealOption(color, mana, hand){
   if(!hand.includes('heal')) return null;
   const pile = state.graveyard[color];
+  const empties = getAdjacentEmptySquares(color);
+  if(!empties.length) return null;
   const seen = new Set();
   const opts = [];
   for(const t of pile){
@@ -3443,7 +3626,7 @@ function aiFindHealOption(color, mana, hand){
     const cost = healCostFor(t);
     if(cost > mana) continue;
     const score = PIECE_VALUE[t] - cost * 30 - 60;
-    opts.push({ key:'heal', type:t, cost, score });
+    opts.push({ key:'heal', type:t, sq: empties[0], cost, score });
   }
   if(!opts.length) return null;
   opts.sort((a,b)=>b.score-a.score);
@@ -3498,6 +3681,8 @@ async function aiFindTeleportOption(color, mana, hand){
     if(aiSearchAbort) return null;
     const p = board[r1][c1];
     if(!p || p.color !== color) continue;
+    // *** FIX: no vale la pena teletransportar al rey en modo normal — es la pieza que menos se mueve "por gusto" ***
+    if(p.type === 'k') continue;
     const fromSq = rcToSquare(r1,c1);
     const normalMoves = new Set();
     try {
@@ -3543,7 +3728,9 @@ async function aiFindTeleportOption(color, mana, hand){
       if(dstAttacked && !srcAttacked) reason -= srcValue * 0.35;
       else if(dstAttacked && srcAttacked) reason -= srcValue * 0.15;
       reason -= cost * 22;
-      if(reason > 0) opts.push({ key:'teleport', from: fromSq, to: toSq, cost, score: reason });
+      // *** FIX: exigir ganancia real mínima ***
+      if(reason < 55) continue;
+      opts.push({ key:'teleport', from: fromSq, to: toSq, cost, score: reason });
     }
   }
   if(!opts.length) return null;
@@ -3611,6 +3798,14 @@ async function aiFindQuakeOption(color, mana, hand){
   return opts[0];
 }
 async function aiFindBestPower(color){
+  // *** FIX: si está en jaque, solo consideramos poderes que lo resuelvan ***
+  if(aiIsInCheck(color)){
+    const emergency = aiFindEmergencyPower(color);
+    if(emergency) return emergency;
+    return null;  // ningún poder salva → que la IA mueva normal (findBestMove resolverá)
+  }
+
+  // === Modo normal (sin jaque) ===
   const mana = state.mana[color];
   const hand = playerDecks[color].hand;
   const candidates = [];
@@ -3630,10 +3825,9 @@ async function aiExecutePower(opt){
     case 'zombie': await execZombie(opt.sq); break;
     case 'shield': await execShield(opt.sq); break;
     case 'heal': {
-      const empties = getAdjacentEmptySquares(aiColor);
-      if(empties.length){
-        await execHeal(empties[0], opt.type, aiColor, opt.cost);
-      } else endTurn();
+      const targetSq = opt.sq || (getAdjacentEmptySquares(aiColor)[0] || null);
+      if(targetSq) await execHeal(targetSq, opt.type, aiColor, opt.cost);
+      else endTurn();
       break;
     }
     case 'teleport': await execTeleport(opt.from, opt.to, opt.cost); break;
