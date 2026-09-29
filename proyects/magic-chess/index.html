@@ -1565,27 +1565,48 @@ function updatePieceClass(el, p, sq){
 function syncPieces(){
   const board = chess.board();
   const seen = new Set();
+
   for(let r=0;r<8;r++) for(let c=0;c<8;c++){
     const p = board[r][c];
     if(!p) continue;
     const sq = rcToSquare(r,c);
     seen.add(sq);
     let el = pieceEls.get(sq);
+
     if(!el){
-      el = createPieceEl(p, sq);
-      pieceEls.set(sq, el);
-      el.classList.add('spawn');
-      setTimeout(()=>el.classList.remove('spawn'), 400);
-    } else positionPiece(el, sq);
+      // *** FIX: si hay un elemento ANIMANDO cuyo destino es esta casilla,
+      // reclamarlo en vez de crear otro ***
+      let claimed = null;
+      for(const [k, v] of pieceEls){
+        if(animatingEls.has(v) && v.dataset.pendingTo === sq){ claimed = v; break; }
+      }
+      if(claimed){
+        el = claimed;
+        pieceEls.set(sq, el);
+      } else {
+        el = createPieceEl(p, sq);
+        pieceEls.set(sq, el);
+        el.classList.add('spawn');
+        setTimeout(()=>el.classList.remove('spawn'), 400);
+      }
+    } else if(!animatingEls.has(el)){
+      // Solo reposicionar si NO está animando
+      positionPiece(el, sq);
+    }
     updatePieceClass(el, p, sq);
   }
+
   for(const sq of [...pieceEls.keys()]){
     if(!seen.has(sq)){
       const el = pieceEls.get(sq);
-      if(el) el.remove();
-      pieceEls.delete(sq);
+      if(el && !animatingEls.has(el)){
+        el.remove();
+        pieceEls.delete(sq);
+      }
+      // si está animando, no lo borramos: lo dejamos terminar
     }
   }
+
   piecesEl.style.setProperty('--cs', cellSize + 'px');
 }
 function rebuildPieces(){
@@ -1602,28 +1623,48 @@ function rebuildPieces(){
   }
   piecesEl.style.setProperty('--cs', cellSize + 'px');
 }
+const animatingEls = new Set();
 async function animateMove(from, to, capturedSquare, duration = 200){
-  const el = pieceEls.get(from);
-  if(!el) return;
-  const targetEl = capturedSquare ? pieceEls.get(capturedSquare) : pieceEls.get(to);
-  pieceEls.delete(from);
-  if(targetEl) pieceEls.delete(capturedSquare || to);
-  pieceEls.set(to, el);
-  spawnDust(from, to);
-  if(duration !== 200){
-    el.style.transition = `transform ${duration}ms cubic-bezier(.18,.75,.28,1)`;
-  } else {
-    el.style.transition = '';
+  let el = pieceEls.get(from);
+  if(!el){
+    // Fallback defensivo: si el elemento no está donde chess dice, reconstruir
+    console.warn('[animateMove] elemento perdido en', from, '→ rebuild');
+    rebuildPieces();
+    return;
   }
-  el.getBoundingClientRect();
-  positionPiece(el, to);
-  if(targetEl){
-    setTimeout(()=>{
-      targetEl.classList.add('captured');
-      setTimeout(()=>targetEl.remove(), 280);
-    }, Math.min(120, duration * 0.3));
+
+  animatingEls.add(el);
+  try {
+    const targetEl = capturedSquare ? pieceEls.get(capturedSquare) : pieceEls.get(to);
+    pieceEls.delete(from);
+    if(targetEl) pieceEls.delete(capturedSquare || to);
+    pieceEls.set(to, el);
+    el.dataset.pendingTo = to;
+    spawnDust(from, to);
+
+    if(duration !== 200){
+      el.style.transition = `transform ${duration}ms cubic-bezier(.18,.75,.28,1)`;
+    } else {
+      el.style.transition = '';
+    }
+
+    el.getBoundingClientRect();
+    positionPiece(el, to);
+
+    if(targetEl){
+      setTimeout(()=>{
+        targetEl.classList.add('captured');
+        setTimeout(()=>targetEl.remove(), 280);
+      }, Math.min(120, duration * 0.3));
+    }
+
+    await sleep(duration);
+
+    // *** Snap final: por si el navegador pausó la transición a mitad ***
+    positionPiece(el, to);
+  } finally {
+    animatingEls.delete(el);
   }
-  await sleep(duration);
 }
 function movePieceOnBoard(from, to){
   const piece = chess.get(from);
@@ -1661,15 +1702,19 @@ function validateAndFixBoard(){
   rebuildPieces();
 }
 function simMoveLeavesKingInCheck(fromSq, toSq, color){
+  const key = 'K|' + chess.fen() + '|' + fromSq + '|' + toSq + '|' + color;
+  const c = cacheGet(key);
+  if(c !== undefined) return c;
+
   const savedFen = chess.fen();
   let result = true;
   try {
     const piece = chess.get(fromSq);
-    if(!piece){ return true; }
-    if(!chess.remove(fromSq)){ return true; }
+    if(!piece){ cacheSet(key, true); return true; }
+    if(!chess.remove(fromSq)){ cacheSet(key, true); return true; }
     if(!chess.put(piece, toSq)){
       try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
-      return true;
+      cacheSet(key, true); return true;
     }
     const parts = chess.fen().split(' ');
     parts[1] = color; parts[3] = '-'; parts[4] = '0';
@@ -1677,10 +1722,16 @@ function simMoveLeavesKingInCheck(fromSq, toSq, color){
     result = chess.in_check();
   } catch(e){ result = true; }
   try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+
+  cacheSet(key, result);
   return result;
 }
 // Ahora recibe una instancia de Chess (antes usaba la global)
 function isSquareAttackedByEnemyOn(chessObj, sq, color){
+  const key = 'A|' + chessObj.fen() + '|' + sq + '|' + color;
+  const c = cacheGet(key);
+  if(c !== undefined) return c;
+
   const savedFen = chessObj.fen();
   let result = false;
   try {
@@ -1692,6 +1743,8 @@ function isSquareAttackedByEnemyOn(chessObj, sq, color){
     result = moves.some(m => m.to === sq);
   } catch(e){ result = false; }
   try { chessObj.load(savedFen, { skipValidation: true }); } catch(e){}
+
+  cacheSet(key, result);
   return result;
 }
 // Wrapper para el juego real
@@ -2199,9 +2252,15 @@ function endTurn(){
   if(iraResolve){ const r = iraResolve; iraResolve = null; r(null); }
   clearHighlights();
   turnSnapshotTaken = false;
-  const ended = checkGameEnd();
-  if(!ended && chess && chess.in_check()) vibrate([40, 60, 40]);
+  checkGameEnd();
   updateUI();
+
+  // *** Red de seguridad: si algo quedó desincronizado, repararlo en el
+  //     siguiente par de frames (cuando ya no hay animaciones) ***
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if(!state.busy && !replay.active && !animatingEls.size) syncPieces();
+  }));
+
   if(aiEnabled && !state.gameOver && chess.turn() === aiColor && !replay.active && !state.paused){
     setTimeout(aiTurn, 650);
   }
@@ -3209,8 +3268,53 @@ let aiSearchAbort = false;
 let aiSearchLastYield = 0;
 const AI_YIELD_MS = 8;  // ceder el hilo cada 8ms para no bloquear el paint
 
+// *** NUEVO: watchdog del modo unificado ***
+let aiSearchDeadline = 0;         // 0 = sin límite activo
+let aiSearchTimedOut = false;     // se activa si el watchdog dispara
+const AI_UNIFIED_TIMEOUT_MS = 10000;   // 10 segundos de techo para el RUBY unificado
+
+/* =========================================================
+   TRANSPOSITION TABLE — cache por FEN
+   =========================================================
+   Almacena resultados de funciones puras keyed por (FEN, args).
+   Evita recalcular el mismo nodo cientos de veces cuando hay
+   transposiciones (muy común en ajedrez con poderes).
+   ========================================================= */
+const posCache = new Map();
+const POS_CACHE_MAX = 80000;
+
+function cacheGet(k){
+  const v = posCache.get(k);
+  if(v === undefined) return undefined;
+  // LRU liviano: mover al final
+  posCache.delete(k);
+  posCache.set(k, v);
+  return v;
+}
+function cacheSet(k, v){
+  if(posCache.size >= POS_CACHE_MAX){
+    // Evacuar 20% más antiguo (el Map preserva orden de inserción)
+    const toDel = Math.floor(POS_CACHE_MAX * 0.2);
+    let i = 0;
+    for(const key of posCache.keys()){
+      if(i++ >= toDel) break;
+      posCache.delete(key);
+    }
+  }
+  posCache.set(k, v);
+}
+function clearPosCache(){ posCache.clear(); }
+
 function aiYieldIfNeeded(){
   const now = performance.now();
+
+  // Watchdog: si la búsqueda unificada se pasó del tiempo, abortamos
+  if(aiSearchDeadline && now > aiSearchDeadline){
+    aiSearchTimedOut = true;
+    aiSearchAbort = true;
+    return null;
+  }
+
   if(now - aiSearchLastYield > AI_YIELD_MS){
     aiSearchLastYield = now;
     return new Promise(r => setTimeout(r, 0));
@@ -3285,6 +3389,44 @@ async function minimax(searchChess, depth, alpha, beta, maximizing, rootColor){
     return best;
   }
 }
+/* Minimax SÍNCRONO — sin Promises por nodo.
+   El yielding se hace solo entre candidatos raíz. */
+function minimaxSync(searchChess, depth, alpha, beta, maximizing, rootColor){
+  if(aiSearchAbort) return 0;
+  if(depth === 0 || searchChess.game_over()) return evaluateFor(searchChess, rootColor);
+  const moves = searchChess.moves({ verbose: true });
+  orderMoves(moves);
+  if(maximizing){
+    let best = -Infinity;
+    for(const mv of moves){
+      const moveObj = (mv.piece === 'p' && (mv.to[1] === '8' || mv.to[1] === '1') && !mv.promotion)
+        ? { ...mv, promotion: 'q' } : mv;
+      searchChess.move(moveObj);
+      const v = minimaxSync(searchChess, depth-1, alpha, beta, false, rootColor);
+      searchChess.undo();
+      if(aiSearchAbort) return 0;
+      if(v > best) best = v;
+      if(v > alpha) alpha = v;
+      if(beta <= alpha) break;
+    }
+    return best;
+  } else {
+    let best = Infinity;
+    for(const mv of moves){
+      const moveObj = (mv.piece === 'p' && (mv.to[1] === '8' || mv.to[1] === '1') && !mv.promotion)
+        ? { ...mv, promotion: 'q' } : mv;
+      searchChess.move(moveObj);
+      const v = minimaxSync(searchChess, depth-1, alpha, beta, true, rootColor);
+      searchChess.undo();
+      if(aiSearchAbort) return 0;
+      if(v < best) best = v;
+      if(v < beta) beta = v;
+      if(beta <= alpha) break;
+    }
+    return best;
+  }
+}
+
 // La amenaza de cartas se calcula sobre el searchChess (no toca la global)
 function computeCardThreatPenalty(searchChess, color){
   const enemy = color === 'w' ? 'b' : 'w';
@@ -3353,7 +3495,6 @@ function computeCardThreatPenalty(searchChess, color){
 }
 
 async function findBestMove(depth, rootColor){
-  // Instancia separada: la partida real NO se toca durante la búsqueda
   const searchChess = new Chess(chess.fen());
   const moves = searchChess.moves({ verbose: true });
   if(!moves.length) return null;
@@ -3372,8 +3513,7 @@ async function findBestMove(depth, rootColor){
       const y = aiYieldIfNeeded();
       if(y) await y;
     }
-    if(aiSearchAbort) return null;
-    return best;
+    return aiSearchAbort ? null : best;
   }
   let bestMove = null, bestScore = -Infinity;
   let alpha = -Infinity, beta = Infinity;
@@ -3383,7 +3523,7 @@ async function findBestMove(depth, rootColor){
     const moveObj = mv.promotion ? mv : (mv.piece === 'p' && (mv.to[1] === '8' || mv.to[1] === '1')
       ? { ...mv, promotion: 'q' } : mv);
     searchChess.move(moveObj);
-    const score = await minimax(searchChess, depth - 1, alpha, beta, false, rootColor);
+    const score = minimaxSync(searchChess, depth - 1, alpha, beta, false, rootColor);
     const threat = computeCardThreatPenalty(searchChess, rootColor) * threatWeight;
     searchChess.undo();
     if(aiSearchAbort) return null;
@@ -3414,7 +3554,10 @@ function aiIsInCheck(color){
 }
 
 function aiGetCheckers(color){
-  // Devuelve las casillas de las piezas enemigas que dan jaque al rey de `color`
+  const key = 'C|' + chess.fen() + '|' + color;
+  const c = cacheGet(key);
+  if(c !== undefined) return c;
+
   const savedFen = chess.fen();
   const checkers = [];
   try {
@@ -3440,6 +3583,8 @@ function aiGetCheckers(color){
     }
   } catch(e){}
   try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+
+  cacheSet(key, checkers);
   return checkers;
 }
 
@@ -3612,6 +3757,229 @@ function aiFindEmergencyPower(color){
   if(!opts.length) return null;
   opts.sort((a,b) => b.score - a.score);
   return opts[0];
+}
+
+
+/* =========================================================
+   RUBY — BÚSQUEDA UNIFICADA MOVIMIENTOS + PODERES
+   =========================================================
+   Cada poder se evalúa como un candidato al mismo nivel que los
+   movimientos legales. minimax decide cuál lleva a la mejor
+   posición, con una penalización por coste de maná.
+   ========================================================= */
+
+function switchTurnOn(chessObj){
+  const parts = chessObj.fen().split(' ');
+  parts[1] = parts[1] === 'w' ? 'b' : 'w';
+  parts[3] = '-'; parts[4] = '0';
+  try { chessObj.load(parts.join(' '), { skipValidation: true }); } catch(e){}
+}
+
+// Aplica un poder sobre una instancia Chess SIN animación ni efectos.
+// Shield y quake no se simulan (shield no cambia el tablero, quake es
+// estocástico) — esos siguen usándose como "oportunidades" heurísticas.
+function applyPowerToBoard(chessObj, opt, color){
+  switch(opt.key){
+    case 'ray': {
+      const v = chessObj.get(opt.sq);
+      if(!v || v.color === color || v.type === 'k') return false;
+      chessObj.remove(opt.sq);
+      return true;
+    }
+    case 'zombie': {
+      const v = chessObj.get(opt.sq);
+      if(!v || v.color === color || v.type === 'k') return false;
+      const t = v.type;
+      chessObj.remove(opt.sq);
+      try { chessObj.put({ type: t, color }, opt.sq); } catch(e){ return false; }
+      return true;
+    }
+    case 'teleport': {
+      const p = chessObj.get(opt.from);
+      if(!p || p.color !== color) return false;
+      if(chessObj.get(opt.to)) return false;
+      chessObj.remove(opt.from);
+      try { chessObj.put(p, opt.to); } catch(e){ return false; }
+      return true;
+    }
+    case 'heal': {
+      if(chessObj.get(opt.sq)) return false;
+      try { chessObj.put({ type: opt.type, color }, opt.sq); } catch(e){ return false; }
+      return true;
+    }
+    default:
+      return false;  // shield, quake — se evalúan aparte
+  }
+}
+
+// Enumera poderes candidatos con filtros duros y los recorta por
+// peso heurístico para no explotar el árbol.
+function aiEnumeratePowerOptions(color, mana, hand){
+  const all = [];
+  const board = chess.board();
+  const enemyKingSq = findKing(color === 'w' ? 'b' : 'w');
+
+  // --- Rayo ---
+  if(hand.includes('ray')){
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      const p = board[r][c];
+      if(!p || p.color === color || p.type === 'k') continue;
+      const cost = rayCostFor(p.type);
+      if(cost > mana) continue;
+      // Solo vale la pena si elimina amenaza o gana material importante
+      all.push({ key:'ray', sq: rcToSquare(r,c), cost, weight: PIECE_VALUE[p.type] });
+    }
+  }
+
+  // --- Zombosis ---
+  if(hand.includes('zombie') && mana >= POWERS.zombie.cost){
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      const p = board[r][c];
+      if(!p || p.color === color || p.type === 'k') continue;
+      const sq = rcToSquare(r,c);
+      if(!isAdjacentToAllyOn(chess, sq, color)) continue;
+      all.push({ key:'zombie', sq, cost: POWERS.zombie.cost, weight: PIECE_VALUE[p.type] * 2 });
+    }
+  }
+
+  // --- Toque Curativo ---
+  if(hand.includes('heal')){
+    const types = [...new Set(state.graveyard[color])];
+    const empties = getAdjacentEmptySquares(color);
+    for(const t of types){
+      const cost = healCostFor(t);
+      if(cost > mana) continue;
+      for(const sq of empties){
+        all.push({ key:'heal', type:t, sq, cost, weight: PIECE_VALUE[t] });
+      }
+    }
+  }
+
+  // --- Teletransporte (pre-filtrado) ---
+  if(hand.includes('teleport') && mana >= 2){
+    for(let r1=0;r1<8;r1++) for(let c1=0;c1<8;c1++){
+      const p = board[r1][c1];
+      if(!p || p.color !== color) continue;
+
+      // *** FILTRO: solo piezas amenazadas o atacantes valen la pena ***
+      const isAttacker = p.type === 'q' || p.type === 'r' || p.type === 'b' || p.type === 'n';
+      const srcAttacked = isSquareAttackedByEnemyOn(chess, rcToSquare(r1,c1), color);
+      if(!isAttacker && !srcAttacked) continue;   // peones tranquilos → fuera
+
+      const fromSq = rcToSquare(r1,c1);
+      const normalMoves = new Set();
+      try {
+        const savedFen = chess.fen();
+        const parts = savedFen.split(' ');
+        parts[1] = color; parts[3] = '-'; parts[4] = '0';
+        chess.load(parts.join(' '), { skipValidation: true });
+        chess.moves({ square: fromSq, verbose: true }).forEach(m => normalMoves.add(m.to));
+        chess.load(savedFen, { skipValidation: true });
+      } catch(e){}
+
+      const srcVal = PIECE_VALUE[p.type];
+
+      for(let r2=0;r2<8;r2++) for(let c2=0;c2<8;c2++){
+        if(board[r2][c2]) continue;
+        const toSq = rcToSquare(r2,c2);
+        if(normalMoves.has(toSq)) continue;
+        const cost = teleportCost(fromSq, toSq);
+        if(!isFinite(cost) || cost > mana) continue;
+        if(simMoveLeavesKingInCheck(fromSq, toSq, color)) continue;
+
+        let weight = 0;
+        if(srcAttacked) weight += srcVal * 0.4;
+
+        const savedFen2 = chess.fen();
+        try {
+          chess.remove(fromSq);
+          chess.put(p, toSq);
+          if(chess.in_check()) weight += 120;
+        } catch(e){}
+        try { chess.load(savedFen2, { skipValidation: true }); } catch(e){}
+
+        if(enemyKingSq && isAttacker){
+          const ek = sqToRC(enemyKingSq);
+          const dFrom = Math.max(Math.abs(r1-ek.r), Math.abs(c1-ek.c));
+          const dTo   = Math.max(Math.abs(r2-ek.r), Math.abs(c2-ek.c));
+          if(dTo < dFrom) weight += (dFrom - dTo) * 15;
+        }
+
+        if(weight < 30) continue;
+        all.push({ key:'teleport', from: fromSq, to: toSq, cost, weight });
+      }
+    }
+  }
+
+  all.sort((a,b) => b.weight - a.weight);
+  return all.slice(0, 14);  // techo de candidatos
+}
+
+// Punto de entrada de RUBY
+async function aiFindBestActionUnified(color, depth){
+  const searchChess = new Chess(chess.fen());
+  const candidates = [];
+
+  const moves = searchChess.moves({ verbose: true });
+  orderMoves(moves);
+  for(const mv of moves) candidates.push({ kind:'move', mv });
+
+  const mana = state.mana[color];
+  const hand = playerDecks[color].hand;
+  if(hand.length && mana >= 2){
+    // *** cap reducido: 8 candidatos en vez de 14 ***
+    for(const opt of aiEnumeratePowerOptions(color, mana, hand).slice(0, 8)){
+      candidates.push({ kind:'power', opt });
+    }
+  }
+
+  if(!candidates.length) return null;
+
+  aiSearchLastYield = performance.now();
+  let best = null, bestScore = -Infinity;
+  let alpha = -Infinity;
+
+  for(const c of candidates){
+    if(aiSearchAbort) return null;
+
+    const savedFen = searchChess.fen();
+    let applied = false;
+
+    if(c.kind === 'move'){
+      const moveObj = c.mv.promotion ? c.mv : (
+        c.mv.piece === 'p' && (c.mv.to[1] === '8' || c.mv.to[1] === '1')
+          ? { ...c.mv, promotion: 'q' } : c.mv
+      );
+      try { applied = !!searchChess.move(moveObj); } catch(e){ applied = false; }
+    } else {
+      applied = applyPowerToBoard(searchChess, c.opt, color);
+      if(applied) switchTurnOn(searchChess);
+    }
+
+    if(!applied){
+      try { searchChess.load(savedFen, { skipValidation: true }); } catch(e){}
+      continue;
+    }
+
+    // *** minimaxSync en vez de minimax ***
+    const score = minimaxSync(searchChess, depth - 1, alpha, Infinity, false, color);
+
+    try { searchChess.load(savedFen, { skipValidation: true }); } catch(e){}
+
+    const manaCost = c.kind === 'power' ? (c.opt.cost || 0) : 0;
+    const finalScore = score - manaCost * 25;
+
+    if(finalScore > bestScore){
+      bestScore = finalScore;
+      best = c;
+    }
+    if(finalScore > alpha) alpha = finalScore;
+
+    const y = aiYieldIfNeeded();
+    if(y) await y;
+  }
+
+  return best;
 }
 
 /* =========================================================
@@ -3877,26 +4245,69 @@ async function aiTurn(){
   if(chess.turn() !== aiColor) return;
 
   aiThinking = true;
-  state.aiBusy = true;       // bloquea inputs mientras piensa
+  state.aiBusy = true;
   aiSearchAbort = false;
+  aiSearchTimedOut = false;
+  aiSearchDeadline = 0;
   aiSearchLastYield = performance.now();
   updateUI();
   await sleep(180);
 
-  if(state.gameOver || replay.active || state.paused || aiSearchAbort){
-    aiThinking = false;
-    state.aiBusy = false;
-    updateUI();
-    return;
+  if(state.gameOver || replay.active || state.paused || aiSearchAbort || chess.turn() !== aiColor){
+    aiThinking = false; state.aiBusy = false; updateUI(); return;
   }
-  // Doble chequeo: si la partida cambió de turno por algún motivo, abortar
-  if(chess.turn() !== aiColor){
-    aiThinking = false;
-    state.aiBusy = false;
-    updateUI();
+
+  // *** RUBY unificado solo si NO hay timer activo ***
+  const useUnified = rubyMode && !gameTimer.enabled;
+
+  if(useUnified){
+    // *** NUEVO: activar watchdog antes de arrancar ***
+    aiSearchDeadline = performance.now() + AI_UNIFIED_TIMEOUT_MS;
+    aiSearchTimedOut = false;
+
+    let action = null;
+    try { action = await aiFindBestActionUnified(aiColor, 3); }
+    catch(e){ console.warn('RUBY unified error:', e); }
+
+    aiSearchDeadline = 0;
+
+    // Si el usuario pausó / salió / terminó la partida durante la búsqueda
+    if(state.gameOver || replay.active || state.paused){
+      aiThinking = false; state.aiBusy = false; updateUI(); return;
+    }
+
+    // *** NUEVO: si timeout → fallback a minimax clásico depth 2 ***
+    if(aiSearchTimedOut){
+      console.warn('[RUBY] Timeout en búsqueda unificada. Fallback a minimax depth 2.');
+      aiSearchTimedOut = false;
+      aiSearchAbort = false;
+      aiSearchLastYield = performance.now();
+
+      let fallbackMove = null;
+      try { fallbackMove = await findBestMove(2, aiColor); }
+      catch(e){ console.warn('RUBY fallback error:', e); }
+
+      // Si durante el fallback el usuario volvió a interrumpir
+      if(state.gameOver || replay.active || state.paused){
+        aiThinking = false; state.aiBusy = false; updateUI(); return;
+      }
+
+      aiThinking = false; state.aiBusy = false;
+      if(fallbackMove) await doPlayerMove(fallbackMove);
+      else endTurn();
+      return;
+    }
+
+    // Camino normal del unificado
+    aiThinking = false; state.aiBusy = false;
+
+    if(action && action.kind === 'power')      await aiExecutePower(action.opt);
+    else if(action && action.kind === 'move')  await doPlayerMove(action.mv);
+    else endTurn();
     return;
   }
 
+  // ===== Camino legacy (Easy / Normal / Hard / Ruby con timer) =====
   const depth = rubyMode ? 3
               : (aiDifficulty === 'easy' ? 1
               : aiDifficulty === 'normal' ? 2
@@ -3906,10 +4317,7 @@ async function aiTurn(){
   catch(e){ console.warn('AI error:', e); }
 
   if(aiSearchAbort || state.gameOver || replay.active || state.paused){
-    aiThinking = false;
-    state.aiBusy = false;
-    updateUI();
-    return;
+    aiThinking = false; state.aiBusy = false; updateUI(); return;
   }
 
   let powerOption = null;
@@ -3917,10 +4325,7 @@ async function aiTurn(){
   catch(e){ console.warn('AI power error:', e); }
 
   if(aiSearchAbort || state.gameOver || replay.active || state.paused){
-    aiThinking = false;
-    state.aiBusy = false;
-    updateUI();
-    return;
+    aiThinking = false; state.aiBusy = false; updateUI(); return;
   }
 
   let usePower = false;
@@ -3935,17 +4340,11 @@ async function aiTurn(){
     if(rubyMode && powerOption.score > PIECE_VALUE.r * 0.5) usePower = true;
   }
 
-  aiThinking = false;
-  state.aiBusy = false;
+  aiThinking = false; state.aiBusy = false;
 
-  // Ya no estamos bloqueando: ahora sí aplicamos el resultado al juego real
-  if(usePower){
-    await aiExecutePower(powerOption);
-  } else if(bestMove){
-    await doPlayerMove(bestMove);
-  } else {
-    endTurn();
-  }
+  if(usePower)          await aiExecutePower(powerOption);
+  else if(bestMove)     await doPlayerMove(bestMove);
+  else                  endTurn();
 }
 
 /* =========================================================
@@ -4672,6 +5071,7 @@ async function exitToMenu(){
 function newGame(){
   aiSearchAbort = true;
   state.aiBusy = false;
+  clearPosCache();   // *** NUEVO ***
   chess = new Chess();
   state.mana = { w: 0, b: 0 };
   state.specialCount = { w: 0, b: 0 };
