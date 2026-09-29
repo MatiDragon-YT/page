@@ -4536,40 +4536,63 @@ function loop(now){
   if(terrainOffscreen) ctx.drawImage(terrainOffscreen, 0, 0, W, H);
   else { ctx.fillStyle = '#1a2418'; ctx.fillRect(0,0,W,H); }
 
-// ===== Cuadrícula con ola diagonal 🌊 =====
+// ===== Cuadrícula con ola diagonal mejorada 🌊✨ =====
 {
-  const period = 5000; // ms por barrido completo
-  const phase = (performance.now() % period) / period; // 0 → 1 (frente de onda)
-  const step = W / 8;
-  const lw = Math.max(1, W / 480);
-  
-  // Función de onda: campana gaussiana centrada en `phase`, con wrap circular
-  const waveWidth = 0.16;
-  const brightnessAt = (fase) => {
+  const period = 5000;
+  const phase  = (performance.now() % period) / period;
+  const step   = W / 8;
+  const lw     = Math.max(1, W / 480);
+
+  // --- Perfil de la ola (campana gaussiana con wrap circular) ---
+  const wrapDist = (fase) => {
     let d = fase - phase;
-    if (d < -0.5) d += 1;
-    if (d > 0.5) d -= 1;
-    return Math.exp(-(d * d) / (waveWidth * waveWidth)); // 0..1
+    if(d < -0.5) d += 1;
+    if(d >  0.5) d -= 1;
+    return d;
   };
-  
-  const baseA = 0.045; // opacidad en el valle de la ola
-  const peakA = 0.42; // opacidad en la cresta
-  
+
+  const waveWidth = 0.14;
+  const waveAmp = (fase) => {
+    const d = wrapDist(fase);
+    return Math.exp(-(d * d) / (waveWidth * waveWidth));
+  };
+
+  // Eco: segunda ola más débil, retrasada, más ancha
+  const echoWidth = 0.22;
+  const echoAmp = (fase) => {
+    const d = wrapDist(fase + 0.11);  // +0.11 → queda DETRÁS del frente principal
+    return Math.exp(-(d * d) / (echoWidth * echoWidth));
+  };
+
+  const baseA     = 0.040;   // valle
+  const peakA     = 0.46;    // cresta principal
+  const echoPeakA = 0.14;    // cresta del eco
+
+  // --- Color: valle frío, cresta cálida ---
+  const rgbAt = (b) => ({
+    r: Math.round(220 + b * 35),
+    g: Math.round(232 + b * 20),
+    bl: Math.round(255 - b * 55)
+  });
+  const alphaAt = (fase) => {
+    const b = waveAmp(fase);
+    const e = echoAmp(fase);
+    return Math.min(0.78, baseA + b * (peakA - baseA) + e * echoPeakA);
+  };
+
   ctx.save();
   ctx.lineWidth = lw;
   ctx.lineCap = 'round';
-  
-  // --- Líneas verticales ---
-  for (let i = 0; i <= 8; i++) {
-    // Sobre la vertical i, la fase del punto (x=i/8, y) es (i/8 + y)/2
-    // Va desde i/16 (arriba) hasta i/16 + 0.5 (abajo)
+
+  // ---- Líneas verticales ----
+  for(let i = 0; i <= 8; i++){
     const grad = ctx.createLinearGradient(0, 0, 0, H);
-    for (let s = 0; s <= 8; s++) {
-      const f = s / 8;
+    for(let s = 0; s <= 10; s++){
+      const f = s / 10;
       const fase = i / 16 + f * 0.5;
-      const b = brightnessAt(fase);
-      const a = baseA + b * (peakA - baseA);
-      grad.addColorStop(f, `rgba(255,248,225,${a})`);
+      const a = alphaAt(fase);
+      const c = rgbAt(waveAmp(fase));
+      grad.addColorStop(f, `rgba(${c.r},${c.g},${c.bl},${a})`);
     }
     ctx.strokeStyle = grad;
     ctx.beginPath();
@@ -4577,17 +4600,16 @@ function loop(now){
     ctx.lineTo(i * step + lw * 0.5, H);
     ctx.stroke();
   }
-  
-  // --- Líneas horizontales ---
-  for (let i = 0; i <= 8; i++) {
-    // Sobre la horizontal i, la fase del punto (x, y=i/8) es (x + i/8)/2
+
+  // ---- Líneas horizontales ----
+  for(let i = 0; i <= 8; i++){
     const grad = ctx.createLinearGradient(0, 0, W, 0);
-    for (let s = 0; s <= 8; s++) {
-      const f = s / 8;
+    for(let s = 0; s <= 10; s++){
+      const f = s / 10;
       const fase = i / 16 + f * 0.5;
-      const b = brightnessAt(fase);
-      const a = baseA + b * (peakA - baseA);
-      grad.addColorStop(f, `rgba(255,248,225,${a})`);
+      const a = alphaAt(fase);
+      const c = rgbAt(waveAmp(fase));
+      grad.addColorStop(f, `rgba(${c.r},${c.g},${c.bl},${a})`);
     }
     ctx.strokeStyle = grad;
     ctx.beginPath();
@@ -4595,27 +4617,41 @@ function loop(now){
     ctx.lineTo(W, i * step + lw * 0.5);
     ctx.stroke();
   }
-  
-  // --- Cruces brillantes donde la ola está en su pico (pequeños destellos) ---
-  for (let i = 0; i <= 8; i++) {
-    for (let j = 0; j <= 8; j++) {
-      const fase = (i + j) / 16;
-      const b = brightnessAt(fase);
-      if (b < 0.55) continue;
-      const a = (b - 0.55) / 0.45 * 0.85;
-      const px = i * step;
-      const py = j * step;
-      const r = lw * 2.2;
+
+  // ---- Cruces: destello radial donde la cresta principal pega fuerte ----
+  for(let i = 0; i <= 8; i++){
+    for(let j = 0; j <= 8; j++){
+      const b = waveAmp((i + j) / 16);
+      if(b < 0.5) continue;
+      const a = (b - 0.5) / 0.5 * 0.9;
+      const px = i * step, py = j * step, r = lw * 2.6;
       const g = ctx.createRadialGradient(px, py, 0, px, py, r);
-      g.addColorStop(0, `rgba(255,252,235,${a})`);
-      g.addColorStop(1, 'rgba(255,252,235,0)');
+      g.addColorStop(0, `rgba(255,252,232,${a})`);
+      g.addColorStop(1, 'rgba(255,252,232,0)');
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(px, py, r, 0, 6.2832);
       ctx.fill();
     }
   }
-  
+
+  // ---- Resplandor interno de cada celda al ser atravesada por la ola ----
+  ctx.globalCompositeOperation = 'lighter';
+  for(let r = 0; r < 8; r++){
+    for(let c = 0; c < 8; c++){
+      const b = waveAmp((r + c + 1) / 16);
+      if(b < 0.35) continue;
+      const a = (b - 0.35) / 0.65 * 0.18;
+      const cx = (c + 0.5) * step, cy = (r + 0.5) * step;
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, step * 0.75);
+      g.addColorStop(0, `rgba(255,245,210,${a})`);
+      g.addColorStop(1, 'rgba(255,245,210,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(c * step, r * step, step, step);
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+
   ctx.restore();
 }
 
