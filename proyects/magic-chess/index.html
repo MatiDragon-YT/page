@@ -359,6 +359,33 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
   box-shadow:0 0 22px rgba(120,180,255,.35),0 4px 14px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.2);
   background:linear-gradient(#1a3050,#0d1a2a)}
 #replayBottom button.close{border-color:#8a4a4a;color:#ffb0b0;background:linear-gradient(#3a1c1c,#1c0a0a)}
+/* =========================================================
+   DRAG & DROP
+   ========================================================= */
+#grid { touch-action: none; }
+#dragLayer{
+  position:absolute; inset:0; pointer-events:none;
+  z-index:100; overflow:visible;
+}
+.piece.dragging{
+  transition:none !important;
+  z-index:101;
+  filter:drop-shadow(0 12px 18px rgba(0,0,0,0.55));
+}
+.piece.dragging .tok{
+  transform:scale(1.14);
+  filter:brightness(1.18);
+  box-shadow:
+    0 10px 28px rgba(0,0,0,0.6),
+    0 0 22px rgba(255,215,130,0.55);
+  transition:none;
+}
+.cell.hover::before{
+  content:'';
+  position:absolute; inset:0; pointer-events:none;
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,0.75);
+  background:rgba(255,255,255,0.14);
+}
 </style>
 </head>
 <body>
@@ -379,6 +406,7 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
     <div id="grid"></div>
     <div id="pieces"></div>
     <canvas id="fpsCanvas"></canvas>   <!-- ⬅️ NUEVO -->
+    <div id="dragLayer"></div>
     <div id="pauseOverlay" class="hidden">
       <div class="pt">PAUSA</div>
       <div class="ps">Toca ⏸ para continuar</div>
@@ -2837,6 +2865,13 @@ function handleTimeout(loser){
    ========================================================= */
 function togglePause(){
   if(state.gameOver || replay.active) return;
+  // Cancelar cualquier drag en curso
+  if(drag){
+    const d = drag; drag = null;
+    try { gridEl.releasePointerCapture(d.pointerId); } catch(e){}
+    endDrag(d);
+    clearHighlights();
+  }
   state.paused = !state.paused;
   $('#pauseOverlay').classList.toggle('hidden', !state.paused);
   $('#btnPause').textContent = state.paused ? '▶' : '⏸';
@@ -6663,7 +6698,184 @@ function loop(now){
 /* =========================================================
    EVENTOS
    ========================================================= */
+/* =========================================================
+   DRAG & DROP (mouse + touch) — Pointer Events unificados
+   ========================================================= */
+const dragLayer = $('#dragLayer');
+let drag = null;
+let suppressNextClick = false;
+const DRAG_THRESHOLD = 6;   // px antes de considerarlo arrastre
+
+function startGhostDrag(d){
+  if(d.originalEl){
+    d.originalEl.style.transition = 'opacity 120ms';
+    d.originalEl.style.opacity = '0.28';
+  }
+
+  const el = document.createElement('div');
+  el.className = 'piece dragging ' + (d.piece.color === 'w' ? 'white' : 'black');
+  el.dataset.code = d.piece.color + d.piece.type;
+  const tok = document.createElement('div');
+  tok.className = 'tok';
+  tok.textContent = GLYPH[d.piece.type];
+  el.appendChild(tok);
+  el.style.width = cellSize + 'px';
+  el.style.height = cellSize + 'px';
+  el.style.position = 'absolute';
+  el.style.left = '0'; el.style.top = '0';
+  el.style.pointerEvents = 'none';
+  el.style.willChange = 'transform';
+  el.style.transition = 'none';
+  dragLayer.appendChild(el);
+  d.ghostEl = el;
+
+  clearHighlights();
+  const fromCell = gridEl.querySelector(`[data-sq="${d.fromSq}"]`);
+  if(fromCell) fromCell.classList.add('sel');
+  for(const m of d.legalMoves){
+    const c = gridEl.querySelector(`[data-sq="${m.to}"]`);
+    if(!c) continue;
+    const isCap = m.flags.includes('c') || m.flags.includes('e');
+    c.classList.add(isCap ? 'cap' : 'mv');
+  }
+}
+
+function endDrag(d){
+  if(d.ghostEl && d.ghostEl.parentNode){
+    d.ghostEl.remove();
+    d.ghostEl = null;
+  }
+  if(d.originalEl){
+    d.originalEl.style.transition = 'opacity 120ms';
+    d.originalEl.style.opacity = '';
+    setTimeout(() => {
+      if(d.originalEl) d.originalEl.style.transition = '';
+    }, 140);
+  }
+  if(d.hoverCell){
+    d.hoverCell.classList.remove('hover');
+    d.hoverCell = null;
+  }
+}
+
+// ---------- POINTER DOWN ----------
+gridEl.addEventListener('pointerdown', (e) => {
+  suppressNextClick = false;
+
+  if(e.pointerType === 'mouse' && e.button !== 0) return;
+  if(state.busy || state.gameOver || replay.active || state.paused || state.aiBusy) return;
+  if(state.targeting) return;                              // targeting se maneja con clicks
+  if(aiEnabled && chess.turn() === aiColor) return;
+
+  const cell = e.target.closest('.cell');
+  if(!cell) return;
+  const sq = cell.dataset.sq;
+  const piece = chess.get(sq);
+  if(!piece) return;
+  if(piece.color !== chess.turn()) return;
+
+  drag = {
+    fromSq: sq,
+    piece,
+    pointerId: e.pointerId,
+    startX: e.clientX,
+    startY: e.clientY,
+    moved: false,
+    ghostEl: null,
+    originalEl: pieceEls.get(sq),
+    hoverCell: null,
+    legalMoves: chess.moves({ square: sq, verbose: true })
+  };
+  try { gridEl.setPointerCapture(e.pointerId); } catch(err){}
+});
+
+// ---------- POINTER MOVE ----------
+gridEl.addEventListener('pointermove', (e) => {
+  if(!drag || e.pointerId !== drag.pointerId) return;
+
+  const dx = e.clientX - drag.startX;
+  const dy = e.clientY - drag.startY;
+  const dist = Math.hypot(dx, dy);
+
+  if(!drag.moved){
+    if(dist < DRAG_THRESHOLD) return;
+    drag.moved = true;
+    startGhostDrag(drag);
+  }
+
+  const rect = boardWrap.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  if(drag.ghostEl){
+    drag.ghostEl.style.transform =
+      `translate(${px - cellSize/2}px, ${py - cellSize/2}px)`;
+  }
+
+  const below = document.elementFromPoint(e.clientX, e.clientY);
+  const belowCell = below ? below.closest('.cell') : null;
+  if(belowCell !== drag.hoverCell){
+    if(drag.hoverCell) drag.hoverCell.classList.remove('hover');
+    if(belowCell && !belowCell.classList.contains('sel')){
+      belowCell.classList.add('hover');
+      drag.hoverCell = belowCell;
+    } else {
+      drag.hoverCell = null;
+    }
+  }
+});
+
+// ---------- POINTER UP ----------
+gridEl.addEventListener('pointerup', async (e) => {
+  if(!drag || e.pointerId !== drag.pointerId) return;
+  const d = drag;
+  drag = null;
+  try { gridEl.releasePointerCapture(e.pointerId); } catch(err){}
+
+  const wasDrag = d.moved;
+  endDrag(d);
+
+  if(!wasDrag){
+    return;              // fue un tap: que lo maneje el click
+  }
+
+  suppressNextClick = true;
+  clearHighlights();
+
+  const target = document.elementFromPoint(e.clientX, e.clientY);
+  const cell = target ? target.closest('.cell') : null;
+  const toSq = cell ? cell.dataset.sq : null;
+
+  if(!toSq || toSq === d.fromSq){
+    onSquareClick(d.fromSq);          // arrastró y volvió → selección
+    return;
+  }
+
+  const mv = d.legalMoves.find(m => m.to === toSq);
+  if(!mv) return;                     // destino no legal: se cancela
+
+  state.selected = null;
+  state.legalMoves = [];
+  await doPlayerMove(mv);
+});
+
+// ---------- POINTER CANCEL ----------
+gridEl.addEventListener('pointercancel', (e) => {
+  if(!drag || e.pointerId !== drag.pointerId) return;
+  const d = drag;
+  drag = null;
+  try { gridEl.releasePointerCapture(e.pointerId); } catch(err){}
+  endDrag(d);
+  clearHighlights();
+});
+
+// ---------- CLICK (con supresión post-drag) ----------
 gridEl.addEventListener('click', (e) => {
+  if(suppressNextClick){
+    suppressNextClick = false;
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
   initAudio();
   if(replay.active || state.paused) return;
   if(state.aiBusy) return;
@@ -6671,6 +6883,8 @@ gridEl.addEventListener('click', (e) => {
   if(!cell) return;
   onSquareClick(cell.dataset.sq);
 });
+
+// ---------- CONTEXT MENU ----------
 gridEl.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   if(replay.active || state.paused || state.aiBusy) return;
