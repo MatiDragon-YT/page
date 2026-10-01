@@ -1244,6 +1244,7 @@ function saveCurrentMatch(result, resultColor){
     name, date: now.getTime(),
     mode, humanColor, aiColor, rubyMode, aiEnabled,
     result, resultColor,
+    biomeId: currentBiome ? currentBiome.id : 'forest',   // ⬅️ NUEVO
     moves: JSON.parse(JSON.stringify(historyLog)),
     finalFen: chess ? chess.fen() : null,
     weather: captureWeatherState()          // snapshot del clima al terminar
@@ -1450,6 +1451,119 @@ function drawParticles(){
   }
 }
 
+
+/* =========================================================
+   BIOMAS
+   ========================================================= */
+const BIOMES = {
+  forest: {
+    id:'forest', name:'Bosque', icon:'🌲',
+    terrainBands: [
+      { max:0.335, r:162, g:142, b:100 },
+      { max:0.44,  r:96,  g:126, b:66  },
+      { max:0.60,  r:70,  g:108, b:54  },
+      { max:0.74,  r:88,  g:94,  b:62  },
+      { max:0.86,  r:110, g:108, b:92  },
+      { max:9.99,  r:132, g:130, b:124 }
+    ],
+    water:   { mode:'water', r:34, g:72, b:108, wr:16, wg:22, wb:26 },
+    rock:    { base:'#7e7c74', light:'#a8a69c', hi:'#c4c2b8', shadow:'rgba(0,0,0,0.30)' },
+    fog:     { r:220, g:225, b:235 },
+    biomeTint: { r:0, g:0, b:0, a:0 },
+    weather: { mode:'rain' },
+    firefly: { mode:'float', core:[220,255,150], mid:[140,255,100], edge:[80,255,60] },
+    hasWater:true, hasFireflies:true, isVolcano:false
+  },
+  desert: {
+    id:'desert', name:'Desierto', icon:'🏜️',
+    terrainBands: [
+      { max:0.335, r:212, g:190, b:130 },
+      { max:0.44,  r:200, g:172, b:110 },
+      { max:0.60,  r:184, g:152, b:96  },
+      { max:0.74,  r:168, g:132, b:78  },
+      { max:0.86,  r:138, g:108, b:64  },
+      { max:9.99,  r:108, g:84,  b:48  }
+    ],
+    water:   { mode:'water', r:44, g:96, b:92, wr:18, wg:22, wb:18 },
+    rock:    { base:'#8a7050', light:'#b09878', hi:'#d0bca0', shadow:'rgba(0,0,0,0.28)' },
+    fog:     { r:235, g:215, b:180 },
+    biomeTint: { r:255, g:210, b:140, a:0.07 },
+    weather: { mode:'dust' },
+    firefly: { mode:'none' },
+    hasWater:true, hasFireflies:false, isVolcano:false
+  },
+  snow: {
+    id:'snow', name:'Nieve', icon:'❄️',
+    terrainBands: [
+      { max:0.335, r:178, g:198, b:210 },
+      { max:0.44,  r:208, g:224, b:234 },
+      { max:0.60,  r:232, g:242, b:248 },
+      { max:0.74,  r:200, g:214, b:224 },
+      { max:0.86,  r:140, g:154, b:164 },
+      { max:9.99,  r:90,  g:104, b:114 }
+    ],
+    water:   { mode:'ice', r:160, g:200, b:224, wr:20, wg:20, wb:12 },
+    rock:    { base:'#8a98a4', light:'#b0bcc4', hi:'#e0e8ec', shadow:'rgba(0,0,0,0.22)' },
+    fog:     { r:210, g:224, b:240 },
+    biomeTint: { r:180, g:210, b:255, a:0.06 },
+    weather: { mode:'snow' },
+    firefly: { mode:'none' },
+    hasWater:true, hasFireflies:false, isVolcano:false
+  },
+  volcano: {
+    id:'volcano', name:'Volcán', icon:'🌋',
+    terrainBands: [
+      { max:0.335, r:92,  g:62,  b:42  },
+      { max:0.44,  r:62,  g:46,  b:34  },
+      { max:0.60,  r:46,  g:34,  b:26  },
+      { max:0.74,  r:58,  g:42,  b:32  },
+      { max:0.86,  r:76,  g:56,  b:40  },
+      { max:9.99,  r:40,  g:28,  b:20  }
+    ],
+    water:   { mode:'lava', r:220, g:70, b:20, wr:35, wg:55, wb:10 },
+    rock:    { base:'#3a2a20', light:'#5a3e2c', hi:'#7a4a2a', shadow:'rgba(0,0,0,0.45)' },
+    fog:     { r:120, g:80, b:60 },
+    biomeTint: { r:255, g:100, b:40, a:0.06 },
+    weather: { mode:'ash' },
+    firefly: { mode:'rise', core:[255,240,200], mid:[255,140,40], edge:[200,60,10] },
+    hasWater:true, hasFireflies:true, isVolcano:true
+  }
+};
+const BIOME_KEYS = ['forest','desert','snow','volcano'];
+
+/* =========================================================
+   PREFERENCIAS PERSISTENTES
+   ========================================================= */
+const PREFS_KEY = 'ajedrez_magico_prefs_v1';
+
+// 'biomePreference' = lo que el usuario eligió en el menú ('random' o un id)
+// 'pendingBiome'    = bioma concreto para la próxima partida (siempre un id)
+let biomePreference = 'random';
+let pendingBiome = 'random';
+
+function savePreferences(cfg){
+  biomePreference = cfg.biome || 'random';
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      mode: cfg.mode,
+      side: cfg.side,
+      biome: biomePreference,
+      timerMinutes: cfg.timerMinutes
+    }));
+  } catch(e){}
+}
+
+function loadPreferences(){
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if(!raw) return null;
+    const p = JSON.parse(raw);
+    if(!p || typeof p !== 'object') return null;
+    return p;
+  } catch(e){ return null; }
+}
+
+let currentBiome = BIOMES.forest;
 /* =========================================================
    TERRENO
    ========================================================= */
@@ -1732,7 +1846,8 @@ function generateTerrain(){
     rocks.push({ x: rx, y: ry, r: rnd(0.004, 0.011), rot: rnd(0,6.28) });
   }
 
-    const fireflies = [];
+
+  const fireflies = [];
 
   /* =========================================================
      LUCIÉRNAGAS v2
@@ -1741,6 +1856,10 @@ function generateTerrain(){
      - Modo CLUSTER: aparecen en grupos de 4-14, no uniformes
      - Total: 30 a 320 por partida
      ========================================================= */
+  if(currentBiome && currentBiome.hasFireflies === false){
+    terr.h = h; terr.water = water; terr.rocks = rocks; terr.fireflies = [];
+    return;
+  }
   const ffTarget   = Math.floor(rnd(30, 320));
   const ffDensity  = rnd(0.06, 0.35);
   const ffRadius   = Math.random() < 0.30 ? 3 : 2;
@@ -1881,15 +2000,21 @@ function renderTerrain(W, H){
       const hU = h[Math.max(0,y-1)*N + x];
       let lit = clamp(0.76 + (hL-hh)*8.5 + (hU-hh)*6.5, 0.40, 1.5);
       let r,g,b;
+      const W_ = currentBiome.water;
       if(water[i]){
         const wave = Math.sin(x*0.7 + y*0.45 + terr.seed)*0.5 + 0.5;
-        r = 34 + wave*16; g = 72 + wave*22; b = 108 + wave*26; lit = 0.92 + wave*0.10;
-      } else if(hh < 0.335){ r=162; g=142; b=100; }
-      else if(hh < 0.44){ r=96; g=126; b=66; }
-      else if(hh < 0.60){ r=70; g=108; b=54; }
-      else if(hh < 0.74){ r=88; g=94; b=62; }
-      else if(hh < 0.86){ r=110; g=108; b=92; }
-      else { r=132; g=130; b=124; }
+        r = W_.r + wave*W_.wr;
+        g = W_.g + wave*W_.wg;
+        b = W_.b + wave*W_.wb;
+        lit = W_.mode === 'lava' ? (1.05 + wave*0.15)
+            : W_.mode === 'ice'  ? (1.02 + wave*0.08)
+            :                      (0.92 + wave*0.10);
+      } else {
+        const bands = currentBiome.terrainBands;
+        let band = bands[bands.length-1];
+        for(const B of bands){ if(hh < B.max){ band = B; break; } }
+        r = band.r; g = band.g; b = band.b;
+      }
       const n = (hash2(x,y,terr.seed) - 0.5) * 14;
       r = clamp(r*lit + n, 0, 255)|0; g = clamp(g*lit + n, 0, 255)|0; b = clamp(b*lit + n, 0, 255)|0;
       o.fillStyle = `rgb(${r},${g},${b})`;
@@ -1914,15 +2039,16 @@ function renderTerrain(W, H){
       o.fillRect(Math.floor(x*cw), Math.floor(y*ch), Math.ceil(cw)+1, Math.ceil(ch)+1);
     }
   }
-  for(const rk of terr.rocks){
+   for(const rk of terr.rocks){
     const px = rk.x * oc.width, py = rk.y * oc.height, rr = rk.r * oc.width;
-    o.fillStyle = 'rgba(0,0,0,0.30)';
+    const R = currentBiome.rock;
+    o.fillStyle = R.shadow;
     o.beginPath(); o.ellipse(px, py + rr*0.55, rr*1.05, rr*0.42, 0, 0, 6.2832); o.fill();
-    o.fillStyle = '#7e7c74';
+    o.fillStyle = R.base;
     o.beginPath(); o.ellipse(px, py, rr, rr*0.78, rk.rot, 0, 6.2832); o.fill();
-    o.fillStyle = '#a8a69c';
+    o.fillStyle = R.light;
     o.beginPath(); o.ellipse(px - rr*0.22, py - rr*0.28, rr*0.62, rr*0.44, rk.rot, 0, 6.2832); o.fill();
-    o.fillStyle = '#c4c2b8';
+    o.fillStyle = R.hi;
     o.beginPath(); o.ellipse(px - rr*0.32, py - rr*0.42, rr*0.30, rr*0.20, rk.rot, 0, 6.2832); o.fill();
   }
   const step = oc.width / 8;
@@ -5038,6 +5164,11 @@ function startReplayFromStored(match){
   // *** FIX: aplicar el clima guardado de esa partida ***
   if(match.weather) applyWeatherState(match.weather);
 
+  if(match.biomeId && BIOMES[match.biomeId]){
+    currentBiome = BIOMES[match.biomeId];
+    if(boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
+  }
+
   // ⬇️ NUEVO: restaurar la orientación original de esa partida
   flipBoard = !!(match.aiEnabled && match.humanColor === 'b');
   applyGridFlip();
@@ -5619,9 +5750,12 @@ async function openQualitySettings(){
    ========================================================= */
 async function showConfigMenu(){
   return new Promise(resolve => {
+        // Los globales ya fueron cargados desde localStorage en boot().
+    // biomePreference guarda la preferencia CRUDA ('random' o un id).
     const cfg = {
       mode: aiEnabled ? (rubyMode ? 'ruby' : aiDifficulty) : 'pvp',
       side: humanColor,
+      biome: biomePreference || 'random',
       timerMinutes: gameTimer.enabled ? gameTimer.initial/60 : 0
     };
     const ov = document.createElement('div');
@@ -5659,6 +5793,16 @@ async function showConfigMenu(){
           <button class="cfgOpt small" data-v="custom">Personalizado</button>
         </div>
       </div>
+      <div class="section">
+        <div class="section-title">Bioma</div>
+        <div class="cfgGrid c3" id="cfgBiome">
+          <button class="cfgOpt" data-v="random"><span class="ic">🎲</span>Aleatorio</button>
+          <button class="cfgOpt" data-v="forest"><span class="ic">🌲</span>Bosque</button>
+          <button class="cfgOpt" data-v="desert"><span class="ic">🏜️</span>Desierto</button>
+          <button class="cfgOpt" data-v="snow"><span class="ic">❄️</span>Nieve</button>
+          <button class="cfgOpt" data-v="volcano"><span class="ic">🌋</span>Volcán</button>
+        </div>
+      </div>
     `;
     ov.appendChild(m);
     document.body.appendChild(ov);
@@ -5675,7 +5819,14 @@ async function showConfigMenu(){
         b.classList.toggle('picked', match);
       });
       m.querySelector('#cfgSideSection').style.display = cfg.mode === 'pvp' ? 'none' : 'block';
+      m.querySelectorAll('#cfgBiome .cfgOpt').forEach(b => b.classList.toggle('picked', b.dataset.v === cfg.biome));
     }
+    m.querySelector('#cfgBiome').onclick = (e) => {
+      const b = e.target.closest('.cfgOpt');
+      if(!b) return;
+      cfg.biome = b.dataset.v;
+      refreshPicked();
+    };
     m.querySelector('#cfgMode').onclick = (e) => {
       const b = e.target.closest('.cfgOpt');
       if(!b) return;
@@ -5746,6 +5897,8 @@ async function showStartMenu(){
     }
     if(res.action === 'start'){
       const cfg = res.cfg;
+      savePreferences(cfg);          // ⬅️ NUEVO: persistir antes que nada
+
       if(cfg.mode === 'pvp'){
         aiEnabled = false; rubyMode = false;
         humanColor = 'w'; aiColor = 'b';
@@ -5760,6 +5913,8 @@ async function showStartMenu(){
       gameTimer.initial = cfg.timerMinutes * 60;
       gameTimer.w = gameTimer.initial;
       gameTimer.b = gameTimer.initial;
+
+      pendingBiome = cfg.biome || 'random';   // ⬅️ mover esto acá si no estaba
       return 'start';
     }
   }
@@ -5826,6 +5981,17 @@ function newGame(){
   aiSearchAbort = true;
   state.aiBusy = false;
   clearPosCache();   // *** NUEVO ***
+
+    // === Bioma ===
+  if(pendingBiome === 'random' || !pendingBiome || !BIOMES[pendingBiome]){
+    currentBiome = BIOMES[BIOME_KEYS[Math.floor(Math.random() * BIOME_KEYS.length)]];
+    pendingBiome = currentBiome.id;
+  } else {
+    currentBiome = BIOMES[pendingBiome];
+  }
+  generateTerrain();
+  if(boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
+  setTimeout(() => toast(`${currentBiome.icon} ${currentBiome.name}`, '#c8b898'), 350);
   
   // ⬇️ NUEVO: decidir orientación antes de reconstruir nada
   flipBoard = aiEnabled && humanColor === 'b';
@@ -6209,7 +6375,84 @@ function drawFpsOverlay(W, H){
 
   fpsCtx.restore();
 }
+function drawWeatherParticles(W, H, dt){
+  const q = getRainScale();
+  if(q <= 0) return;
+  const mode = currentBiome.weather.mode;
+  if(mode === 'none') return;
+  const intensity = rainAmt;
+  if(intensity < 0.012) return;
 
+  const visible = Math.floor(rainDrops.length * q * (0.05 + 0.90 * Math.pow(intensity, 0.55)));
+  const alphaBase = 0.20 + intensity * 0.24;
+
+  if(mode === 'rain'){
+    const lenScale = 0.65 + intensity * 4.20;
+    const lw = 0.55 + intensity * 0.75;
+    const speedMul = 0.85 + intensity * 1.15;
+    const slant = 0.14 + intensity * 0.14;
+    ctx.strokeStyle = `rgba(180,210,240,${alphaBase})`;
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for(let i=0;i<visible;i++){
+      const d = rainDrops[i];
+      d.y += d.spd * speedMul * dt;
+      d.x += d.spd * speedMul * dt * 0.18;
+      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); }
+      if(d.x > 1.05) d.x -= 1.1;
+      const px = d.x * W, py = d.y * H;
+      const L = d.len * lenScale;
+      ctx.moveTo(px, py);
+      ctx.lineTo(px - L * W * slant, py + L * H);
+    }
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+  else if(mode === 'snow'){
+    ctx.fillStyle = `rgba(245,250,255,${0.55 + intensity * 0.30})`;
+    for(let i=0;i<visible;i++){
+      const d = rainDrops[i];
+      d.y += d.spd * (0.25 + intensity * 0.45) * dt;
+      d.x += Math.sin(performance.now() * 0.001 + i) * 0.0008 + (Math.random() - 0.5) * 0.0006;
+      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); }
+      if(d.x > 1.05) d.x -= 1.1;
+      if(d.x < -0.05) d.x += 1.1;
+      const px = d.x * W, py = d.y * H;
+      const r = 0.9 + d.len * 30;
+      ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
+    }
+  }
+  else if(mode === 'dust'){
+    ctx.fillStyle = `rgba(210,180,130,${0.32 + intensity * 0.30})`;
+    for(let i=0;i<visible;i++){
+      const d = rainDrops[i];
+      const speed = (0.35 + intensity * 0.9) * d.spd;
+      d.x += speed * dt * 0.55;
+      d.y += speed * dt * 0.06;
+      if(d.x > 1.05){ d.x = -0.05; d.y = Math.random(); }
+      const px = d.x * W, py = d.y * H;
+      const r = 0.6 + d.len * 18;
+      ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
+    }
+  }
+  else if(mode === 'ash'){
+    for(let i=0;i<visible;i++){
+      const d = rainDrops[i];
+      d.y += d.spd * (0.35 + intensity * 0.55) * dt;
+      d.x += Math.sin(performance.now() * 0.0007 + i * 1.7) * 0.0008 + 0.0006;
+      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); }
+      if(d.x > 1.05) d.x -= 1.1;
+      const px = d.x * W, py = d.y * H;
+      const isEmber = (i % 7 === 0);
+      ctx.fillStyle = isEmber
+        ? `rgba(255,140,60,${0.55 + intensity * 0.35})`
+        : `rgba(70,60,55,${0.45 + intensity * 0.30})`;
+      const r = 0.7 + d.len * 16;
+      ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
+    }
+  }
+}
 function drawBoardGrid(W, H){
   const style = getWaveStyle();
   if(style === 'off'){
@@ -6285,11 +6528,11 @@ function loop(now){
   ctx.fillStyle = `rgb(${ph.tint[0]|0},${ph.tint[1]|0},${ph.tint[2]|0})`;
   ctx.fillRect(0,0,W,H);
   ctx.restore();
-  ctx.fillStyle = `rgba(${ph.tint[0]|0},${ph.tint[1]|0},${ph.tint[2]|0},${ph.a})`;
-  ctx.fillRect(0,0,W,H);
-  if(ph.dark > 0){
-    ctx.fillStyle = `rgba(6,8,22,${ph.dark})`;
-    ctx.fillRect(0,0,W,H);
+  if(currentBiome.biomeTint.a > 0){
+    const bt = currentBiome.biomeTint;
+    const mult = currentBiome.isVolcano ? (0.7 + ph.dark * 1.6) : 1;
+    ctx.fillStyle = `rgba(${bt.r},${bt.g},${bt.b},${bt.a * mult})`;
+    ctx.fillRect(0, 0, W, H);
   }
   if(ph.dark > 0.08){
 
@@ -6323,19 +6566,27 @@ function loop(now){
 
 
     const inten = clamp((ph.dark - 0.08) / 0.20, 0, 1);
-    if(currentQuality().fireflies){
+    if(currentQuality().fireflies && currentBiome.hasFireflies && currentBiome.firefly.mode !== 'none'){
+      const FF = currentBiome.firefly;
+      const isRise = FF.mode === 'rise';
       for(const f of terr.fireflies){
         f.t += dt * f.spd;
         const px = (f.x + Math.sin(f.t*0.7 + f.phase)*f.ax) * W;
-        const py = (f.y + Math.cos(f.t*0.5 + f.phase*1.3)*f.ay) * H;
+        let py;
+        if(isRise){
+          const yy = ((f.y - f.t * 0.10) % 1 + 1) % 1;
+          py = yy * H;
+        } else {
+          py = (f.y + Math.cos(f.t*0.5 + f.phase*1.3)*f.ay) * H;
+        }
         const blink = (Math.sin(f.t*3.2 + f.phase)*0.5 + 0.5);
-        const a = blink * inten * 1.0;
+        const a = blink * inten * (isRise ? 0.85 : 1.0);
         if(a < 0.05) continue;
         ctx.globalAlpha = a;
         const g = ctx.createRadialGradient(px, py, 0, px, py, 9);
-        g.addColorStop(0, 'rgba(220,255,150,1)');
-        g.addColorStop(0.35, 'rgba(140,255,100,0.65)');
-        g.addColorStop(1, 'rgba(80,255,60,0)');
+        g.addColorStop(0,    `rgba(${FF.core[0]},${FF.core[1]},${FF.core[2]},1)`);
+        g.addColorStop(0.35, `rgba(${FF.mid[0]},${FF.mid[1]},${FF.mid[2]},0.65)`);
+        g.addColorStop(1,    `rgba(${FF.edge[0]},${FF.edge[1]},${FF.edge[2]},0)`);
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.arc(px, py, 9, 0, 6.2832); ctx.fill();
         ctx.globalAlpha = 1;
@@ -6352,51 +6603,14 @@ function loop(now){
     const pr = f.r * W;
     const g = ctx.createRadialGradient(px, py, 0, px, py, pr);
     const alpha = f.a * (1 + Math.sin(now*0.0004 + f.ph)*0.25);
-    g.addColorStop(0, `rgba(220,225,235,${alpha})`);
-    g.addColorStop(1, 'rgba(220,225,235,0)');
+    const F = currentBiome.fog;
+    g.addColorStop(0, `rgba(${F.r},${F.g},${F.b},${alpha})`);
+    g.addColorStop(1, `rgba(${F.r},${F.g},${F.b},0)`);
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.ellipse(px, py, pr, pr*0.55, 0, 0, 6.2832); ctx.fill();
   }
   ctx.restore();
-  if(rainAmt > 0.012 && getRainScale() > 0){
-    const rainScale = getRainScale();
-
-    const visible = Math.floor(rainDrops.length * rainScale * (0.05 + 0.90 * Math.pow(rainAmt, 0.55)));
-
-    // Alpha: crece poco. Con poca lluvia se ve tenue, con mucha no llega a "manchar".
-    const alpha   = 0.20 + rainAmt * 0.24;      // 0.20 → 0.44
-
-    // LARGO: acá está el truco. De cortitas a estelas larguísimas.
-    const lenScale = 0.65 + rainAmt * 4.20;     // 0.65x → 4.85x la longitud base
-
-    // Grosor: crece lento (evita el efecto "sábana blanca")
-    const lw = 0.55 + rainAmt * 0.75;
-
-    // Velocidad: caen más rápido cuando arrecia
-    const speedMul = 0.85 + rainAmt * 1.15;
-
-    // Inclinación: más diagonal con más viento
-    const slant = 0.14 + rainAmt * 0.14;
-
-    ctx.strokeStyle = `rgba(180,210,240,${alpha})`;
-    ctx.lineWidth = lw;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    for(let i=0;i<visible;i++){
-      const d = rainDrops[i];
-      d.y += d.spd * speedMul * dt;
-      d.x += d.spd * speedMul * dt * 0.18;
-      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); }
-      if(d.x > 1.05) d.x -= 1.1;
-
-      const px = d.x * W, py = d.y * H;
-      const L = d.len * lenScale;               // longitud efectiva de esta gota
-      ctx.moveTo(px, py);
-      ctx.lineTo(px - L * W * slant, py + L * H);
-    }
-    ctx.stroke();
-    ctx.lineCap = 'butt';
-  }
+  drawWeatherParticles(W, H, dt);
   // VIÑETA
   const vg = ctx.createRadialGradient(W/2, H/2, H*0.32, W/2, H/2, H*0.78);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
@@ -6533,6 +6747,43 @@ function boot(){
       'No se pudo cargar la librería de ajedrez (chess.js). Revisa tu conexión.</div>';
     return;
   }
+
+  // ===== Aplicar preferencias guardadas ANTES de generar el terreno =====
+  const saved = loadPreferences();
+  if(saved){
+    // Modo / lado
+    if(saved.mode){
+      if(saved.mode === 'pvp'){
+        aiEnabled = false; rubyMode = false;
+        humanColor = 'w'; aiColor = 'b';
+      } else {
+        aiEnabled = true;
+        aiDifficulty = saved.mode;
+        rubyMode = (saved.mode === 'ruby');
+        humanColor = saved.side || 'w';
+        aiColor = humanColor === 'w' ? 'b' : 'w';
+      }
+    }
+    // Reloj
+    if(saved.timerMinutes !== undefined){
+      gameTimer.enabled = saved.timerMinutes > 0;
+      gameTimer.initial = saved.timerMinutes * 60;
+      gameTimer.w = gameTimer.initial;
+      gameTimer.b = gameTimer.initial;
+    }
+    // Bioma (preferencia bruta)
+    biomePreference = saved.biome || 'random';
+  }
+
+  // ===== Resolver bioma para el terreno de arranque =====
+  if(biomePreference === 'random' || !BIOMES[biomePreference]){
+    currentBiome = BIOMES[BIOME_KEYS[Math.floor(Math.random() * BIOME_KEYS.length)]];
+    pendingBiome = currentBiome.id;   // fijarlo para esta sesión
+  } else {
+    currentBiome = BIOMES[biomePreference];
+    pendingBiome = biomePreference;
+  }
+
   buildGrid();
   generateTerrain();
   updateSoundButton();
