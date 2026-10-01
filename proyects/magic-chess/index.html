@@ -51,6 +51,15 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
   margin:0 auto;flex:0 0 auto;overflow:hidden;background:#0a0d0a;
   box-shadow:0 8px 34px rgba(0,0,0,.8), inset 0 0 60px rgba(0,0,0,.4)}
 #fx{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
+#fpsCanvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
+  z-index:10;              /* encima de #pieces (z-index:3) */
+  pointer-events:none;     /* no bloquea clics en las celdas */
+}
 #grid{position:absolute;inset:0;display:grid;z-index:2;
   grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr)}
 .cell{position:relative;cursor:pointer}
@@ -369,6 +378,7 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
     <canvas id="fx"></canvas>
     <div id="grid"></div>
     <div id="pieces"></div>
+    <canvas id="fpsCanvas"></canvas>   <!-- ⬅️ NUEVO -->
     <div id="pauseOverlay" class="hidden">
       <div class="pt">PAUSA</div>
       <div class="ps">Toca ⏸ para continuar</div>
@@ -957,6 +967,8 @@ const dpr = Math.min(window.devicePixelRatio || 1, 2);
 const boardWrap = $('#boardWrap');
 const canvas = $('#fx');
 const ctx = canvas.getContext('2d');
+const fpsCanvas = $('#fpsCanvas');           // ⬅️ NUEVO
+const fpsCtx = fpsCanvas.getContext('2d');   // ⬅️ NUEVO
 const gridEl = $('#grid');
 const piecesEl = $('#pieces');
 const historyEl = $('#history');
@@ -975,6 +987,171 @@ const state = {
   lastMove: { from: null, to: null, prevFrom: null, prevTo: null }
 };
 let iraResolve = null;
+
+
+/* =========================================================
+   SISTEMA DE CALIDAD ADAPTATIVA
+   ========================================================= */
+const QUALITY_PRESETS = {
+  high: {
+    wave: 'radial',
+    crossings: 9,          // 9×9 = 81 cruces radiales
+    cellGlow: true,
+    gridStops: 11,
+    particles: 1.00,
+    rain: 1.00,
+    fireflies: true
+  },
+  medium: {
+    wave: 'radial',
+    crossings: 7,          // 7×7 = 49 cruces
+    cellGlow: true,
+    gridStops: 8,
+    particles: 0.80,
+    rain: 0.90,
+    fireflies: true
+  },
+  low: {
+    wave: 'radial',
+    crossings: 5,          // 5×5 = 25 cruces
+    cellGlow: false,
+    gridStops: 5,
+    particles: 0.50,
+    rain: 0.60,
+    fireflies: true
+  },
+  emergency: {
+    wave: 'strips',        // solo acá se cambia el estilo
+    strips: 12,            // 12 barras diagonales pegadas
+    gridStops: 3,
+    particles: 0.20,
+    rain: 0.25,
+    fireflies: false
+  }
+};
+
+const quality = {
+  mode: localStorage.getItem('ajedrez_quality') || 'auto',
+  waveStyle: localStorage.getItem('ajedrez_wavestyle') || 'auto',
+  particlesEnabled: localStorage.getItem('ajedrez_particles') !== 'off',
+  rainEnabled: localStorage.getItem('ajedrez_rain') !== 'off',
+  effective: 'high',
+  // Auto-regulación
+  fpsSamples: [],
+  lastChange: 0,
+  warmupUntil: performance.now() + 2500,
+  aiBoost: false,
+  moveBoost: false,
+  showFps: localStorage.getItem('ajedrez_showfps') === 'on',
+  fpsGraph: [],          // historial corto para el mini-gráfico
+};
+
+/* FPS recientes: ¿hay señales de estrés? */
+function recentFpsStressed(){
+  const s = quality.fpsSamples;
+  if(s.length < 20) return false;             // sin datos → no asumir estrés
+  const tail = s.slice(-20);
+  const avg = tail.reduce((a,b)=>a+b,0) / tail.length;
+  const min = Math.min(...tail);
+  // Estrés si el promedio cayó por debajo de 45 O hubo un pico feo
+  return avg < 45 || min < 25;
+}
+
+function currentQuality(){
+  let level = quality.effective;
+  const p = QUALITY_PRESETS[level] || QUALITY_PRESETS.high;
+  return { ...p, level };
+}
+
+function getWaveStyle(){
+  if(quality.waveStyle !== 'auto') return quality.waveStyle;
+  return currentQuality().wave;
+}
+function getParticleScale(){
+  if(!quality.particlesEnabled) return 0;
+  return currentQuality().particles;
+}
+function getRainScale(){
+  if(!quality.rainEnabled) return 0;
+  return currentQuality().rain;
+}
+function setShowFps(on){
+  quality.showFps = !!on;
+  localStorage.setItem('ajedrez_showfps', quality.showFps ? 'on' : 'off');
+  if(!quality.showFps){
+    quality.fpsGraph.length = 0;
+    // Limpiar el canvas de FPS una sola vez para que no quede el último frame
+    if(typeof fpsCtx !== 'undefined' && fpsCanvas){
+      fpsCtx.clearRect(0, 0, boardW, boardH);
+    }
+  }
+}
+
+/* Monitor de FPS con ventana deslizante e histeresis */
+const FPS_WINDOW = 120;                // ~2s a 60fps
+const FPS_WARMUP_MS = 3000;
+const FPS_COOLDOWN_DOWN_MS = 1200;     // reacción rápida al bajar
+const FPS_COOLDOWN_UP_MS = 8000;       // reacción lenta al subir (evita ping-pong)
+
+function updateQualityFromFPS(dt){
+  if(dt <= 0) return;
+  const now = performance.now();
+  if(now < quality.warmupUntil) return;
+  if(quality.mode !== 'auto') return;
+
+  const fps = 1 / Math.max(dt, 0.001);
+  quality.fpsSamples.push(fps);
+  if(quality.fpsSamples.length > FPS_WINDOW) quality.fpsSamples.shift();
+  if(quality.fpsSamples.length < 60) return;   // más muestras → menos ruido
+
+  // Percentil 25 (robusto frente a picos aislados)
+  const sorted = [...quality.fpsSamples].sort((a,b)=>a-b);
+  const p25 = sorted[Math.floor(sorted.length * 0.25)];
+  const p50 = sorted[Math.floor(sorted.length * 0.50)];
+
+  // Nos quedamos con el peor de los dos (p25), pero suavizado
+  // Si p50 es bueno y p25 aceptable, no bajamos por un solo pico
+  const ref = Math.min(p50 * 1.05, p25 * 1.4);
+
+  const order = ['emergency', 'low', 'medium', 'high'];
+  const idx = order.indexOf(quality.effective);
+
+  let target = quality.effective;
+  // ⬇️ UMBRALES MUY RELAJADOS ⬇️
+  if     (ref < 8)   target = 'emergency';
+  else if(ref < 20)  target = 'low';
+  else if(ref < 30)  target = 'medium';
+  else               target = 'high';
+
+  if(target === quality.effective) return;
+
+  const isUpgrade = order.indexOf(target) > idx;
+  // Nunca subir más de un escalón a la vez
+  if(isUpgrade && order.indexOf(target) - idx > 1){
+    target = order[idx + 1];
+  }
+
+  const cooldown = isUpgrade ? FPS_COOLDOWN_UP_MS : FPS_COOLDOWN_DOWN_MS;
+  if(now - quality.lastChange < cooldown) return;
+
+  // Para subir, exigir que las últimas muestras realmente estén bien
+  if(isUpgrade){
+    const tail = quality.fpsSamples.slice(-40);
+    const tailAvg = tail.reduce((a,b)=>a+b,0) / tail.length;
+    if(tailAvg < 45) return;
+  }
+
+  quality.effective = target;
+  quality.lastChange = now;
+  console.log(`[quality] → ${target}  (p25: ${p25.toFixed(1)}  p50: ${p50.toFixed(1)})`);
+
+  if(typeof toast === 'function'){
+    const icon = { high:'✨', medium:'⚖️', low:'🍃', emergency:'⚡' }[target];
+    const label = { high:'Alta', medium:'Media', low:'Baja', emergency:'Emergencia' }[target];
+    toast(`${icon} Calidad ${label}`, '#8ad0ff');
+  }
+}
+
 
 const gameTimer = { enabled: false, initial: 300, w: 300, b: 300, running: false, intervalId: null };
 const playerDecks = { w: { hand: [], queue: [] }, b: { hand: [], queue: [] } };
@@ -1154,8 +1331,16 @@ const particles = [];
 const bolts = [];
 const curves = [];
 const ripples = [];
-function addParticle(p){ if(particles.length < 900) particles.push(p); }
+function addParticle(p){
+  const scale = getParticleScale();
+  if(scale <= 0) return;
+  const cap = Math.floor(900 * scale);
+  if(particles.length < cap) particles.push(p);
+}
 function burst(x, y, n, opts={}){
+  const scale = getParticleScale();
+  if(scale <= 0) return;
+  n = Math.max(1, Math.floor(n * scale));
   for(let i=0;i<n;i++){
     const a = opts.angle !== undefined ? opts.angle + rnd(-0.6,0.6) : rnd(0, Math.PI*2);
     const sp = rnd(opts.spMin||30, opts.spMax||140);
@@ -1659,7 +1844,6 @@ const animatingEls = new Set();
 async function animateMove(from, to, capturedSquare, duration = 200){
   let el = pieceEls.get(from);
   if(!el){
-    // Fallback defensivo: si el elemento no está donde chess dice, reconstruir
     console.warn('[animateMove] elemento perdido en', from, '→ rebuild');
     rebuildPieces();
     return;
@@ -1691,8 +1875,6 @@ async function animateMove(from, to, capturedSquare, duration = 200){
     }
 
     await sleep(duration);
-
-    // *** Snap final: por si el navegador pausó la transición a mitad ***
     positionPiece(el, to);
   } finally {
     animatingEls.delete(el);
@@ -4278,6 +4460,16 @@ async function aiTurn(){
 
   aiThinking = true;
   state.aiBusy = true;
+  try {
+    await _aiTurnInner();
+  } finally {
+    aiThinking = false;
+    state.aiBusy = false;
+    updateUI();
+  }
+}
+
+async function _aiTurnInner(){
   aiSearchAbort = false;
   aiSearchTimedOut = false;
   aiSearchDeadline = 0;
@@ -4286,14 +4478,14 @@ async function aiTurn(){
   await sleep(180);
 
   if(state.gameOver || replay.active || state.paused || aiSearchAbort || chess.turn() !== aiColor){
-    aiThinking = false; state.aiBusy = false; updateUI(); return;
+    return;
   }
 
   // *** RUBY unificado solo si NO hay timer activo ***
   const useUnified = rubyMode && !gameTimer.enabled;
 
   if(useUnified){
-    // *** NUEVO: activar watchdog antes de arrancar ***
+    // *** Watchdog antes de arrancar ***
     aiSearchDeadline = performance.now() + AI_UNIFIED_TIMEOUT_MS;
     aiSearchTimedOut = false;
 
@@ -4305,10 +4497,10 @@ async function aiTurn(){
 
     // Si el usuario pausó / salió / terminó la partida durante la búsqueda
     if(state.gameOver || replay.active || state.paused){
-      aiThinking = false; state.aiBusy = false; updateUI(); return;
+      return;
     }
 
-    // *** NUEVO: si timeout → fallback a minimax clásico depth 2 ***
+    // *** Timeout → fallback a minimax clásico depth 2 ***
     if(aiSearchTimedOut){
       console.warn('[RUBY] Timeout en búsqueda unificada. Fallback a minimax depth 2.');
       aiSearchTimedOut = false;
@@ -4321,18 +4513,15 @@ async function aiTurn(){
 
       // Si durante el fallback el usuario volvió a interrumpir
       if(state.gameOver || replay.active || state.paused){
-        aiThinking = false; state.aiBusy = false; updateUI(); return;
+        return;
       }
 
-      aiThinking = false; state.aiBusy = false;
       if(fallbackMove) await doPlayerMove(fallbackMove);
       else endTurn();
       return;
     }
 
     // Camino normal del unificado
-    aiThinking = false; state.aiBusy = false;
-
     if(action && action.kind === 'power')      await aiExecutePower(action.opt);
     else if(action && action.kind === 'move')  await doPlayerMove(action.mv);
     else endTurn();
@@ -4342,14 +4531,14 @@ async function aiTurn(){
   // ===== Camino legacy (Easy / Normal / Hard / Ruby con timer) =====
   const depth = rubyMode ? 3
               : (aiDifficulty === 'easy' ? 1
-              : aiDifficulty === 'normal' ? 2
-              : 3);
+              : (aiDifficulty === 'normal' ? 2
+              : 3));
   let bestMove = null;
   try { bestMove = await findBestMove(depth, aiColor); }
   catch(e){ console.warn('AI error:', e); }
 
   if(aiSearchAbort || state.gameOver || replay.active || state.paused){
-    aiThinking = false; state.aiBusy = false; updateUI(); return;
+    return;
   }
 
   let powerOption = null;
@@ -4357,7 +4546,7 @@ async function aiTurn(){
   catch(e){ console.warn('AI power error:', e); }
 
   if(aiSearchAbort || state.gameOver || replay.active || state.paused){
-    aiThinking = false; state.aiBusy = false; updateUI(); return;
+    return;
   }
 
   let usePower = false;
@@ -4371,8 +4560,6 @@ async function aiTurn(){
     if(rubyMode && state.mana[aiColor] >= 6 && powerOption.score > 0) usePower = true;
     if(rubyMode && powerOption.score > PIECE_VALUE.r * 0.5) usePower = true;
   }
-
-  aiThinking = false; state.aiBusy = false;
 
   if(usePower)          await aiExecutePower(powerOption);
   else if(bestMove)     await doPlayerMove(bestMove);
@@ -4892,6 +5079,134 @@ function importMatchFromFile(parentOverlay){
   input.click();
 }
 
+async function openQualitySettings(){
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    const m = document.createElement('div');
+    m.className = 'modal wide';
+
+    const mode = quality.mode;
+    const wave = quality.waveStyle;
+    const particlesOn = quality.particlesEnabled;
+    const rainOn = quality.rainEnabled;
+
+    m.innerHTML = `
+      <h3>🎨 Calidad visual</h3>
+      <p style="margin-bottom:10px">Ajustá el rendimiento vs. la fidelidad visual.</p>
+      <div class="section">
+        <div class="section-title">Preset</div>
+        <div class="cfgGrid c3" id="qsMode">
+          <button class="cfgOpt ${mode==='auto'?'picked':''}" data-v="auto"><span class="ic">🔄</span>Auto</button>
+          <button class="cfgOpt ${mode==='high'?'picked':''}" data-v="high"><span class="ic">✨</span>Alta</button>
+          <button class="cfgOpt ${mode==='medium'?'picked':''}" data-v="medium"><span class="ic">⚖️</span>Media</button>
+          <button class="cfgOpt ${mode==='low'?'picked':''}" data-v="low"><span class="ic">🍃</span>Baja</button>
+          <button class="cfgOpt ${mode==='minimal'?'picked':''}" data-v="minimal"><span class="ic">⚡</span>Mínima</button>
+        </div>
+        <div style="font-size:10.5px;color:#8a8070;margin-top:6px;text-align:center" id="qsInfo"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Ola de la cuadrícula</div>
+        <div class="cfgGrid" id="qsWave">
+          <button class="cfgOpt ${wave==='auto'?'picked':''}" data-v="auto"><span class="ic">🎛️</span>Auto</button>
+          <button class="cfgOpt ${wave==='radial'?'picked':''}" data-v="radial"><span class="ic">🌊</span>Radial</button>
+          <button class="cfgOpt ${wave==='strips'?'picked':''}" data-v="strips"><span class="ic">📊</span>Barras</button>
+          <button class="cfgOpt ${wave==='off'?'picked':''}" data-v="off"><span class="ic">🚫</span>Sin ola</button>
+        </div>
+      </div>
+            <div class="section">
+        <div class="section-title">Efectos</div>
+        <div class="cfgGrid" id="qsFx">
+          <button class="cfgOpt ${particlesOn?'picked':''}" data-v="particles"><span class="ic">✨</span>Partículas</button>
+          <button class="cfgOpt ${rainOn?'picked':''}" data-v="rain"><span class="ic">🌧️</span>Lluvia y clima</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Diagnóstico</div>
+        <div class="cfgGrid" id="qsDiag">
+          <button class="cfgOpt ${quality.showFps?'picked':''}" data-v="fps"><span class="ic">📊</span>Mostrar FPS <small style="font-size:9px;color:#7ac0ff;font-weight:800">tecla F</small></button>
+          <button class="cfgOpt" data-v="reset"><span class="ic">🎯</span>Calibrar ahora</button>
+        </div>
+      </div>
+    `;
+    ov.appendChild(m);
+    document.body.appendChild(ov);
+
+    const info = m.querySelector('#qsInfo');
+    function refreshInfo(){
+      const txt = {
+        auto:    'Ajusta automáticamente según los FPS. Empieza en Alta.',
+        high:    'Todas las partículas, ola radial completa, cruces y glow.',
+        medium:  'Ola por barras, partículas reducidas, sin cruces ni glow.',
+        low:     'Solo ola por barras, partículas mínimas.',
+        minimal: 'Sin ola, sin cruces, partículas casi nulas.'
+      }[quality.mode] || '';
+      info.textContent = txt;
+    }
+    refreshInfo();
+
+    m.querySelector('#qsMode').onclick = (e) => {
+      const b = e.target.closest('.cfgOpt'); if(!b) return;
+      quality.mode = b.dataset.v;
+      localStorage.setItem('ajedrez_quality', quality.mode);
+      if(quality.mode !== 'auto'){
+        quality.effective = quality.mode;
+        quality.warmupUntil = 0;
+      } else {
+        quality.fpsSamples.length = 0;
+        quality.warmupUntil = performance.now() + 1500;
+      }
+      m.querySelectorAll('#qsMode .cfgOpt').forEach(x => x.classList.toggle('picked', x.dataset.v === quality.mode));
+      refreshInfo();
+    };
+    m.querySelector('#qsWave').onclick = (e) => {
+      const b = e.target.closest('.cfgOpt'); if(!b) return;
+      quality.waveStyle = b.dataset.v;
+      localStorage.setItem('ajedrez_wavestyle', quality.waveStyle);
+      m.querySelectorAll('#qsWave .cfgOpt').forEach(x => x.classList.toggle('picked', x.dataset.v === quality.waveStyle));
+    };
+    m.querySelector('#qsFx').onclick = (e) => {
+      const b = e.target.closest('.cfgOpt'); if(!b) return;
+      if(b.dataset.v === 'particles'){
+        quality.particlesEnabled = !quality.particlesEnabled;
+        localStorage.setItem('ajedrez_particles', quality.particlesEnabled ? 'on' : 'off');
+        b.classList.toggle('picked', quality.particlesEnabled);
+      } else if(b.dataset.v === 'rain'){
+        quality.rainEnabled = !quality.rainEnabled;
+        localStorage.setItem('ajedrez_rain', quality.rainEnabled ? 'on' : 'off');
+        b.classList.toggle('picked', quality.rainEnabled);
+      }
+    };
+    m.querySelector('#qsDiag').onclick = (e) => {
+      const b = e.target.closest('.cfgOpt'); if(!b) return;
+      if(b.dataset.v === 'fps'){
+        setShowFps(!quality.showFps);
+        b.classList.toggle('picked', quality.showFps);
+      } else if(b.dataset.v === 'reset'){
+        // Fuerza recalibración: limpia muestras y vuelve a arrancar el warmup
+        quality.fpsSamples.length = 0;
+        quality.fpsGraph.length = 0;
+        quality.warmupUntil = performance.now() + 1500;
+        quality.lastChange = 0;
+        quality.mode = 'auto';
+        localStorage.setItem('ajedrez_quality', 'auto');
+        m.querySelectorAll('#qsMode .cfgOpt').forEach(x => x.classList.toggle('picked', x.dataset.v === 'auto'));
+        refreshInfo();
+        toast('🎯 Recalibrando calidad…', '#8ad0ff');
+      }
+    };
+
+    const bw = document.createElement('div');
+    bw.className = 'modal-btns';
+    const closeB = document.createElement('button');
+    closeB.className = 'mbtn yes';
+    closeB.textContent = 'Listo';
+    closeB.onclick = () => { ov.remove(); resolve(); };
+    bw.appendChild(closeB);
+    m.appendChild(bw);
+  });
+}
+
 /* =========================================================
    MODAL DE CONFIGURACIÓN
    ========================================================= */
@@ -5150,20 +5465,371 @@ function newGame(){
 function layout(){
   const rect = boardWrap.getBoundingClientRect();
   boardW = rect.width; boardH = rect.height; cellSize = rect.width / 8;
+
+  // Canvas de efectos (existente)
   canvas.width = Math.floor(rect.width * dpr);
   canvas.height = Math.floor(rect.height * dpr);
   canvas.style.width = rect.width + 'px';
   canvas.style.height = rect.height + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // ⬇️ NUEVO: canvas de FPS
+  fpsCanvas.width = Math.floor(rect.width * dpr);
+  fpsCanvas.height = Math.floor(rect.height * dpr);
+  fpsCanvas.style.width = rect.width + 'px';
+  fpsCanvas.style.height = rect.height + 'px';
+  fpsCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
   if(terr.h) renderTerrain(rect.width, rect.height);
   piecesEl.style.setProperty('--cs', cellSize + 'px');
   for(const [sq, el] of pieceEls) positionPiece(el, sq);
 }
 
+/* =========================================================
+   DIBUJO DE CUADRÍCULA — 3 modos
+   ========================================================= */
+function drawGridRadial(W, H, phase){
+  const q = currentQuality();
+  const step = W / 8;
+  const lw = Math.max(1, W / 480);
+  const stops = q.gridStops;
+
+  const wrapDist = (fase) => {
+    let d = fase - phase;
+    if(d < -0.5) d += 1;
+    if(d >  0.5) d -= 1;
+    return d;
+  };
+  const waveWidth = 0.14;
+  const waveAmp = (fase) => {
+    const d = wrapDist(fase);
+    return Math.exp(-(d * d) / (waveWidth * waveWidth));
+  };
+  const echoWidth = 0.22;
+  const echoAmp = (fase) => {
+    const d = wrapDist(fase + 0.11);
+    return Math.exp(-(d * d) / (echoWidth * echoWidth));
+  };
+
+  const baseA = 0.040, peakA = 0.46, echoPeakA = 0.14;
+  const rgbAt = (b) => ({
+    r: Math.round(220 + b * 35),
+    g: Math.round(232 + b * 20),
+    bl: Math.round(255 - b * 55)
+  });
+  const alphaAt = (fase) => {
+    const b = waveAmp(fase);
+    const e = echoAmp(fase);
+    return Math.min(0.78, baseA + b * (peakA - baseA) + e * echoPeakA);
+  };
+
+  // ---- Líneas verticales y horizontales con gradiente ----
+  ctx.save();
+  ctx.lineWidth = lw;
+  ctx.lineCap = 'round';
+
+  for(let i = 0; i <= 8; i++){
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    for(let s = 0; s <= stops; s++){
+      const f = s / stops;
+      const fase = i / 16 + f * 0.5;
+      const c = rgbAt(waveAmp(fase));
+      grad.addColorStop(f, `rgba(${c.r},${c.g},${c.bl},${alphaAt(fase)})`);
+    }
+    ctx.strokeStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(i * step + lw * 0.5, 0);
+    ctx.lineTo(i * step + lw * 0.5, H);
+    ctx.stroke();
+  }
+  for(let i = 0; i <= 8; i++){
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    for(let s = 0; s <= stops; s++){
+      const f = s / stops;
+      const fase = i / 16 + f * 0.5;
+      const c = rgbAt(waveAmp(fase));
+      grad.addColorStop(f, `rgba(${c.r},${c.g},${c.bl},${alphaAt(fase)})`);
+    }
+    ctx.strokeStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(0, i * step + lw * 0.5);
+    ctx.lineTo(W, i * step + lw * 0.5);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ---- Cruces radiales (subsampleados según q.crossings) ----
+  const N = q.crossings;
+  if(N > 0){
+    for(let i = 0; i < N; i++){
+      const fi = N > 1 ? i / (N - 1) : 0.5;
+      const px = fi * W;
+      for(let j = 0; j < N; j++){
+        const fj = N > 1 ? j / (N - 1) : 0.5;
+        const py = fj * H;
+
+        // Mapear al sistema de fase original (0..1 en cada eje, /16 como antes)
+        const phaseIndex = (fi * 8 + fj * 8) / 16;
+        const b = waveAmp(phaseIndex);
+        if(b < 0.55) continue;
+
+        const a = (b - 0.55) / 0.45 * 0.85;
+        const r = lw * 2.4;
+        const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+        g.addColorStop(0, `rgba(255,252,232,${a})`);
+        g.addColorStop(1, 'rgba(255,252,232,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
+      }
+    }
+  }
+
+  // ---- Cell glow (solo en high/medium) ----
+  if(q.cellGlow){
+    ctx.globalCompositeOperation = 'lighter';
+    for(let r = 0; r < 8; r++){
+      for(let c = 0; c < 8; c++){
+        const b = waveAmp((r + c + 1) / 16);
+        if(b < 0.4) continue;
+        const a = (b - 0.4) / 0.6 * 0.16;
+        const cx = (c + 0.5) * step, cy = (r + 0.5) * step;
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, step * 0.7);
+        g.addColorStop(0, `rgba(255,245,210,${a})`);
+        g.addColorStop(1, 'rgba(255,245,210,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(c * step, r * step, step, step);
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+}
+
+function drawGridStrips(W, H, phase){
+  const q = currentQuality();
+  const strips = q.strips || 12;
+  const step = W / 8;
+  const lw = Math.max(1, W / 480);
+
+  // ---- Cuadrícula estática (sin gradientes) ----
+  ctx.save();
+  ctx.lineWidth = lw;
+  ctx.strokeStyle = 'rgba(255,240,205,0.05)';
+  ctx.beginPath();
+  for(let i = 0; i <= 8; i++){
+    ctx.moveTo(i * step + lw * 0.5, 0);
+    ctx.lineTo(i * step + lw * 0.5, H);
+    ctx.moveTo(0, i * step + lw * 0.5);
+    ctx.lineTo(W, i * step + lw * 0.5);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // ---- 12 barras diagonales pegadas una al lado de la otra ----
+  const diag = Math.hypot(W, H);
+  const stripW = diag / strips;
+  // Frente de ola: recorre toda la diagonal con un poco de margen
+  const frontPos = (phase - 0.5) * diag * 1.2;
+
+  ctx.save();
+  ctx.translate(W / 2, H / 2);
+  ctx.rotate(-Math.PI / 4);
+  ctx.globalCompositeOperation = 'lighter';
+
+  for(let i = 0; i < strips; i++){
+    // Centro de la barra i sobre el eje diagonal
+    const stripCenter = -diag / 2 + stripW * (i + 0.5);
+    // Distancia normalizada al frente de ola
+    const d = (stripCenter - frontPos) / diag;
+    // Intensidad gaussiana (campana ancha para que varias barras brillen a la vez)
+    const intensity = Math.exp(-d * d * 22);
+    // Cola: las barras detrás del frente brillan un poco (efecto de arrastre)
+    const tail = stripCenter < frontPos ? intensity * 0.30 : 0;
+    const alpha = Math.max(intensity, tail) * 0.22;
+    if(alpha < 0.006) continue;
+
+    // Color: blanco cálido en el pico, azulado en los bordes
+    const r = Math.round(222 + intensity * 33);
+    const g = Math.round(235 + intensity * 20);
+    const b = 255;
+
+    ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+    // Overlap de 1.5x para que las barras se fundan entre sí y no se vean las juntas
+    ctx.fillRect(stripCenter - stripW * 0.75, -diag, stripW * 1.5, diag * 2);
+  }
+
+  ctx.restore();
+}
+
+/* =========================================================
+   OVERLAY DE FPS
+   ========================================================= */
+/* =========================================================
+   OVERLAY DE FPS (canvas separado, encima de las piezas)
+   ========================================================= */
+function drawFpsOverlay(W, H){
+  if(!quality.showFps){
+    // Si está apagado, no dibujamos nada.
+    // El canvas se limpia una sola vez en setShowFps(false).
+    return;
+  }
+
+  // Limpiar solo el canvas de FPS (es transparente, así que el board se ve debajo)
+  fpsCtx.clearRect(0, 0, W, H);
+
+  // ---- Calcular métricas ----
+  const samples = quality.fpsSamples;
+  let fpsNow = 0, fpsAvg = 0, fpsMin = 0;
+  if(samples.length){
+    fpsNow = samples[samples.length - 1];
+    fpsAvg = samples.reduce((a,b)=>a+b,0) / samples.length;
+    const tail = samples.slice(-Math.min(30, samples.length));
+    fpsMin = Math.min(...tail);
+  }
+
+  // ---- Historial del mini-gráfico ----
+  quality.fpsGraph.push(fpsNow || 0);
+  if(quality.fpsGraph.length > 60) quality.fpsGraph.shift();
+
+  // ---- Layout ----
+  const pad = 6;
+  const fontSize = Math.max(10, Math.floor(W / 40));
+  const lineH = fontSize + 3;
+  const boxW = Math.max(96, Math.floor(W / 4.2));
+  const boxH = lineH * 3 + pad * 2 + 4;
+  const x = W - boxW - 8;
+  const y = 8;
+  const radius = 6;
+
+  // ---- Color según salud ----
+  const healthColor =
+    fpsNow >= 50 ? '#7dff9a' :
+    fpsNow >= 30 ? '#ffd070' :
+    fpsNow >= 20 ? '#ffab60' :
+                   '#ff7070';
+
+  // ---- Fondo ----
+  fpsCtx.save();
+  fpsCtx.shadowColor = 'rgba(0,0,0,0.6)';
+  fpsCtx.shadowBlur = 6;
+  fpsCtx.fillStyle = 'rgba(0,0,0,0.68)';
+  fpsCtx.beginPath();
+  fpsCtx.moveTo(x + radius, y);
+  fpsCtx.lineTo(x + boxW - radius, y);
+  fpsCtx.quadraticCurveTo(x + boxW, y, x + boxW, y + radius);
+  fpsCtx.lineTo(x + boxW, y + boxH - radius);
+  fpsCtx.quadraticCurveTo(x + boxW, y + boxH, x + boxW - radius, y + boxH);
+  fpsCtx.lineTo(x + radius, y + boxH);
+  fpsCtx.quadraticCurveTo(x, y + boxH, x, y + boxH - radius);
+  fpsCtx.lineTo(x, y + radius);
+  fpsCtx.quadraticCurveTo(x, y, x + radius, y);
+  fpsCtx.closePath();
+  fpsCtx.fill();
+  fpsCtx.shadowBlur = 0;
+
+  // Borde sutil
+  fpsCtx.strokeStyle = 'rgba(255,255,255,0.10)';
+  fpsCtx.lineWidth = 1;
+  fpsCtx.stroke();
+
+  // ---- Texto ----
+  fpsCtx.font = `bold ${fontSize}px ui-monospace, "SF Mono", Menlo, monospace`;
+  fpsCtx.textBaseline = 'top';
+
+  const levelLabel = {
+    high: 'Alta', medium: 'Media', low: 'Baja', minimal: 'Mínima'
+  }[quality.effective] || quality.effective;
+  const waveStyle = getWaveStyle();
+  const waveLabel = { radial:'🌊', strips:'📊', off:'🚫' }[waveStyle] || '';
+  const qIcon = { high:'✨', medium:'⚖️', low:'🍃', minimal:'⚡' }[quality.effective] || '';
+
+  // Línea 1: FPS actual + calidad
+  fpsCtx.textAlign = 'left';
+  fpsCtx.fillStyle = healthColor;
+  fpsCtx.fillText(`${fpsNow.toFixed(0).padStart(2,' ')} FPS`, x + pad, y + pad);
+
+  fpsCtx.fillStyle = 'rgba(220,220,220,0.85)';
+  fpsCtx.textAlign = 'right';
+  fpsCtx.fillText(`${qIcon}${levelLabel} ${waveLabel}`, x + boxW - pad, y + pad);
+
+  // Línea 2: promedio + mínimo
+  const yLine2 = y + pad + lineH;
+  fpsCtx.textAlign = 'left';
+  fpsCtx.fillStyle = 'rgba(180,180,180,0.85)';
+  fpsCtx.fillText(`avg ${fpsAvg.toFixed(0)}`, x + pad, yLine2);
+  fpsCtx.textAlign = 'right';
+  fpsCtx.fillStyle = fpsMin >= 30 ? 'rgba(180,180,180,0.85)' : '#ff9090';
+  fpsCtx.fillText(`min ${fpsMin.toFixed(0)}`, x + boxW - pad, yLine2);
+
+  // Línea 3: mini-gráfico
+  const graphY = y + pad + lineH * 2 + 1;
+  const graphH = lineH - 2;
+  const graphX = x + pad;
+  const graphW = boxW - pad * 2;
+
+  fpsCtx.fillStyle = 'rgba(255,255,255,0.04)';
+  fpsCtx.fillRect(graphX, graphY, graphW, graphH);
+
+  const fpsMax = 70;
+  const refY = graphY + graphH - (60 / fpsMax) * graphH;
+  fpsCtx.strokeStyle = 'rgba(255,255,255,0.18)';
+  fpsCtx.beginPath();
+  fpsCtx.moveTo(graphX, refY);
+  fpsCtx.lineTo(graphX + graphW, refY);
+  fpsCtx.stroke();
+
+  const gN = quality.fpsGraph.length;
+  if(gN > 1){
+    const barW = graphW / 60;
+    for(let i = 0; i < gN; i++){
+      const v = clamp(quality.fpsGraph[i], 0, fpsMax);
+      const bh = (v / fpsMax) * graphH;
+      const bx = graphX + i * barW;
+      const by = graphY + graphH - bh;
+      const hc =
+        v >= 50 ? 'rgba(125,255,154,0.85)' :
+        v >= 30 ? 'rgba(255,208,112,0.85)' :
+        v >= 20 ? 'rgba(255,171,96,0.85)' :
+                  'rgba(255,112,112,0.9)';
+      fpsCtx.fillStyle = hc;
+      fpsCtx.fillRect(bx, by, Math.max(1, barW - 0.5), bh);
+    }
+  }
+
+  fpsCtx.restore();
+}
+
+function drawBoardGrid(W, H){
+  const style = getWaveStyle();
+  if(style === 'off'){
+    // Cuadrícula simple estática, sin ola
+    const step = W / 8;
+    const lw = Math.max(1, W / 480);
+    ctx.save();
+    ctx.lineWidth = lw;
+    ctx.strokeStyle = 'rgba(255,240,205,0.05)';
+    ctx.beginPath();
+    for(let i = 0; i <= 8; i++){
+      ctx.moveTo(i * step + lw * 0.5, 0);
+      ctx.lineTo(i * step + lw * 0.5, H);
+      ctx.moveTo(0, i * step + lw * 0.5);
+      ctx.lineTo(W, i * step + lw * 0.5);
+    }
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  const period = 5000;
+  const phase = (performance.now() % period) / period;
+  if(style === 'radial') drawGridRadial(W, H, phase);
+  else                   drawGridStrips(W, H, phase);
+}
 let lastT = performance.now();
 function loop(now){
   const rawDt = Math.min(0.05, (now - lastT)/1000);
   lastT = now;
+
+  // ⬇️ NUEVO: monitor de FPS adaptativo
+  if(!state.paused) updateQualityFromFPS(rawDt);
 
   // Cuando está pausado, congelar TODO el avance de simulación.
   // El render sigue corriendo para no dejar la pantalla en negro.
@@ -5198,126 +5864,10 @@ function loop(now){
   if(terrainOffscreen) ctx.drawImage(terrainOffscreen, 0, 0, W, H);
   else { ctx.fillStyle = '#1a2418'; ctx.fillRect(0,0,W,H); }
 
-// ===== Cuadrícula con ola diagonal mejorada 🌊✨ =====
-{
-  const period = 5000;
-  const phase  = (performance.now() % period) / period;
-  const step   = W / 8;
-  const lw     = Math.max(1, W / 480);
-
-  // --- Perfil de la ola (campana gaussiana con wrap circular) ---
-  const wrapDist = (fase) => {
-    let d = fase - phase;
-    if(d < -0.5) d += 1;
-    if(d >  0.5) d -= 1;
-    return d;
-  };
-
-  const waveWidth = 0.14;
-  const waveAmp = (fase) => {
-    const d = wrapDist(fase);
-    return Math.exp(-(d * d) / (waveWidth * waveWidth));
-  };
-
-  // Eco: segunda ola más débil, retrasada, más ancha
-  const echoWidth = 0.22;
-  const echoAmp = (fase) => {
-    const d = wrapDist(fase + 0.11);  // +0.11 → queda DETRÁS del frente principal
-    return Math.exp(-(d * d) / (echoWidth * echoWidth));
-  };
-
-  const baseA     = 0.040;   // valle
-  const peakA     = 0.46;    // cresta principal
-  const echoPeakA = 0.14;    // cresta del eco
-
-  // --- Color: valle frío, cresta cálida ---
-  const rgbAt = (b) => ({
-    r: Math.round(220 + b * 35),
-    g: Math.round(232 + b * 20),
-    bl: Math.round(255 - b * 55)
-  });
-  const alphaAt = (fase) => {
-    const b = waveAmp(fase);
-    const e = echoAmp(fase);
-    return Math.min(0.78, baseA + b * (peakA - baseA) + e * echoPeakA);
-  };
-
-  ctx.save();
-  ctx.lineWidth = lw;
-  ctx.lineCap = 'round';
-
-  // ---- Líneas verticales ----
-  for(let i = 0; i <= 8; i++){
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    for(let s = 0; s <= 10; s++){
-      const f = s / 10;
-      const fase = i / 16 + f * 0.5;
-      const a = alphaAt(fase);
-      const c = rgbAt(waveAmp(fase));
-      grad.addColorStop(f, `rgba(${c.r},${c.g},${c.bl},${a})`);
-    }
-    ctx.strokeStyle = grad;
-    ctx.beginPath();
-    ctx.moveTo(i * step + lw * 0.5, 0);
-    ctx.lineTo(i * step + lw * 0.5, H);
-    ctx.stroke();
-  }
-
-  // ---- Líneas horizontales ----
-  for(let i = 0; i <= 8; i++){
-    const grad = ctx.createLinearGradient(0, 0, W, 0);
-    for(let s = 0; s <= 10; s++){
-      const f = s / 10;
-      const fase = i / 16 + f * 0.5;
-      const a = alphaAt(fase);
-      const c = rgbAt(waveAmp(fase));
-      grad.addColorStop(f, `rgba(${c.r},${c.g},${c.bl},${a})`);
-    }
-    ctx.strokeStyle = grad;
-    ctx.beginPath();
-    ctx.moveTo(0, i * step + lw * 0.5);
-    ctx.lineTo(W, i * step + lw * 0.5);
-    ctx.stroke();
-  }
-
-  // ---- Cruces: destello radial donde la cresta principal pega fuerte ----
-  for(let i = 0; i <= 8; i++){
-    for(let j = 0; j <= 8; j++){
-      const b = waveAmp((i + j) / 16);
-      if(b < 0.5) continue;
-      const a = (b - 0.5) / 0.5 * 0.9;
-      const px = i * step, py = j * step, r = lw * 2.6;
-      const g = ctx.createRadialGradient(px, py, 0, px, py, r);
-      g.addColorStop(0, `rgba(255,252,232,${a})`);
-      g.addColorStop(1, 'rgba(255,252,232,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, 6.2832);
-      ctx.fill();
-    }
-  }
-
-  // ---- Resplandor interno de cada celda al ser atravesada por la ola ----
-  ctx.globalCompositeOperation = 'lighter';
-  for(let r = 0; r < 8; r++){
-    for(let c = 0; c < 8; c++){
-      const b = waveAmp((r + c + 1) / 16);
-      if(b < 0.35) continue;
-      const a = (b - 0.35) / 0.65 * 0.18;
-      const cx = (c + 0.5) * step, cy = (r + 0.5) * step;
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, step * 0.75);
-      g.addColorStop(0, `rgba(255,245,210,${a})`);
-      g.addColorStop(1, 'rgba(255,245,210,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(c * step, r * step, step, step);
-    }
-  }
-  ctx.globalCompositeOperation = 'source-over';
-
-  ctx.restore();
-}
+  drawBoardGrid(W, H);
 
   const ph = getPhase();
+
   ctx.save();
   ctx.globalCompositeOperation = 'multiply';
   ctx.fillStyle = `rgb(${ph.tint[0]|0},${ph.tint[1]|0},${ph.tint[2]|0})`;
@@ -5361,21 +5911,23 @@ function loop(now){
 
 
     const inten = clamp((ph.dark - 0.08) / 0.20, 0, 1);
-    for(const f of terr.fireflies){
-      f.t += dt * f.spd;
-      const px = (f.x + Math.sin(f.t*0.7 + f.phase)*f.ax) * W;
-      const py = (f.y + Math.cos(f.t*0.5 + f.phase*1.3)*f.ay) * H;
-      const blink = (Math.sin(f.t*3.2 + f.phase)*0.5 + 0.5);
-      const a = blink * inten * 1.0;
-      if(a < 0.05) continue;
-      ctx.globalAlpha = a;
-      const g = ctx.createRadialGradient(px, py, 0, px, py, 9);
-      g.addColorStop(0, 'rgba(220,255,150,1)');
-      g.addColorStop(0.35, 'rgba(140,255,100,0.65)');
-      g.addColorStop(1, 'rgba(80,255,60,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(px, py, 9, 0, 6.2832); ctx.fill();
-      ctx.globalAlpha = 1;
+    if(currentQuality().fireflies){
+      for(const f of terr.fireflies){
+        f.t += dt * f.spd;
+        const px = (f.x + Math.sin(f.t*0.7 + f.phase)*f.ax) * W;
+        const py = (f.y + Math.cos(f.t*0.5 + f.phase*1.3)*f.ay) * H;
+        const blink = (Math.sin(f.t*3.2 + f.phase)*0.5 + 0.5);
+        const a = blink * inten * 1.0;
+        if(a < 0.05) continue;
+        ctx.globalAlpha = a;
+        const g = ctx.createRadialGradient(px, py, 0, px, py, 9);
+        g.addColorStop(0, 'rgba(220,255,150,1)');
+        g.addColorStop(0.35, 'rgba(140,255,100,0.65)');
+        g.addColorStop(1, 'rgba(80,255,60,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(px, py, 9, 0, 6.2832); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
     }
   }
   ctx.save();
@@ -5394,8 +5946,10 @@ function loop(now){
     ctx.beginPath(); ctx.ellipse(px, py, pr, pr*0.55, 0, 0, 6.2832); ctx.fill();
   }
   ctx.restore();
-    if(rainAmt > 0.012){
-    const visible = Math.floor(rainDrops.length * (0.05 + 0.90 * Math.pow(rainAmt, 0.55)));
+  if(rainAmt > 0.012 && getRainScale() > 0){
+    const rainScale = getRainScale();
+
+    const visible = Math.floor(rainDrops.length * rainScale * (0.05 + 0.90 * Math.pow(rainAmt, 0.55)));
 
     // Alpha: crece poco. Con poca lluvia se ve tenue, con mucha no llega a "manchar".
     const alpha   = 0.20 + rainAmt * 0.24;      // 0.20 → 0.44
@@ -5476,6 +6030,7 @@ function loop(now){
   }
 
   drawParticles();
+  drawFpsOverlay(W, H);      // ⬅️ NUEVO
   requestAnimationFrame(loop);
 }
 
@@ -5520,13 +6075,18 @@ $('#btnExit').onclick = () => exitToMenu();
 async function openQuickConfig(){
   const res = await showModal('Opciones', '¿Qué deseas hacer?', [
     { label:'▶ Continuar', value:'continue', cls:'yes' },
+    { label:'🎨 Calidad visual', value:'quality', cls:'' },
     { label:'🔄 Reiniciar', value:'restart', cls:'no' },
     { label:'🚪 Salir al menú', value:'exit', cls:'danger' }
   ]);
   if(res === 'continue'){
-    // Usar togglePause para que restaure masterGain, gameTimer y el overlay
     if(state.paused) togglePause();
     return;
+  }
+  if(res === 'quality'){
+    await openQualitySettings();
+    // No reanudar todavía: el usuario puede querer tocar más
+    return openQuickConfig();
   }
   if(res === 'restart'){ restartGame(); return; }
   if(res === 'exit'){ exitToMenu(); return; }
@@ -5539,6 +6099,20 @@ document.addEventListener('visibilitychange', () => {
   if(!actx || !ambience.started) return;
   const target = (document.hidden || !soundEnabled || state.paused) ? 0 : 1;
   try { masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.3); } catch(e){}
+});
+
+// Atajo de teclado: F para toggle de FPS
+document.addEventListener('keydown', (e) => {
+  // Ignorar si el usuario está escribiendo en un input/textarea
+  const tag = (e.target && e.target.tagName) || '';
+  if(tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+
+  if(e.key === 'f' || e.key === 'F'){
+    // Evitar que se dispare si hay un modal abierto (prompt de nombre, etc.)
+    if(document.querySelector('.modal-overlay')) return;
+    setShowFps(!quality.showFps);
+    toast(quality.showFps ? '📊 FPS activados' : '📊 FPS desactivados', '#8ad0ff');
+  }
 });
 
 function boot(){
