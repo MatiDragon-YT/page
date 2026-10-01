@@ -1471,35 +1471,150 @@ function generateTerrain(){
     v = v*0.82 + 0.10 + (1-edge)*0.05;
     h[y*N+x] = clamp(v, 0, 1);
   }
-  terr.rivers = [];
-  for(let k=0;k<2;k++){
-    let x = Math.floor(N*(0.2 + Math.random()*0.6));
-    let y = 0;
-    const path = [];
-    let drift = Math.random()<0.5 ? 1 : -1;
-    for(let s=0;s<N;s++){
-      path.push([x,y]); y++;
-      if(Math.random()<0.62) x += drift;
-      if(Math.random()<0.22) x -= drift*2;
-      if(Math.random()<0.05) drift *= -1;
-      x = clamp(x, 3, N-4);
-      if(y >= N) break;
+    terr.rivers = [];
+
+  /* =========================================================
+     RÍOS NATURALES v3
+     - Extremos FUERA del mapa → el río se ve continuar hacia afuera
+     - Sin splines, solo suma de senos suaves
+     - Se unen (merge) si chocan con un río anterior; nunca se cruzan
+     - 25% sin ríos, 55% 1 río, 17% 2 ríos, 3% 3 ríos
+     ========================================================= */
+  const riverRoll = Math.random();
+  const riverCount = riverRoll < 0.25 ? 0
+                   : riverRoll < 0.80 ? 1
+                   : riverRoll < 0.97 ? 2 : 3;
+
+  const edgesList = ['top','bottom','left','right'];
+  const pad = 3;
+  const overshoot = 6;   // tiles por fuera del mapa
+
+  const priorWaterSnapshot = new Uint8Array(N*N);
+
+  for(let k = 0; k < riverCount; k++){
+    priorWaterSnapshot.set(water);
+
+    let samples = null;
+
+    // --- Hasta 12 intentos de encontrar una entrada limpia ---
+    for(let attempt = 0; attempt < 12; attempt++){
+      const se = edgesList[Math.floor(Math.random()*4)];
+      let ee;
+      do { ee = edgesList[Math.floor(Math.random()*4)]; } while(ee === se);
+
+      const pointOnEdge = (edge) => {
+        const t = 0.10 + Math.random()*0.80;
+        switch(edge){
+          case 'top':    return [pad + t*(N-2*pad), -overshoot];
+          case 'bottom': return [pad + t*(N-2*pad), N-1+overshoot];
+          case 'left':   return [-overshoot, pad + t*(N-2*pad)];
+          case 'right':  return [N-1+overshoot, pad + t*(N-2*pad)];
+        }
+      };
+      const start = pointOnEdge(se);
+      const end   = pointOnEdge(ee);
+
+      const dx = end[0] - start[0];
+      const dy = end[1] - start[1];
+      const len = Math.hypot(dx, dy) || 1;
+      if(len < N * 0.55) continue;   // demasiado corto
+
+      let perpX = -dy / len;
+      let perpY =  dx / len;
+
+      // Que siempre curve hacia el centro del mapa
+      const midX = (start[0] + end[0]) / 2;
+      const midY = (start[1] + end[1]) / 2;
+      const toCX = N/2 - midX;
+      const toCY = N/2 - midY;
+      if(perpX * toCX + perpY * toCY < 0){
+        perpX = -perpX;
+        perpY = -perpY;
+      }
+
+      const isStraight = Math.random() < 0.45;
+      const A1 = isStraight ? rnd(0.005, 0.020) * N : rnd(0.030, 0.110) * N;
+      const A2 = isStraight ? rnd(0.002, 0.010) * N : rnd(0.008, 0.030) * N;
+      const f1 = rnd(0.7, 1.4);
+      const f2 = rnd(2.0, 3.5);
+      const phase = Math.random() * Math.PI * 2;
+
+      const SAMPLES = 100;
+      const cand = [];
+      for(let i = 0; i <= SAMPLES; i++){
+        const t = i / SAMPLES;
+        const baseX = start[0] + dx * t;
+        const baseY = start[1] + dy * t;
+        const envelope = Math.sin(t * Math.PI);   // 0 en los extremos → el río entra por donde toca
+        const offset = envelope * (
+          A1 * Math.sin(t * Math.PI * f1)
+          + A2 * Math.sin(t * Math.PI * f2 + phase)
+        );
+        cand.push([baseX + perpX * offset, baseY + perpY * offset]);
+      }
+
+      // Primer sample que entra al mapa
+      let firstInside = -1;
+      for(let i = 0; i < cand.length; i++){
+        const [x, y] = cand[i];
+        if(x >= 0 && x < N && y >= 0 && y < N){ firstInside = i; break; }
+      }
+      if(firstInside === -1) continue;
+
+      // ¿Arranca sobre agua previa? → intentar otra entrada
+      const [fx, fy] = cand[firstInside];
+      const cx = Math.round(fx), cy = Math.round(fy);
+      let startsOnWater = false;
+      for(let ddy = -3; ddy <= 3 && !startsOnWater; ddy++){
+        for(let ddx = -3; ddx <= 3; ddx++){
+          const nx = cx + ddx, ny = cy + ddy;
+          if(nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+          if(priorWaterSnapshot[ny*N + nx]){ startsOnWater = true; break; }
+        }
+      }
+      if(startsOnWater) continue;
+
+      samples = cand;
+      break;
     }
-    terr.rivers.push(path);
-    const rad = 1.5 + Math.random()*1.4;
-    for(const [px,py] of path){
-      for(let dy=-3;dy<=3;dy++) for(let dx=-3;dx<=3;dx++){
-        const nx = px+dx, ny = py+dy;
-        if(nx<0||ny<0||nx>=N||ny>=N) continue;
-        const d = Math.hypot(dx,dy);
-        if(d <= rad){
-          water[ny*N+nx] = 1;
-          h[ny*N+nx] = Math.min(h[ny*N+nx], 0.26 - (rad-d)*0.05);
-        } else if(d <= rad+1.6){
-          h[ny*N+nx] = Math.min(h[ny*N+nx], 0.33);
+
+    if(!samples) continue;
+
+    // --- Detección de merge: primer sample cuyo centro ya es agua previa ---
+    let mergedAt = -1;
+    for(let i = 0; i < samples.length; i++){
+      const cx = Math.round(samples[i][0]);
+      const cy = Math.round(samples[i][1]);
+      if(cx < 0 || cy < 0 || cx >= N || cy >= N) continue;
+      if(priorWaterSnapshot[cy*N + cx]){ mergedAt = i; break; }
+    }
+    const lastSample = mergedAt >= 0 ? mergedAt : samples.length - 1;
+    if(lastSample <= 2) continue;   // no logró entrar bien, saltar
+
+    // --- Rasterizar solo hasta el merge (o hasta el final) ---
+    const rad = 0.5 + Math.random() * 1.7;
+    const radCeil = Math.ceil(rad) + 2;
+
+    for(let i = 0; i <= lastSample; i++){
+      const cx = Math.round(samples[i][0]);
+      const cy = Math.round(samples[i][1]);
+      for(let ddy = -radCeil; ddy <= radCeil; ddy++){
+        for(let ddx = -radCeil; ddx <= radCeil; ddx++){
+          const nx = cx + ddx;
+          const ny = cy + ddy;
+          if(nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+          const d = Math.hypot(ddx, ddy);
+          if(d <= rad){
+            water[ny*N + nx] = 1;
+            h[ny*N + nx] = Math.min(h[ny*N + nx], 0.26 - (rad - d) * 0.05);
+          } else if(d <= rad + 1.5){
+            h[ny*N + nx] = Math.min(h[ny*N + nx], 0.33);
+          }
         }
       }
     }
+
+    terr.rivers.push(samples.slice(0, lastSample + 1));
   }
   const rocks = [];
   for(let i=0;i<70;i++){
@@ -1737,17 +1852,54 @@ for(let i=0;i<7;i++){
    AJEDREZ
    ========================================================= */
 const pieceEls = new Map();
+/* =========================================================
+   COORDENADAS — chess-internal (nunca cambian) vs visual (con flip)
+   ========================================================= */
+let flipBoard = false;   // true → negras abajo
+
+// Chess-internal: cómo chess.js indexa el tablero.
+// board[r][c] con r=0 → rank 8, c=0 → file a
 function sqToRC(sq){ return { r: 8 - parseInt(sq[1],10), c: sq.charCodeAt(0) - 97 }; }
 function rcToSquare(r,c){ return String.fromCharCode(97+c) + (8-r); }
-function squareCenter(sq){ const {r,c} = sqToRC(sq); return { x: (c+0.5)*cellSize, y: (r+0.5)*cellSize }; }
+
+// Visual: cómo se ve en pantalla según flipBoard.
+// Con flip, rotamos 180°: la casilla a1 pasa a estar arriba-derecha.
+function sqToVisualRC(sq){
+  const { r, c } = sqToRC(sq);
+  if(flipBoard) return { r: 7 - r, c: 7 - c };
+  return { r, c };
+}
+function visualRCToSquare(r, c){
+  if(flipBoard) return rcToSquare(7 - r, 7 - c);
+  return rcToSquare(r, c);
+}
+
+function squareCenter(sq){ 
+  const {r,c} = sqToVisualRC(sq); 
+  return { x: (c+0.5)*cellSize, y: (r+0.5)*cellSize }; 
+}
 
 function buildGrid(){
   gridEl.innerHTML = '';
   for(let r=0;r<8;r++) for(let c=0;c<8;c++){
     const d = document.createElement('div');
-    d.className = 'cell'; d.dataset.sq = rcToSquare(r,c); gridEl.appendChild(d);
+    d.className = 'cell';
+    d.dataset.sq = visualRCToSquare(r, c);   // ⬅️ CAMBIO
+    gridEl.appendChild(d);
   }
 }
+// Reasigna el data-sq de cada celda según el flip actual.
+// Necesario porque buildGrid() corre una sola vez al arrancar.
+function applyGridFlip(){
+  const cells = gridEl.children;
+  let i = 0;
+  for(let r = 0; r < 8; r++){
+    for(let c = 0; c < 8; c++){
+      cells[i++].dataset.sq = visualRCToSquare(r, c);
+    }
+  }
+}
+
 function createPieceEl(p, sq){
   const el = document.createElement('div');
   el.className = 'piece ' + (p.color === 'w' ? 'white' : 'black');
@@ -1755,13 +1907,13 @@ function createPieceEl(p, sq){
   const tok = document.createElement('div');
   tok.className = 'tok'; tok.textContent = GLYPH[p.type];
   el.appendChild(tok);
-  const {r,c} = sqToRC(sq);
+  const {r,c} = sqToVisualRC(sq);   // ⬅️ CAMBIO
   el.style.transform = `translate(${c*cellSize}px, ${r*cellSize}px)`;
   el.style.width = cellSize + 'px'; el.style.height = cellSize + 'px';
   piecesEl.appendChild(el); return el;
 }
 function positionPiece(el, sq){
-  const {r,c} = sqToRC(sq);
+  const {r,c} = sqToVisualRC(sq);   // ⬅️ CAMBIO
   el.style.transform = `translate(${c*cellSize}px, ${r*cellSize}px)`;
   el.style.width = cellSize + 'px'; el.style.height = cellSize + 'px';
 }
@@ -3286,25 +3438,55 @@ async function execHeal(sq, type, color, cost){
     }
     return;
   }
-  const C = squareCenter(sq);
+    const C = squareCenter(sq);
   sfx('heal');
+
+  // Dirección: el haz sale del lado donde vive el equipo.
+  // Sin flip: blancas abajo → haz desde abajo. Negras arriba → haz desde arriba.
+  // Con flip: se invierte, sigue al lado visual del equipo.
+  const beamFromBottom = flipBoard ? (color === 'b') : (color === 'w');
+
   const start = performance.now(); const dur = 620;
   await new Promise(res => {
     function frame(){
       const t = clamp((performance.now()-start)/dur, 0, 1);
       const h = cellSize * 3.5;
-      const y = C.y - h*(1-t) + h*0.5;
-      const grad = ctx.createLinearGradient(0, y, 0, y - h);
+
+      // Cabeza del haz: recorre de un extremo al otro pasando por el centro
+      const headY = beamFromBottom
+        ? C.y + h * 0.5 - h * t     // arranca abajo, termina arriba
+        : C.y - h * 0.5 + h * t;    // arranca arriba, termina abajo
+
+      // Cola: se extiende detrás de la cabeza (opuesta al avance)
+      const tailY = beamFromBottom ? headY + h : headY - h;
+
+      // Gradiente: sólido en la cabeza, transparente en la cola
+      const grad = ctx.createLinearGradient(0, headY, 0, tailY);
       grad.addColorStop(0, `rgba(120,255,170,${0.55*(1-t*0.7)})`);
       grad.addColorStop(1, 'rgba(120,255,170,0)');
+
       ctx.fillStyle = grad;
-      ctx.fillRect(C.x - cellSize*0.45, y - h, cellSize*0.9, h);
+      const rectTop = Math.min(headY, tailY);
+      ctx.fillRect(C.x - cellSize*0.45, rectTop, cellSize*0.9, h);
+
+      // Partículas: salen del mismo lado y fluyen con el haz
       if(Math.random() < 0.7){
-        addParticle({ x: C.x + rnd(-cellSize*0.4, cellSize*0.4),
-          y: C.y + rnd(-cellSize*0.2, cellSize*0.4),
-          vx: rnd(-12,12), vy: rnd(-70,-30), life: rnd(.4,.9), maxLife:.9,
-          size: rnd(1.2,3), color: '#a8ffc0', g:-15, drag:.96 });
+        const originY = beamFromBottom
+          ? C.y + rnd(cellSize*0.1, cellSize*0.5)
+          : C.y - rnd(cellSize*0.1, cellSize*0.5);
+        addParticle({
+          x: C.x + rnd(-cellSize*0.4, cellSize*0.4),
+          y: originY,
+          vx: rnd(-12, 12),
+          vy: beamFromBottom ? rnd(-70,-30) : rnd(30, 70),
+          life: rnd(.4, .9), maxLife: .9,
+          size: rnd(1.2, 3),
+          color: '#a8ffc0',
+          g: beamFromBottom ? -15 : 15,
+          drag: .96
+        });
       }
+
       if(t < 1) requestAnimationFrame(frame); else res();
     }
     frame();
@@ -4634,6 +4816,10 @@ function startReplayFromStored(match){
   }
   // *** FIX: aplicar el clima guardado de esa partida ***
   if(match.weather) applyWeatherState(match.weather);
+
+  // ⬇️ NUEVO: restaurar la orientación original de esa partida
+  flipBoard = !!(match.aiEnabled && match.humanColor === 'b');
+  applyGridFlip();
   replayFromMenu = true;
   startReplay();
   return replay.active;
@@ -5419,6 +5605,11 @@ function newGame(){
   aiSearchAbort = true;
   state.aiBusy = false;
   clearPosCache();   // *** NUEVO ***
+  
+  // ⬇️ NUEVO: decidir orientación antes de reconstruir nada
+  flipBoard = aiEnabled && humanColor === 'b';
+  applyGridFlip();
+
   chess = new Chess();
   state.mana = { w: 0, b: 0 };
   state.specialCount = { w: 0, b: 0 };
