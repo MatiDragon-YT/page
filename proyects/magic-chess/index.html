@@ -386,6 +386,28 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
   box-shadow:inset 0 0 0 3px rgba(255,255,255,0.75);
   background:rgba(255,255,255,0.14);
 }
+/* =========================================================
+   HOVER PREVIEW
+   ========================================================= */
+.cell.prev-sel::before{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:rgba(255,228,120,0.14);
+  box-shadow:inset 0 0 0 2px rgba(255,215,90,0.55);
+}
+.cell.prev-mv::before{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,
+    rgba(130,235,150,0.55) 0 14%,
+    rgba(130,235,150,0.18) 15% 22%,
+    transparent 23%);
+}
+.cell.prev-cap::before{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,
+    transparent 0 58%,
+    rgba(255,120,120,0.55) 60% 76%,
+    transparent 78%);
+}
 </style>
 </head>
 <body>
@@ -2385,14 +2407,42 @@ async function animateMove(from, to, capturedSquare, duration = 200){
     el.dataset.pendingTo = to;
     spawnDust(from, to);
 
-    if(duration !== 200){
-      el.style.transition = `transform ${duration}ms cubic-bezier(.18,.75,.28,1)`;
-    } else {
-      el.style.transition = '';
-    }
+    // *** Si venimos de un drag, la animación arranca desde el punto del drop ***
+    if(pendingDragDropStart){
+      const { x, y } = pendingDragDropStart;
+      pendingDragDropStart = null;
 
-    el.getBoundingClientRect();
-    positionPiece(el, to);
+      // 1. Colocar la pieza en el punto exacto donde se soltó el fantasma
+      el.style.transition = 'none';
+      el.style.transform = `translate(${x - cellSize/2}px, ${y - cellSize/2}px)`;
+
+      // 2. Forzar reflow y eliminar el fantasma en el mismo tick
+      el.getBoundingClientRect();
+      if(pendingGhostToRemove){
+        pendingGhostToRemove.remove();
+        pendingGhostToRemove = null;
+      }
+
+      // 3. Restaurar transición y animar hacia el destino
+      if(duration !== 200){
+        el.style.transition = `transform ${duration}ms cubic-bezier(.18,.75,.28,1)`;
+      } else {
+        el.style.transition = '';
+      }
+      // Esperar un frame para que la transición tome el valor de partida
+      await new Promise(r => requestAnimationFrame(r));
+      positionPiece(el, to);
+
+    } else {
+      // --- Camino normal (click / IA / poderes) ---
+      if(duration !== 200){
+        el.style.transition = `transform ${duration}ms cubic-bezier(.18,.75,.28,1)`;
+      } else {
+        el.style.transition = '';
+      }
+      el.getBoundingClientRect();
+      positionPiece(el, to);
+    }
 
     if(targetEl){
       setTimeout(()=>{
@@ -2687,6 +2737,50 @@ function clearHighlights(){
     if(tag) tag.remove();
   }
   paintLastMove();
+  // Resetear estado del preview (el DOM ya quedó limpio arriba)
+  previewActive = false;
+  hoveredSq = null;
+}
+function showHoverPreview(sq){
+  if(state.selected) return;         // ya hay selección real
+  if(state.targeting) return;        // modo targeting, no interferir
+  if(state.busy || state.gameOver || replay.active || state.paused || state.aiBusy) return;
+  if(aiEnabled && chess.turn() === aiColor) return;
+
+  const piece = chess.get(sq);
+  if(!piece || piece.color !== chess.turn()){
+    clearHoverPreview();
+    return;
+  }
+  if(sq === hoveredSq && previewActive) return;   // mismo origen, nada que recalcular
+
+  // Limpiar preview anterior (no toca highlights de selección)
+  for(const c of gridEl.children){
+    c.classList.remove('prev-sel','prev-mv','prev-cap');
+  }
+
+  hoveredSq = sq;
+  previewActive = true;
+
+  const cell = gridEl.querySelector(`[data-sq="${sq}"]`);
+  if(cell) cell.classList.add('prev-sel');
+
+  const moves = chess.moves({ square: sq, verbose: true });
+  for(const m of moves){
+    const c = gridEl.querySelector(`[data-sq="${m.to}"]`);
+    if(!c) continue;
+    const isCap = m.flags.includes('c') || m.flags.includes('e');
+    c.classList.add(isCap ? 'prev-cap' : 'prev-mv');
+  }
+}
+
+function clearHoverPreview(){
+  if(!previewActive && !hoveredSq) return;
+  previewActive = false;
+  hoveredSq = null;
+  for(const c of gridEl.children){
+    c.classList.remove('prev-sel','prev-mv','prev-cap');
+  }
 }
 function highlightLegalMoves(){
   clearHighlights();
@@ -2866,9 +2960,11 @@ function handleTimeout(loser){
 function togglePause(){
   if(state.gameOver || replay.active) return;
   // Cancelar cualquier drag en curso
-  if(drag){
+    if(drag){
     const d = drag; drag = null;
-    try { gridEl.releasePointerCapture(d.pointerId); } catch(e){}
+    if(d.captured){
+      try { gridEl.releasePointerCapture(d.pointerId); } catch(e){}
+    }
     endDrag(d);
     clearHighlights();
   }
@@ -4033,6 +4129,11 @@ function finishPower(entry){
   state.busy = false;
   endTurn();
 }
+
+let pendingDragDropStart = null;   // { x, y } donde soltó el fantasma
+let pendingGhostToRemove = null;   // nodo fantasma a eliminar tras el reflow
+let hoveredSq = null;
+let previewActive = false;
 
 /* =========================================================
    IA — MINIMAX ASÍNCRONO CON INSTANCIA SEPARADA
@@ -6701,10 +6802,13 @@ function loop(now){
 /* =========================================================
    DRAG & DROP (mouse + touch) — Pointer Events unificados
    ========================================================= */
+/* =========================================================
+   DRAG & DROP + HOVER PREVIEW — Pointer Events unificados
+   ========================================================= */
 const dragLayer = $('#dragLayer');
 let drag = null;
 let suppressNextClick = false;
-const DRAG_THRESHOLD = 6;   // px antes de considerarlo arrastre
+const DRAG_THRESHOLD = 6;
 
 function startGhostDrag(d){
   if(d.originalEl){
@@ -6758,13 +6862,14 @@ function endDrag(d){
   }
 }
 
-// ---------- POINTER DOWN ----------
+/* ---------- POINTER DOWN ---------- */
 gridEl.addEventListener('pointerdown', (e) => {
   suppressNextClick = false;
+  clearHoverPreview();               // limpiar preview al iniciar interacción
 
   if(e.pointerType === 'mouse' && e.button !== 0) return;
   if(state.busy || state.gameOver || replay.active || state.paused || state.aiBusy) return;
-  if(state.targeting) return;                              // targeting se maneja con clicks
+  if(state.targeting) return;
   if(aiEnabled && chess.turn() === aiColor) return;
 
   const cell = e.target.closest('.cell');
@@ -6774,101 +6879,158 @@ gridEl.addEventListener('pointerdown', (e) => {
   if(!piece) return;
   if(piece.color !== chess.turn()) return;
 
-  drag = {
+    drag = {
     fromSq: sq,
     piece,
     pointerId: e.pointerId,
     startX: e.clientX,
     startY: e.clientY,
     moved: false,
+    captured: false,               // ⬅️ NUEVO
     ghostEl: null,
     originalEl: pieceEls.get(sq),
     hoverCell: null,
     legalMoves: chess.moves({ square: sq, verbose: true })
   };
-  try { gridEl.setPointerCapture(e.pointerId); } catch(err){}
+  // ⬅️ NO llamamos setPointerCapture acá
 });
 
-// ---------- POINTER MOVE ----------
+/* ---------- POINTER MOVE ---------- */
 gridEl.addEventListener('pointermove', (e) => {
-  if(!drag || e.pointerId !== drag.pointerId) return;
+  // ---- Drag activo ----
+  if(drag && e.pointerId === drag.pointerId){
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    const dist = Math.hypot(dx, dy);
 
-  const dx = e.clientX - drag.startX;
-  const dy = e.clientY - drag.startY;
-  const dist = Math.hypot(dx, dy);
-
-  if(!drag.moved){
-    if(dist < DRAG_THRESHOLD) return;
-    drag.moved = true;
-    startGhostDrag(drag);
-  }
-
-  const rect = boardWrap.getBoundingClientRect();
-  const px = e.clientX - rect.left;
-  const py = e.clientY - rect.top;
-  if(drag.ghostEl){
-    drag.ghostEl.style.transform =
-      `translate(${px - cellSize/2}px, ${py - cellSize/2}px)`;
-  }
-
-  const below = document.elementFromPoint(e.clientX, e.clientY);
-  const belowCell = below ? below.closest('.cell') : null;
-  if(belowCell !== drag.hoverCell){
-    if(drag.hoverCell) drag.hoverCell.classList.remove('hover');
-    if(belowCell && !belowCell.classList.contains('sel')){
-      belowCell.classList.add('hover');
-      drag.hoverCell = belowCell;
-    } else {
-      drag.hoverCell = null;
+        if(!drag.moved){
+      if(dist < DRAG_THRESHOLD) return;
+      drag.moved = true;
+      // *** Capturar pointer AHORA: solo cuando es un drag real ***
+      try {
+        gridEl.setPointerCapture(e.pointerId);
+        drag.captured = true;
+      } catch(err){}
+      startGhostDrag(drag);
     }
+
+    const rect = boardWrap.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    if(drag.ghostEl){
+      drag.ghostEl.style.transform =
+        `translate(${px - cellSize/2}px, ${py - cellSize/2}px)`;
+    }
+
+    const below = document.elementFromPoint(e.clientX, e.clientY);
+    const belowCell = below ? below.closest('.cell') : null;
+    if(belowCell !== drag.hoverCell){
+      if(drag.hoverCell) drag.hoverCell.classList.remove('hover');
+      if(belowCell && !belowCell.classList.contains('sel')){
+        belowCell.classList.add('hover');
+        drag.hoverCell = belowCell;
+      } else {
+        drag.hoverCell = null;
+      }
+    }
+    return;
   }
+
+  // ---- Hover preview (sin drag) ----
+  // En touch puro no hay hover real: solo aplicamos a mouse/pen
+  if(e.pointerType === 'touch') return;
+
+  const cell = e.target.closest('.cell');
+  if(!cell){
+    clearHoverPreview();
+    return;
+  }
+  const sq = cell.dataset.sq;
+  if(sq === hoveredSq) return;
+  showHoverPreview(sq);
 });
 
-// ---------- POINTER UP ----------
+/* ---------- POINTER UP ---------- */
 gridEl.addEventListener('pointerup', async (e) => {
   if(!drag || e.pointerId !== drag.pointerId) return;
-  const d = drag;
+    const d = drag;
   drag = null;
-  try { gridEl.releasePointerCapture(e.pointerId); } catch(err){}
+  if(d.captured){
+    try { gridEl.releasePointerCapture(e.pointerId); } catch(err){}
+  }
 
   const wasDrag = d.moved;
-  endDrag(d);
 
   if(!wasDrag){
-    return;              // fue un tap: que lo maneje el click
+    endDrag(d);
+    return;                    // tap simple → lo maneja el click
   }
 
   suppressNextClick = true;
-  clearHighlights();
 
   const target = document.elementFromPoint(e.clientX, e.clientY);
   const cell = target ? target.closest('.cell') : null;
   const toSq = cell ? cell.dataset.sq : null;
 
   if(!toSq || toSq === d.fromSq){
-    onSquareClick(d.fromSq);          // arrastró y volvió → selección
+    endDrag(d);
+    clearHighlights();
+    onSquareClick(d.fromSq);
     return;
   }
 
   const mv = d.legalMoves.find(m => m.to === toSq);
-  if(!mv) return;                     // destino no legal: se cancela
+  if(!mv){
+    endDrag(d);
+    clearHighlights();
+    return;
+  }
+
+  // *** Capturar la posición del drop y transferir el fantasma a animateMove ***
+  const rect = boardWrap.getBoundingClientRect();
+  pendingDragDropStart = {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  };
+
+  if(d.ghostEl){
+    pendingGhostToRemove = d.ghostEl;
+    d.ghostEl = null;          // evitar que endDrag lo elimine ahora
+  }
+  if(d.originalEl){
+    // Restaurar la pieza original: va a ser reposicionada por animateMove
+    d.originalEl.style.transition = '';
+    d.originalEl.style.opacity = '';
+  }
+  if(d.hoverCell){
+    d.hoverCell.classList.remove('hover');
+    d.hoverCell = null;
+  }
 
   state.selected = null;
   state.legalMoves = [];
   await doPlayerMove(mv);
 });
 
-// ---------- POINTER CANCEL ----------
+/* ---------- POINTER CANCEL ---------- */
 gridEl.addEventListener('pointercancel', (e) => {
   if(!drag || e.pointerId !== drag.pointerId) return;
   const d = drag;
   drag = null;
-  try { gridEl.releasePointerCapture(e.pointerId); } catch(err){}
+  if(d.captured){
+    try { gridEl.releasePointerCapture(e.pointerId); } catch(err){}
+  }
   endDrag(d);
   clearHighlights();
 });
 
-// ---------- CLICK (con supresión post-drag) ----------
+/* ---------- POINTER LEAVE ---------- */
+gridEl.addEventListener('pointerleave', () => {
+  if(drag) return;
+  clearHoverPreview();
+});
+
+/* ---------- CLICK (con supresión post-drag) ---------- */
 gridEl.addEventListener('click', (e) => {
   if(suppressNextClick){
     suppressNextClick = false;
@@ -6884,7 +7046,7 @@ gridEl.addEventListener('click', (e) => {
   onSquareClick(cell.dataset.sq);
 });
 
-// ---------- CONTEXT MENU ----------
+/* ---------- CONTEXT MENU ---------- */
 gridEl.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   if(replay.active || state.paused || state.aiBusy) return;
