@@ -191,7 +191,8 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
 #oppHandRow .oppLabel{color:#8a8070;font-weight:600;flex-shrink:0;font-size:10px}
 #oppHandRow .oppCards{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
 #oppHandRow .oppCards::-webkit-scrollbar{display:none}
-.oppCard{display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;
+.oppCard{position:relative;              /* ⬅️ ESTA LÍNEA FALTABA */
+display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;
   background:#1e1a13;border:1px solid #3a2f20;font-size:13px;line-height:1;flex-shrink:0;opacity:.6}
 .oppCard .nm{font-size:8.5px;color:#a89c86;white-space:nowrap}
 #powerGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -433,6 +434,133 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
 }
 #replayBottom button.speed-fast{
   border-color:#c08a3a; color:#ffd090;
+}
+/* =========================================================
+   TOOLTIP DE PODERES — anclado al botón, con flecha
+   ========================================================= */
+#powerTooltip{
+  position:fixed;
+  z-index:260;
+  max-width:250px;
+  min-width:180px;
+  padding:9px 11px 10px;
+  border-radius:10px;
+  background:linear-gradient(#241e15,#14100a);
+  border:1px solid #6a5030;
+  color:#e8dcc0;
+  font-size:12px;
+  line-height:1.45;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,.78),
+    0 0 18px rgba(255,190,90,.16),
+    inset 0 1px 0 rgba(255,220,160,.10);
+  pointer-events:none;
+  opacity:0;
+  transform:translateY(4px) scale(.98);
+  transition:opacity .16s ease, transform .16s ease;
+  will-change:opacity, transform, left, top;
+}
+#powerTooltip.show{
+  opacity:1;
+  transform:translateY(0) scale(1);
+}
+#powerTooltip .tt-head{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  margin-bottom:6px;
+  padding-bottom:6px;
+  border-bottom:1px solid rgba(255,220,160,.12);
+}
+#powerTooltip .tt-icon{
+  font-size:18px;
+  line-height:1;
+  flex-shrink:0;
+  filter:drop-shadow(0 0 5px rgba(255,200,90,.45));
+}
+#powerTooltip .tt-name{
+  font-weight:800;
+  font-size:12.5px;
+  color:#ffe0a0;
+  letter-spacing:.3px;
+  flex:1;
+  min-width:0;
+}
+#powerTooltip .tt-cost{
+  font-family:ui-monospace,monospace;
+  font-weight:800;
+  font-size:11px;
+  color:#7ac0ff;
+  background:rgba(20,30,55,.75);
+  padding:2px 6px;
+  border-radius:5px;
+  border:1px solid rgba(90,150,255,.35);
+  text-shadow:0 0 6px rgba(90,150,255,.7);
+  flex-shrink:0;
+}
+#powerTooltip .tt-desc{
+  color:#c8bca4;
+  font-size:11.5px;
+}
+/* ---- Flecha (cuadrado rotado 45°) ---- */
+#powerTooltip .tt-arrow{
+  position:absolute;
+  width:12px;
+  height:12px;
+  border:1px solid #6a5030;
+  transform:rotate(45deg);
+  pointer-events:none;
+}
+/* Tooltip ARRIBA del botón → flecha apunta hacia abajo */
+#powerTooltip.arrow-bottom .tt-arrow{
+  bottom:-7px;
+  background:#14100a;
+  border-top:none;
+  border-left:none;
+}
+/* Tooltip ABAJO del botón → flecha apunta hacia arriba */
+#powerTooltip.arrow-top .tt-arrow{
+  top:-7px;
+  background:#241e15;
+  border-bottom:none;
+  border-right:none;
+}
+.oppCard{
+  transition:opacity .15s, border-color .15s, background .15s;
+}
+.oppCard:hover{
+  opacity:1;
+  border-color:#5a4526;
+  background:#26201a;
+}
+.draftCard{
+  transition:all .15s, border-color .15s;
+}
+.draftCard:hover{
+  border-color:#6a5030;
+  background:linear-gradient(#2a2418,#1a140e);
+  transform:translateY(-1px);
+}
+.draftCard.picked:hover{
+  border-color:#ffd070;
+  transform:translateY(-1px) scale(1.05);
+}
+.pbtn::before,
+.oppCard::before,
+.draftCard::before{
+  content:'ⓘ';
+  position:absolute;
+  bottom:2px;
+  left:4px;
+  font-size:9px;
+  color:rgba(160,150,130,.55);
+  pointer-events:none;
+  transition:color .15s;
+}
+.pbtn:hover::before,
+.oppCard:hover::before,
+.draftCard:hover::before{
+  color:#ffd070;
 }
 </style>
 </head>
@@ -2716,6 +2844,7 @@ function showDraftModal(color){
       card.className = 'draftCard';
       card.innerHTML = `<span class="cost">${COST_LABEL[key]}</span>` +
         `<span class="ic">${p.icon}</span><span class="nm">${p.name}</span>`;
+      attachPowerTooltip(card, key);   // ⬅️ NUEVO
       card.onclick = () => {
         if(picks.has(key)){ picks.delete(key); card.classList.remove('picked'); }
         else {
@@ -2724,7 +2853,11 @@ function showDraftModal(color){
         }
         counter.textContent = `${picks.size} / 3 seleccionadas`;
         if(picks.size === 3){
-          setTimeout(() => { ov.remove(); resolve([...picks]); }, 280);
+          setTimeout(() => {
+            hidePowerTooltip();     // ⬅️ NUEVO: evitar tooltip huérfano
+            ov.remove();
+            resolve([...picks]);
+          }, 280);
         }
       };
       grid.appendChild(card);
@@ -3027,11 +3160,21 @@ function togglePause(){
 /* =========================================================
    UI
    ========================================================= */
+let lastHandSignature = '';
+
 function renderPlayerHand(){
-  const pg = $('#powerGrid');
-  pg.innerHTML = '';
   const turn = chess.turn();
   const hand = playerDecks[turn].hand;
+  const sig = turn + '|' + hand.join(',');
+
+  // ⬇️ Si la mano no cambió, no tocamos el DOM.
+  //     updateUI ya se encarga de actualizar las clases dis/ready/active.
+  if(sig === lastHandSignature) return;
+  lastHandSignature = sig;
+
+  hidePowerTooltip();
+  const pg = $('#powerGrid');
+  pg.innerHTML = '';
   for(const key of hand){
     const p = POWERS[key];
     const b = document.createElement('button');
@@ -3039,49 +3182,140 @@ function renderPlayerHand(){
     b.innerHTML = `<span class="cost">${COST_LABEL[key]}</span>` +
       `<span class="ic">${p.icon}</span><span class="nm">${p.name}</span>`;
     b.onclick = () => startPower(key);
-    attachPowerTooltip(b, key);   // ⬅️ NUEVO
+    attachPowerTooltip(b, key);
     pg.appendChild(b);
   }
 }
 
 /* =========================================================
-   TOOLTIP DE PODERES
-   =========================================================
-   - Desktop: hover con delay de 350ms
-   - Táctil: long-press de 450ms (sin disparar el click)
+   TOOLTIP DE PODERES — flotante, anclado al botón
    ========================================================= */
-function attachPowerTooltip(btn, key){
+let powerTooltipEl = null;
+let tooltipOwner = null;
+
+function ensurePowerTooltip(){
+  if(powerTooltipEl && document.body.contains(powerTooltipEl)) return powerTooltipEl;
+  const el = document.createElement('div');
+  el.id = 'powerTooltip';
+  el.innerHTML = `
+    <div class="tt-head">
+      <span class="tt-icon"></span>
+      <span class="tt-name"></span>
+      <span class="tt-cost"></span>
+    </div>
+    <div class="tt-desc"></div>
+    <div class="tt-arrow"></div>
+  `;
+  document.body.appendChild(el);
+  powerTooltipEl = el;
+  return el;
+}
+
+function showPowerTooltip(btn, key){
   const p = POWERS[key];
+  if(!p) return;
+  const el = ensurePowerTooltip();
+  el.querySelector('.tt-icon').textContent = p.icon;
+  el.querySelector('.tt-name').textContent = p.name;
+  el.querySelector('.tt-cost').textContent = COST_LABEL[key] + '💧';
+  el.querySelector('.tt-desc').textContent = p.desc || '';
+
+  // Reset para medir limpio
+  el.classList.remove('show','arrow-top','arrow-bottom');
+  el.style.left = '-9999px';
+  el.style.top  = '-9999px';
+  el.style.visibility = 'hidden';
+
+  const ttRect  = el.getBoundingClientRect();
+  const btnRect = btn.getBoundingClientRect();
+  const GAP = 10;
+
+  // --- Elegir arriba o abajo según espacio ---
+  let placeAbove = true;
+  let top = btnRect.top - ttRect.height - GAP;
+  if(top < 8){
+    placeAbove = false;
+    top = btnRect.bottom + GAP;
+  }
+
+  // --- Centrar horizontalmente sobre el botón ---
+  let left = btnRect.left + btnRect.width/2 - ttRect.width/2;
+  const minLeft = 8;
+  const maxLeft = window.innerWidth - ttRect.width - 8;
+  left = Math.max(minLeft, Math.min(maxLeft, left));
+
+  el.style.left = left + 'px';
+  el.style.top  = top + 'px';
+  el.classList.add(placeAbove ? 'arrow-bottom' : 'arrow-top');
+  el.style.visibility = '';
+
+  // --- Reubicar la flecha para que apunte al centro del botón ---
+  const arrowX = (btnRect.left + btnRect.width/2) - left;
+  const arrowEl = el.querySelector('.tt-arrow');
+  // clamp para que no se escape del tooltip
+  const clampedX = Math.max(12, Math.min(ttRect.width - 12, arrowX));
+  arrowEl.style.left = clampedX + 'px';
+  arrowEl.style.marginLeft = '-6px';
+
+  tooltipOwner = btn;
+  requestAnimationFrame(() => el.classList.add('show'));
+}
+
+function hidePowerTooltip(){
+  tooltipOwner = null;
+  if(!powerTooltipEl) return;
+  powerTooltipEl.classList.remove('show');
+}
+
+function attachPowerTooltip(btn, key){
   let hoverTimer = null;
   let pressTimer = null;
   let longPressed = false;
+  let touchHideTimer = null;
 
-  const showTooltip = () => {
-    toast(`${p.icon} ${p.name} · ${COST_LABEL[key]}💧 — ${p.desc}`, '#c8d8ff');
-    if(navigator.vibrate) try { navigator.vibrate(15); } catch(e){}
+  const show = () => {
+    if(!document.body.contains(btn)) return;
+    // Si ya hay otro tooltip abierto para otro botón, no relanzar animación
+    if(tooltipOwner === btn && powerTooltipEl && powerTooltipEl.classList.contains('show')) return;
+    showPowerTooltip(btn, key);
+    if(navigator.vibrate) try { navigator.vibrate(12); } catch(e){}
   };
 
-  // --- Desktop: hover ---
+  const hide = () => {
+    clearTimeout(hoverTimer);
+    clearTimeout(pressTimer);
+    clearTimeout(touchHideTimer);
+    if(tooltipOwner === btn) hidePowerTooltip();
+  };
+
+  // --- Desktop: hover con delay ---
   btn.addEventListener('mouseenter', () => {
     clearTimeout(hoverTimer);
-    hoverTimer = setTimeout(showTooltip, 350);
+    hoverTimer = setTimeout(show, 280);
   });
-  btn.addEventListener('mouseleave', () => clearTimeout(hoverTimer));
+  btn.addEventListener('mouseleave', hide);
 
-  // --- Táctil: long press ---
+  // --- Táctil: long-press ---
   btn.addEventListener('pointerdown', (e) => {
     if(e.pointerType === 'mouse') return;
     longPressed = false;
     clearTimeout(pressTimer);
+    clearTimeout(touchHideTimer);
     pressTimer = setTimeout(() => {
       longPressed = true;
-      showTooltip();
+      show();
+      // En móvil, se oculta solo tras unos segundos
+      touchHideTimer = setTimeout(hide, 3200);
     }, 450);
   });
   const cancelPress = () => clearTimeout(pressTimer);
   btn.addEventListener('pointerup', cancelPress);
-  btn.addEventListener('pointercancel', cancelPress);
-  btn.addEventListener('pointerleave', cancelPress);
+  btn.addEventListener('pointercancel', () => { cancelPress(); hide(); });
+  btn.addEventListener('pointerleave', () => {
+    cancelPress();
+    // En táctil, damos un momento antes de ocultar (por si el dedo se deslizó)
+    if(e => e.pointerType === 'touch') touchHideTimer = setTimeout(hide, 800);
+  });
 
   // --- Bloquear el click si fue long-press ---
   btn.addEventListener('click', (e) => {
@@ -3093,22 +3327,42 @@ function attachPowerTooltip(btn, key){
   }, true);
 }
 
+// --- Ocultar ante cambios globales ---
+window.addEventListener('resize', hidePowerTooltip);
+// ⬇️ REEMPLAZAR el listener global de pointerdown
+document.addEventListener('pointerdown', (e) => {
+  if(!tooltipOwner) return;
+  if(!tooltipOwner.contains(e.target)) hidePowerTooltip();
+}, true);
+
+let lastOppHandSignature = '';
+
 function renderOppHand(){
-  const opp = $('#oppCards');
-  opp.innerHTML = '';
   const turn = chess.turn();
   const oppColor = turn === 'w' ? 'b' : 'w';
   const hand = playerDecks[oppColor].hand;
+
+  // Label (siempre actualizado, es gratis)
+  let label = oppColor === 'w' ? 'Blancas:' : 'Negras:';
+  if(aiEnabled && oppColor === aiColor) label = (rubyMode ? '💎 RUBY:' : '🤖 IA:');
+  $('#oppLabel').textContent = label;
+
+  const sig = oppColor + '|' + hand.join(',');
+  if(sig === lastOppHandSignature) return;
+  lastOppHandSignature = sig;
+
+  hidePowerTooltip();
+
+  const opp = $('#oppCards');
+  opp.innerHTML = '';
   for(const key of hand){
     const p = POWERS[key];
     const c = document.createElement('div');
     c.className = 'oppCard';
     c.innerHTML = `<span>${p.icon}</span><span class="nm">${p.name}</span>`;
+    attachPowerTooltip(c, key);   // ⬅️ NUEVO
     opp.appendChild(c);
   }
-  let label = oppColor === 'w' ? 'Blancas:' : 'Negras:';
-  if(aiEnabled && oppColor === aiColor) label = (rubyMode ? '💎 RUBY:' : '🤖 IA:');
-  $('#oppLabel').textContent = label;
 }
 function updateUI(){
   if(!chess) return;
@@ -6251,6 +6505,8 @@ async function exitToMenu(){
   await startGame();
 }
 function newGame(){
+  lastHandSignature = '';
+  lastOppHandSignature = '';
   aiSearchAbort = true;
   state.aiBusy = false;
   clearPosCache();   // *** NUEVO ***
