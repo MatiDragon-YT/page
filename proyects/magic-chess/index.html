@@ -329,7 +329,13 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
   12%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
   75%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
   100%{opacity:0;transform:translateX(-50%) translateY(-22px) scale(.95)}}
-#replayUI{position:fixed;inset:0;z-index:150;pointer-events:auto}
+
+#replayUI{
+  /* ya tiene position:fixed e inset:0, así que cubre todo */
+  /* Aseguramos que no herede scroll raro */
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
 #replayUI.hidden{display:none;pointer-events:none}
 #replayTop{position:absolute;top:0;left:0;right:0;
   background:linear-gradient(rgba(0,0,0,.92),rgba(0,0,0,.78) 70%,transparent);
@@ -5727,7 +5733,7 @@ $('#rClose').onclick = closeReplay;
 
 
 /* =========================================================
-   HISTORIAL CLICKEABLE DURANTE EL REPLAY
+   NAVEGACIÓN DEL REPLAY CON RUEDA + CLICK
    ========================================================= */
 historyEl.addEventListener('click', (e) => {
   if(!replay.active) return;
@@ -5738,11 +5744,14 @@ historyEl.addEventListener('click', (e) => {
   if(idx >= 0) replayGoTo(idx);
 });
 
-// Rueda del mouse sobre el historial → salta de paso
-historyEl.addEventListener('wheel', (e) => {
+// ⬇️ CAMBIO: la rueda se escucha en #replayUI (pantalla completa)
+//     Así funciona sin importar dónde esté el cursor.
+const replayUIEl = $('#replayUI');
+replayUIEl.addEventListener('wheel', (e) => {
   if(!replay.active) return;
   if(replayAnimating) return;
   e.preventDefault();
+  // Acumulamos deltas para que la rueda sea fluida pero no salte 10 pasos de una
   if(e.deltaY > 0) replayNext();
   else if(e.deltaY < 0) replayPrev();
 }, { passive: false });
@@ -7231,17 +7240,24 @@ document.addEventListener('visibilitychange', () => {
   try { masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.3); } catch(e){}
 });
 
-// Atajo de teclado: F para toggle de FPS
 document.addEventListener('keydown', (e) => {
-  // Ignorar si el usuario está escribiendo en un input/textarea
   const tag = (e.target && e.target.tagName) || '';
   if(tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
 
+  // Atajo FPS (ya existente)
   if(e.key === 'f' || e.key === 'F'){
-    // Evitar que se dispare si hay un modal abierto (prompt de nombre, etc.)
     if(document.querySelector('.modal-overlay')) return;
     setShowFps(!quality.showFps);
     toast(quality.showFps ? '📊 FPS activados' : '📊 FPS desactivados', '#8ad0ff');
+    return;
+  }
+
+  // ⬇️ NUEVO: navegación del replay con teclado
+  if(replay.active && !replayAnimating){
+    if(e.key === 'ArrowLeft'){  e.preventDefault(); replayPrev(); return; }
+    if(e.key === 'ArrowRight'){ e.preventDefault(); replayNext(); return; }
+    if(e.key === ' '){          e.preventDefault(); replayPlayPause(); return; }
+    if(e.key === 'Escape'){     e.preventDefault(); closeReplay(); return; }
   }
 });
 
