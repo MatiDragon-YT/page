@@ -1252,12 +1252,18 @@ const PIECE_NAME = { k:'Rey', q:'Dama', r:'Torre', b:'Alfil', n:'Caballo', p:'Pe
    PODERES
    ========================================================= */
 const POWERS = {
-  teleport: { name:'Teletransporte', minCost:2, icon:'🌀' },
-  shield: { name:'Escudo Arcano', cost:4, icon:'🛡️' },
-  ray: { name:'Rayo Destructor', minCost:3, icon:'⚡' },
-  heal: { name:'Toque Curativo', minCost:2, icon:'💚' },
-  zombie: { name:'Zombosis', cost:6, icon:'🧟' },
-  quake: { name:'Terremoto', cost:6, icon:'🌋' }
+  teleport: { name:'Teletransporte', minCost:2, icon:'🌀',
+    desc:'Mueve una pieza tuya hasta 3 casillas en cualquier dirección (incluso en L). Coste: 2/4/6 según distancia.' },
+  shield:   { name:'Escudo Arcano', cost:4, icon:'🛡️',
+    desc:'Protege una pieza tuya. El próximo ataque sobre ella se anula. Dura 2 turnos tuyos.' },
+  ray:      { name:'Rayo Destructor', minCost:3, icon:'⚡',
+    desc:'Destruye una pieza enemiga al instante. No puede matar al Rey. Coste según la pieza: peón 3, caballo/alfil 4, torre 5, dama 7.' },
+  heal:     { name:'Toque Curativo', minCost:2, icon:'💚',
+    desc:'Revive una pieza tuya caída en una casilla libre cercana a tu Rey. Coste según la pieza: peón 2, caballo/alfil 3, torre 4, dama 6.' },
+  zombie:   { name:'Zombosis', cost:6, icon:'🧟',
+    desc:'Convierte una pieza enemiga en tuya. Debe estar pegada a alguna de tus piezas. No afecta al Rey.' },
+  quake:    { name:'Terremoto', cost:6, icon:'🌋',
+    desc:'Sacude un área de 3×3 y mezcla al azar las piezas que haya dentro. No puede dejar a tu Rey en jaque.' }
 };
 const ALL_CARD_KEYS = Object.keys(POWERS);
 const TELEPORT_MAX_DIST = 3;
@@ -3003,9 +3009,60 @@ function renderPlayerHand(){
     b.innerHTML = `<span class="cost">${COST_LABEL[key]}</span>` +
       `<span class="ic">${p.icon}</span><span class="nm">${p.name}</span>`;
     b.onclick = () => startPower(key);
+    attachPowerTooltip(b, key);   // ⬅️ NUEVO
     pg.appendChild(b);
   }
 }
+
+/* =========================================================
+   TOOLTIP DE PODERES
+   =========================================================
+   - Desktop: hover con delay de 350ms
+   - Táctil: long-press de 450ms (sin disparar el click)
+   ========================================================= */
+function attachPowerTooltip(btn, key){
+  const p = POWERS[key];
+  let hoverTimer = null;
+  let pressTimer = null;
+  let longPressed = false;
+
+  const showTooltip = () => {
+    toast(`${p.icon} ${p.name} · ${COST_LABEL[key]}💧 — ${p.desc}`, '#c8d8ff');
+    if(navigator.vibrate) try { navigator.vibrate(15); } catch(e){}
+  };
+
+  // --- Desktop: hover ---
+  btn.addEventListener('mouseenter', () => {
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(showTooltip, 350);
+  });
+  btn.addEventListener('mouseleave', () => clearTimeout(hoverTimer));
+
+  // --- Táctil: long press ---
+  btn.addEventListener('pointerdown', (e) => {
+    if(e.pointerType === 'mouse') return;
+    longPressed = false;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+      longPressed = true;
+      showTooltip();
+    }, 450);
+  });
+  const cancelPress = () => clearTimeout(pressTimer);
+  btn.addEventListener('pointerup', cancelPress);
+  btn.addEventListener('pointercancel', cancelPress);
+  btn.addEventListener('pointerleave', cancelPress);
+
+  // --- Bloquear el click si fue long-press ---
+  btn.addEventListener('click', (e) => {
+    if(longPressed){
+      e.preventDefault();
+      e.stopPropagation();
+      longPressed = false;
+    }
+  }, true);
+}
+
 function renderOppHand(){
   const opp = $('#oppCards');
   opp.innerHTML = '';
