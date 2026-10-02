@@ -41,6 +41,8 @@
 	--c-blue: #2196f3;
 	--c-green: #00e676;
 	--c-pink: #e91e63;
+	--c-pink2: #ff0078;
+
 }
 
 html {
@@ -289,6 +291,7 @@ img {
   max-width : 100%;
   width : auto;
   height : auto;
+	border-radius: 14px;
 }
 td img {
 	margin: 0;
@@ -307,8 +310,8 @@ a:hover, a:focus {
 	text-decoration: none
 }
 a.button, label.button {
-    background: var(--c-blue);
-    color: black;
+    background: var(--c-pink2);
+    color: white;
     padding: .8em 0;
     width: 10rem;
     display: inline-block;
@@ -317,10 +320,13 @@ a.button, label.button {
     text-transform: uppercase;
     font-size: .84em;
     cursor: pointer;
+    transition: .1s linear;
 }
 
 a.button:hover, a.button:focus {
-	text-decoration: none
+	text-decoration: none;
+  position: relative;
+  transform: translateY(-0.3rem);
 }
 
 blockquote {

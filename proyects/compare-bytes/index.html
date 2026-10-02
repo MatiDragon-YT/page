@@ -1,599 +1,591 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Comparador Binario Pro</title>
-
-<style>
-
-body{
-background:black;
-color:white;
-font-family:Consolas,monospace;
-margin:10px;
-}
-
-h1{
-text-align:center;
-}
-h3{
-    margin: 0 0 1rem 0;
-}
-
-.controls{
-display:flex;
-gap:10px;
-margin-bottom:15px;
-flex-wrap:wrap;
-}
-
-.panelContainer{
-display:flex;
-}
-
-.panel{
-    flex: 1;
-    padding: 10px;
-    border: solid green 1px;
-}
-
-.hexView{
-
-height:600px;
-overflow:auto;
-background:black;
-padding:10px;
-font-size:13px;
-line-height:20px;
-}
-
-.line{
-
-display:flex;
-margin-bottom:2px;
-}
-
-.offset{
-color:cyan;
-}
-
-.bytes{
-    display:flex;
-    gap:2px;
-    margin: 0px 1.5rem;
-    color:green;
-}
-
-.ascii{
-
-display:flex;
-gap:2px;
-    color: yellow;
-}
-
-.byte{
-
-width:24px;
-text-align:center;
-border-radius:3px;
-cursor:pointer;
-
-}
-
-.diff{
-
-color:red;
-background:brown;
-}
-.ascii .same {
-    width: 0.5rem;
-    border-radius: 1px;
-}
-.bytes .same {
-    text-transform: uppercase;
-}
-.hover{
-
-outline:2px solid yellow;
-background:#444;
-}
-
-.info{
-
-margin-top:10px;
-background:#222;
-padding:15px;
-border-radius:8px;
-white-space:pre-wrap;
-}
-
-.letter{
-  color:cyan;
-}
-
-.number{
-  color:pink;
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comparador Binario Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-
-<h1>Comparador Binario Pro</h1>
-
-<div class="controls">
-
-<input type="file" id="fileA">
-<input type="file" id="fileB">
-
-<button onclick="compare()">
-Comparar
-</button>
-
-</div>
-
-<div class="panelContainer">
-
-<div class="panel">
-
-<h3>Archivo A</h3>
-
-<div
-id="viewA"
-class="hexView"
-></div>
-
-</div>
-
-<div class="panel">
-
-<h3>Archivo B</h3>
-
-<div
-id="viewB"
-class="hexView"
-></div>
-
-</div>
-
-</div>
-
-<div
-class="info"
-id="info"
->
-
-Esperando archivos...
-
-</div>
-
-<script>
-
-let dataA;
-let dataB;
-
-
-async function compare(){
-
-let fileA=
-fileAInput=
-document.getElementById(
-"fileA"
-).files[0];
-
-let fileB=
-document.getElementById(
-"fileB"
-).files[0];
-
-if(
-!fileA||
-!fileB
-){
-
-alert(
-"Elegí ambos archivos"
-);
-
-return;
-
-}
-
-dataA=
-new Uint8Array(
-await fileA.arrayBuffer()
-);
-
-dataB=
-new Uint8Array(
-await fileB.arrayBuffer()
-);
-
-render();
-
-}
-
-
-function render(){
-
-let max=
-Math.max(
-dataA.length,
-dataB.length
-);
-
-let htmlA="";
-let htmlB="";
-
-for(
-let i=0;
-i<max;
-i+=16
-){
-
-let offset=
-i.toString(16)
-.padStart(
-8,
-"0"
-);
-
-htmlA+=createLine(
-dataA,
-dataB,
-i,
-offset
-);
-
-htmlB+=createLine(
-dataB,
-dataA,
-i,
-offset
-);
-
-}
-
-viewA.innerHTML=
-htmlA;
-
-viewB.innerHTML=
-htmlB;
-
-syncScroll();
-
-}
-
-
-
-function createLine(
-current,
-other,
-start,
-offset
-){
-
-let html=
-`
-<div class='line'>
-
-<div class='offset'>
-${offset}
-</div>
-
-<div class='bytes'>
-`;
-
-let ascii=
-"<div class='ascii'>";
-
-for(
-let i=0;
-i<16;
-i++
-){
-
-let p=
-start+i;
-
-if(
-p>=Math.max(
-dataA.length,
-dataB.length
-)
-)
-break;
-
-let v=
-current[p];
-
-let o=
-other[p];
-
-let equal=
-v===o;
-
-let c=
-equal
-?
-"same"
-:
-"diff";
-
-let hex=
-(v??0)
-.toString(16)
-.padStart(
-2,
-"0"
-);
-
-let ch='.';
-
-if(
-v>=32&&
-v<=255
-){
-
-ch=
-String.fromCharCode(
-v
-);
-
-}
-
-html+=`
-
-<span
-class='byte ${c}'
-data-pos='${p}'
-onmouseenter='hoverByte(${p})'
-onmouseleave='clearHover()'
->
-
-${hex}
-
-</span>
-
-`;
-
-let asciiClass=c;
-
-if(/[A-Za-z]/.test(ch))
-asciiClass+=" letter";
-
-if(/[0-9]/.test(ch))
-asciiClass+=" number";
-
-ascii+=`
-
-<span
-class='byte ${asciiClass}'
-data-pos='${p}'
-onmouseenter='hoverByte(${p})'
-onmouseleave='clearHover()'
->
-
-${ch}
-
-</span>
-
-`;
-
-}
-
-html+="</div>";
-ascii+="</div></div>";
-
-return html+ascii;
-
-}
-
-
-
-function hoverByte(pos){
-
-clearHover();
-
-document
-.querySelectorAll(
-`[data-pos="${pos}"]`
-)
-.forEach(
-e=>e.classList.add(
-"hover"
-)
-);
-
-updateInfo(
-pos
-);
-
-}
-
-
-
-function clearHover(){
-
-document
-.querySelectorAll(
-".hover"
-)
-.forEach(
-e=>e.classList.remove(
-"hover"
-)
-);
-
-}
-
-
-
-function getBytes(
-arr,
-pos,
-count
-){
-
-let out=[];
-
-for(
-let i=0;
-i<count;
-i++
-){
-
-out.push(
-arr[pos+i]??0
-);
-
-}
-
-return out;
-
-}
-
-
-
-function toDataView(bytes){
-
-return new DataView(
-new Uint8Array(
-bytes
-).buffer
-);
-
-}
-
-
-
-function updateInfo(pos){
-
-let bytes=
-getBytes(
-dataA,
-pos,
-4
-);
-
-let dv=
-toDataView(
-bytes
-);
-
-let bin=
-bytes
-.map(
-v=>
-v.toString(2)
-.padStart(
-8,
-"0"
-)
-)
-.join(
-" "
-);
-
-let ascii=
-bytes
-.map(
-v=>
-(v>=32&&v<=126)
-?
-String.fromCharCode(v)
-:
-"."
-)
-.join("");
-
-info.innerText=`
-
-Offset:
-0x${pos.toString(16)}
-(${pos})
-
-Bytes:
-${bytes.map(
-v=>
-v.toString(16)
-.padStart(2,"0")
-).join(" ")}
-
-UINT8:
-${bytes[0]}
-
-INT8:
-${dv.getInt8(0)}
-
-------------------
-
-UINT16 LE:
-${dv.getUint16(0,true)}
-
-UINT16 BE:
-${dv.getUint16(0,false)}
-
-INT16 LE:
-${dv.getInt16(0,true)}
-
-INT16 BE:
-${dv.getInt16(0,false)}
-
-------------------
-
-UINT32 LE:
-${dv.getUint32(0,true)}
-
-UINT32 BE:
-${dv.getUint32(0,false)}
-
-INT32 LE:
-${dv.getInt32(0,true)}
-
-INT32 BE:
-${dv.getInt32(0,false)}
-
-------------------
-
-FLOAT32 LE:
-${dv.getFloat32(0,true)}
-
-FLOAT32 BE:
-${dv.getFloat32(0,false)}
-
-------------------
-
-ASCII:
-${ascii}
-
-Binario:
-${bin}
-
-`;
-
-}
-
-
-
-function syncScroll(){
-
-viewA.onscroll=()=>{
-
-viewB.scrollTop=
-viewA.scrollTop;
-
-};
-
-viewB.onscroll=()=>{
-
-viewA.scrollTop=
-viewB.scrollTop;
-
-};
-
-}
-
-</script>
-
+<body class="bg-black text-white font-mono m-4">
+
+  <h1 class="text-3xl text-center mb-4">Comparador Binario Pro</h1>
+
+  <!-- Controles -->
+  <div class="flex flex-wrap gap-3 mb-4">
+    <input type="file" id="fileA" class="bg-gray-800 text-white border border-gray-600 rounded px-2 py-1 text-sm">
+    <input type="file" id="fileB" class="bg-gray-800 text-white border border-gray-600 rounded px-2 py-1 text-sm">
+    <button onclick="compare()" class="bg-green-700 hover:bg-green-600 text-white font-bold py-1 px-4 rounded text-sm">
+      Comparar
+    </button>
+  </div>
+
+  <!-- Paneles -->
+  <div class="flex flex-col md:flex-row gap-4">
+    <!-- Panel A -->
+    <div id="panelA" class="flex-1 border border-green-700 rounded p-2 drop-zone" data-target="A">
+      <div class="flex justify-between items-center mb-2">
+        <h3 class="text-lg font-semibold">Archivo A <span id="nameA" class="text-sm font-normal text-gray-400">(ninguno)</span></h3>
+      </div>
+      <div id="viewA" class="h-[600px] bg-black rounded border border-gray-700 relative">
+        <canvas id="canvasA" class="w-full h-full block"></canvas>
+      </div>
+    </div>
+
+    <!-- Panel B -->
+    <div id="panelB" class="flex-1 border border-green-700 rounded p-2 drop-zone" data-target="B">
+      <div class="flex justify-between items-center mb-2">
+        <h3 class="text-lg font-semibold">Archivo B <span id="nameB" class="text-sm font-normal text-gray-400">(ninguno)</span></h3>
+      </div>
+      <div id="viewB" class="h-[600px] bg-black rounded border border-gray-700 relative">
+        <canvas id="canvasB" class="w-full h-full block"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Información -->
+  <div id="info" class="mt-4 bg-gray-900 p-4 rounded-lg whitespace-pre-wrap text-sm border border-gray-700">
+    Esperando archivos...
+  </div>
+
+  <script>
+    // ===================== CONFIGURACIÓN =====================
+    const LINE_HEIGHT = 20;
+    const BYTES_PER_LINE = 16;
+    const BYTE_WIDTH = 24;
+    const GAP = 2;
+    const OFFSET_WIDTH = 80;
+    const PADDING_LEFT = 8;
+    const PADDING_TOP = 4;
+    const SCROLLBAR_SIZE = 14;
+    const SCROLLBAR_PADDING = 4;
+    const EXTRA_RIGHT_MARGIN = 30;
+
+    let dataA = null, dataB = null;
+    let hoverPos = null; // posición en bytes (índice)
+    let scrollY = 0;
+    let scrollX = 0;
+    let maxScrollY = 0;
+    let maxScrollX = 0;
+    let canvasWidth = 0, canvasHeight = 0;
+    let contentWidth = 0;
+
+    // Estado de arrastre
+    let isDraggingV = false, isDraggingH = false;
+    let dragStartY = 0, dragStartScrollY = 0;
+    let dragStartX = 0, dragStartScrollX = 0;
+
+    // DOM refs
+    const canvasA = document.getElementById('canvasA');
+    const canvasB = document.getElementById('canvasB');
+    const ctxA = canvasA.getContext('2d');
+    const ctxB = canvasB.getContext('2d');
+    const infoDiv = document.getElementById('info');
+    const nameA = document.getElementById('nameA');
+    const nameB = document.getElementById('nameB');
+    const viewA = document.getElementById('viewA');
+    const viewB = document.getElementById('viewB');
+
+    // ===================== FUNCIONES DE DIBUJO =====================
+
+    function getCanvasSize(canvas) {
+      return { width: canvas.width, height: canvas.height };
+    }
+
+    // Calcula el ancho total del contenido (para scroll horizontal)
+    function calcContentWidth() {
+      // offset + bytes + gap + ascii + márgenes
+      return PADDING_LEFT + OFFSET_WIDTH + 8 + 
+             BYTES_PER_LINE * (BYTE_WIDTH + GAP) + 
+             16 + BYTES_PER_LINE * 12 + 
+             SCROLLBAR_SIZE + SCROLLBAR_PADDING + EXTRA_RIGHT_MARGIN;
+    }
+
+    function drawView(canvas, ctx, data, otherData, scrollY, scrollX, hoverPos) {
+      const w = canvas.width;
+      const h = canvas.height;
+      if (w === 0 || h === 0) return;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, w, h);
+
+      if (!data || data.length === 0) {
+        ctx.fillStyle = '#888';
+        ctx.font = '13px Consolas, monospace';
+        ctx.fillText('(vacío)', PADDING_LEFT, PADDING_TOP);
+        drawScrollbars(ctx, w, h, scrollY, maxScrollY, scrollX, maxScrollX);
+        return;
+      }
+
+      const totalLines = Math.ceil(data.length / BYTES_PER_LINE);
+      const totalHeight = totalLines * LINE_HEIGHT;
+      maxScrollY = Math.max(0, totalHeight - h + 20);
+
+      // Ancho del contenido
+      contentWidth = calcContentWidth();
+      maxScrollX = Math.max(0, contentWidth - w + 20);
+
+      // Líneas visibles
+      const firstLine = Math.floor(scrollY / LINE_HEIGHT);
+      const lastLine = Math.min(Math.ceil((scrollY + h) / LINE_HEIGHT), totalLines);
+      if (firstLine >= totalLines) {
+        drawScrollbars(ctx, w, h, scrollY, maxScrollY, scrollX, maxScrollX);
+        return;
+      }
+
+      ctx.font = '13px Consolas, monospace';
+      ctx.textBaseline = 'top';
+
+      let y = PADDING_TOP - (scrollY - firstLine * LINE_HEIGHT);
+
+      const hasComparison = otherData && otherData.length > 0;
+      const xOffsetBase = -scrollX;
+
+      for (let line = firstLine; line < lastLine; line++) {
+        const offset = line * BYTES_PER_LINE;
+
+        // Offset (siempre visible, sin scroll horizontal)
+        const xOffset = PADDING_LEFT + xOffsetBase;
+        ctx.fillStyle = '#00ffff';
+        ctx.fillText(offset.toString(16).padStart(8, '0'), Math.max(0, xOffset), y);
+
+        // Bytes
+        const xBytes = PADDING_LEFT + OFFSET_WIDTH + 8 + xOffsetBase;
+        for (let col = 0; col < BYTES_PER_LINE; col++) {
+          const pos = offset + col;
+          if (pos >= data.length) break;
+
+          const val = data[pos];
+          const otherVal = hasComparison ? (otherData[pos] ?? 0) : 0;
+          const diff = hasComparison && (val !== otherVal);
+
+          const x = xBytes + col * (BYTE_WIDTH + GAP);
+          const hex = val.toString(16).padStart(2, '0');
+
+          const isHover = (hoverPos !== null && pos === hoverPos);
+          if (isHover) {
+            ctx.fillStyle = '#444';
+            ctx.fillRect(x - 2, y - 1, BYTE_WIDTH + 4, LINE_HEIGHT + 2);
+          } else if (diff) {
+            ctx.fillStyle = '#8b0000';
+            ctx.fillRect(x - 2, y - 1, BYTE_WIDTH + 4, LINE_HEIGHT + 2);
+          }
+
+          ctx.fillStyle = diff ? '#ff4444' : '#00ff00';
+          ctx.fillText(hex, x, y);
+        }
+
+        // ASCII
+        const xAscii = xBytes + BYTES_PER_LINE * (BYTE_WIDTH + GAP) + 16 + xOffsetBase;
+        for (let col = 0; col < BYTES_PER_LINE; col++) {
+          const pos = offset + col;
+          if (pos >= data.length) break;
+
+          const val = data[pos];
+          const otherVal = hasComparison ? (otherData[pos] ?? 0) : 0;
+          const diff = hasComparison && (val !== otherVal);
+
+          const x = xAscii + col * 12;
+          const ch = (val >= 32 && val <= 126) ? String.fromCharCode(val) : '.';
+
+          const isHover = (hoverPos !== null && pos === hoverPos);
+          if (isHover) {
+            ctx.fillStyle = '#444';
+            ctx.fillRect(x - 1, y - 1, 12, LINE_HEIGHT + 2);
+          } else if (diff) {
+            ctx.fillStyle = '#8b0000';
+            ctx.fillRect(x - 1, y - 1, 12, LINE_HEIGHT + 2);
+          }
+
+          if (/[A-Za-z]/.test(ch)) {
+            ctx.fillStyle = diff ? '#ff6666' : '#00ffff';
+          } else if (/[0-9]/.test(ch)) {
+            ctx.fillStyle = diff ? '#ff6666' : '#ff66ff';
+          } else {
+            ctx.fillStyle = diff ? '#ff4444' : '#ffff00';
+          }
+          ctx.fillText(ch, x, y);
+        }
+
+        y += LINE_HEIGHT;
+      }
+
+      // Dibujar barras de scroll
+      drawScrollbars(ctx, w, h, scrollY, maxScrollY, scrollX, maxScrollX);
+    }
+
+    // ===================== BARRAS DE DESPLAZAMIENTO =====================
+
+    function drawScrollbars(ctx, w, h, scrollY, maxScrollY, scrollX, maxScrollX) {
+      // Barra vertical (derecha)
+      const vBarX = w - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
+      const vBarY = SCROLLBAR_PADDING;
+      const vBarH = h - 2 * SCROLLBAR_PADDING - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
+      const thumbH = Math.max(20, vBarH * (h / (maxScrollY + h)));
+      const thumbY = vBarY + (vBarH - thumbH) * (scrollY / (maxScrollY || 1));
+
+      ctx.fillStyle = '#222';
+      ctx.fillRect(vBarX, vBarY, SCROLLBAR_SIZE, vBarH);
+      ctx.fillStyle = '#666';
+      ctx.fillRect(vBarX + 2, thumbY, SCROLLBAR_SIZE - 4, thumbH);
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(vBarX, vBarY, SCROLLBAR_SIZE, vBarH);
+
+      // Barra horizontal (abajo)
+      const hBarX = SCROLLBAR_PADDING;
+      const hBarY = h - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
+      const hBarW = w - 2 * SCROLLBAR_PADDING - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
+      const thumbW = Math.max(20, hBarW * (w / (maxScrollX + w)));
+      const thumbX = hBarX + (hBarW - thumbW) * (scrollX / (maxScrollX || 1));
+
+      ctx.fillStyle = '#222';
+      ctx.fillRect(hBarX, hBarY, hBarW, SCROLLBAR_SIZE);
+      ctx.fillStyle = '#666';
+      ctx.fillRect(thumbX, hBarY + 2, thumbW, SCROLLBAR_SIZE - 4);
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(hBarX, hBarY, hBarW, SCROLLBAR_SIZE);
+
+      // Esquina inferior derecha (relleno)
+      ctx.fillStyle = '#222';
+      ctx.fillRect(vBarX, hBarY, SCROLLBAR_SIZE, SCROLLBAR_SIZE);
+    }
+
+    // ===================== SCROLL =====================
+
+    function setScroll(newScrollY, newScrollX) {
+      const totalLines = Math.ceil(Math.max(dataA?.length || 0, dataB?.length || 0) / BYTES_PER_LINE);
+      const totalHeight = totalLines * LINE_HEIGHT;
+      const maxY = Math.max(0, totalHeight - canvasHeight + 20);
+      scrollY = Math.max(0, Math.min(newScrollY, maxY));
+
+      contentWidth = calcContentWidth();
+      const maxX = Math.max(0, contentWidth - canvasWidth + 20);
+      scrollX = Math.max(0, Math.min(newScrollX, maxX));
+
+      render();
+    }
+
+    function handleWheel(e) {
+      e.preventDefault();
+      const deltaY = e.deltaY || 0;
+      const deltaX = e.deltaX || 0;
+      if (e.shiftKey) {
+        // Scroll horizontal con Shift
+        setScroll(scrollY, scrollX + deltaY);
+      } else {
+        setScroll(scrollY + deltaY, scrollX + deltaX);
+      }
+    }
+
+    // ===================== ARRASTRE DE BARRAS =====================
+
+    function startDragV(e) {
+      isDraggingV = true;
+      dragStartY = e.clientY;
+      dragStartScrollY = scrollY;
+      document.addEventListener('mousemove', onDragV);
+      document.addEventListener('mouseup', endDragV);
+    }
+
+    function onDragV(e) {
+      if (!isDraggingV) return;
+      const delta = e.clientY - dragStartY;
+      const totalLines = Math.ceil(Math.max(dataA?.length || 0, dataB?.length || 0) / BYTES_PER_LINE);
+      const totalHeight = totalLines * LINE_HEIGHT;
+      const maxY = Math.max(0, totalHeight - canvasHeight + 20);
+      const ratio = delta / (canvasHeight - 2 * SCROLLBAR_PADDING - SCROLLBAR_SIZE - SCROLLBAR_PADDING);
+      const newScroll = dragStartScrollY + ratio * (maxY + canvasHeight);
+      setScroll(newScroll, scrollX);
+    }
+
+    function endDragV() {
+      isDraggingV = false;
+      document.removeEventListener('mousemove', onDragV);
+      document.removeEventListener('mouseup', endDragV);
+    }
+
+    function startDragH(e) {
+      isDraggingH = true;
+      dragStartX = e.clientX;
+      dragStartScrollX = scrollX;
+      document.addEventListener('mousemove', onDragH);
+      document.addEventListener('mouseup', endDragH);
+    }
+
+    function onDragH(e) {
+      if (!isDraggingH) return;
+      const delta = e.clientX - dragStartX;
+      contentWidth = calcContentWidth();
+      const maxX = Math.max(0, contentWidth - canvasWidth + 20);
+      const ratio = delta / (canvasWidth - 2 * SCROLLBAR_PADDING - SCROLLBAR_SIZE - SCROLLBAR_PADDING);
+      const newScroll = dragStartScrollX + ratio * (maxX + canvasWidth);
+      setScroll(scrollY, newScroll);
+    }
+
+    function endDragH() {
+      isDraggingH = false;
+      document.removeEventListener('mousemove', onDragH);
+      document.removeEventListener('mouseup', endDragH);
+    }
+
+    // ===================== HOVER =====================
+
+    function getByteFromMouse(canvas, e, data) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+      const w = canvas.width;
+      const h = canvas.height;
+      if (mouseX < 0 || mouseX > w || mouseY < 0 || mouseY > h) return null;
+
+      // Ajustar por scroll horizontal
+      const xAdjusted = mouseX + scrollX;
+
+      const firstLine = Math.floor(scrollY / LINE_HEIGHT);
+      const line = Math.floor((mouseY - PADDING_TOP) / LINE_HEIGHT) + firstLine;
+      const col = Math.floor((xAdjusted - (PADDING_LEFT + OFFSET_WIDTH + 8)) / (BYTE_WIDTH + GAP));
+      if (col < 0 || col >= BYTES_PER_LINE) return null;
+      const pos = line * BYTES_PER_LINE + col;
+      if (!data || pos >= data.length) return null;
+      return pos;
+    }
+
+    function handleMouseMoveCanvas(e, canvas, data) {
+      const pos = getByteFromMouse(canvas, e, data);
+      if (pos !== null && pos !== hoverPos) {
+        hoverPos = pos;
+        updateInfo(pos);
+        render();
+      } else if (pos === null && hoverPos !== null) {
+        hoverPos = null;
+        updateInfo(null);
+        render();
+      }
+    }
+
+    function handleMouseLeaveCanvas() {
+      if (hoverPos !== null) {
+        hoverPos = null;
+        updateInfo(null);
+        render();
+      }
+    }
+
+    // ===================== RENDER =====================
+
+    function resizeCanvas(canvas) {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const w = rect.width - 2;
+      const h = rect.height - 2;
+      canvas.width = w * devicePixelRatio;
+      canvas.height = h * devicePixelRatio;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.scale(devicePixelRatio, devicePixelRatio);
+      return { width: w, height: h };
+    }
+
+    function render() {
+      const sizeA = resizeCanvas(canvasA);
+      const sizeB = resizeCanvas(canvasB);
+      canvasWidth = sizeA.width;
+      canvasHeight = sizeA.height;
+
+      const otherForA = (dataA && dataB && dataA.length > 0 && dataB.length > 0) ? dataB : null;
+      const otherForB = (dataA && dataB && dataA.length > 0 && dataB.length > 0) ? dataA : null;
+
+      drawView(canvasA, ctxA, dataA, otherForA, scrollY, scrollX, hoverPos);
+      drawView(canvasB, ctxB, dataB, otherForB, scrollY, scrollX, hoverPos);
+    }
+
+    // ===================== EVENTOS DE MOUSE Y SCROLL =====================
+
+    function setupCanvasEvents(canvas, data) {
+      canvas.addEventListener('wheel', handleWheel, { passive: false });
+
+      // Detectar clic en barras de scroll
+      canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+        const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+        const w = canvas.width;
+        const h = canvas.height;
+
+        // Barra vertical
+        if (x > w - SCROLLBAR_SIZE - SCROLLBAR_PADDING && y < h - SCROLLBAR_SIZE - SCROLLBAR_PADDING) {
+          startDragV(e);
+          return;
+        }
+        // Barra horizontal
+        if (y > h - SCROLLBAR_SIZE - SCROLLBAR_PADDING && x < w - SCROLLBAR_SIZE - SCROLLBAR_PADDING) {
+          startDragH(e);
+          return;
+        }
+      });
+
+      // Hover
+      canvas.addEventListener('mousemove', (e) => {
+        handleMouseMoveCanvas(e, canvas, data);
+      });
+      canvas.addEventListener('mouseleave', handleMouseLeaveCanvas);
+    }
+
+    setupCanvasEvents(canvasA, dataA);
+    setupCanvasEvents(canvasB, dataB);
+
+    // ===================== DRAG AND DROP =====================
+
+    function setupDropZone(panelElement, target) {
+      panelElement.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        panelElement.classList.add('border-yellow-400');
+      });
+      panelElement.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        panelElement.classList.remove('border-yellow-400');
+      });
+      panelElement.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        panelElement.classList.remove('border-yellow-400');
+        const files = e.dataTransfer.files;
+        if (files.length === 0) return;
+        const file = files[0];
+
+        const input = document.getElementById('file' + target);
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+
+        const nameSpan = document.getElementById('name' + target);
+        nameSpan.textContent = file.name;
+
+        const arrayBuf = await file.arrayBuffer();
+        const data = new Uint8Array(arrayBuf);
+        if (target === 'A') {
+          dataA = data;
+        } else {
+          dataB = data;
+        }
+
+        const fileAInput = document.getElementById('fileA');
+        const fileBInput = document.getElementById('fileB');
+        if (fileAInput.files.length > 0 && fileBInput.files.length > 0) {
+          await compare();
+        } else {
+          hoverPos = null;
+          updateInfo(null);
+          scrollY = 0;
+          scrollX = 0;
+          render();
+        }
+      });
+    }
+
+    setupDropZone(document.getElementById('panelA'), 'A');
+    setupDropZone(document.getElementById('panelB'), 'B');
+
+    // ===================== CARGA Y COMPARACIÓN =====================
+
+    async function compare() {
+      const fileAInput = document.getElementById('fileA');
+      const fileBInput = document.getElementById('fileB');
+
+      const fileA = fileAInput.files[0];
+      const fileB = fileBInput.files[0];
+
+      if (!fileA || !fileB) {
+        alert('Elegí ambos archivos');
+        return;
+      }
+
+      nameA.textContent = fileA.name;
+      nameB.textContent = fileB.name;
+
+      dataA = new Uint8Array(await fileA.arrayBuffer());
+      dataB = new Uint8Array(await fileB.arrayBuffer());
+
+      hoverPos = null;
+      updateInfo(null);
+      scrollY = 0;
+      scrollX = 0;
+      render();
+    }
+
+    window.compare = compare;
+
+    // ===================== INFORMACIÓN =====================
+
+    function getBytes(arr, pos, count) {
+      const out = [];
+      for (let i = 0; i < count; i++) {
+        out.push(arr[pos + i] ?? 0);
+      }
+      return out;
+    }
+
+    function toDataView(bytes) {
+      return new DataView(new Uint8Array(bytes).buffer);
+    }
+
+    function updateInfo(pos) {
+      if (pos === null || pos === undefined || !dataA) {
+        infoDiv.innerText = 'Pasa el mouse sobre un byte para ver detalles.';
+        return;
+      }
+      const bytes = getBytes(dataA, pos, 4);
+      const dv = toDataView(bytes);
+      const bin = bytes.map(v => v.toString(2).padStart(8, '0')).join(' ');
+      const ascii = bytes.map(v => (v >= 32 && v <= 126) ? String.fromCharCode(v) : '.').join('');
+
+      infoDiv.innerText = `
+  Offset: 0x${pos.toString(16)} (${pos})
+
+  Bytes: ${bytes.map(v => v.toString(16).padStart(2, '0')).join(' ')}
+
+  UINT8:  ${bytes[0]}
+  INT8:   ${dv.getInt8(0)}
+
+  ------------------
+  UINT16 LE: ${dv.getUint16(0, true)}
+  UINT16 BE: ${dv.getUint16(0, false)}
+  INT16 LE:  ${dv.getInt16(0, true)}
+  INT16 BE:  ${dv.getInt16(0, false)}
+
+  ------------------
+  UINT32 LE: ${dv.getUint32(0, true)}
+  UINT32 BE: ${dv.getUint32(0, false)}
+  INT32 LE:  ${dv.getInt32(0, true)}
+  INT32 BE:  ${dv.getInt32(0, false)}
+
+  ------------------
+  FLOAT32 LE: ${dv.getFloat32(0, true)}
+  FLOAT32 BE: ${dv.getFloat32(0, false)}
+
+  ------------------
+  ASCII:   ${ascii}
+  Binario: ${bin}
+  `;
+    }
+
+    // ===================== INICIALIZACIÓN =====================
+
+    dataA = new Uint8Array(0);
+    dataB = new Uint8Array(0);
+    scrollY = 0;
+    scrollX = 0;
+    render();
+    updateInfo(null);
+
+    // Redimensionar al cambiar tamaño de ventana
+    window.addEventListener('resize', () => {
+      render();
+    });
+
+    console.log('Comparador Binario Pro listo');
+  </script>
 </body>
 </html>

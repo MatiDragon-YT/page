@@ -651,7 +651,7 @@ SP.toMarkdown = function(){
 	.r(/\[([\w\d\s\-\+]+)?(#([^#\]]+))?\]\[([^\[\]]+)\]/gm, `<span class='$1' id='$3'>$4</span>`)
 
 	// TABLE
-	.r(/\|[\|\-\x20:]+\|/g, function(input){
+	.r(/^\|[\|\-\x20:]+\|/gm, function(input){
 		let aCol = [] // contenedor columnas
 
 		if (input.r(/-+/, '-') != '|-|'){ // es la tabla no minificada
@@ -672,7 +672,7 @@ SP.toMarkdown = function(){
 		return "</thead><tbody>"
 
 	})
-	.r(/\|[^\n]+\|/g, function (input) {
+	.r(/^\|[^\n]+\|/gm, function (input) {
 		input = input.split('|')
 
 		let newTable = ""
@@ -696,9 +696,8 @@ $('body').innerHTML = `
 </div>
 <div id='nav'>
 	<section>
-		<!--<a href="${ROOT}docs.html">Docs</a>-->
-		<a href="${ROOT}proyects.html">Proyectos</a>
-		<a href="${ROOT}topics.html">Temas</a>
+		<a href="${ROOT}index.html">Inicio</a>
+		<!--<a href="${ROOT}proyects.html">Proyectos</a>-->
 		<a href="${ROOT}mods.html">Mods</a>
 	</section>
 	<!--<input id='search' type='text' placeholder='Buscar...'>-->
@@ -748,65 +747,68 @@ aTables.forEach(function(tabla, numTabla){
 	}
 })
 
-let hightlight = {
-	sb3 : function(element){
-		const span = {
-			start : "<span class=",
-			end : ">$1<\/span>"
-		}
+const hightlightspan = {
+	start : "<span class=",
+	end : ">$1<\/span>"
+}
+const hightlightenter = {
+	comments  : hightlightspan.start + "comments"   + hightlightspan.end,
+	numbers   : hightlightspan.start + "numbers"    + hightlightspan.end,
+	variables : hightlightspan.start + "variables"  + hightlightspan.end,
+	opcodes   : hightlightspan.start + "uppercase"  + hightlightspan.end,
+	directives: hightlightspan.start + "directives" + hightlightspan.end,
+	commands  : hightlightspan.start + "commands"   + hightlightspan.end,
+	keywords  : hightlightspan.start + "keywords"   + hightlightspan.end,
+	classes   : hightlightspan.start + "classes"    + hightlightspan.end
+}
 
-		const enter = {
-			comments  : span.start + "comments"   + span.end,
-			numbers   : span.start + "numbers"    + span.end,
-			variables : span.start + "variables"  + span.end,
-			opcodes   : span.start + "uppercase"  + span.end,
-			directives: span.start + "directives" + span.end,
-			commands  : span.start + "commands"   + span.end,
-			classes   : span.start + "classes"    + span.end
-		}
+let hightlight = {
+	
+
+	sb3 : function(element){
 
 		element.innerHTML = element.innerHTML
 		.rA('\t', '    ')
 		.rA('&lt;br/&gt;', "\\n")
 		//Comentarios 
-		.r(/(\/\/[^\n]+)/gm, enter.comments)
-		.r(/(\/\*[^\/]*\*\/)/gmi, enter.comments)
-		.r(/(\{[^\$][^\{\}]*\})/gmi, enter.comments)
+		.r(/(\/\/[^\n]+)/gm, hightlightenter.comments)
+		.r(/(\/\*[^\/]*\*\/)/gmi, hightlightenter.comments)
+		.r(/(\{[^\$][^\{\}]*\})/gmi, hightlightenter.comments)
 		//Directivas
-		.r(/(\{\$[^{}\n]+\})/gmi, enter.directives)
+		.r(/(\{\$[^{}\n]+\})/gmi, hightlightenter.directives)
 		//Cadenas de texto
-		.r(/\"([^\n"]+)\"/gmi, '<span class=strings>"$1"<\/span>')
+		.r(/\"([^\n"]+)?\"/gmi, '<span class=strings>"$1"<\/span>')
 		.rA('\\"</span>', '\\"')
 		.rA('\\"<span>', '\\"')
-		.r(/\'([^\n']+)\'/gmi, "<span class=strings>'$1'<\/span>")
+		.r(/\'([^\n']+)?\'/gmi, "<span class=strings>'$1'<\/span>")
 		.rA("\\'</span>", "\\'")
 		.rA("\\'<span>", "\\'")
-		//Palabras Reservadas
-		.r(/(\b)(longstring|shortstring|integer|thread|create_thread|create_custom_thread|end_thread|name_thread|end_thread_named|if|then|else|hex|end|else_jump|jump|jf|print|const|while|not|wait|repeat|until|break|continue|for|gosub|goto|var|array|of|and|or|to|downto|step|return|ret|rf|tr|Inc|Dec|Mul|Div|Alloc|Sqr|Random|int|string|float|bool|fade|DEFINE|nop)\b/gi, "$1<span class=keywords>$2<\/span>")
 		//Etiquetas
 		.r(/(^|\s+)(\@+\w+|\:+\w+)/gm, "$1<span class=labels>$2<\/span>")
 		.r(/(^|\s+)([A-Za-z0-9_]+\(\))/gm, "$1<span class=commands>$2<\/span>")
+		//Palabras Reservadas
+		.r(/(\b)(longstring|shortstring|integer|thread|create_thread|create_custom_thread|end_thread|name_thread|end_thread_named|if|then|else|hex|end|else_jump|jump|jf|print|const|while|not|wait|repeat|until|break|continue|for|gosub|goto|var|array|of|and|or|to|downto|step|return|ret|rf|tr|Inc|Dec|Mul|Div|Alloc|Sqr|Random|int|string|float|bool|fade|DEFINE|nop)\b/gi, "$1<span class=keywords>$2<\/span>")
 		//Arreglos
 		.r(/(\[)([\d+]*)(\])/gmi, "$1<span class=numbers>$2<\/span>$3")
 		//Opcodes
-		.r(/([a-fA-F0-9]{4}\:)/gmi, enter.opcodes)
+		.r(/([a-fA-F0-9]{4}\:)/gmi, hightlightenter.opcodes)
 		//Numeros
-		.r(/\b(\d+(x|\.)\w+)\b/gmi, enter.numbers)
-		.r(/\b(true|false)\b/gmi, enter.numbers)
-		.r(/((\s|\-|\,)(?!\$)(\d+)(?!\:|\@)(i|f|s|v)?)\b/gmi, enter.numbers)
+		.r(/\b(\d+(x|\.)\w+)\b/gmi, hightlightenter.numbers)
+		.r(/\b(true|false)\b/gmi, hightlightenter.numbers)
+		.r(/((\s|\-|\,)(?!\$)(\d+)(?!\:|\@)(i|f|s|v)?)\b/gmi, hightlightenter.numbers)
 		//Modelos
 		.r(/(\#[\w\d]+)/gm, "<span class='models uppercase'>$1<\/span>")
 		//Clases
 		.r(/\b([a-z0-9]+)\.([a-z0-9]+)/gmi, "<span class=classes>$1</span>.<span class=commands>$2</span>")
 		.r(/(\w+)(\(.+\)\.)(\w+)/gmi, "<span class=classes>$1</span>$2<span class=commands>$3</span>")
 		.r(/(\$\w+|\d+\@)\.([0-9A-Z_a-z]+)/gm, "$1.<span class=commands>$2</span>")
-		.r(/: (\w+)\n/gm,          ": "+ enter.classes  +"\n")
-		.r(/\.([0-9A-Z_a-z]+)\n/gm,"." + enter.commands +"\n")
+		.r(/: (\w+)\n/gm,          ": "+ hightlightenter.classes  +"\n")
+		.r(/\.([0-9A-Z_a-z]+)\n/gm,"." + hightlightenter.commands +"\n")
 		//Variables  
-		.r(/\b(timer(a|b))\b/gmi, enter.variables)
-		.r(/(\d+\@(s|v|\B)[^\w\d])/gm, enter.variables)
-		.r(/(\&amp;\d+)/gim, enter.variables)
-		.r(/((\x{00}|s|v)(\$[0-9A-Z_a-z]+))/gm, enter.variables)
+		.r(/\b(timer(a|b))\b/gmi, hightlightenter.variables)
+		.r(/(\d+\@(s|v|\B)[^\w\d])/gm, hightlightenter.variables)
+		.r(/(\&amp;\d+)/gim, hightlightenter.variables)
+		.r(/((\x{00}|s|v)(\$[0-9A-Z_a-z]+))/gm, hightlightenter.variables)
 		// Operadores
 		//.r(/\s(\.|\=|\+|\-|\*|\/|\%|\=\=|\+\=|\-\=|\*\=|\/\=|\%\=|\+\+|\-\-|\<|\>|\<\=|\>\=)\s/gmi," <font class=operador>$1<\/font> ")
 	},
@@ -820,11 +822,27 @@ let hightlight = {
 		.r(/^(\w+)=(\w.+)/gm, "<span class=variables>$1<\/span>=<span class=strings>$2<\/span>")
 		.r(/\[(\w+)\]/gm, "[<span class=keywords>$1<\/span>]")
 	},
+	js : function(element){
+		element.innerHTML = element.innerHTML
+		.r(/(\.|\,|\+|\-|\=|\<|\>|\\|\:|\;|\!)/gi, hightlightenter.keywords)
+
+		.r(/\b(\d+(x|\.)\w+)\b/gmi, hightlightenter.numbers)
+		.r(/\b(true|false)\b/gmi, hightlightenter.numbers)
+
+		.r(/\"([^\n"]+)?\"/gmi, '<span class=strings>"$1"<\/span>')
+		.r(/\'([^\n']+)?\'/gmi, "<span class=strings>'$1'<\/span>")
+
+		.r(/\b(while|for|const|let|var|function|return|if|else|switch)\b/gi, hightlightenter.keywords)
+
+		.r(/(\/\/([^\n]+)?)/gm, hightlightenter.comments)
+		.r(/(\/\*[^\/]*\*\/)/gmi, hightlightenter.comments)
+	},
 }
 
 $('.sb3',e=>hightlight.sb3(e))
 
 $('.ini',e=>hightlight.ini(e))
+$('.js',e=>hightlight.js(e))
 
 $("#CHANGE").onclick = function(){
 	const $THIS_ELEMENT = this
