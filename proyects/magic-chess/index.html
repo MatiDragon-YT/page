@@ -415,6 +415,19 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
 #history.replay-mode .hist-item:hover{
   filter:brightness(1.25);
 }
+#replayBottom button.speed{
+  width:64px;
+  font-size:14px;
+  font-weight:800;
+  font-family:ui-monospace,monospace;
+  letter-spacing:.5px;
+}
+#replayBottom button.speed-slow{
+  border-color:#5a8ac0; color:#a8d0ff;
+}
+#replayBottom button.speed-fast{
+  border-color:#c08a3a; color:#ffd090;
+}
 </style>
 </head>
 <body>
@@ -473,11 +486,12 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
     <div id="replayProgress">0 / 0</div>
   </div>
   <div id="replayBottom">
-    <button id="rPrev" title="Anterior">⏮</button>
-    <button id="rPlay" class="primary" title="Play/Pausa">▶</button>
-    <button id="rNext" title="Siguiente">⏭</button>
-    <button id="rClose" class="close" title="Cerrar">✕</button>
-  </div>
+  <button id="rPrev" title="Anterior">⏮</button>
+  <button id="rPlay" class="primary" title="Play/Pausa">▶</button>
+  <button id="rNext" title="Siguiente">⏭</button>
+  <button id="rSpeed" class="speed" title="Velocidad">1.0×</button>   <!-- ⬅️ NUEVO -->
+  <button id="rClose" class="close" title="Cerrar">✕</button>
+</div>
 </div>
 <script>
 /* =========================================================
@@ -1246,8 +1260,11 @@ const achState = {
 let firstBloodClaimed = false;
 
 const historyLog = [];
-const replay = { active: false, index: 0, playing: false, speed: 950,
-                 storedMatch: null, originalHistory: null };
+const replay = {
+  active: false, index: 0, playing: false, speed: 950,
+  speedMult: 1.0,               // ⬅️ NUEVO
+  storedMatch: null, originalHistory: null
+};
 let replayAnimating = false;
 let playToken = 0;
 let replayFromMenu = false;
@@ -5320,6 +5337,8 @@ clearHighlights();
     toast('Datos de partida corruptos', '#ff8080');
     replay.active = false;
     $('#replayUI').classList.add('hidden');
+    replay.speedMult = 1.0;
+    updateSpeedButton();
     return;
   }
 
@@ -5645,7 +5664,7 @@ async function applyReplayFrameAnimated(i){
   }
   playReplayEffects(entry);
   updateReplayUI(entry, i);
-  await sleep(420);
+  await sleep(420 / replay.speedMult);
   replayAnimating = false;
   updateReplayControls();
 }
@@ -5668,7 +5687,7 @@ async function startReplayAuto(){
     replay.index++;
     await applyReplayFrameAnimated(replay.index);
     if(token !== playToken) break;
-    await sleep(80);
+    await sleep(80 / replay.speedMult);
   }
   if(token === playToken){ replay.playing = false; updateReplayControls(); }
 }
@@ -5680,6 +5699,27 @@ function updateReplayControls(){
   $('#rPrev').disabled = disabled || replay.index <= 0;
   $('#rNext').disabled = disabled || replay.index >= historyLog.length - 1;
 }
+
+
+const SPEED_STEPS = [0.5, 1.0, 1.5, 2.0, 4.0];
+
+function updateSpeedButton(){
+  const btn = $('#rSpeed');
+  if(!btn) return;
+  btn.textContent = replay.speedMult.toFixed(1) + '×';
+  // Feedback visual para velocidades extremas
+  btn.classList.toggle('speed-slow', replay.speedMult < 1);
+  btn.classList.toggle('speed-fast', replay.speedMult > 2);
+}
+
+$('#rSpeed').onclick = () => {
+  const idx = SPEED_STEPS.indexOf(replay.speedMult);
+  const next = SPEED_STEPS[(idx + 1) % SPEED_STEPS.length];
+  replay.speedMult = next;
+  updateSpeedButton();
+  if(navigator.vibrate) try { navigator.vibrate(10); } catch(e){}
+};
+
 $('#rPrev').onclick = replayPrev;
 $('#rNext').onclick = replayNext;
 $('#rPlay').onclick = replayPlayPause;
