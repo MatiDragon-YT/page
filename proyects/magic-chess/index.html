@@ -408,6 +408,13 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
     rgba(255,120,120,0.55) 60% 76%,
     transparent 78%);
 }
+/* Hacer los items del historial clickeables durante el replay */
+#history.replay-mode .hist-item{
+  cursor:pointer;
+}
+#history.replay-mode .hist-item:hover{
+  filter:brightness(1.25);
+}
 </style>
 </head>
 <body>
@@ -5292,6 +5299,7 @@ async function _aiTurnInner(){
    REPLAY
    ========================================================= */
 function startReplay(){
+  historyEl.classList.add('replay-mode');
   if(historyLog.length < 2){ toast('Sin acciones para reproducir'); return; }
   aiSearchAbort = true;
   state.aiBusy = false;
@@ -5370,6 +5378,7 @@ function startReplayFromStored(match){
   return replay.active;
 }
 function closeReplay(){
+  historyEl.classList.remove('replay-mode');
   stopReplayAuto();
   replay.active = false; replayAnimating = false;
   $('#replayUI').classList.add('hidden');
@@ -5675,6 +5684,28 @@ $('#rPrev').onclick = replayPrev;
 $('#rNext').onclick = replayNext;
 $('#rPlay').onclick = replayPlayPause;
 $('#rClose').onclick = closeReplay;
+
+
+/* =========================================================
+   HISTORIAL CLICKEABLE DURANTE EL REPLAY
+   ========================================================= */
+historyEl.addEventListener('click', (e) => {
+  if(!replay.active) return;
+  if(replayAnimating) return;
+  const item = e.target.closest('.hist-item');
+  if(!item) return;
+  const idx = Array.from(historyEl.children).indexOf(item);
+  if(idx >= 0) replayGoTo(idx);
+});
+
+// Rueda del mouse sobre el historial → salta de paso
+historyEl.addEventListener('wheel', (e) => {
+  if(!replay.active) return;
+  if(replayAnimating) return;
+  e.preventDefault();
+  if(e.deltaY > 0) replayNext();
+  else if(e.deltaY < 0) replayPrev();
+}, { passive: false });
 
 /* =========================================================
    HISTORIAL DE PARTIDAS — UI
