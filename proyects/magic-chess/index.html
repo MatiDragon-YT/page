@@ -7459,18 +7459,24 @@ gridEl.addEventListener('pointerdown', (e) => {
   clearHoverPreview();
 
   if(e.pointerType === 'mouse' && e.button !== 0) return;
-  if(state.busy || state.gameOver || replay.active || state.paused || state.aiBusy) return;
 
-  // ¿Es un drag de Ira legítimo?
+  // ⬇️ ¿Estamos esperando un segundo target de Ira?
   const isIraDrag = !!(state.targeting && state.targeting.key === 'ira');
 
-  if(state.targeting && !isIraDrag) return;   // otros targeting → bloqueado como antes
+  // Los guards normales NO aplican durante el targeting de Ira,
+  // porque state.busy está en true esperando la respuesta legítima.
+  if(!isIraDrag){
+    if(state.busy || state.gameOver || replay.active || state.paused || state.aiBusy) return;
+  }
+
+  // Otros targeting (no Ira) siguen bloqueados como antes
+  if(state.targeting && !isIraDrag) return;
 
   const cell = e.target.closest('.cell');
   if(!cell) return;
   const sq = cell.dataset.sq;
 
-  // En drag de Ira solo se puede empezar desde la pieza que tiene la Ira
+  // En drag de Ira solo se puede agarrar la pieza que tiene la Ira
   if(isIraDrag && sq !== state.targeting.from) return;
   // Fuera del targeting de Ira, chequeo normal de turno
   if(!isIraDrag && aiEnabled && chess.turn() === aiColor) return;
@@ -7479,7 +7485,7 @@ gridEl.addEventListener('pointerdown', (e) => {
   if(!piece) return;
   if(!isIraDrag && piece.color !== chess.turn()) return;
 
-  // Legal moves para el drag: en Ira usamos los del targeting ya calculados
+  // Movimientos válidos: en Ira usamos los del targeting ya calculados
   let dragMoves;
   if(isIraDrag){
     dragMoves = state.targeting.moves || [];
