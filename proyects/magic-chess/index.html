@@ -149,13 +149,25 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
   box-shadow:
     0 0 14px 3px rgba(90,180,255,0.65),
     inset 0 0 8px rgba(90,180,255,0.40);
+  animation:iraGlow .9s infinite alternate;
 }
-  animation:iraGlow .9s infinite alternate}
 .piece.in-check .tok{
   box-shadow: 0 0 0 3px rgba(255,60,60,.9),
               0 0 18px 6px rgba(255,40,40,.7),
               0 2px 6px rgba(0,0,0,.65);
   animation: checkPulse .8s infinite alternate;
+}
+/* Pegar junto al resto del CSS del escudo */
+.piece.shielded-weak .tok::before{
+  border-color:rgba(180,210,255,0.75);
+  border-style:dashed;
+  box-shadow:
+    0 0 6px 1px rgba(120,160,255,0.35),
+    inset 0 0 4px rgba(120,160,255,0.20);
+  animation-duration:1.5s;
+}
+.piece.shielded-weak.ira .tok::before{
+  border-color:rgba(200,220,255,0.85);
 }
 @keyframes checkPulse{
   from{filter:brightness(1) saturate(1.15)}
@@ -414,6 +426,11 @@ display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;
     transparent 0 58%,
     rgba(255,120,120,0.55) 60% 76%,
     transparent 78%);
+}
+/* Target de Ira sobre una pieza escudada: anillo azul en vez de naranja */
+.cell.ira-shielded::after{
+  background:radial-gradient(circle at 50% 50%,transparent 0 52%,rgba(120,200,255,.9) 54% 72%,transparent 74%);
+  animation:spinPulse 1.1s infinite;
 }
 /* Hacer los items del historial clickeables durante el replay */
 #history.replay-mode .hist-item{
@@ -1189,7 +1206,8 @@ const state = {
   busy: false, gameOver: false, selected: null, legalMoves: [], targeting: null,
   paused: false,
   aiBusy: false,
-  lastMove: { from: null, to: null, prevFrom: null, prevTo: null }
+  lastMove: { from: null, to: null, prevFrom: null, prevTo: null },
+  shieldHits: { w: {}, b: {} },
 };
 let iraResolve = null;
 
@@ -1413,7 +1431,7 @@ const POWERS = {
   teleport: { name:'Teletransporte', minCost:2, icon:'🌀',
     desc:'Mueve una pieza tuya hasta 3 casillas en cualquier dirección (incluso en L). Coste: 2/4/6 según distancia.' },
   shield:   { name:'Escudo Arcano', cost:4, icon:'🛡️',
-    desc:'Protege una pieza tuya. El próximo ataque sobre ella se anula. Dura 2 turnos tuyos.' },
+    desc:'Protege una pieza por 3 turnos. Bloquea el primer ataque; el segundo lo rompe. Mover la pieza lo cancela. Inmune a Terremoto, vulnerable a Ira.' },
   ray:      { name:'Rayo Destructor', minCost:3, icon:'⚡',
     desc:'Destruye una pieza enemiga al instante. No puede matar al Rey. Coste según la pieza: peón 3, caballo/alfil 4, torre 5, dama 7.' },
   heal:     { name:'Toque Curativo', minCost:2, icon:'💚',
@@ -2486,9 +2504,11 @@ function updatePieceClass(el, p, sq){
   if(tok && tok.textContent !== GLYPH[p.type]) tok.textContent = GLYPH[p.type];
   el.dataset.code = code;
   const shielded = !replay.active && state.shields[p.color].includes(sq);
-  const iraReady = !replay.active && state.iraCharge[p.color] && 'nrb'.includes(p.type);
-  el.classList.toggle('shielded', shielded);
-  el.classList.toggle('ira', iraReady);
+const weakened = shielded && (state.shieldHits[p.color][sq] || 2) <= 1;
+const iraReady = !replay.active && state.iraCharge[p.color] && 'nrb'.includes(p.type);
+el.classList.toggle('shielded', shielded);
+el.classList.toggle('shielded-weak', weakened);   // ⬅️ FALTA
+el.classList.toggle('ira', iraReady);
   const inCheck = !replay.active && p.type === 'k' && chess && chess.turn() === p.color && chess.in_check();
   el.classList.toggle('in-check', inCheck);
 }
@@ -2649,6 +2669,12 @@ function addToGraveyard(capturedType, capturedColor){
   if(!state.graveyard[capturedColor]) return;
   state.graveyard[capturedColor].push(capturedType);
 }
+function removeShield(color, sq){
+  const idx = state.shields[color].indexOf(sq);
+  if(idx >= 0) state.shields[color].splice(idx, 1);
+  delete state.shieldTurns[color][sq];
+  delete state.shieldHits[color][sq];
+}
 function validateAndFixBoard(){
   try {
     const fen = chess.fen();
@@ -2727,6 +2753,7 @@ function renderHistoryItem(entry){
   let cls = 'hist-item';
   if(entry.type === 'spell') cls += ' spell';
   else if(entry.type === 'ira') cls += ' ira';
+  else if(entry.type === 'ira-blocked') cls += ' block';   // ⬅️ NUEVO
   else if(entry.type === 'shield-absorb') cls += ' block';
   else if(entry.type === 'start') cls += ' start';
   else cls += ' ' + (entry.color === 'w' ? 'w' : 'b');
@@ -2759,6 +2786,10 @@ function describeEntry(entry){
     const pc = entry.piece ? PIECE_NAME[entry.piece.type] : 'Pieza';
     return `Ira de Batalla (${cName}): ${pc} ${entry.from} → ${entry.to}` + (entry.captured ? `, captura ${PIECE_NAME[entry.captured.type]}` : '');
   }
+  if(entry.type === 'ira-blocked'){
+  const pc = entry.targetPiece ? PIECE_NAME[entry.targetPiece.type] : 'pieza';
+  return `Ira bloqueada por el escudo — ${pc} sobrevive en ${entry.to}`;
+}
   if(entry.type === 'shield-absorb') return `Escudo bloqueó el ataque de ${PIECE_NAME[entry.piece.type]} en ${entry.to}`;
   if(entry.type === 'spell'){
     const cost = entry.cost ? ` · ${entry.cost} maná` : '';
@@ -2998,6 +3029,7 @@ function pushUndoSnapshot(){
     iraCharge: { ...state.iraCharge },
     shields: { w: [...state.shields.w], b: [...state.shields.b] },
     shieldTurns: { w: { ...state.shieldTurns.w }, b: { ...state.shieldTurns.b } },
+    shieldHits: { w: { ...state.shieldHits.w }, b: { ...state.shieldHits.b } },  // ⬅️ FALTA
     graveyard: { w: [...state.graveyard.w], b: [...state.graveyard.b] },
     achState: JSON.parse(JSON.stringify(achState)),
     firstBloodClaimed,
@@ -3020,10 +3052,15 @@ function performUndo(){
   state.specialCount = { ...snap.specialCount };
   state.iraCharge = { ...snap.iraCharge };
   state.shields = { w: [...snap.shields.w], b: [...snap.shields.b] };
-  if(snap.shieldTurns){
-    state.shieldTurns = { w: { ...snap.shieldTurns.w }, b: { ...snap.shieldTurns.b } };
-  }
-  state.graveyard = { w: [...snap.graveyard.w], b: [...snap.graveyard.b] };
+if(snap.shieldTurns){
+  state.shieldTurns = { w: { ...snap.shieldTurns.w }, b: { ...snap.shieldTurns.b } };
+}
+if(snap.shieldHits){                                                          // ⬅️ FALTA
+  state.shieldHits = { w: { ...snap.shieldHits.w }, b: { ...snap.shieldHits.b } };
+} else {
+  state.shieldHits = { w: {}, b: {} };
+}
+state.graveyard = { w: [...snap.graveyard.w], b: [...snap.graveyard.b] };
   for(const color of ['w','b']){
     achState[color] = JSON.parse(JSON.stringify(snap.achState[color]));
   }
@@ -3311,10 +3348,9 @@ function attachPowerTooltip(btn, key){
   const cancelPress = () => clearTimeout(pressTimer);
   btn.addEventListener('pointerup', cancelPress);
   btn.addEventListener('pointercancel', () => { cancelPress(); hide(); });
-  btn.addEventListener('pointerleave', () => {
+  btn.addEventListener('pointerleave', (e) => {
     cancelPress();
-    // En táctil, damos un momento antes de ocultar (por si el dedo se deslizó)
-    if(e => e.pointerType === 'touch') touchHideTimer = setTimeout(hide, 800);
+    if(e.pointerType === 'touch') touchHideTimer = setTimeout(hide, 800);
   });
 
   // --- Bloquear el click si fue long-press ---
@@ -3411,9 +3447,9 @@ function updateUI(){
    TURNO
    ========================================================= */
 function endTurn(){
-  // === Descontar contadores de escudos del jugador que acaba de terminar ===
   const justEnded = chess.turn() === 'w' ? 'b' : 'w';
   const st = state.shieldTurns[justEnded];
+  const sh = state.shieldHits[justEnded];
   if(st && state.shields[justEnded].length){
     const stillAlive = [];
     for(const sq of state.shields[justEnded]){
@@ -3423,7 +3459,7 @@ function endTurn(){
           stillAlive.push(sq);
         } else {
           delete st[sq];
-          // Aviso cuando se desvanece
+          delete sh[sq];
           toast(`🛡️ Escudo expirado en ${sq}`, '#7ac0ff');
         }
       } else {
@@ -3453,6 +3489,12 @@ function endTurn(){
 function checkGameEnd(){
   if(replay.active) return;
   if(chess.in_checkmate()){
+    // ⬇️ NUEVO: si el rey en mate tiene escudo, no es mate
+    const losingColor = chess.turn();
+    if(kingHasShield(losingColor)){
+      // No es mate real: el escudo absorbe
+      return false;
+    }
     state.gameOver = true;
     aiSearchAbort = true;
     stopTimer();
@@ -3527,7 +3569,12 @@ async function onSquareClick(sq){
   }
   if(piece && piece.color === turn){
     state.selected = sq;
-    state.legalMoves = chess.moves({ square: sq, verbose: true });
+    // ⬇️ NUEVO: si el rey tiene escudo, ignoramos el filtro de jaque
+    if(kingHasShield(turn)){
+      state.legalMoves = getMovesIgnoringCheck(sq, turn);
+    } else {
+      state.legalMoves = chess.moves({ square: sq, verbose: true });
+    }
     highlightLegalMoves();
   } else {
     state.selected = null; state.legalMoves = []; clearHighlights();
@@ -3583,17 +3630,37 @@ async function doPlayerMove(mv){
   else if(mv.flags.includes('c')) capturedSquare = mv.to;
 
   if(capturedSquare){
-    const targetPiece = chess.get(capturedSquare);
-    if(targetPiece && state.shields[targetPiece.color].includes(capturedSquare)){
+  const targetPiece = chess.get(capturedSquare);
+  if(targetPiece && state.shields[targetPiece.color].includes(capturedSquare)){
+    const defenderColor = targetPiece.color;
+    const hitsLeft = state.shieldHits[defenderColor][capturedSquare] || 2;
+
+    if(hitsLeft <= 1){
+      // ─── SEGUNDO ATAQUE → el escudo se rompe, el ataque pasa ───
+      removeShield(defenderColor, capturedSquare);
+      const c = squareCenter(capturedSquare);
+      ripples.push({ x:c.x, y:c.y, r:2, maxR: cellSize*1.7, life:.65, maxLife:.65, color:'180,220,255' });
+      burst(c.x, c.y, 34, { color:'#c8e0ff', spMin:60, spMax:220, lifeMin:.25, lifeMax:.6, sizeMin:1, sizeMax:3, shape:'tri' });
+      sfx('shield');
+      toast('💥 ¡El escudo se rompe! El ataque pasa.', '#ff8080');
+      // ⬅️ NO return: el movimiento sigue normal y captura
+    } else {
+      // ─── PRIMER ATAQUE → bloquea y debilita ───
+      state.shieldHits[defenderColor][capturedSquare] = hitsLeft - 1;
+      state.shieldTurns[defenderColor][capturedSquare]--;
+
+      // Si la duración también llegó a 0 con este golpe, se rompe
+      if(state.shieldTurns[defenderColor][capturedSquare] <= 0){
+        removeShield(defenderColor, capturedSquare);
+      }
+
       const c = squareCenter(capturedSquare);
       ripples.push({ x:c.x, y:c.y, r:2, maxR: cellSize*1.5, life:.6, maxLife:.6, color:'120,190,255' });
       burst(c.x, c.y, 30, { color:'#8ecbff', spMin:40, spMax:180, lifeMin:.3, lifeMax:.7, sizeMin:1.5, sizeMax:3.5 });
       sfx('shield');
-      toast('¡Escudo Arcano absorbe el ataque!', '#8ecbff');
-      unlockAch(targetPiece.color, 'escudoSalvador');
-      const idx = state.shields[targetPiece.color].indexOf(capturedSquare);
-      if(idx >= 0) state.shields[targetPiece.color].splice(idx,1);
-      delete state.shieldTurns[targetPiece.color][capturedSquare];
+      toast('🛡️ Escudo absorbe el ataque · 1 golpe restante', '#8ecbff');
+      unlockAch(defenderColor, 'escudoSalvador');
+
       switchTurnInFen();
       achState[turn].streak = 0;
       recordHistory({
@@ -3602,6 +3669,7 @@ async function doPlayerMove(mv){
         from: mv.from, to: capturedSquare,
         targetPiece: { type: targetPiece.type, color: targetPiece.color }
       });
+
       state.selected = null; state.legalMoves = []; clearHighlights();
       await sleep(650);
       state.busy = false;
@@ -3609,6 +3677,7 @@ async function doPlayerMove(mv){
       return;
     }
   }
+}
 
   let promotion;
   if(mv.flags.includes('p')){
@@ -3621,25 +3690,46 @@ async function doPlayerMove(mv){
   }
 
   let moveResult;
+const kingShielded = kingHasShield(turn);
+const isKingMoving = (mv.from === findKing(turn));
+
+if(kingShielded && !isKingMoving){
+  // Otra pieza se mueve, el rey está escudado → ignoramos el jaque
+  const savedFen = chess.fen();
+  const kingSq = findKing(turn);
+  const king = chess.get(kingSq);
+  chess.remove(kingSq);
+  try {
+    moveResult = chess.move({ from: mv.from, to: mv.to, promotion: promotion || 'q' });
+  } catch(e){ moveResult = null; }
+  if(moveResult){
+    // Reponer el rey en su casilla original
+    try { chess.put(king, kingSq); } catch(e){}
+  } else {
+    try { chess.put(king, kingSq); } catch(e){}
+    try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+  }
+} else {
+  // Camino normal
   try { moveResult = chess.move({ from: mv.from, to: mv.to, promotion: promotion || 'q' }); }
   catch(e){ moveResult = null; }
-  if(!moveResult){ state.busy = false; return; }
+}
+if(!moveResult){ state.busy = false; return; }
 
-  const shIdx = state.shields[turn].indexOf(mv.from);
-  if(shIdx >= 0){
-    state.shields[turn].splice(shIdx,1);
-    state.shields[turn].push(mv.to);
-    if(state.shieldTurns[turn][mv.from] !== undefined){
-      state.shieldTurns[turn][mv.to] = state.shieldTurns[turn][mv.from];
-      delete state.shieldTurns[turn][mv.from];
-    }
+  if(state.shields[turn].includes(mv.from)){
+    removeShield(turn, mv.from);
+    toast('🛡️ Escudo cancelado al mover la pieza', '#7ac0ff');
   }
   if(capturedSquare){
-    for(const col of ['w','b']){
-      const i = state.shields[col].indexOf(capturedSquare);
-      if(i >= 0) state.shields[col].splice(i,1);
+  for(const col of ['w','b']){
+    const i = state.shields[col].indexOf(capturedSquare);
+    if(i >= 0){
+      state.shields[col].splice(i,1);
+      delete state.shieldTurns[col][capturedSquare];
+      delete state.shieldHits[col][capturedSquare];
     }
   }
+}
 
   sfx(moveResult.captured ? 'capture' : 'move');
   await animateMove(mv.from, mv.to, capturedSquare);
@@ -3702,10 +3792,17 @@ async function doPlayerMove(mv){
   updateUI();
 
   if(movingPiece && isSpecial(movingPiece.type) && didCapture && state.iraCharge[turn]){
-    state.busy = true;
-    const iraResult = await iraTargeting(mv.to, turn);
-    state.busy = false;
-    if(iraResult){
+  state.busy = true;
+  const iraResult = await iraTargeting(mv.to, turn);
+  state.busy = false;
+  if(iraResult){
+    if(iraResult.blocked){
+      // ⬇️ NUEVO: la Ira se rompió contra un escudo.
+      // El charge, el efecto y el registro ya se hicieron dentro de iraTargeting.
+      // Solo avisamos y NO llamamos a unlockAch('dobleFilo') porque no hubo doble captura.
+      toast('🛡️ Tu Ira se rompió contra el escudo', '#ff8080');
+      updateUI();
+    } else {
       state.iraCharge[turn] = false;
       unlockAch(turn, 'dobleFilo');
       recordHistory({
@@ -3727,7 +3824,8 @@ async function doPlayerMove(mv){
       updateUI();
     }
   }
-  endTurn();
+}
+endTurn();
 }
 
 /* =========================================================
@@ -3752,16 +3850,67 @@ async function iraTargeting(fromSq, color){
     return null;
   }
   const oppColor = color === 'w' ? 'b' : 'w';
+
+  // Helper: devuelve la casilla del target si está escudado, o null
+  const moveTargetShieldSq = (m) => {
+    const sq = m.flags.includes('e') ? (m.to[0] + m.from[1]) : m.to;
+    const target = chess.get(sq);
+    if(target && state.shields[target.color].includes(sq)) return sq;
+    return null;
+  };
+
+  // Helper: ejecuta la Ira que se estrella contra un escudo
+  const breakShieldWithIra = async (targetSq, targetPiece) => {
+    const C = squareCenter(targetSq);
+    // Efecto visual fuerte (más intenso que el romper normal)
+    ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*2.0, life:.8, maxLife:.8, color:'180,220,255' });
+    burst(C.x, C.y, 40, { color:'#c8e0ff', spMin:80, spMax:260, lifeMin:.3, lifeMax:.7, sizeMin:1, sizeMax:3.5, shape:'tri' });
+    burst(C.x, C.y, 20, { color:'#8ecbff', spMin:30, spMax:140, lifeMin:.4, lifeMax:.9, sizeMin:2, sizeMax:5 });
+    sfx('shield');
+    vibrate([40, 30, 80]);
+    // Romper el escudo por completo
+    removeShield(targetPiece.color, targetSq);
+    // Consumir la Ira del atacante
+    state.iraCharge[color] = false;
+    toast('🛡️ ¡La Ira se estrella contra el escudo! Escudo roto · Ira consumida', '#ffb060');
+    // Registrar en historial
+    recordHistory({
+      type: 'ira-blocked', color, powerIcon: '🛡️', powerName: 'Ira bloqueada',
+      piece: null,
+      from: fromSq, to: targetSq,
+      targetPiece: { type: targetPiece.type, color: targetPiece.color },
+      cost: 0
+    });
+    syncPieces();
+    await sleep(700);
+  };
+
+  // ===== RAMA IA =====
   if(aiEnabled && color === aiColor){
-    let best = moves[0], bestVal = -Infinity;
-    for(const m of moves){
+    // La IA prefiere no desperdiciar la Ira en escudos, pero si no hay otra opción, la usa
+    const unshieldedMoves = moves.filter(m => !moveTargetShieldSq(m));
+    const candidates = unshieldedMoves.length ? unshieldedMoves : moves;
+    let best = candidates[0], bestVal = -Infinity;
+    for(const m of candidates){
       const tp = chess.get(m.to);
       if(!tp) continue;
       const v = PIECE_VALUE[tp.type] || 0;
       if(v > bestVal){ bestVal = v; best = m; }
     }
     const capturedSquare = best.flags.includes('e') ? (best.to[0] + best.from[1]) : best.to;
+    const targetPiece = chess.get(capturedSquare);
     await sleep(450);
+
+    // Si el target tiene escudo → se rompe y no come
+    if(targetPiece && state.shields[targetPiece.color].includes(capturedSquare)){
+      await breakShieldWithIra(capturedSquare, targetPiece);
+      // Reponer el tablero (no movimos nada realmente)
+      try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+      syncPieces();
+      return { blocked: true, to: capturedSquare, captured: null };
+    }
+
+    // Camino normal: captura
     let res;
     try { res = chess.move({ from: best.from, to: best.to }); } catch(e){ res = null; }
     if(res){
@@ -3770,26 +3919,31 @@ async function iraTargeting(fromSq, color){
       if(res.captured) vibrate([20, 40, 55]);
       state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
       for(const col of ['w','b']){
-        const i = state.shields[col].indexOf(capturedSquare);
-        if(i >= 0) state.shields[col].splice(i,1);
+        if(state.shields[col].includes(capturedSquare)) removeShield(col, capturedSquare);
       }
       syncPieces();
       return { from: res.from, to: res.to, captured: res.captured || null };
     }
     return null;
   }
+
+  // ===== RAMA JUGADOR =====
   const result = await new Promise(resolve => {
     clearHighlights();
     const c = gridEl.querySelector(`[data-sq="${fromSq}"]`);
     if(c) c.classList.add('sel');
     const targets = new Set(moves.map(m => m.to));
+    // Marcar escudados con anillo azul, no escudados con el naranja de Ira normal
     for(const sq of targets){
       const el = gridEl.querySelector(`[data-sq="${sq}"]`);
-      if(el) el.classList.add('ira');
+      if(!el) continue;
+      const mv = moves.find(m => m.to === sq);
+      const isShielded = !!moveTargetShieldSq(mv);
+      el.classList.add(isShielded ? 'ira-shielded' : 'ira');
     }
     state.targeting = { key: 'ira', from: fromSq, color };
     iraResolve = resolve;
-    toast('Elige la segunda víctima (clic derecho = omitir)', '#ffa040');
+    toast('Elige la segunda víctima (azul = escudado, rompe tu Ira)', '#ffa040');
     updateUI();
     const cleanup = () => {
       gridEl.removeEventListener('click', clickH, true);
@@ -3805,6 +3959,18 @@ async function iraTargeting(fromSq, color){
       cleanup();
       const mv = moves.find(m => m.to === sq);
       const capturedSquare = mv.flags.includes('e') ? (mv.to[0] + mv.from[1]) : mv.to;
+      const targetPiece = chess.get(capturedSquare);
+
+      // Si el target tiene escudo → se rompe y no come
+      if(targetPiece && state.shields[targetPiece.color].includes(capturedSquare)){
+        await breakShieldWithIra(capturedSquare, targetPiece);
+        try { chess.load(savedFen, { skipValidation: true }); } catch(err){}
+        syncPieces();
+        resolve({ blocked: true, to: capturedSquare, captured: null });
+        return;
+      }
+
+      // Camino normal: captura
       let res;
       try { res = chess.move({ from: mv.from, to: mv.to }); } catch(err){ res = null; }
       if(res){
@@ -3814,8 +3980,7 @@ async function iraTargeting(fromSq, color){
         if(res.captured) vibrate([20, 40, 55]);
         state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
         for(const col of ['w','b']){
-          const i = state.shields[col].indexOf(capturedSquare);
-          if(i >= 0) state.shields[col].splice(i,1);
+          if(state.shields[col].includes(capturedSquare)) removeShield(col, capturedSquare);
         }
         const cc = squareCenter(capturedSquare);
         burst(cc.x, cc.y, 20, { color:'#ff9040', spMin:50, spMax:180, lifeMin:.3, lifeMax:.7 });
@@ -4003,6 +4168,33 @@ function findKing(color){
   }
   return null;
 }
+function kingHasShield(color){
+  const kingSq = findKing(color);
+  return !!(kingSq && state.shields[color].includes(kingSq));
+}
+
+// Calcula movimientos para `sq` ignorando el jaque (workaround: quitamos el rey
+// temporalmente para que chess.js no filtre por jaque).
+function getMovesIgnoringCheck(sq, color){
+  const savedFen = chess.fen();
+  const kingSq = findKing(color);
+  let moves = [];
+  try {
+    if(kingSq){
+      const king = chess.get(kingSq);
+      chess.remove(kingSq);
+      moves = chess.moves({ square: sq, verbose: true });
+      try { chess.put(king, kingSq); } catch(e){}
+    } else {
+      moves = chess.moves({ square: sq, verbose: true });
+    }
+  } catch(e){
+    try { chess.load(savedFen, { skipValidation: true }); } catch(e2){}
+    moves = chess.moves({ square: sq, verbose: true });
+  }
+  try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
+  return moves;
+}
 async function handleTargetingClick(sq){
   const T = state.targeting;
   if(!T) return;
@@ -4092,15 +4284,10 @@ async function execTeleport(from, to, cost){
     parts[2] = c || '-'; parts[3] = '-'; parts[4] = '0';
     try { chess.load(parts.join(' '), { skipValidation: true }); } catch(e){}
   }
-  const si = state.shields[turn].indexOf(from);
-  if(si >= 0){
-    state.shields[turn].splice(si,1);
-    state.shields[turn].push(to);
-    if(state.shieldTurns[turn][from] !== undefined){
-      state.shieldTurns[turn][to] = state.shieldTurns[turn][from];
-      delete state.shieldTurns[turn][from];
-    }
-  }
+  if(state.shields[turn].includes(from)){
+  removeShield(turn, from);
+  toast('🛡️ Escudo cancelado al teletransportar', '#7ac0ff');
+}
   validateAndFixBoard();
   const el2 = pieceEls.get(to);
   if(el2){ el2.style.opacity = '0'; el2.getBoundingClientRect(); el2.style.opacity = '1'; }
@@ -4144,10 +4331,12 @@ async function execShield(sq){
   });
   ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.6, lifeMax:.6, color:'130,190,255' });
   burst(C.x, C.y, 26, { color:'#8ecbff', spMin:30, spMax:140, lifeMin:.3, lifeMax:.7 });
-    if(!state.shields[turn].includes(sq)){
-    state.shields[turn].push(sq);
-    state.shieldTurns[turn][sq] = 2;    // 3 turnos del dueño
-  }
+  
+  if(!state.shields[turn].includes(sq)){
+  state.shields[turn].push(sq);
+  state.shieldTurns[turn][sq] = 3;   // ⬅️ antes era 2
+  state.shieldHits[turn][sq] = 2;    // ⬅️ NUEVO
+}
   state.mana[turn] -= POWERS.shield.cost;
   achState[turn].powersUsed++;
   if(achState[turn].powersUsed >= 5) unlockAch(turn, 'magoDeMagos');
@@ -4176,8 +4365,11 @@ async function execRay(sq, cost){
   burst(C.x, C.y, 34, { color:'#fff0a0', spMin:60, spMax:260, lifeMin:.3, lifeMax:.75, sizeMin:1, sizeMax:3, shape:'tri' });
   burst(C.x, C.y, 16, { color:'#ff8030', spMin:20, spMax:110, lifeMin:.4, lifeMax:.9, sizeMin:2, sizeMax:4 });
   spawnSmokeAt(C.x, C.y, 'rgba(70,70,70,0.55)');
-  removePieceOnBoard(sq);
-  if(victim){
+removePieceOnBoard(sq);
+for(const col of ['w','b']){
+  if(state.shields[col].includes(sq)) removeShield(col, sq);
+}
+if(victim){
     addToGraveyard(victim.type, victim.color);
     if(!firstBloodClaimed){ firstBloodClaimed = true; unlockAch(turn, 'primeraSangre'); }
     achState[turn].streak++;
@@ -4214,8 +4406,7 @@ async function execZombie(sq){
   const oldColor = victim.color;
   chess.remove(sq);
   try { chess.put({ type: victimType, color: turn }, sq); } catch(e){}
-  const si = state.shields[oldColor].indexOf(sq);
-  if(si >= 0){ state.shields[oldColor].splice(si,1); state.shields[turn].push(sq); }
+  if(state.shields[oldColor].includes(sq)) removeShield(oldColor, sq);
   ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.7, life:.7, lifeMax:.7, color:'160,90,230' });
   burst(C.x, C.y, 30, { color:'#a060e0', spMin:30, spMax:160, lifeMin:.3, lifeMax:.8 });
   validateAndFixBoard();
@@ -4376,39 +4567,64 @@ async function execQuake(centerSq){
     if(el) el.classList.remove('shake');
   }
   const snapshot = [];
-  for(const sq of squares){
-    const p = chess.get(sq);
-    const el = pieceEls.get(sq);
-    if(p && el) snapshot.push({ sq, piece: p, el });
+  
+  // ─── Separar piezas: las escudadas quedan ancladas ───
+const fixedSquares = new Set();
+const movablePieces = [];
+for(const sq of squares){
+  const p = chess.get(sq);
+  const el = pieceEls.get(sq);
+  if(!p || !el) continue;
+  if(state.shields[p.color].includes(sq)){
+    fixedSquares.add(sq);
+  } else {
+    movablePieces.push({ sq, piece: p, el });
   }
+}
+const freeSquares = squares.filter(sq => !fixedSquares.has(sq));
+
+// Feedback visual: destello en las piezas ancladas
+for(const sq of fixedSquares){
+  const c = squareCenter(sq);
+  ripples.push({ x:c.x, y:c.y, r:2, maxR: cellSize*1.0, life:.55, maxLife:.55, color:'120,200,255' });
+  burst(c.x, c.y, 14, { color:'#8ecbff', spMin:20, spMax:100, lifeMin:.3, lifeMax:.6, sizeMin:1.2, sizeMax:2.6 });
+}
+
+// Si no hay nada que mezclar, cortamos acá
+if(movablePieces.length > 1){
   const savedFen = chess.fen();
   let chosenArrangement = null;
   for(let attempt=0; attempt<8; attempt++){
-    const trial = [...squares];
+    const trial = [...freeSquares];
     for(let i=trial.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
       [trial[i],trial[j]] = [trial[j],trial[i]];
     }
-    for(const sq of squares) chess.remove(sq);
-    for(let i=0;i<snapshot.length;i++){
-      try { chess.put(snapshot[i].piece, trial[i]); } catch(e){}
+    for(const mp of movablePieces) chess.remove(mp.sq);
+    for(let i=0;i<movablePieces.length;i++){
+      try { chess.put(movablePieces[i].piece, trial[i]); } catch(e){}
     }
     let safe = true;
     try {
       const parts = chess.fen().split(' ');
       parts[1] = turn; parts[3] = '-'; parts[4] = '0';
       chess.load(parts.join(' '), { skipValidation: true });
+      safe = !chess.check;
       safe = !chess.in_check();
     } catch(e){ safe = true; }
     try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
     chosenArrangement = trial;
     if(safe) break;
   }
-  if(!chosenArrangement) chosenArrangement = [...squares];
-  for(const sq of squares) chess.remove(sq);
-  for(let i=0;i<snapshot.length;i++){
-    try { chess.put(snapshot[i].piece, chosenArrangement[i]); } catch(e){}
+  if(!chosenArrangement) chosenArrangement = [...freeSquares];
+
+  // Aplicar
+  for(const mp of movablePieces) chess.remove(mp.sq);
+  for(let i=0;i<movablePieces.length;i++){
+    try { chess.put(movablePieces[i].piece, chosenArrangement[i]); } catch(e){}
   }
+
+  // Ajustar derechos de enroque
   const fenParts = chess.fen().split(' ');
   let castle = fenParts[2] === '-' ? '' : fenParts[2];
   const check = (sq, type, color) => {
@@ -4423,34 +4639,25 @@ async function execQuake(centerSq){
   if(!check('a8','r','b')) castle = castle.replace('q','');
   fenParts[2] = castle || '-'; fenParts[3] = '-'; fenParts[4] = '0';
   try { chess.load(fenParts.join(' '), { skipValidation: true }); } catch(e){}
-  for(const sq of squares) pieceEls.delete(sq);
-  for(let i=0;i<snapshot.length;i++){
-    const item = snapshot[i], el = item.el, newSq = chosenArrangement[i], pc = item.piece;
-    const code = pc.color + pc.type;
-    el.dataset.code = code;
+
+  // Actualizar DOM y pieceEls
+  for(const mp of movablePieces) pieceEls.delete(mp.sq);
+  for(let i=0;i<movablePieces.length;i++){
+    const mp = movablePieces[i];
+    const el = mp.el;
+    const newSq = chosenArrangement[i];
+    const pc = mp.piece;
+    el.dataset.code = pc.color + pc.type;
     el.classList.toggle('white', pc.color === 'w');
     el.classList.toggle('black', pc.color === 'b');
     el.querySelector('.tok').textContent = GLYPH[pc.type];
-    const shielded = state.shields[pc.color].includes(newSq);
-    const iraReady = state.iraCharge[pc.color] && 'nrb'.includes(pc.type);
-    el.classList.toggle('shielded', shielded);
-    el.classList.toggle('ira', iraReady);
     pieceEls.set(newSq, el);
     el.getBoundingClientRect();
     positionPiece(el, newSq);
     const c2 = squareCenter(newSq);
-    ripples.push({ x:c2.x, y:c2.y, r:2, maxR: cellSize*0.9, life:.5, lifeMax:.5, color:'200,170,120' });
+    ripples.push({ x:c2.x, y:c2.y, r:2, maxR: cellSize*0.9, life:.5, maxLife:.5, color:'200,170,120' });
   }
-    for(const col of ['w','b']){
-    state.shields[col] = state.shields[col].filter(sq => {
-      const p = chess.get(sq);
-      return p && p.color === col;
-    });
-    // Limpiar contadores huérfanos
-    for(const sq of Object.keys(state.shieldTurns[col])){
-      if(!state.shields[col].includes(sq)) delete state.shieldTurns[col][sq];
-    }
-  }
+}
   state.mana[turn] -= POWERS.quake.cost;
   achState[turn].powersUsed++;
   if(achState[turn].powersUsed >= 5) unlockAch(turn, 'magoDeMagos');
@@ -6532,6 +6739,7 @@ function newGame(){
   state.iraCharge = { w: false, b: false };
   state.shields = { w: [], b: [] };
   state.shieldTurns = { w: {}, b: {} };
+  state.shieldHits = { w: {}, b: {} };     // ⬅️ NUEVO
   state.graveyard = { w: [], b: [] };
   state.busy = false; state.gameOver = false;
   state.selected = null; state.legalMoves = []; state.targeting = null;
