@@ -3851,7 +3851,6 @@ async function iraTargeting(fromSq, color){
   }
   const oppColor = color === 'w' ? 'b' : 'w';
 
-  // Helper: devuelve la casilla del target si está escudado, o null
   const moveTargetShieldSq = (m) => {
     const sq = m.flags.includes('e') ? (m.to[0] + m.from[1]) : m.to;
     const target = chess.get(sq);
@@ -3859,25 +3858,19 @@ async function iraTargeting(fromSq, color){
     return null;
   };
 
-  // Helper: ejecuta la Ira que se estrella contra un escudo
   const breakShieldWithIra = async (targetSq, targetPiece) => {
     const C = squareCenter(targetSq);
-    // Efecto visual fuerte (más intenso que el romper normal)
     ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*2.0, life:.8, maxLife:.8, color:'180,220,255' });
     burst(C.x, C.y, 40, { color:'#c8e0ff', spMin:80, spMax:260, lifeMin:.3, lifeMax:.7, sizeMin:1, sizeMax:3.5, shape:'tri' });
     burst(C.x, C.y, 20, { color:'#8ecbff', spMin:30, spMax:140, lifeMin:.4, lifeMax:.9, sizeMin:2, sizeMax:5 });
     sfx('shield');
     vibrate([40, 30, 80]);
-    // Romper el escudo por completo
     removeShield(targetPiece.color, targetSq);
-    // Consumir la Ira del atacante
     state.iraCharge[color] = false;
     toast('🛡️ ¡La Ira se estrella contra el escudo! Escudo roto · Ira consumida', '#ffb060');
-    // Registrar en historial
     recordHistory({
       type: 'ira-blocked', color, powerIcon: '🛡️', powerName: 'Ira bloqueada',
-      piece: null,
-      from: fromSq, to: targetSq,
+      piece: null, from: fromSq, to: targetSq,
       targetPiece: { type: targetPiece.type, color: targetPiece.color },
       cost: 0
     });
@@ -3885,9 +3878,42 @@ async function iraTargeting(fromSq, color){
     await sleep(700);
   };
 
+  const resolveIraTarget = async (toSq) => {
+    if(!toSq) return null;
+    const mv = moves.find(m => m.to === toSq);
+    if(!mv) return null;
+    const capturedSquare = mv.flags.includes('e') ? (mv.to[0] + mv.from[1]) : mv.to;
+    const targetPiece = chess.get(capturedSquare);
+
+    if(targetPiece && state.shields[targetPiece.color].includes(capturedSquare)){
+      await breakShieldWithIra(capturedSquare, targetPiece);
+      try { chess.load(savedFen, { skipValidation: true }); } catch(err){}
+      syncPieces();
+      return { blocked: true, to: capturedSquare, captured: null };
+    }
+
+    let res;
+    try { res = chess.move({ from: mv.from, to: mv.to }); } catch(err){ res = null; }
+    if(!res){
+      try { chess.load(savedFen, { skipValidation: true }); } catch(err){}
+      return null;
+    }
+    sfx('capture');
+    await animateMove(mv.from, mv.to, capturedSquare, 400);
+    if(res.captured) addToGraveyard(res.captured, oppColor);
+    if(res.captured) vibrate([20, 40, 55]);
+    state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
+    for(const col of ['w','b']){
+      if(state.shields[col].includes(capturedSquare)) removeShield(col, capturedSquare);
+    }
+    const cc = squareCenter(capturedSquare);
+    burst(cc.x, cc.y, 20, { color:'#ff9040', spMin:50, spMax:180, lifeMin:.3, lifeMax:.7 });
+    syncPieces();
+    return { from: res.from, to: res.to, captured: res.captured || null };
+  };
+
   // ===== RAMA IA =====
   if(aiEnabled && color === aiColor){
-    // La IA prefiere no desperdiciar la Ira en escudos, pero si no hay otra opción, la usa
     const unshieldedMoves = moves.filter(m => !moveTargetShieldSq(m));
     const candidates = unshieldedMoves.length ? unshieldedMoves : moves;
     let best = candidates[0], bestVal = -Infinity;
@@ -3897,54 +3923,14 @@ async function iraTargeting(fromSq, color){
       const v = PIECE_VALUE[tp.type] || 0;
       if(v > bestVal){ bestVal = v; best = m; }
     }
-    const capturedSquare = best.flags.includes('e') ? (best.to[0] + best.from[1]) : best.to;
-    const targetPiece = chess.get(capturedSquare);
     await sleep(450);
-
-    // Si el target tiene escudo → se rompe y no come
-    if(targetPiece && state.shields[targetPiece.color].includes(capturedSquare)){
-      await breakShieldWithIra(capturedSquare, targetPiece);
-      // Reponer el tablero (no movimos nada realmente)
-      try { chess.load(savedFen, { skipValidation: true }); } catch(e){}
-      syncPieces();
-      return { blocked: true, to: capturedSquare, captured: null };
-    }
-
-    // Camino normal: captura
-    let res;
-    try { res = chess.move({ from: best.from, to: best.to }); } catch(e){ res = null; }
-    if(res){
-      await animateMove(best.from, best.to, capturedSquare, 700);
-      if(res.captured) addToGraveyard(res.captured, oppColor);
-      if(res.captured) vibrate([20, 40, 55]);
-      state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
-      for(const col of ['w','b']){
-        if(state.shields[col].includes(capturedSquare)) removeShield(col, capturedSquare);
-      }
-      syncPieces();
-      return { from: res.from, to: res.to, captured: res.captured || null };
-    }
-    return null;
+    return await resolveIraTarget(best.to);
   }
 
   // ===== RAMA JUGADOR =====
   const result = await new Promise(resolve => {
-    clearHighlights();
-    const c = gridEl.querySelector(`[data-sq="${fromSq}"]`);
-    if(c) c.classList.add('sel');
     const targets = new Set(moves.map(m => m.to));
-    // Marcar escudados con anillo azul, no escudados con el naranja de Ira normal
-    for(const sq of targets){
-      const el = gridEl.querySelector(`[data-sq="${sq}"]`);
-      if(!el) continue;
-      const mv = moves.find(m => m.to === sq);
-      const isShielded = !!moveTargetShieldSq(mv);
-      el.classList.add(isShielded ? 'ira-shielded' : 'ira');
-    }
-    state.targeting = { key: 'ira', from: fromSq, color };
-    iraResolve = resolve;
-    toast('Elige la segunda víctima (azul = escudado, rompe tu Ira)', '#ffa040');
-    updateUI();
+
     const cleanup = () => {
       gridEl.removeEventListener('click', clickH, true);
       gridEl.removeEventListener('contextmenu', ctxH, true);
@@ -3957,40 +3943,29 @@ async function iraTargeting(fromSq, color){
       const sq = cell.dataset.sq;
       if(!targets.has(sq)) return;
       cleanup();
-      const mv = moves.find(m => m.to === sq);
-      const capturedSquare = mv.flags.includes('e') ? (mv.to[0] + mv.from[1]) : mv.to;
-      const targetPiece = chess.get(capturedSquare);
-
-      // Si el target tiene escudo → se rompe y no come
-      if(targetPiece && state.shields[targetPiece.color].includes(capturedSquare)){
-        await breakShieldWithIra(capturedSquare, targetPiece);
-        try { chess.load(savedFen, { skipValidation: true }); } catch(err){}
-        syncPieces();
-        resolve({ blocked: true, to: capturedSquare, captured: null });
-        return;
-      }
-
-      // Camino normal: captura
-      let res;
-      try { res = chess.move({ from: mv.from, to: mv.to }); } catch(err){ res = null; }
-      if(res){
-        sfx('capture');
-        await animateMove(mv.from, mv.to, capturedSquare, 400);
-        if(res.captured) addToGraveyard(res.captured, oppColor);
-        if(res.captured) vibrate([20, 40, 55]);
-        state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
-        for(const col of ['w','b']){
-          if(state.shields[col].includes(capturedSquare)) removeShield(col, capturedSquare);
-        }
-        const cc = squareCenter(capturedSquare);
-        burst(cc.x, cc.y, 20, { color:'#ff9040', spMin:50, spMax:180, lifeMin:.3, lifeMax:.7 });
-        syncPieces();
-        resolve({ from: res.from, to: res.to, captured: res.captured || null });
-      } else {
-        try { chess.load(savedFen, { skipValidation: true }); } catch(err){}
-        resolve(null);
-      }
+      resolve(await resolveIraTarget(sq));
     };
+    const onDrop = async (toSq) => {
+      if(!toSq || !targets.has(toSq)) return false;
+      cleanup();
+      resolve(await resolveIraTarget(toSq));
+      return true;
+    };
+
+    clearHighlights();
+    const c = gridEl.querySelector(`[data-sq="${fromSq}"]`);
+    if(c) c.classList.add('sel');
+    for(const sq of targets){
+      const el = gridEl.querySelector(`[data-sq="${sq}"]`);
+      if(!el) continue;
+      const mv = moves.find(m => m.to === sq);
+      const isShielded = !!moveTargetShieldSq(mv);
+      el.classList.add(isShielded ? 'ira-shielded' : 'ira');
+    }
+    state.targeting = { key: 'ira', from: fromSq, color, moves, resolveDrop: onDrop };
+    iraResolve = resolve;
+    toast('Elige la segunda víctima (clic o arrastrá; azul = escudado)', '#ffa040');
+    updateUI();
     gridEl.addEventListener('click', clickH, true);
     gridEl.addEventListener('contextmenu', ctxH, true);
   });
@@ -7437,11 +7412,26 @@ function startGhostDrag(d){
   clearHighlights();
   const fromCell = gridEl.querySelector(`[data-sq="${d.fromSq}"]`);
   if(fromCell) fromCell.classList.add('sel');
-  for(const m of d.legalMoves){
-    const c = gridEl.querySelector(`[data-sq="${m.to}"]`);
-    if(!c) continue;
-    const isCap = m.flags.includes('c') || m.flags.includes('e');
-    c.classList.add(isCap ? 'cap' : 'mv');
+
+  if(d.isIraDrag){
+    // En modo Ira mostramos los targets como anillos naranjas / azules,
+    // igual que el targeting normal
+    for(const m of d.legalMoves){
+      const sq = m.to;
+      const c = gridEl.querySelector(`[data-sq="${sq}"]`);
+      if(!c) continue;
+      const targetSq = m.flags.includes('e') ? (m.to[0] + m.from[1]) : m.to;
+      const targetPiece = chess.get(targetSq);
+      const isShielded = targetPiece && state.shields[targetPiece.color].includes(targetSq);
+      c.classList.add(isShielded ? 'ira-shielded' : 'ira');
+    }
+  } else {
+    for(const m of d.legalMoves){
+      const c = gridEl.querySelector(`[data-sq="${m.to}"]`);
+      if(!c) continue;
+      const isCap = m.flags.includes('c') || m.flags.includes('e');
+      c.classList.add(isCap ? 'cap' : 'mv');
+    }
   }
 }
 
@@ -7466,34 +7456,51 @@ function endDrag(d){
 /* ---------- POINTER DOWN ---------- */
 gridEl.addEventListener('pointerdown', (e) => {
   suppressNextClick = false;
-  clearHoverPreview();               // limpiar preview al iniciar interacción
+  clearHoverPreview();
 
   if(e.pointerType === 'mouse' && e.button !== 0) return;
   if(state.busy || state.gameOver || replay.active || state.paused || state.aiBusy) return;
-  if(state.targeting) return;
-  if(aiEnabled && chess.turn() === aiColor) return;
+
+  // ¿Es un drag de Ira legítimo?
+  const isIraDrag = !!(state.targeting && state.targeting.key === 'ira');
+
+  if(state.targeting && !isIraDrag) return;   // otros targeting → bloqueado como antes
 
   const cell = e.target.closest('.cell');
   if(!cell) return;
   const sq = cell.dataset.sq;
+
+  // En drag de Ira solo se puede empezar desde la pieza que tiene la Ira
+  if(isIraDrag && sq !== state.targeting.from) return;
+  // Fuera del targeting de Ira, chequeo normal de turno
+  if(!isIraDrag && aiEnabled && chess.turn() === aiColor) return;
+
   const piece = chess.get(sq);
   if(!piece) return;
-  if(piece.color !== chess.turn()) return;
+  if(!isIraDrag && piece.color !== chess.turn()) return;
 
-    drag = {
+  // Legal moves para el drag: en Ira usamos los del targeting ya calculados
+  let dragMoves;
+  if(isIraDrag){
+    dragMoves = state.targeting.moves || [];
+  } else {
+    dragMoves = chess.moves({ square: sq, verbose: true });
+  }
+
+  drag = {
     fromSq: sq,
     piece,
     pointerId: e.pointerId,
     startX: e.clientX,
     startY: e.clientY,
     moved: false,
-    captured: false,               // ⬅️ NUEVO
+    captured: false,
     ghostEl: null,
     originalEl: pieceEls.get(sq),
     hoverCell: null,
-    legalMoves: chess.moves({ square: sq, verbose: true })
+    legalMoves: dragMoves,
+    isIraDrag
   };
-  // ⬅️ NO llamamos setPointerCapture acá
 });
 
 /* ---------- POINTER MOVE ---------- */
@@ -7554,7 +7561,7 @@ gridEl.addEventListener('pointermove', (e) => {
 /* ---------- POINTER UP ---------- */
 gridEl.addEventListener('pointerup', async (e) => {
   if(!drag || e.pointerId !== drag.pointerId) return;
-    const d = drag;
+  const d = drag;
   drag = null;
   if(d.captured){
     try { gridEl.releasePointerCapture(e.pointerId); } catch(err){}
@@ -7564,7 +7571,7 @@ gridEl.addEventListener('pointerup', async (e) => {
 
   if(!wasDrag){
     endDrag(d);
-    return;                    // tap simple → lo maneja el click
+    return;
   }
 
   suppressNextClick = true;
@@ -7573,6 +7580,32 @@ gridEl.addEventListener('pointerup', async (e) => {
   const cell = target ? target.closest('.cell') : null;
   const toSq = cell ? cell.dataset.sq : null;
 
+  // ⬇️ NUEVO: drag de Ira → delegamos al resolver de iraTargeting
+  if(d.isIraDrag){
+    endDrag(d);
+    if(state.targeting && state.targeting.key === 'ira' && state.targeting.resolveDrop){
+      const handled = await state.targeting.resolveDrop(toSq);
+      if(!handled){
+        // Drop fuera de un target válido: restauramos los highlights del targeting
+        // (startGhostDrag los había borrado con clearHighlights)
+        const fromSq = state.targeting.from;
+        const c2 = gridEl.querySelector(`[data-sq="${fromSq}"]`);
+        if(c2) c2.classList.add('sel');
+        for(const m of state.targeting.moves){
+          const sq = m.to;
+          const el = gridEl.querySelector(`[data-sq="${sq}"]`);
+          if(!el) continue;
+          const tsq = m.flags.includes('e') ? (m.to[0] + m.from[1]) : m.to;
+          const tp = chess.get(tsq);
+          const sh = tp && state.shields[tp.color].includes(tsq);
+          el.classList.add(sh ? 'ira-shielded' : 'ira');
+        }
+      }
+    }
+    return;
+  }
+
+  // ---- Camino normal (drag de ajedrez) ----
   if(!toSq || toSq === d.fromSq){
     endDrag(d);
     clearHighlights();
@@ -7587,19 +7620,14 @@ gridEl.addEventListener('pointerup', async (e) => {
     return;
   }
 
-  // *** Capturar la posición del drop y transferir el fantasma a animateMove ***
   const rect = boardWrap.getBoundingClientRect();
-  pendingDragDropStart = {
-    x: e.clientX - rect.left,
-    y: e.clientY - rect.top
-  };
+  pendingDragDropStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
   if(d.ghostEl){
     pendingGhostToRemove = d.ghostEl;
-    d.ghostEl = null;          // evitar que endDrag lo elimine ahora
+    d.ghostEl = null;
   }
   if(d.originalEl){
-    // Restaurar la pieza original: va a ser reposicionada por animateMove
     d.originalEl.style.transition = '';
     d.originalEl.style.opacity = '';
   }
