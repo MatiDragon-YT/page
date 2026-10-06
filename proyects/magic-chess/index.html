@@ -2532,6 +2532,49 @@ for(let i=0;i<1000;i++) rainDrops.push({
 let weatherTransitionSpeed = 0.25;
 
 /* =========================================================
+   VIENTO DIRECCIONAL
+   Ráfagas con dirección dominante que duran varios segundos.
+   ========================================================= */
+const windState = {
+  direction: 0,        // -1 = izquierda, 0 = calma, 1 = derecha (suavizado)
+  strength: 0,         // 0 a 1 (suavizado)
+  targetDir: 0,
+  targetStr: 0,
+  nextChange: 0
+};
+
+function scheduleWindGust(){
+  const now = performance.now();
+  windState.nextChange = now + rnd(4000, 12000);
+
+  const roll = Math.random();
+  if(roll < 0.40){
+    // Calma
+    windState.targetDir = 0;
+    windState.targetStr = rnd(0, 0.15);
+  } else if(roll < 0.70){
+    // Izquierda
+    windState.targetDir = -1;
+    windState.targetStr = rnd(0.35, 1.0);
+  } else {
+    // Derecha
+    windState.targetDir = 1;
+    windState.targetStr = rnd(0.35, 1.0);
+  }
+}
+
+function updateWindState(dt){
+  const now = performance.now();
+  if(windState.nextChange === 0) scheduleWindGust();
+  if(now >= windState.nextChange) scheduleWindGust();
+
+  // Suavizado exponencial con inercia: tarda ~2s en llegar al objetivo
+  const k = 1 - Math.exp(-dt / 1.8);
+  windState.direction += (windState.targetDir - windState.direction) * k;
+  windState.strength += (windState.targetStr - windState.strength) * k;
+}
+
+/* =========================================================
    VÓRTICES DE TORMENTA
    Aparecen cuando la intensidad pasa cierto umbral y arrastran
    las partículas del clima en círculos.
@@ -2631,16 +2674,19 @@ function stepWeatherParticle(d, dt, intensity, W, H){
     }
   }
 
-  // ---- Fuera de vórtices: viento global suave y a caer ----
+  // ---- Fuera de vórtices: caída normal + viento direccional ----
   if(!bestV || bestV.currentStrength < 0.12){
     d.attachedVortex = null;
-    windPhaseX += dt * (0.8 + intensity * 1.2);
-    const wind = Math.sin(windPhaseX) * 25 * intensity * intensity;
-    d.vx += wind * dt;
-    d.vy += Math.cos(windPhaseX * 0.7) * 8 * intensity * intensity * dt;
-    const fpow = Math.pow(0.90, dt * 60);
-    d.vx *= fpow;
-    d.vy *= fpow;
+
+    // Viento direccional: converge suavemente hacia el valor objetivo.
+    // El factor 240 es la velocidad máxima en px/s cuando strength=1 e intensity=1.
+    const targetVx = windState.direction * windState.strength * 240 * intensity;
+    d.vx += (targetVx - d.vx) * Math.min(1, 1.6 * dt);
+
+    // Pequeño movimiento vertical oscilante (le da "cuerpo" a las ráfagas)
+    const targetVy = Math.sin(performance.now() * 0.0007) * 30 * intensity * windState.strength;
+    d.vy += (targetVy - d.vy) * Math.min(1, 0.8 * dt);
+
     return false;
   }
 
@@ -2716,10 +2762,17 @@ function applyWeatherState(w){
     org.rainWobble.level = 0.85; org.rainWobble.target = 0.85; org.rainWobble.nextChange = 0;
     org.crickets.level = 0;  org.crickets.target = 0;  org.crickets.nextChange = 0;
   }
-  vortices.list.length = 0;
+	// Resetear vortices
+	vortices.list.length = 0;
 	vortices.targetCount = 0;
 	windPhaseX = Math.random() * 1000;
 	windPhaseY = Math.random() * 1000;
+	// Resetear vientos
+	windState.direction = 0;
+	windState.strength = 0;
+	windState.targetDir = 0;
+	windState.targetStr = 0;
+	windState.nextChange = 0;
 }
 
 function randomizeWeatherForNewGame(){
@@ -2753,10 +2806,17 @@ function randomizeWeatherForNewGame(){
     org.rainWobble.level = 0.85; org.rainWobble.target = 0.85; org.rainWobble.nextChange = 0;
     org.crickets.level = 0;  org.crickets.target = 0;  org.crickets.nextChange = 0;
   }
+	// Resetear vortices
 	vortices.list.length = 0;
 	vortices.targetCount = 0;
 	windPhaseX = Math.random() * 1000;
 	windPhaseY = Math.random() * 1000;
+	// Resetear vientos
+	windState.direction = 0;
+	windState.strength = 0;
+	windState.targetDir = 0;
+	windState.targetStr = 0;
+	windState.nextChange = 0;
 }
 
 function updateWeather(dt){
@@ -7498,7 +7558,10 @@ function drawWeatherParticles(W, H, dt){
   const intensity = rainAmt;
   if(intensity < 0.012) return;
 
+  // Actualizar vórtices
   updateVortices(dt, W, H, intensity);
+  // Actualizar viento direccional
+  updateWindState(dt);
 
   const visible = Math.floor(rainDrops.length * q * (0.05 + 0.90 * Math.pow(intensity, 0.55)));
   const alphaBase = 0.20 + intensity * 0.24;
@@ -7518,7 +7581,7 @@ function drawWeatherParticles(W, H, dt){
       const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
       if(!orbiting){
         d.y += d.spd * speedMul * dt;
-        d.x += d.spd * speedMul * 0.18 * dt;
+        d.x += (d.spd * speedMul * 0.18 + d.vx / W) * dt;   // ⬅️ agregar d.vx
       }
       if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
       if(d.x > 1.05) d.x -= 1.1;
@@ -7540,7 +7603,7 @@ function drawWeatherParticles(W, H, dt){
       const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
       if(!orbiting){
         d.y += d.spd * (0.25 + intensity * 0.45) * dt;
-        d.x += Math.sin(now * 0.001 + i) * 0.0008 * dt;
+        d.x += (Math.sin(now * 0.001 + i) * 0.0008 + d.vx / W) * dt;   // ⬅️ agregar d.vx
       }
       if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
       if(d.x > 1.05) d.x -= 1.1;
@@ -7582,7 +7645,7 @@ function drawWeatherParticles(W, H, dt){
       const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
       if(!orbiting){
         d.y += d.spd * (0.35 + intensity * 0.55) * dt;
-        d.x += Math.sin(now * 0.0007 + i * 1.7) * 0.0008 * dt + 0.0006 * dt;
+        d.x += (Math.sin(now * 0.0007 + i * 1.7) * 0.0008 + 0.0006 + d.vx / W) * dt;   // ⬅️ agregar d.vx
       }
       if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
       if(d.x > 1.05) d.x -= 1.1;
@@ -7603,7 +7666,7 @@ function drawWeatherParticles(W, H, dt){
       const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
       if(!orbiting){
         d.y += d.spd * (0.22 + intensity * 0.40) * dt;
-        d.x += Math.sin(t + i * 1.3) * 0.0014 * dt + 0.0004 * dt;
+        d.x += (Math.sin(t + i * 1.3) * 0.0014 + 0.0004 + d.vx / W) * dt;   // ⬅️ agregar d.vx
       }
       if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
       if(d.x > 1.05) d.x -= 1.1;
