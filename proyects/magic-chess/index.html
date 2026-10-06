@@ -284,6 +284,7 @@ display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;
   align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px);
   animation:fadeIn .18s;padding:12px}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-overlay.hidden{ display:none; }
 .modal{background:linear-gradient(#1c1812,#0f0d09);border:1px solid #5a4526;border-radius:14px;
   padding:18px 20px;max-width:420px;width:100%;max-height:88vh;overflow-y:auto;text-align:center;
   box-shadow:0 14px 50px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,220,160,.12);
@@ -659,6 +660,218 @@ display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;
   border:1px solid rgba(90,150,255,.35);
   text-shadow:0 0 6px rgba(255,200,90,.5);
 }
+
+/* =========================================================
+   MODO DEBUG
+   ========================================================= */
+#debugBtn{
+  position:fixed;
+  top:60px;
+  right:12px;
+  z-index:90;
+  width:46px;height:46px;
+  border-radius:50%;
+  border:2px solid #c080ff;
+  background:linear-gradient(#3a1a4a,#1a0a22);
+  color:#ffb0ff;
+  font-size:22px;
+  cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.6),0 0 22px rgba(200,80,255,.45);
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+  font-family:inherit;
+}
+#debugBtn:hover{transform:scale(1.08);}
+#debugBtn:active{transform:scale(.92);}
+#debugBtn.hidden{display:none;}
+
+.debugTabs{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:4px;
+  margin:8px 0 12px;
+  background:rgba(0,0,0,.3);padding:4px;border-radius:10px;
+}
+.debugTabs button{
+  padding:8px 6px;border-radius:7px;border:1px solid #3a2f20;
+  background:transparent;color:#a89878;
+  font-family:inherit;font-size:11px;font-weight:700;
+  cursor:pointer;transition:all .12s;
+}
+.debugTabs button:hover{background:rgba(255,255,255,.05);color:#ffe0a0;}
+.debugTabs button.active{
+  background:linear-gradient(#3a2e1a,#20180e);
+  border-color:#c080ff;color:#ffb0ff;
+  box-shadow:0 0 12px rgba(200,80,255,.35);
+}
+.debugSection{
+  margin:10px 0;
+  padding:10px 12px;
+  background:rgba(20,15,25,.55);
+  border:1px solid #3a2a4a;
+  border-radius:10px;
+}
+.debugSection h4{
+  margin:0 0 8px;font-size:11px;
+  color:#c8a0e0;letter-spacing:1px;font-weight:700;
+  text-transform:uppercase;
+}
+.debugRow{
+  display:flex;align-items:center;gap:8px;
+  margin:6px 0;
+}
+.debugRow label{
+  font-size:11px;color:#a898a8;
+  min-width:70px;text-align:left;
+}
+.debugRow input[type=range]{
+  flex:1;
+  -webkit-appearance:none;appearance:none;
+  height:5px;border-radius:3px;
+  background:linear-gradient(90deg,#4a1a6a,#c080ff,#e0b0ff);
+  outline:none;cursor:pointer;
+}
+.debugRow input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:16px;height:16px;border-radius:50%;
+  background:linear-gradient(#3a2e1a,#20180e);
+  border:2px solid #c080ff;
+  box-shadow:0 0 8px rgba(200,80,255,.6);
+  cursor:grab;
+}
+.debugRow .val{
+  min-width:50px;text-align:right;
+  font-family:ui-monospace,monospace;
+  font-size:11px;color:#e0b0ff;font-weight:800;
+}
+.debugBtn{
+  padding:8px 12px;border-radius:8px;
+  border:1px solid #5a3a7a;
+  background:linear-gradient(#2a1a3a,#160a20);
+  color:#e0b0ff;font-family:inherit;
+  font-size:11px;font-weight:700;cursor:pointer;
+  transition:all .13s;
+}
+.debugBtn:hover{background:linear-gradient(#3a2a4a,#1e0e2a);color:#fff;}
+.debugBtn:active{transform:scale(.95);}
+.debugBtn.on{
+  background:linear-gradient(#4a2a6a,#2a1040);
+  border-color:#c080ff;color:#fff;
+  box-shadow:0 0 12px rgba(200,80,255,.5);
+}
+.debugGrid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+  margin:6px 0;
+}
+.debugPieceBtn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;padding:8px 4px;border-radius:8px;
+  border:1px solid #3a2f20;
+  background:linear-gradient(#221c14,#141009);
+  color:#d8ccb0;cursor:pointer;
+  font-family:inherit;font-size:9px;font-weight:700;
+  transition:all .13s;position:relative;
+}
+.debugPieceBtn .gl{font-size:20px;line-height:1;font-family:serif;}
+.debugPieceBtn.w .gl{color:#fff;text-shadow:0 0 4px #000,1px 1px 0 #000;}
+.debugPieceBtn.b .gl{color:#e8d0a0;text-shadow:0 0 4px #000,1px 1px 0 #000;}
+.debugPieceBtn:hover{border-color:#c080ff;background:linear-gradient(#2a1a3a,#160a20);}
+.debugPieceBtn.picked{
+  border-color:#ffd070;background:linear-gradient(#3a2e1a,#20180e);
+  box-shadow:0 0 12px rgba(255,200,90,.5);
+  color:#ffe8b0;
+}
+.debugPieceBtn.remove{
+  grid-column:span 3;
+  color:#ff9090;border-color:#6a2a2a;
+}
+.debugPieceBtn.remove.picked{
+  border-color:#ff4040;background:linear-gradient(#3a1a1a,#200a0a);
+  box-shadow:0 0 12px rgba(255,80,80,.5);
+}
+
+.dbgPill{
+  display:inline-block;padding:2px 8px;border-radius:10px;
+  background:rgba(200,80,255,.15);border:1px solid rgba(200,80,255,.4);
+  color:#e0b0ff;font-size:10px;font-weight:800;
+  margin-left:6px;
+}
+
+/* =========================================================
+   MODO DEBUG — LAYOUT ESCRITORIO (panel lateral)
+   ========================================================= */
+/* =========================================================
+   MODO DEBUG — LAYOUT ESCRITORIO (panel lateral acoplado)
+   ========================================================= */
+@media (min-width: 1024px){
+
+  /* Reservar el 42% derecho para el panel */
+  body.debug-open #app{
+    width: 58%;
+    transition: width .25s ease;
+  }
+
+  /* El botón flotante queda tapado por el panel → ocultarlo */
+  body.debug-open #debugBtn{ display: none; }
+
+  /* El overlay se convierte en sidebar fijo a la derecha */
+  body.debug-open #debugPanel{
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    left: auto;
+    width: 42%;
+    padding: 0;
+    background: linear-gradient(180deg, #1a0f22 0%, #0d0812 100%);
+    backdrop-filter: none;
+    align-items: stretch;
+    display: flex;
+    overflow: hidden;
+    border-left: 2px solid #c080ff;
+    box-shadow: -14px 0 34px rgba(0,0,0,.55),
+                inset 1px 0 0 rgba(255,200,255,.08);
+    animation: dbgSlideIn .25s cubic-bezier(.2,.8,.3,1);
+    z-index: 95;   /* debajo de modales reales (100+), encima del tablero */
+  }
+
+  @keyframes dbgSlideIn{
+    from{ transform: translateX(100%); opacity: 0; }
+    to  { transform: translateX(0);    opacity: 1; }
+  }
+
+  /* La caja interior deja de ser modal centrada */
+  body.debug-open #debugPanel .modal{
+    max-width: none;
+    width: 100%;
+    max-height: none;
+    height: 100%;
+    border-radius: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    animation: none;
+    padding: 14px 16px;
+    overflow-y: auto;
+    text-align: left;
+  }
+
+  /* Header alineado a la izquierda */
+  body.debug-open #debugPanel h3{
+    text-align: left;
+    border-bottom: 1px solid rgba(200,80,255,.25);
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+  }
+  body.debug-open #debugPanel .modal-btns{
+    justify-content: flex-start;
+  }
+  /* Los tabs ligeramente más compactos en sidebar */
+  body.debug-open .debugTabs{
+    margin: 6px 0 10px;
+  }
+  body.debug-open .debugSection{
+    margin: 8px 0;
+  }
+}
+
+
 </style>
 </head>
 <body>
@@ -710,6 +923,23 @@ display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;
     </div>
   </div>
 </div>
+
+<button id="debugBtn" class="hidden" title="Panel de Debug">🛠️</button>
+
+<div id="debugPanel" class="modal-overlay hidden" style="z-index:120;">
+  <div class="modal wide" style="max-width:560px;">
+    <h3>🛠️ Panel de Debug <span class="dbgPill" id="dbgTurnPill">—</span></h3>
+    <div class="debugTabs" id="dbgTabs">
+      <button data-tab="world" class="active">🌍 Mundo</button>
+      <button data-tab="board">♟️ Tablero</button>
+      <button data-tab="game">⚙️ Juego</button>
+    </div>
+    <div id="dbgContent"></div>
+    <div class="modal-btns" style="margin-top:10px;">
+      <button class="mbtn yes" id="dbgClose">Cerrar</button>
+    </div>
+  </div>
+</div>
 <div id="replayUI" class="hidden">
   <div id="replayTop">
     <div id="replayDescRow"></div>
@@ -743,6 +973,35 @@ function vnoise(x,y,s){
 }
 function fbm(x,y,s){ let v=0,a=0.5,f=1; for(let i=0;i<4;i++){ v+=a*vnoise(x*f,y*f,s+i*31.7); f*=2; a*=0.5; } return v; }
 function formatTime(sec){ if(sec < 0) sec = 0; const m = Math.floor(sec/60), s = Math.floor(sec%60); return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+
+/* =========================================================
+   MODO DEBUG
+   ========================================================= */
+const debugState = {
+  enabled: false,
+  aiColors: { w: false, b: false },
+  editingPiece: null,   // { type, color } | 'remove' | null
+  tab: 'world',
+  wasPausedBeforeOpen: false,
+};
+
+function isAIPlayer(color){
+  if(debugState.enabled){
+    return !!debugState.aiColors[color];
+  }
+  return aiEnabled && color === aiColor;
+}
+
+function setDebugMode(on){
+  debugState.enabled = !!on;
+  const btn = $('#debugBtn');
+  if(btn) btn.classList.toggle('hidden', !debugState.enabled);
+  if(debugState.enabled){
+    toast('🛠️ Modo Debug activado', '#c080ff');
+  }
+}
+
+
 
 /* =========================================================
    AUDIO
@@ -3824,7 +4083,9 @@ function updateUI(){
   dot.style.background = turn === 'w' ? '#f5f0e0' : '#2a2018';
   dot.style.color = turn === 'w' ? '#f5f0e0' : '#8a7050';
   let tName = turn === 'w' ? 'Turno Blancas' : 'Turno Negras';
-  if(aiEnabled && turn === aiColor) tName += rubyMode ? ' 💎' : ' 🤖';
+  if(isAIPlayer(turn)){
+    tName += debugState.enabled ? ' 🛠️🤖' : (rubyMode ? ' 💎' : ' 🤖');
+  }
   $('#turnText').textContent = tName;
 
   const mw = $('#manaW'), mb = $('#manaB');
@@ -3835,7 +4096,7 @@ function updateUI(){
 
   if(!replay.active){ renderPlayerHand(); renderOppHand(); }
 
-  const isAITurn = aiEnabled && turn === aiColor && !replay.active;
+    const isAITurn = isAIPlayer(turn) && !replay.active;
   const blockAll = state.aiBusy || isAITurn;
   for(const btn of document.querySelectorAll('.pbtn')){
     const key = btn.dataset.key;
@@ -3899,7 +4160,8 @@ function endTurn(){
     if(!state.busy && !replay.active && !animatingEls.size) syncPieces();
   }));
 
-  if(aiEnabled && !state.gameOver && chess.turn() === aiColor && !replay.active && !state.paused){
+  const turnNow = chess.turn();
+  if(isAIPlayer(turnNow) && !state.gameOver && !replay.active && !state.paused){
     setTimeout(aiTurn, 650);
   }
 }
@@ -3966,10 +4228,37 @@ function renderAchSummary(){
    ========================================================= */
 function isSpecial(type){ return type === 'n' || type === 'r' || type === 'b'; }
 async function onSquareClick(sq){
+	// ⬇️ MODO DEBUG: interceptar clics para editar el tablero
+  if(debugState.enabled && debugState.editingPiece){
+    const ep = debugState.editingPiece;
+    if(ep === 'remove'){
+      if(chess.get(sq)){
+        chess.remove(sq);
+        rebuildPieces();
+        toast('Pieza quitada', '#c080ff');
+      }
+    } else {
+      // Borrar lo que haya
+      if(chess.get(sq)) chess.remove(sq);
+      // Colocar la pieza
+      try {
+        const ok = chess.put({ type: ep.type, color: ep.color }, sq);
+        if(!ok){
+          // Fallback: cargar manualmente
+          const parts = chess.fen().split(' ');
+          // No hay forma limpia; usamos remove + put en un FEN limpio
+        }
+      } catch(err){}
+      rebuildPieces();
+      updateUI();
+    }
+    return;
+  }
+
   if(state.busy || state.gameOver || replay.active || state.paused) return;
   // Bloqueo duro: si la IA está calculando, ignorar clics
   if(state.aiBusy) return;
-  if(aiEnabled && chess.turn() === aiColor) return;
+    if(isAIPlayer(chess.turn())) return;
   if(state.targeting) return handleTargetingClick(sq);
   ensureTurnSnapshot();
   const turn = chess.turn();
@@ -6065,8 +6354,8 @@ async function aiExecutePower(opt){
 }
 async function aiTurn(){
   if(aiThinking) return;
-  if(!aiEnabled || state.gameOver || replay.active || state.paused) return;
-  if(chess.turn() !== aiColor) return;
+  if(state.gameOver || replay.active || state.paused) return;
+  if(!isAIPlayer(chess.turn())) return;
 
   aiThinking = true;
   state.aiBusy = true;
@@ -6749,6 +7038,459 @@ function importMatchFromFile(parentOverlay){
   input.click();
 }
 
+/* =========================================================
+   PANEL DE DEBUG
+   ========================================================= */
+function isDesktopDebugLayout(){
+  return window.matchMedia('(min-width: 1024px)').matches;
+}
+
+function openDebugPanel(){
+  debugState.wasPausedBeforeOpen = state.paused;
+
+  // Solo pausamos si el panel va a tapar todo (móvil/tablet).
+  // En escritorio es sidebar y el juego sigue corriendo detrás.
+  if(!state.paused && !isDesktopDebugLayout()) togglePause();
+
+  $('#debugPanel').classList.remove('hidden');
+  document.body.classList.add('debug-open');
+  renderDebugTab(debugState.tab);
+
+  // El board cambia de ancho → recalcular medidas
+  setTimeout(layout, 80);
+}
+
+function closeDebugPanel(){
+  const wasPaused = debugState.wasPausedBeforeOpen;
+  const wasDesktop = isDesktopDebugLayout();
+
+  $('#debugPanel').classList.add('hidden');
+  document.body.classList.remove('debug-open');
+
+  // Reanudamos solo si lo pausamos al abrir (móvil) y no estaba pausado antes
+  if(!wasDesktop && !wasPaused && state.paused) togglePause();
+
+  setTimeout(layout, 80);
+}
+
+function renderDebugTab(tab){
+  debugState.tab = tab;
+  const content = $('#dbgContent');
+  if(!content) return;
+
+  // Update pill
+  const pill = $('#dbgTurnPill');
+  if(pill){
+    const turn = chess ? chess.turn() : 'w';
+    const ai = isAIPlayer('w') && isAIPlayer('b') ? 'IA·AMBAS'
+             : isAIPlayer(turn) ? (turn === 'w' ? 'IA·BLANCAS' : 'IA·NEGRAS')
+             : 'HUMANO';
+    pill.textContent = (turn === 'w' ? 'Turno ♔' : 'Turno ♚') + ' · ' + ai;
+  }
+
+  // Update tab buttons
+  document.querySelectorAll('#dbgTabs button').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+
+  if(tab === 'world')   content.innerHTML = renderDebugWorld();
+  if(tab === 'board')   content.innerHTML = renderDebugBoard();
+  if(tab === 'game')    content.innerHTML = renderDebugGame();
+
+  // Wire events for the current tab
+  if(tab === 'world')   wireDebugWorld();
+  if(tab === 'board')   wireDebugBoard();
+  if(tab === 'game')    wireDebugGame();
+}
+
+function renderDebugWorld(){
+  const biomeId = currentBiome ? currentBiome.id : 'forest';
+  const weatherMode = currentBiome ? currentBiome.weather.mode : 'rain';
+  const hourPct = Math.floor((worldTime % CYCLE_SECONDS) / CYCLE_SECONDS * 100);
+  return `
+    <div class="debugSection">
+      <h4>Bioma actual</h4>
+      <div class="cfgGrid c3" id="dbgBiome">
+        <button class="cfgOpt ${biomeId==='forest'?'picked':''}" data-v="forest"><span class="ic">🌲</span>Bosque</button>
+        <button class="cfgOpt ${biomeId==='desert'?'picked':''}" data-v="desert"><span class="ic">🏜️</span>Desierto</button>
+        <button class="cfgOpt ${biomeId==='snow'?'picked':''}" data-v="snow"><span class="ic">❄️</span>Nieve</button>
+        <button class="cfgOpt ${biomeId==='volcano'?'picked':''}" data-v="volcano"><span class="ic">🌋</span>Volcán</button>
+        <button class="cfgOpt ${biomeId==='cute'?'picked':''}" data-v="cute"><span class="ic">🌸</span>Jardín</button>
+        <button class="cfgOpt" data-v="random"><span class="ic">🎲</span>Aleatorio</button>
+      </div>
+      <div style="font-size:10px;color:#8a8070;text-align:center;margin-top:4px">
+        Clima actual del bioma: <b style="color:#c8a0e0">${weatherMode}</b>
+      </div>
+    </div>
+
+    <div class="debugSection">
+      <h4>Clima</h4>
+      <div class="debugRow">
+        <label>Lluvia</label>
+        <input type="range" id="dbgRain" min="0" max="100" step="1" value="${Math.round(rainAmt*100)}">
+        <div class="val" id="dbgRainVal">${Math.round(rainAmt*100)}%</div>
+      </div>
+      <div class="debugRow">
+        <label>Objetivo</label>
+        <input type="range" id="dbgRainTarget" min="0" max="100" step="1" value="${Math.round(rainTarget*100)}">
+        <div class="val" id="dbgRainTargetVal">${Math.round(rainTarget*100)}%</div>
+      </div>
+      <div class="debugRow">
+        <label>Transición</label>
+        <input type="range" id="dbgWeatherSpeed" min="5" max="100" step="1" value="${Math.round(weatherTransitionSpeed*100)}">
+        <div class="val" id="dbgWeatherSpeedVal">${(weatherTransitionSpeed).toFixed(2)}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+        <button class="debugBtn" id="dbgStorm">⛈️ Forzar tormenta</button>
+        <button class="debugBtn" id="dbgClear">☀️ Despejar</button>
+        <button class="debugBtn" id="dbgLightning">⚡ Rayo</button>
+      </div>
+    </div>
+
+    <div class="debugSection">
+      <h4>Hora del día</h4>
+      <div class="debugRow">
+        <label>Momento</label>
+        <input type="range" id="dbgHour" min="0" max="100" step="1" value="${hourPct}">
+        <div class="val" id="dbgHourVal">${hourPct}%</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="debugBtn" id="dbgDawn">🌅 Amanecer</button>
+        <button class="debugBtn" id="dbgNoon">☀️ Mediodía</button>
+        <button class="debugBtn" id="dbgDusk">🌇 Atardecer</button>
+        <button class="debugBtn" id="dbgNight">🌙 Noche</button>
+      </div>
+    </div>
+  `;
+}
+
+function wireDebugWorld(){
+  // Bioma
+  document.querySelectorAll('#dbgBiome .cfgOpt').forEach(b => {
+    b.onclick = () => {
+      const v = b.dataset.v;
+      const id = v === 'random'
+        ? BIOME_KEYS[Math.floor(Math.random() * BIOME_KEYS.length)]
+        : v;
+      currentBiome = BIOMES[id];
+      pendingBiome = id;
+      generateTerrain();
+      if(boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
+      toast(`${currentBiome.icon} ${currentBiome.name}`, '#c080ff');
+      renderDebugTab('world');
+    };
+  });
+  // Sliders
+  const rain = $('#dbgRain');
+  rain.oninput = (e) => {
+    rainAmt = parseInt(e.target.value,10) / 100;
+    $('#dbgRainVal').textContent = e.target.value + '%';
+  };
+  const rtarget = $('#dbgRainTarget');
+  rtarget.oninput = (e) => {
+    rainTarget = parseInt(e.target.value,10) / 100;
+    $('#dbgRainTargetVal').textContent = e.target.value + '%';
+  };
+  const wspeed = $('#dbgWeatherSpeed');
+  wspeed.oninput = (e) => {
+    weatherTransitionSpeed = parseInt(e.target.value,10) / 100;
+    $('#dbgWeatherSpeedVal').textContent = weatherTransitionSpeed.toFixed(2);
+  };
+  // Buttons
+  $('#dbgStorm').onclick = () => { rainTarget = 1; rainAmt = 0.95; renderDebugTab('world'); };
+  $('#dbgClear').onclick = () => { rainTarget = 0; rainAmt = 0; renderDebugTab('world'); };
+  $('#dbgLightning').onclick = () => { triggerLightning(Math.max(0.5, rainAmt)); };
+  // Hora
+  const hour = $('#dbgHour');
+  hour.oninput = (e) => {
+    const pct = parseInt(e.target.value,10) / 100;
+    worldTime = pct * CYCLE_SECONDS;
+    $('#dbgHourVal').textContent = e.target.value + '%';
+  };
+  $('#dbgDawn').onclick  = () => { worldTime = 0.02 * CYCLE_SECONDS; renderDebugTab('world'); };
+  $('#dbgNoon').onclick  = () => { worldTime = 0.25 * CYCLE_SECONDS; renderDebugTab('world'); };
+  $('#dbgDusk').onclick  = () => { worldTime = 0.50 * CYCLE_SECONDS; renderDebugTab('world'); };
+  $('#dbgNight').onclick = () => { worldTime = 0.75 * CYCLE_SECONDS; renderDebugTab('world'); };
+}
+
+function renderDebugBoard(){
+  const editPiece = debugState.editingPiece;
+  const pieces = [
+    ['k','Rey'], ['q','Dama'], ['r','Torre'],
+    ['b','Alfil'], ['n','Caballo'], ['p','Peón']
+  ];
+  let grid = '';
+  for(const [color, label] of [['w','Blancas'], ['b','Negras']]){
+    grid += `<div style="grid-column:span 3;font-size:10px;color:#8a8070;margin-top:4px;">${label}</div>`;
+    for(const [type, name] of pieces){
+      const picked = editPiece && editPiece !== 'remove' && editPiece.type === type && editPiece.color === color;
+      grid += `<button class="debugPieceBtn ${color} ${picked?'picked':''}"
+                       data-type="${type}" data-color="${color}">
+        <span class="gl">${GLYPH[type]}</span>
+        <span>${name}</span>
+      </button>`;
+    }
+  }
+  const removePicked = editPiece === 'remove';
+  grid += `<button class="debugPieceBtn remove ${removePicked?'picked':''}" data-remove="1">
+    ✖ Quitar pieza (clic en casilla)
+  </button>`;
+
+  return `
+    <div class="debugSection">
+      <h4>Time travel</h4>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="debugBtn" id="dbgPrev">⏮ Retroceder</button>
+        <button class="debugBtn" id="dbgNext">⏭ Avanzar</button>
+        <button class="debugBtn" id="dbgReset">🔁 Reiniciar posición</button>
+      </div>
+      <div style="font-size:10px;color:#8a8070;text-align:center;margin-top:6px">
+        Historial: ${historyLog.length} acciones
+      </div>
+    </div>
+
+    <div class="debugSection">
+      <h4>Editar tablero</h4>
+      <div style="font-size:10.5px;color:#a898a8;margin-bottom:6px;">
+        Elegí una pieza y hacé clic en el tablero para colocarla.<br>
+        El modo "Quitar" borra la pieza de la casilla donde hagas clic.
+      </div>
+      <div class="debugGrid">${grid}</div>
+      ${editPiece ? `<div style="font-size:10px;color:#c080ff;text-align:center;margin-top:6px">
+        Modo edición activo — clic en el tablero para aplicar
+      </div>` : ''}
+    </div>
+
+    <div class="debugSection">
+      <h4>Acciones rápidas</h4>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="debugBtn" id="dbgClearBoard">🗑️ Vaciar tablero</button>
+        <button class="debugBtn" id="dbgResetBoard">♟️ Posición inicial</button>
+      </div>
+    </div>
+  `;
+}
+
+function wireDebugBoard(){
+  document.querySelectorAll('.debugPieceBtn').forEach(b => {
+    b.onclick = () => {
+      if(b.dataset.remove){
+        debugState.editingPiece = 'remove';
+      } else {
+        debugState.editingPiece = {
+          type: b.dataset.type,
+          color: b.dataset.color
+        };
+      }
+      renderDebugTab('board');
+    };
+  });
+  $('#dbgPrev').onclick = () => { debugTimeTravel(-1); renderDebugTab('board'); };
+  $('#dbgNext').onclick = () => { debugTimeTravel(1); renderDebugTab('board'); };
+  $('#dbgReset').onclick = () => {
+    if(historyLog.length === 0) return;
+    const first = historyLog[0];
+    if(first && first.fen){
+      try { chess.load(first.fen, { skipValidation: true }); } catch(e){}
+      rebuildPieces();
+      updateUI();
+      toast('Posición reiniciada', '#c080ff');
+    }
+  };
+  $('#dbgClearBoard').onclick = () => {
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      const sq = rcToSquare(r,c);
+      if(chess.get(sq)) chess.remove(sq);
+    }
+    rebuildPieces();
+    toast('Tablero vaciado', '#c080ff');
+  };
+  $('#dbgResetBoard').onclick = () => {
+    chess = new Chess();
+    rebuildPieces();
+    updateUI();
+    toast('Posición inicial', '#c080ff');
+  };
+}
+
+function renderDebugGame(){
+  const aiW = debugState.aiColors.w;
+  const aiB = debugState.aiColors.b;
+  const manaW = state.mana.w, manaB = state.mana.b;
+
+  const cardBtns = (color) => ALL_CARD_KEYS.map(key => {
+    const p = POWERS[key];
+    const has = playerDecks[color].hand.includes(key);
+    return `<button class="debugPieceBtn ${has?'picked':''}" data-card="${key}" data-color="${color}"
+                    style="padding:6px 4px;">
+      <span class="gl" style="font-size:16px;">${p.icon}</span>
+      <span>${p.name.split(' ')[0]}</span>
+    </button>`;
+  }).join('');
+
+  return `
+    <div class="debugSection">
+      <h4>IA controla</h4>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="debugBtn ${aiW?'on':''}" id="dbgAIW">♔ Blancas</button>
+        <button class="debugBtn ${aiB?'on':''}" id="dbgAIB">♚ Negras</button>
+        <button class="debugBtn" id="dbgAINone">🚫 Ninguna</button>
+      </div>
+      <div style="font-size:10px;color:#8a8070;text-align:center;margin-top:6px">
+        IA en debug usa dificultad fija "Difícil"
+      </div>
+    </div>
+
+    <div class="debugSection">
+      <h4>Mana</h4>
+      <div class="debugRow">
+        <label>♔ Blancas</label>
+        <input type="range" id="dbgManaW" min="0" max="10" step="1" value="${manaW}">
+        <div class="val" id="dbgManaWVal">${manaW}</div>
+      </div>
+      <div class="debugRow">
+        <label>♚ Negras</label>
+        <input type="range" id="dbgManaB" min="0" max="10" step="1" value="${manaB}">
+        <div class="val" id="dbgManaBVal">${manaB}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <button class="debugBtn" id="dbgManaFull">Llenar todo</button>
+        <button class="debugBtn" id="dbgManaZero">Vaciar todo</button>
+      </div>
+    </div>
+
+    <div class="debugSection">
+      <h4>Cartas en mano ♔ Blancas</h4>
+      <div class="debugGrid">${cardBtns('w')}</div>
+    </div>
+
+    <div class="debugSection">
+      <h4>Cartas en mano ♚ Negras</h4>
+      <div class="debugGrid">${cardBtns('b')}</div>
+    </div>
+
+    <div class="debugSection">
+      <h4>Otros</h4>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="debugBtn" id="dbgIraW">⚔️ Ira ♔</button>
+        <button class="debugBtn" id="dbgIraB">⚔️ Ira ♚</button>
+        <button class="debugBtn" id="dbgClearShields">🛡️ Quitar escudos</button>
+      </div>
+    </div>
+  `;
+}
+
+function wireDebugGame(){
+  $('#dbgAIW').onclick = () => {
+    debugState.aiColors.w = !debugState.aiColors.w;
+    renderDebugTab('game');
+    if(debugState.aiColors.w && chess.turn() === 'w' && !state.gameOver){
+      setTimeout(aiTurn, 300);
+    }
+  };
+  $('#dbgAIB').onclick = () => {
+    debugState.aiColors.b = !debugState.aiColors.b;
+    renderDebugTab('game');
+    if(debugState.aiColors.b && chess.turn() === 'b' && !state.gameOver){
+      setTimeout(aiTurn, 300);
+    }
+  };
+  $('#dbgAINone').onclick = () => {
+    debugState.aiColors.w = false;
+    debugState.aiColors.b = false;
+    renderDebugTab('game');
+  };
+  // Mana
+  const mw = $('#dbgManaW'), mb = $('#dbgManaB');
+  mw.oninput = (e) => {
+    state.mana.w = parseInt(e.target.value,10);
+    $('#dbgManaWVal').textContent = state.mana.w;
+    updateUI();
+  };
+  mb.oninput = (e) => {
+    state.mana.b = parseInt(e.target.value,10);
+    $('#dbgManaBVal').textContent = state.mana.b;
+    updateUI();
+  };
+  $('#dbgManaFull').onclick = () => {
+    state.mana.w = state.maxMana;
+    state.mana.b = state.maxMana;
+    renderDebugTab('game');
+    updateUI();
+  };
+  $('#dbgManaZero').onclick = () => {
+    state.mana.w = 0; state.mana.b = 0;
+    renderDebugTab('game');
+    updateUI();
+  };
+  // Cartas
+  document.querySelectorAll('[data-card]').forEach(b => {
+    b.onclick = () => {
+      const color = b.dataset.color;
+      const key = b.dataset.card;
+      const hand = playerDecks[color].hand;
+      const idx = hand.indexOf(key);
+      if(idx >= 0){
+        hand.splice(idx, 1);
+        // Devolverla al queue
+        playerDecks[color].queue.push(key);
+      } else {
+        hand.push(key);
+      }
+      lastHandSignature = '';   // forzar re-render
+      lastOppHandSignature = '';
+      renderDebugTab('game');
+      updateUI();
+    };
+  });
+  // Ira + escudos
+  $('#dbgIraW').onclick = () => { state.iraCharge.w = true; toast('Ira activada ♔', '#ffa040'); };
+  $('#dbgIraB').onclick = () => { state.iraCharge.b = true; toast('Ira activada ♚', '#ffa040'); };
+  $('#dbgClearShields').onclick = () => {
+    state.shields = { w: [], b: [] };
+    state.shieldTurns = { w: {}, b: {} };
+    state.shieldHits = { w: {}, b: {} };
+    syncPieces();
+    toast('Escudos removidos', '#c080ff');
+  };
+}
+
+function debugTimeTravel(direction){
+  if(!historyLog.length) return;
+  const currentFen = chess.fen();
+  let idx = historyLog.findIndex(e => e.fen === currentFen);
+  if(idx < 0) idx = historyLog.length - 1;
+  const newIdx = Math.max(0, Math.min(historyLog.length - 1, idx + direction));
+  if(newIdx === idx) return;
+  const entry = historyLog[newIdx];
+  if(!entry || !entry.fen) return;
+  try { chess.load(entry.fen, { skipValidation: true }); } catch(e){}
+  if(entry.manaState){
+    state.mana.w = entry.manaState.w;
+    state.mana.b = entry.manaState.b;
+  }
+  rebuildPieces();
+  updateUI();
+  toast(`Posición ${newIdx + 1} / ${historyLog.length}`, '#c080ff');
+}
+
+// Wire globales del panel
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#debugBtn')){
+    const panel = $('#debugPanel');
+    if(panel.classList.contains('hidden')) openDebugPanel();
+    else closeDebugPanel();
+    return;
+  }
+  if(e.target.closest('#dbgClose')){ closeDebugPanel(); return; }
+  const tab = e.target.closest('#dbgTabs button');
+  if(tab) renderDebugTab(tab.dataset.tab);
+}, true);
+
+/* =========================================================
+   PANEL DE AJUSTES GRAFICOS
+   ========================================================= */
+
 async function openQualitySettings(){
   return new Promise(resolve => {
     const ov = document.createElement('div');
@@ -6932,23 +7674,26 @@ async function showConfigMenu(){
     m.innerHTML = `
       <h3>⚙ Configurar partida</h3>
       <div class="section">
-        <div class="section-title">Modo de juego</div>
-        <div class="cfgGrid c3" id="cfgMode">
-          <button class="cfgOpt" data-v="pvp"><span class="ic">👥</span>2 Jugadores</button>
-          <button class="cfgOpt" data-v="easy"><span class="ic">🤖</span>IA Fácil</button>
-          <button class="cfgOpt" data-v="normal"><span class="ic">🤖</span>IA Normal</button>
-          <button class="cfgOpt" data-v="hard"><span class="ic">🤖</span>IA Difícil</button>
-          <button class="cfgOpt" data-v="ruby"><span class="ic">💎</span>RUBY</button>
-          <button class="cfgOpt" data-v="history"><span class="ic">📚</span>Historial</button>
-        </div>
-      </div>
+	  <div class="section-title">Modo de juego</div>
+	  <div class="cfgGrid c3" id="cfgMode">
+		<button class="cfgOpt" data-v="pvp"><span class="ic">👥</span>2 Jugadores</button>
+		<button class="cfgOpt" data-v="easy"><span class="ic">🤖</span>IA Fácil</button>
+		<button class="cfgOpt" data-v="hard"><span class="ic">🤖</span>IA Difícil</button>
+		<button class="cfgOpt" data-v="debug"><span class="ic">🛠️</span>Debug</button>
+		<button class="cfgOpt" data-v="ruby"><span class="ic">💎</span>RUBY</button>
+		<button class="cfgOpt" data-v="history"><span class="ic">📚</span>Historial</button>
+	  </div>
+	</div>
+	  
       <div class="section" id="cfgSideSection">
-        <div class="section-title">Tu color (vs IA)</div>
-        <div class="cfgGrid" id="cfgSide">
-          <button class="cfgOpt" data-v="w"><span class="ic">♔</span>Blancas</button>
-          <button class="cfgOpt" data-v="b"><span class="ic">♚</span>Negras</button>
-        </div>
-      </div>
+	  <div class="section-title">Tu color (vs IA)</div>
+	  <div class="cfgGrid c3" id="cfgSide">
+		<button class="cfgOpt" data-v="w"><span class="ic">♔</span>Blancas</button>
+		<button class="cfgOpt" data-v="b"><span class="ic">♚</span>Negras</button>
+		<button class="cfgOpt" data-v="random"><span class="ic">🎲</span>Cualquiera</button>
+	  </div>
+	</div>
+	  
       <div class="section">
         <div class="section-title">Tiempo por jugador</div>
         <div class="timeRow" id="cfgTime">
@@ -6976,6 +7721,9 @@ async function showConfigMenu(){
     document.body.appendChild(ov);
 
     function refreshPicked(){
+		// Compatibilidad con saves viejos que tenían "normal"
+      if(cfg.mode === 'normal') cfg.mode = 'hard';
+      
       m.querySelectorAll('#cfgMode .cfgOpt').forEach(b => b.classList.toggle('picked', b.dataset.v === cfg.mode));
       m.querySelectorAll('#cfgSide .cfgOpt').forEach(b => b.classList.toggle('picked', b.dataset.v === cfg.side));
       m.querySelectorAll('#cfgTime .cfgOpt').forEach(b => {
@@ -6996,16 +7744,23 @@ async function showConfigMenu(){
       refreshPicked();
     };
     m.querySelector('#cfgMode').onclick = (e) => {
-      const b = e.target.closest('.cfgOpt');
-      if(!b) return;
-      if(b.dataset.v === 'history'){
-        ov.remove();
-        resolve({ action: 'history' });
-        return;
-      }
-      cfg.mode = b.dataset.v;
-      refreshPicked();
-    };
+	  const b = e.target.closest('.cfgOpt');
+	  if(!b) return;
+	  if(b.dataset.v === 'history'){
+		ov.remove();
+		resolve({ action: 'history' });
+		return;
+	  }
+	  if(b.dataset.v === 'debug'){
+		cfg.mode = 'debug';
+		ov.remove();
+		resolve({ action: 'start', cfg });
+		return;
+	  }
+	  cfg.mode = b.dataset.v;
+	  refreshPicked();
+	};
+	
     m.querySelector('#cfgSide').onclick = (e) => {
       const b = e.target.closest('.cfgOpt');
       if(!b) return;
@@ -7063,30 +7818,49 @@ async function showStartMenu(){
       }
       continue;
     }
-    if(res.action === 'start'){
+        if(res.action === 'start'){
       const cfg = res.cfg;
-      savePreferences(cfg);          // ⬅️ NUEVO: persistir antes que nada
+      savePreferences(cfg);
 
       if(cfg.mode === 'pvp'){
         aiEnabled = false; rubyMode = false;
         humanColor = 'w'; aiColor = 'b';
+        debugState.enabled = false;
+      } else if(cfg.mode === 'debug'){
+        aiEnabled = true;
+        aiDifficulty = 'hard';
+        rubyMode = false;
+        // Color aleatorio si eligió "Cualquiera"
+        humanColor = (cfg.side === 'random')
+          ? (Math.random() < 0.5 ? 'w' : 'b')
+          : (cfg.side || 'w');
+        aiColor = humanColor === 'w' ? 'b' : 'w';
+        debugState.enabled = true;
+        debugState.aiColors = { w: false, b: false };
+        debugState.editingPiece = null;
+        debugState.tab = 'world';
       } else {
         aiEnabled = true;
         aiDifficulty = cfg.mode;
         rubyMode = (cfg.mode === 'ruby');
-        humanColor = cfg.side;
-        aiColor = cfg.side === 'w' ? 'b' : 'w';
+        humanColor = (cfg.side === 'random')
+          ? (Math.random() < 0.5 ? 'w' : 'b')
+          : (cfg.side || 'w');
+        aiColor = humanColor === 'w' ? 'b' : 'w';
+        debugState.enabled = false;
       }
+
       gameTimer.enabled = cfg.timerMinutes > 0;
       gameTimer.initial = cfg.timerMinutes * 60;
       gameTimer.w = gameTimer.initial;
       gameTimer.b = gameTimer.initial;
 
-      pendingBiome = cfg.biome || 'random';   // ⬅️ mover esto acá si no estaba
+      pendingBiome = cfg.biome || 'random';
       return 'start';
     }
   }
 }
+
 async function doDraft(){
   let wPicks, bPicks;
   if(!aiEnabled){
@@ -7101,18 +7875,28 @@ async function doDraft(){
   }
   setupDecks(wPicks, bPicks);
 }
+
 async function startGame() {
   initAudio();
   const mode = await showStartMenu();
-  if (mode !== 'start') return; // 'cancel' o 'replay' → no iniciar partida nueva
-  await doDraft();
+  if (mode !== 'start') return;
+  if(debugState.enabled){
+    // En debug: todos los poderes para ambos, sin draft
+    playerDecks.w.hand = [...ALL_CARD_KEYS];
+    playerDecks.w.queue = [];
+    playerDecks.b.hand = [...ALL_CARD_KEYS];
+    playerDecks.b.queue = [];
+  } else {
+    await doDraft();
+  }
   newGame();
   renderPlayerHand();
   renderOppHand();
-  if (aiEnabled && aiColor === 'w') {
+  if (isAIPlayer(aiColor)) {
     setTimeout(aiTurn, 900);
   }
 }
+
 async function restartGame(){
   if(!state.gameOver && historyLog.length > 2){
     const ok = await showModal('Reiniciar partida', '¿Seguro que quieres reiniciar? La partida actual se perderá.', [
@@ -7184,7 +7968,7 @@ function newGame(){
 
   if(typeof lightning !== 'undefined') lightning.strikes.length = 0;
 
-    // Randomizar clima al iniciar partida nueva
+  // Randomizar clima al iniciar partida nueva
   randomizeWeatherForNewGame();
 
   historyLog.length = 0; historyEl.innerHTML = '';
@@ -7205,6 +7989,13 @@ function newGame(){
   updateUI();
   startTimer();
   updateClocks();
+  
+  // Debug mode
+  setDebugMode(debugState.enabled);
+  if(debugState.enabled){
+    debugState.aiColors = { w: false, b: false };
+    debugState.editingPiece = null;
+  }
   // Permitir que empiece una nueva búsqueda de IA
   setTimeout(() => { aiSearchAbort = false; }, 100);
 }
@@ -8001,6 +8792,11 @@ function endDrag(d){
 gridEl.addEventListener('pointerdown', (e) => {
   suppressNextClick = false;
   clearHoverPreview();
+  
+   if(debugState.enabled && debugState.editingPiece){
+    // dejar pasar el pointerdown para que el click del editor funcione
+    return;
+  }
 
   if(e.pointerType === 'mouse' && e.button !== 0) return;
 
@@ -8023,7 +8819,7 @@ gridEl.addEventListener('pointerdown', (e) => {
   // En drag de Ira solo se puede agarrar la pieza que tiene la Ira
   if(isIraDrag && sq !== state.targeting.from) return;
   // Fuera del targeting de Ira, chequeo normal de turno
-  if(!isIraDrag && aiEnabled && chess.turn() === aiColor) return;
+    if(!isIraDrag && isAIPlayer(chess.turn())) return;
 
   const piece = chess.get(sq);
   if(!piece) return;
@@ -8273,7 +9069,19 @@ async function openQuickConfig(){
   if(res === 'exit'){ exitToMenu(); return; }
 }
 
-window.addEventListener('resize', () => setTimeout(layout, 60));
+window.addEventListener('resize', () => {
+  if(!document.body.classList.contains('debug-open')) return;
+  // Al cruzar el breakpoint, reajustar pausa
+  if(isDesktopDebugLayout()){
+    // Pasamos a escritorio: si estaba pausado por el panel, despausar
+    if(state.paused && !debugState.wasPausedBeforeOpen) togglePause();
+  } else {
+    // Pasamos a móvil: pausar porque ahora sí tapa todo
+    if(!state.paused) togglePause();
+  }
+  setTimeout(layout, 100);
+});
+
 window.addEventListener('orientationchange', () => setTimeout(layout, 250));
 
 document.addEventListener('visibilitychange', () => {
@@ -8301,6 +9109,10 @@ document.addEventListener('keydown', (e) => {
     if(e.key === ' '){          e.preventDefault(); replayPlayPause(); return; }
     if(e.key === 'Escape'){     e.preventDefault(); closeReplay(); return; }
   }
+  
+  if(e.key === 'Escape' && !document.body.classList.contains('debug-open') === false){
+	  closeDebugPanel();
+	}
 });
 
 function boot(){
