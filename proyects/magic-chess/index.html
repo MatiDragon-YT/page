@@ -1700,6 +1700,7 @@ function spawnDust(fromSq, toSq){
       size: rnd(1.2,2.6), color:'rgba(210,190,150,0.8)', g:-20, drag:.94 });
   }
 }
+
 function spawnVortex(x, y, color, inward){
   for(let i=0;i<34;i++){
     const a = Math.random()*Math.PI*2;
@@ -2512,14 +2513,174 @@ function getPhase(){
     a: lerp(A.a, B.a, f), dark: lerp(A.dark, B.dark, f)
   };
 }
+
 let rainAmt = 0, rainTarget = 0, rainTimer = 0;
+
 const rainDrops = [];
+
 for(let i=0;i<1000;i++) rainDrops.push({
   x: Math.random(), y: Math.random(),
   len: rnd(0.010, 0.042),
-  spd: rnd(0.50, 1.55)
+  spd: rnd(0.50, 1.55),
+  vx: 0, vy: 0,
+  attachedVortex: null,     // ⬅️ id del vórtice al que está enganchada, o null
+  orbitAngle: 0,            // ⬅️ ángulo actual en la órbita
+  orbitRadius: 0,           // ⬅️ radio actual
+  orbitRadiusTarget: 0      // ⬅️ radio objetivo (converge suavemente)
 });
+
 let weatherTransitionSpeed = 0.25;
+
+/* =========================================================
+   VÓRTICES DE TORMENTA
+   Aparecen cuando la intensidad pasa cierto umbral y arrastran
+   las partículas del clima en círculos.
+   ========================================================= */
+const vortices = {
+  list: [],
+  targetCount: 0,
+  lastCheck: 0
+};
+let vortexIdCounter = 0;
+
+// Viento oscilante global (se suma al movimiento base)
+let windPhaseX = Math.random() * 1000;
+let windPhaseY = Math.random() * 1000;
+
+function updateVortexCount(intensity){
+  if(intensity < 0.55)      vortices.targetCount = 0;
+  else if(intensity < 0.72) vortices.targetCount = 1;
+  else if(intensity < 0.88) vortices.targetCount = 2;
+  else                      vortices.targetCount = 3;
+}
+
+function spawnVortex(W, H){
+  const cxc = rnd(W * 0.15, W * 0.85);
+  const cyc = rnd(H * 0.10, H * 0.60);
+  const maxR = rnd(60, 130);
+  const life = rnd(3.5, 6.5);
+  return {
+	id: ++vortexIdCounter,
+    x: cxc, y: cyc,
+    maxR,
+    r: 0,                  // radio actual (crece y decrece)
+    life: 0,
+    maxLife: life,
+    dir: Math.random() < 0.5 ? 1 : -1,   // sentido de giro
+    strength: rnd(0.65, 1.15),
+    phase: Math.random() * 6.28,
+    xDrift: rnd(-10, 10),  // deriva lenta horizontal
+    yDrift: rnd(-4, 4)
+  };
+}
+
+function updateVortices(dt, W, H, intensity){
+  updateVortexCount(intensity);
+
+  // Spawn: aparecen de a uno cada tanto
+  const now = performance.now();
+  if(vortices.list.length < vortices.targetCount && now - vortices.lastCheck > 350){
+    vortices.list.push(spawnVortex(W, H));
+    vortices.lastCheck = now;
+  }
+
+  // Update
+  for(let i = vortices.list.length - 1; i >= 0; i--){
+    const v = vortices.list[i];
+    v.life += dt;
+    v.x += v.xDrift * dt;
+    v.y += v.yDrift * dt;
+
+    // Envolvente de vida: sube en 20%, mantiene, baja en 30%
+    const t = v.life / v.maxLife;
+    let env;
+    if(t < 0.20)      env = t / 0.20;
+    else if(t < 0.70) env = 1;
+    else              env = 1 - (t - 0.70) / 0.30;
+    env = Math.max(0, env);
+
+    // Radio: crece rápido al principio y se estabiliza
+    v.r = v.maxR * Math.min(1, t / 0.25);
+    v.currentStrength = v.strength * env;
+
+    // Despawn: murió o ya hay más de los que debería
+    if(v.life >= v.maxLife || vortices.list.length > vortices.targetCount){
+      vortices.list.splice(i, 1);
+    }
+  }
+}
+
+/**
+ * Avanza una partícula de clima.
+ * Devuelve true si la partícula está orbitando un vórtice (y ya actualizó d.x/d.y).
+ * Devuelve false si debe usar la caída normal (la maneja drawWeatherParticles).
+ */
+function stepWeatherParticle(d, dt, intensity, W, H){
+  // ---- Buscar el vórtice dominante (el de mayor falloff) ----
+  let bestV = null, bestFalloff = 0;
+  if(vortices.list.length){
+    const px = d.x * W, py = d.y * H;
+    for(const v of vortices.list){
+      const dx = px - v.x, dy = py - v.y;
+      const dist2 = dx*dx + dy*dy;
+      const r2 = v.r * v.r;
+      if(dist2 > r2 || dist2 < 4) continue;
+      const dist = Math.sqrt(dist2);
+      const falloff = 1 - dist / v.r;
+      if(falloff > bestFalloff){ bestFalloff = falloff; bestV = v; }
+    }
+  }
+
+  // ---- Fuera de vórtices: viento global suave y a caer ----
+  if(!bestV || bestV.currentStrength < 0.12){
+    d.attachedVortex = null;
+    windPhaseX += dt * (0.8 + intensity * 1.2);
+    const wind = Math.sin(windPhaseX) * 25 * intensity * intensity;
+    d.vx += wind * dt;
+    d.vy += Math.cos(windPhaseX * 0.7) * 8 * intensity * intensity * dt;
+    const fpow = Math.pow(0.90, dt * 60);
+    d.vx *= fpow;
+    d.vy *= fpow;
+    return false;
+  }
+
+  // ---- Dentro de un vórtice: órbita trigonométrica pura ----
+  const px = d.x * W, py = d.y * H;
+
+  // Si acaba de entrar, capturar ángulo y radio actuales
+  if(d.attachedVortex !== bestV.id){
+    d.attachedVortex = bestV.id;
+    d.orbitAngle = Math.atan2(py - bestV.y, px - bestV.x);
+    d.orbitRadius = Math.max(8, Math.hypot(px - bestV.x, py - bestV.y));
+    // Radio objetivo: entre 30% y 55% del radio del vórtice
+    d.orbitRadiusTarget = bestV.r * (0.30 + Math.random() * 0.25);
+  }
+
+  // Velocidad angular: más rápida cerca del centro (w = v/r)
+  const tangentialSpeed = 90 + 280 * bestFalloff;   // px/s
+  const omega = bestV.dir * tangentialSpeed / Math.max(24, d.orbitRadius);
+  d.orbitAngle += omega * dt;
+
+  // El radio converge suavemente hacia el objetivo
+  d.orbitRadius += (d.orbitRadiusTarget - d.orbitRadius) * Math.min(1, 2.2 * dt);
+  // Pequeña oscilación para que no se vea mecánico
+  const wobble = Math.sin(d.orbitAngle * 1.7) * 4;
+  const r = Math.max(8, d.orbitRadius + wobble);
+
+  // Posición final sobre el círculo
+  const nx = bestV.x + Math.cos(d.orbitAngle) * r;
+  const ny = bestV.y + Math.sin(d.orbitAngle) * r;
+
+  // Velocidad aparente (derivada numérica), por si el modo la necesita para estirar la partícula
+  d.vx = -Math.sin(d.orbitAngle) * omega * r;
+  d.vy =  Math.cos(d.orbitAngle) * omega * r;
+
+  d.x = nx / W;
+  d.y = ny / H;
+
+  return true;
+}
+
 /* ===== ESTADO DEL CLIMA: capturar / aplicar / randomizar ===== */
 function captureWeatherState(){
   return {
@@ -2555,6 +2716,10 @@ function applyWeatherState(w){
     org.rainWobble.level = 0.85; org.rainWobble.target = 0.85; org.rainWobble.nextChange = 0;
     org.crickets.level = 0;  org.crickets.target = 0;  org.crickets.nextChange = 0;
   }
+  vortices.list.length = 0;
+	vortices.targetCount = 0;
+	windPhaseX = Math.random() * 1000;
+	windPhaseY = Math.random() * 1000;
 }
 
 function randomizeWeatherForNewGame(){
@@ -2588,7 +2753,12 @@ function randomizeWeatherForNewGame(){
     org.rainWobble.level = 0.85; org.rainWobble.target = 0.85; org.rainWobble.nextChange = 0;
     org.crickets.level = 0;  org.crickets.target = 0;  org.crickets.nextChange = 0;
   }
+	vortices.list.length = 0;
+	vortices.targetCount = 0;
+	windPhaseX = Math.random() * 1000;
+	windPhaseY = Math.random() * 1000;
 }
+
 function updateWeather(dt){
   rainTimer -= dt;
   if(rainTimer <= 0){
@@ -7319,6 +7489,7 @@ function drawFpsOverlay(W, H){
 
   fpsCtx.restore();
 }
+
 function drawWeatherParticles(W, H, dt){
   const q = getRainScale();
   if(q <= 0) return;
@@ -7327,8 +7498,11 @@ function drawWeatherParticles(W, H, dt){
   const intensity = rainAmt;
   if(intensity < 0.012) return;
 
+  updateVortices(dt, W, H, intensity);
+
   const visible = Math.floor(rainDrops.length * q * (0.05 + 0.90 * Math.pow(intensity, 0.55)));
   const alphaBase = 0.20 + intensity * 0.24;
+  const now = performance.now();
 
   if(mode === 'rain'){
     const lenScale = 0.65 + intensity * 4.20;
@@ -7341,30 +7515,52 @@ function drawWeatherParticles(W, H, dt){
     ctx.beginPath();
     for(let i=0;i<visible;i++){
       const d = rainDrops[i];
-      d.y += d.spd * speedMul * dt;
-      d.x += d.spd * speedMul * dt * 0.18;
-      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); }
+      const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
+      if(!orbiting){
+        d.y += d.spd * speedMul * dt;
+        d.x += d.spd * speedMul * 0.18 * dt;
+      }
+      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
       if(d.x > 1.05) d.x -= 1.1;
+      if(d.x < -0.05) d.x += 1.1;
+
       const px = d.x * W, py = d.y * H;
       const L = d.len * lenScale;
+      const totalVx = d.spd * speedMul * 0.18 * W + d.vx;
+      const tilt = clamp(totalVx / Math.max(60, d.spd * speedMul * W), -0.7, 0.7);
       ctx.moveTo(px, py);
-      ctx.lineTo(px - L * W * slant, py + L * H);
+      ctx.lineTo(px - L * W * (slant + tilt), py + L * H);
     }
     ctx.stroke();
     ctx.lineCap = 'butt';
   }
   else if(mode === 'snow'){
-    ctx.fillStyle = `rgba(245,250,255,${0.55 + intensity * 0.30})`;
     for(let i=0;i<visible;i++){
       const d = rainDrops[i];
-      d.y += d.spd * (0.25 + intensity * 0.45) * dt;
-      d.x += Math.sin(performance.now() * 0.001 + i) * 0.0008 + (Math.random() - 0.5) * 0.0006;
-      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); }
+      const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
+      if(!orbiting){
+        d.y += d.spd * (0.25 + intensity * 0.45) * dt;
+        d.x += Math.sin(now * 0.001 + i) * 0.0008 * dt;
+      }
+      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
       if(d.x > 1.05) d.x -= 1.1;
       if(d.x < -0.05) d.x += 1.1;
+
       const px = d.x * W, py = d.y * H;
       const r = 0.9 + d.len * 30;
-      ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = `rgba(245,250,255,${0.55 + intensity * 0.30})`;
+      const speedMag = Math.hypot(d.vx, d.vy);
+      if(speedMag > 30){
+        const ang = Math.atan2(d.vy, d.vx);
+        const stretch = 1 + Math.min(1.4, speedMag / 200);
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang);
+        ctx.beginPath(); ctx.ellipse(0, 0, r * stretch, r * 0.75, 0, 0, 6.2832); ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
+      }
     }
   }
   else if(mode === 'dust'){
@@ -7383,10 +7579,14 @@ function drawWeatherParticles(W, H, dt){
   else if(mode === 'ash'){
     for(let i=0;i<visible;i++){
       const d = rainDrops[i];
-      d.y += d.spd * (0.35 + intensity * 0.55) * dt;
-      d.x += Math.sin(performance.now() * 0.0007 + i * 1.7) * 0.0008 + 0.0006;
-      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); }
+      const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
+      if(!orbiting){
+        d.y += d.spd * (0.35 + intensity * 0.55) * dt;
+        d.x += Math.sin(now * 0.0007 + i * 1.7) * 0.0008 * dt + 0.0006 * dt;
+      }
+      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
       if(d.x > 1.05) d.x -= 1.1;
+
       const px = d.x * W, py = d.y * H;
       const isEmber = (i % 7 === 0);
       ctx.fillStyle = isEmber
@@ -7397,34 +7597,37 @@ function drawWeatherParticles(W, H, dt){
     }
   }
   else if(mode === 'petals'){
-    const t = performance.now() * 0.001;
+    const t = now * 0.001;
     for(let i=0;i<visible;i++){
       const d = rainDrops[i];
-      d.y += d.spd * (0.22 + intensity * 0.40) * dt;
-      d.x += Math.sin(t + i * 1.3) * 0.0014 + 0.0004;
-      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); }
+      const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
+      if(!orbiting){
+        d.y += d.spd * (0.22 + intensity * 0.40) * dt;
+        d.x += Math.sin(t + i * 1.3) * 0.0014 * dt + 0.0004 * dt;
+      }
+      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
       if(d.x > 1.05) d.x -= 1.1;
       if(d.x < -0.05) d.x += 1.1;
+
       const px = d.x * W, py = d.y * H;
       const r = 1.6 + d.len * 20;
-      const rot = t * 1.2 + i;
+      const rot = t * 1.2 + i + (orbiting ? d.vx * 0.010 : 0);
       ctx.save();
       ctx.translate(px, py);
       ctx.rotate(rot);
-      // Pétalo: elipse rosa/blanca
       const pink = i % 4 === 0 ? 'rgba(255,245,252,0.85)'
                 : i % 4 === 1 ? 'rgba(255,205,230,0.85)'
                 : i % 4 === 2 ? 'rgba(255,180,215,0.85)'
                 :               'rgba(245,200,255,0.85)';
       ctx.fillStyle = pink;
       ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.55, 0, 0, 6.2832); ctx.fill();
-      // Brillo
       ctx.fillStyle = 'rgba(255,255,255,0.50)';
       ctx.beginPath(); ctx.ellipse(-r*0.28, -r*0.14, r*0.35, r*0.22, 0, 0, 6.2832); ctx.fill();
       ctx.restore();
     }
   }
 }
+
 function drawBoardGrid(W, H){
   const style = getWaveStyle();
   if(style === 'off'){
