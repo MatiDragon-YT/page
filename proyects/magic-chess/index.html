@@ -1971,6 +1971,7 @@ function spawnVortex(x, y, color, inward){
       life: rnd(.35,.7), maxLife:.7, size: rnd(1.6,3.6), color, g:0, drag:.94 });
   }
 }
+
 function spawnBolt(x, y){
   const pts = []; let cx = x + rnd(-40,40), cy = 0; pts.push({x:cx, y:cy});
   const steps = 9;
@@ -2782,10 +2783,14 @@ for(let i=0;i<1000;i++) rainDrops.push({
   len: rnd(0.010, 0.042),
   spd: rnd(0.50, 1.55),
   vx: 0, vy: 0,
-  attachedVortex: null,     // ⬅️ id del vórtice al que está enganchada, o null
-  orbitAngle: 0,            // ⬅️ ángulo actual en la órbita
-  orbitRadius: 0,           // ⬅️ radio actual
-  orbitRadiusTarget: 0      // ⬅️ radio objetivo (converge suavemente)
+  attachedVortex: null,
+  orbitAngle: 0,
+  orbitRadius: 0,
+  orbitRadiusTarget: 0,
+  orbitRatioOffset: 0,
+  orbitBaseR: 0,
+  consumeClock: 0,
+  consumeTime: 0,
 });
 
 let weatherTransitionSpeed = 0.25;
@@ -2856,58 +2861,114 @@ function updateVortexCount(intensity){
   else                      vortices.targetCount = 3;
 }
 
-function spawnVortex(W, H){
+/* Elige el multiplicador de un vórtice.
+   60% chico (1x), 30% doble (2x), 10% triple (3x).
+   En tormentas fuertes, sube la chance de grandes. */
+function pickVortexScale(intensity){
+  const roll = Math.random();
+  let scale = 1;
+  if(roll < 0.10)      scale = 3;
+  else if(roll < 0.40) scale = 2;
+  // resto → 1
+
+  // En tormenta fuerte (intensity > 0.85), 35% de chance de subir un escalón
+  if(intensity > 0.85 && Math.random() < 0.35){
+    scale = Math.max(scale, 2);
+  }
+  return scale;
+}
+
+function spawnVortex(W, H, scale = 1){
   const cxc = rnd(W * 0.15, W * 0.85);
-  const cyc = rnd(H * 0.10, H * 0.60);
-  const maxR = rnd(60, 130);
-  const life = rnd(3.5, 6.5);
+  const cyc = rnd(-30 * scale, H * 0.30);
+  const maxR = rnd(60, 130) * scale;
+  const life = rnd(3.5, 6.5) * scale;
+
+  // Duración del grow/shrink según escala
+  const growDur  = scale === 1 ? 0.3 : (scale === 2 ? 0.7 : 1.5);
+  const shrinkDur = growDur;   // simétrico
+
   return {
-	id: ++vortexIdCounter,
+    id: ++vortexIdCounter,
+    scale,
     x: cxc, y: cyc,
     maxR,
-    r: 0,                  // radio actual (crece y decrece)
+    r: 0,                       // arranca en 0
     life: 0,
     maxLife: life,
-    dir: Math.random() < 0.5 ? 1 : -1,   // sentido de giro
+    growDur,
+    shrinkDur,
+    dir: Math.random() < 0.5 ? 1 : -1,
     strength: rnd(0.65, 1.15),
     phase: Math.random() * 6.28,
-    xDrift: rnd(-10, 10),  // deriva lenta horizontal
-    yDrift: rnd(-4, 4)
+    xDrift: rnd(-8, 8) * scale,
+    baseYDrift: rnd(28, 55) * (1 + (3 - scale) * 0.6)
   };
 }
 
 function updateVortices(dt, W, H, intensity){
   updateVortexCount(intensity);
 
-  // Spawn: aparecen de a uno cada tanto
+  // ---- Spawn ----
   const now = performance.now();
   if(vortices.list.length < vortices.targetCount && now - vortices.lastCheck > 350){
-    vortices.list.push(spawnVortex(W, H));
+    const scale = pickVortexScale(intensity);
+    vortices.list.push(spawnVortex(W, H, scale));
     vortices.lastCheck = now;
   }
 
-  // Update
+  const intensityMul = 0.5 + intensity * 1.0;
+
   for(let i = vortices.list.length - 1; i >= 0; i--){
     const v = vortices.list[i];
     v.life += dt;
     v.x += v.xDrift * dt;
-    v.y += v.yDrift * dt;
+    v.y += v.baseYDrift * intensityMul * dt;
 
-    // Envolvente de vida: sube en 20%, mantiene, baja en 30%
-    const t = v.life / v.maxLife;
-    let env;
-    if(t < 0.20)      env = t / 0.20;
-    else if(t < 0.70) env = 1;
-    else              env = 1 - (t - 0.70) / 0.30;
-    env = Math.max(0, env);
+    const shrinkStart = v.maxLife - v.shrinkDur;
 
-    // Radio: crece rápido al principio y se estabiliza
-    v.r = v.maxR * Math.min(1, t / 0.25);
-    v.currentStrength = v.strength * env;
+    // ---- Radio: grow → hold → shrink ----
+    let rFactor;
+    if(v.life < v.growDur){
+      // Crecimiento con easing-out cúbico (más orgánico que lineal)
+      const t = v.life / v.growDur;
+      rFactor = 1 - Math.pow(1 - t, 3);
+    } else if(v.life >= shrinkStart){
+      // Decrecimiento lineal
+      const t = Math.max(0, (v.maxLife - v.life) / v.shrinkDur);
+      rFactor = t;
+    } else {
+      rFactor = 1;
+    }
+    v.r = v.maxR * rFactor;
 
-    // Despawn: murió o ya hay más de los que debería
-    if(v.life >= v.maxLife || vortices.list.length > vortices.targetCount){
+    // ---- Fuerza: full hasta que empieza a desaparecer ----
+    let sFactor;
+    if(v.life >= shrinkStart){
+      sFactor = Math.max(0, (v.maxLife - v.life) / v.shrinkDur);
+    } else {
+      sFactor = 1;
+    }
+    v.currentStrength = v.strength * sFactor;
+
+    // ---- Despawn por vida agotada (ya se achicó a 0) ----
+    if(v.life >= v.maxLife){
       vortices.list.splice(i, 1);
+      continue;
+    }
+
+    // ---- Si sobran vórtices, forzar el inicio del shrink ----
+    // (evita que desaparezcan de golpe cuando baja la intensidad)
+    if(vortices.list.length > vortices.targetCount && v.life < shrinkStart){
+      v.maxLife = v.life + v.shrinkDur;
+    }
+
+    // ---- Si se fue por abajo, muere (no wrap) ----
+    // Con la nueva duración escalada ya no hace falta el wrap: cada vórtice
+    // tiene su ciclo completo de vida y el spawn se encarga de mantener el flujo.
+    if(v.y - v.r > H){
+      vortices.list.splice(i, 1);
+      continue;
     }
   }
 }
@@ -2936,6 +2997,8 @@ function stepWeatherParticle(d, dt, intensity, W, H){
   // ---- Fuera de vórtices: caída normal + viento direccional ----
   if(!bestV || bestV.currentStrength < 0.12){
     d.attachedVortex = null;
+    d.consumeClock = 0;      // ⬅️ NUEVO
+    d.consumeTime = 0;       // ⬅️ NUEVO
 
     // Viento direccional: converge suavemente hacia el valor objetivo.
     // El factor 240 es la velocidad máxima en px/s cuando strength=1 e intensity=1.
@@ -2948,28 +3011,70 @@ function stepWeatherParticle(d, dt, intensity, W, H){
 
     return false;
   }
+  
+  if(bestV.r < 14){
+    d.attachedVortex = null;
+    d.consumeClock = 0;      // ⬅️ NUEVO
+    d.consumeTime = 0;       // ⬅️ NUEVO
+    return false;
+  }
 
   // ---- Dentro de un vórtice: órbita trigonométrica pura ----
   const px = d.x * W, py = d.y * H;
 
-  // Si acaba de entrar, capturar ángulo y radio actuales
-  if(d.attachedVortex !== bestV.id){
-    d.attachedVortex = bestV.id;
-    d.orbitAngle = Math.atan2(py - bestV.y, px - bestV.x);
-    d.orbitRadius = Math.max(8, Math.hypot(px - bestV.x, py - bestV.y));
-    // Radio objetivo: entre 30% y 55% del radio del vórtice
-    d.orbitRadiusTarget = bestV.r * (0.30 + Math.random() * 0.25);
+    // Al entrar: distribución uniforme por área + snap al anillo
+	if(d.attachedVortex !== bestV.id){
+	  d.attachedVortex = bestV.id;
+	  d.orbitAngle = Math.atan2(py - bestV.y, px - bestV.x);
+
+	  // Distribución uniforme por área: sqrt() hace que haya tantas partículas
+	  // cerca del centro como en la periferia (sin esto se acumulan en el borde)
+	  d.orbitRatioOffset = Math.sqrt(Math.random());
+
+	  // Calculamos el radio objetivo AHORA para saber a dónde va
+    d.orbitBaseR = bestV.maxR;                // ⬅️ guardamos el radio MÁXIMO
+    const ratio = 0.08 + d.orbitRatioOffset * 0.82;
+    const targetR = bestV.maxR * ratio;       // ⬅️ usa el máximo, no el actual
+
+	  // Si viene del borde (típico al entrar), arrancamos cerca del target
+	  // para que no tarde 2 segundos en espiralar hasta su anillo
+	  const distNow = Math.max(8, Math.hypot(py - bestV.y, px - bestV.x));
+	  d.orbitRadius = Math.min(distNow, targetR * 1.4);
+	  
+		d.consumeTime = bestV.maxLife * 0.2;
+		d.consumeClock = 0;
+	}
+	
+	  // Contador de consumo
+  d.consumeClock += dt;
+  if(d.consumeClock >= d.consumeTime){
+    // El vórtice la devoró. Se recicla arriba sin ningún efecto visual.
+    d.x = Math.random();
+    d.y = -0.05;
+    d.attachedVortex = null;
+    d.consumeClock = 0;
+    d.consumeTime = 0;
+    d.vx = 0;
+    d.vy = 0;
+    return true;
   }
 
+  // El target queda fijo en función del radio máximo.
+  // Cuando el vórtice se achica, las partículas quedan fuera de su radio
+  // y se sueltan naturalmente.
+  d.orbitRadiusTarget = d.orbitBaseR * (0.08 + d.orbitRatioOffset * 0.82);
+
   // Velocidad angular: más rápida cerca del centro (w = v/r)
-  const tangentialSpeed = 90 + 280 * bestFalloff;   // px/s
+  const tangentialSpeed = 90 + 280 * bestFalloff;
   const omega = bestV.dir * tangentialSpeed / Math.max(24, d.orbitRadius);
   d.orbitAngle += omega * dt;
 
-  // El radio converge suavemente hacia el objetivo
-  d.orbitRadius += (d.orbitRadiusTarget - d.orbitRadius) * Math.min(1, 2.2 * dt);
+  // El radio converge suavemente hacia el objetivo (más rápido que antes)
+  d.orbitRadius += (d.orbitRadiusTarget - d.orbitRadius) * Math.min(1, 8.0 * dt);
+
   // Pequeña oscilación para que no se vea mecánico
-  const wobble = Math.sin(d.orbitAngle * 1.7) * 4;
+  const wobbleAmp = 2 + d.orbitRatioOffset * 6;
+	const wobble = Math.sin(d.orbitAngle * 1.7) * wobbleAmp;
   const r = Math.max(8, d.orbitRadius + wobble);
 
   // Posición final sobre el círculo
