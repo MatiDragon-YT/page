@@ -604,6 +604,61 @@ display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;
 .draftCard:hover::before{
   color:#ffd070;
 }
+/* SLIDER de FPS */
+#fpsCapRow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:6px 2px;
+}
+#fpsCapSlider{
+  flex:1;
+  -webkit-appearance:none;
+  appearance:none;
+  height:6px;
+  border-radius:3px;
+  background:linear-gradient(90deg,#2a4fb0,#63a8ff,#a8d8ff);
+  outline:none;
+  cursor:pointer;
+}
+#fpsCapSlider::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  appearance:none;
+  width:20px; height:20px;
+  border-radius:50%;
+  background:linear-gradient(#3a2e1a,#20180e);
+  border:2px solid #ffd070;
+  box-shadow:0 0 10px rgba(255,200,90,.55),inset 0 1px 0 rgba(255,220,160,.3);
+  cursor:grab;
+  transition:transform .1s;
+}
+#fpsCapSlider::-webkit-slider-thumb:active{ transform:scale(1.15); cursor:grabbing; }
+#fpsCapSlider::-moz-range-thumb{
+  width:20px; height:20px;
+  border-radius:50%;
+  background:linear-gradient(#3a2e1a,#20180e);
+  border:2px solid #ffd070;
+  box-shadow:0 0 10px rgba(255,200,90,.55);
+  cursor:grab;
+}
+#fpsCapSlider::-moz-range-track{
+  height:6px;
+  border-radius:3px;
+  background:linear-gradient(90deg,#2a4fb0,#63a8ff,#a8d8ff);
+}
+#fpsCapValue{
+  min-width:64px;
+  text-align:center;
+  font-family:ui-monospace,monospace;
+  font-weight:800;
+  font-size:13px;
+  color:#ffd070;
+  background:rgba(20,30,55,.6);
+  padding:4px 8px;
+  border-radius:6px;
+  border:1px solid rgba(90,150,255,.35);
+  text-shadow:0 0 6px rgba(255,200,90,.5);
+}
 </style>
 </head>
 <body>
@@ -1285,6 +1340,7 @@ const quality = {
   particlesEnabled: localStorage.getItem('ajedrez_particles') !== 'off',
   rainEnabled: localStorage.getItem('ajedrez_rain') !== 'off',
   effective: 'high',
+  fpsCap: parseInt(localStorage.getItem('ajedrez_fpscap') || '60', 10),   // ⬅️ NUEVO
   // Auto-regulación
   fpsSamples: [],
   lastChange: 0,
@@ -1364,12 +1420,17 @@ const FPS_COOLDOWN_UP_MS = 8000;       // reacción lenta al subir (evita ping-p
 function updateQualityFromFPS(dt){
   if(dt <= 0) return;
   const now = performance.now();
-  if(now < quality.warmupUntil) return;
-  if(quality.mode !== 'auto') return;
 
+  // ⬇️ SIEMPRE: agregar muestra (incluso si el cap es bajo o no es auto)
   const fps = 1 / Math.max(dt, 0.001);
   quality.fpsSamples.push(fps);
   if(quality.fpsSamples.length > FPS_WINDOW) quality.fpsSamples.shift();
+
+  // ⬇️ A partir de acá: solo lógica de auto-calidad
+  if(now < quality.warmupUntil) return;
+  if(quality.mode !== 'auto') return;
+  if(quality.fpsCap < 60) return;  // el usuario capó abajo → no tocar calidad
+
   if(quality.fpsSamples.length < 60) return;   // más muestras → menos ruido
 
   // Percentil 25 (robusto frente a picos aislados)
@@ -1804,9 +1865,28 @@ const BIOMES = {
     weather: { mode:'ash' },
     firefly: { mode:'rise', core:[255,240,200], mid:[255,140,40], edge:[200,60,10] },
     hasWater:true, hasFireflies:true, isVolcano:true
+  },
+  cute: {
+    id:'cute', name:'Jardín', icon:'🌸',
+    terrainBands: [
+      { max:0.335, r:186, g:228, b:170 },   // verde pastel
+      { max:0.44,  r:170, g:218, b:152 },
+      { max:0.60,  r:152, g:205, b:132 },
+      { max:0.74,  r:172, g:222, b:158 },
+      { max:0.86,  r:200, g:235, b:192 },
+      { max:9.99,  r:220, g:240, b:215 }
+    ],
+    water:   { mode:'water', r:120, g:210, b:235, wr:25, wg:25, wb:15 },  // agua cristalina turquesa
+    rock:    { base:'#e8c8dd', light:'#f4dcee', hi:'#ffffff', shadow:'rgba(140,80,120,0.18)' },
+    fog:     { r:255, g:230, b:240 },                     // niebla rosada
+    biomeTint: { r:255, g:220, b:240, a:0.05 },           // tinte rosa suave
+    weather: { mode:'petals' },                           // pétalos cayendo
+    firefly: { mode:'float', core:[255,250,220], mid:[255,210,240], edge:[255,180,220] },
+    hasWater:true, hasFireflies:true, isVolcano:false,
+    hasFlowers:true                                       // flag nueva
   }
 };
-const BIOME_KEYS = ['forest','desert','snow','volcano'];
+const BIOME_KEYS = ['forest','desert','snow','volcano','cute'];
 
 /* =========================================================
    PREFERENCIAS PERSISTENTES
@@ -1845,7 +1925,7 @@ let currentBiome = BIOMES.forest;
    TERRENO
    ========================================================= */
 const TERR_N = 96;
-const terr = { h: null, water: null, rocks: [], fireflies: [], rivers: [], lakes: [], seed: 0 };
+const terr = { h: null, water: null, rocks: [], fireflies: [], rivers: [], lakes: [], seed: 0, flowers: [] };
 let terrainOffscreen = null;
 function generateTerrain(){
   const N = TERR_N;
@@ -2123,6 +2203,26 @@ function generateTerrain(){
     rocks.push({ x: rx, y: ry, r: rnd(0.004, 0.011), rot: rnd(0,6.28) });
   }
 
+  // ---- Flores decorativas (solo biomas con hasFlowers) ----
+  const flowers = [];
+  if(currentBiome && currentBiome.hasFlowers){
+    for(let i=0;i<160;i++){
+      const fx = Math.random(), fy = Math.random();
+      const xi = Math.floor(fx*N), yi = Math.floor(fy*N);
+      if(water[yi*N+xi]) continue;
+      if(h[yi*N+xi] < 0.32) continue;
+      const hue = Math.random() < 0.60 ? 'pink'
+                : (Math.random() < 0.55 ? 'white' : 'lavender');
+      flowers.push({
+        x: fx, y: fy,
+        r: rnd(0.0035, 0.0075),
+        rot: rnd(0,6.28),
+        hue
+      });
+    }
+  }
+  terr.flowers = flowers;
+
 
   const fireflies = [];
 
@@ -2134,7 +2234,7 @@ function generateTerrain(){
      - Total: 30 a 320 por partida
      ========================================================= */
   if(currentBiome && currentBiome.hasFireflies === false){
-    terr.h = h; terr.water = water; terr.rocks = rocks; terr.fireflies = [];
+    terr.h = h; terr.water = water; terr.rocks = rocks; terr.fireflies = []; terr.flowers = flowers;
     return;
   }
   const ffTarget   = Math.floor(rnd(30, 320));
@@ -2259,7 +2359,7 @@ function generateTerrain(){
     }
   }
 
-  terr.h = h; terr.water = water; terr.rocks = rocks; terr.fireflies = fireflies;
+  terr.h = h; terr.water = water; terr.rocks = rocks; terr.fireflies = fireflies; terr.flowers = flowers;
 }
 function renderTerrain(W, H){
   const N = TERR_N;
@@ -2297,6 +2397,13 @@ function renderTerrain(W, H){
       o.fillStyle = `rgb(${r},${g},${b})`;
       const px = Math.floor(x*cw), py = Math.floor(y*ch);
       o.fillRect(px, py, Math.ceil(cw)+1, Math.ceil(ch)+1);
+
+      if(water[i] && currentBiome.id === 'cute' && hash2(x, y, terr.seed + 99) > 0.94){
+        o.fillStyle = 'rgba(255,255,255,0.60)';
+        const s = Math.max(1, cw*0.35);
+        o.fillRect(px + cw*0.30, py + ch*0.30, s, s);
+      }
+      
       if(!water[i] && (hL - hh) > 0.035){
         o.fillStyle = 'rgba(0,0,0,0.22)';
         o.fillRect(px, py, Math.max(1, cw*0.35), Math.ceil(ch)+1);
@@ -2316,7 +2423,7 @@ function renderTerrain(W, H){
       o.fillRect(Math.floor(x*cw), Math.floor(y*ch), Math.ceil(cw)+1, Math.ceil(ch)+1);
     }
   }
-   for(const rk of terr.rocks){
+  for(const rk of terr.rocks){
     const px = rk.x * oc.width, py = rk.y * oc.height, rr = rk.r * oc.width;
     const R = currentBiome.rock;
     o.fillStyle = R.shadow;
@@ -2328,6 +2435,39 @@ function renderTerrain(W, H){
     o.fillStyle = R.hi;
     o.beginPath(); o.ellipse(px - rr*0.32, py - rr*0.42, rr*0.30, rr*0.20, rk.rot, 0, 6.2832); o.fill();
   }
+
+  // ---- Flores ----
+  if(terr.flowers && terr.flowers.length){
+    const PETAL_COLORS = {
+      pink:     ['#ffb8d8', '#ffcfe6'],
+      white:    ['#ffffff', '#fff4fa'],
+      lavender: ['#ddc0ff', '#ecd8ff']
+    };
+    for(const fl of terr.flowers){
+      const px = fl.x * oc.width, py = fl.y * oc.height, rr = fl.r * oc.width;
+      const cols = PETAL_COLORS[fl.hue] || PETAL_COLORS.pink;
+      // Sombra suave debajo
+      o.fillStyle = 'rgba(120,80,110,0.14)';
+      o.beginPath(); o.ellipse(px, py + rr*0.5, rr*1.15, rr*0.40, 0, 0, 6.2832); o.fill();
+      // 5 pétalos
+      for(let p=0;p<5;p++){
+        const a = fl.rot + p * Math.PI * 2 / 5;
+        const petX = px + Math.cos(a) * rr * 0.55;
+        const petY = py + Math.sin(a) * rr * 0.55;
+        o.fillStyle = cols[0];
+        o.beginPath(); o.ellipse(petX, petY, rr*0.58, rr*0.42, a, 0, 6.2832); o.fill();
+        // Brillo superior del pétalo
+        o.fillStyle = cols[1];
+        o.beginPath(); o.ellipse(petX - rr*0.10, petY - rr*0.10, rr*0.26, rr*0.16, a, 0, 6.2832); o.fill();
+      }
+      // Centro amarillo con destello
+      o.fillStyle = '#ffe070';
+      o.beginPath(); o.arc(px, py, rr*0.34, 0, 6.2832); o.fill();
+      o.fillStyle = 'rgba(255,255,255,0.75)';
+      o.beginPath(); o.arc(px - rr*0.10, py - rr*0.10, rr*0.14, 0, 6.2832); o.fill();
+    }
+  }
+
   const step = oc.width / 8;
   o.strokeStyle = 'rgba(255,240,205,0.05)';
   o.lineWidth = Math.max(1, oc.width/500);
@@ -6428,6 +6568,16 @@ async function openQualitySettings(){
           <button class="cfgOpt" data-v="reset"><span class="ic">🎯</span>Calibrar ahora</button>
         </div>
       </div>
+      <div class="section">
+        <div class="section-title">FPS máximos</div>
+        <div id="fpsCapRow">
+          <input type="range" min="0" max="8" step="1" id="fpsCapSlider">
+          <div id="fpsCapValue">—</div>
+        </div>
+        <div style="font-size:10px;color:#8a8070;text-align:center;margin-top:4px">
+          Menos FPS = menos consumo de batería y CPU
+        </div>
+      </div>
     `;
     ov.appendChild(m);
     document.body.appendChild(ov);
@@ -6494,6 +6644,31 @@ async function openQualitySettings(){
         refreshInfo();
         toast('🎯 Recalibrando calidad…', '#8ad0ff');
       }
+    };
+
+    // ⬇️ slider de FPS máximos
+    const FPS_STEPS = [12, 20, 30, 40, 50, 60, 90, 120, 144];
+    const fpsCapSlider = m.querySelector('#fpsCapSlider');
+    const fpsCapValue = m.querySelector('#fpsCapValue');
+
+    function refreshFpsCap(){
+      const idx = FPS_STEPS.indexOf(quality.fpsCap);
+      fpsCapSlider.value = idx >= 0 ? idx : (FPS_STEPS.length - 1);
+      fpsCapValue.textContent = quality.fpsCap + ' FPS';
+    }
+    refreshFpsCap();
+
+    fpsCapSlider.oninput = (e) => {
+      const idx = parseInt(e.target.value, 10);
+      quality.fpsCap = FPS_STEPS[idx];
+      fpsCapValue.textContent = quality.fpsCap + ' FPS';
+      localStorage.setItem('ajedrez_fpscap', String(quality.fpsCap));
+
+      // ⬇️ limpiar muestras para que el visualizador refleje el nuevo cap al toque
+      quality.fpsSamples.length = 0;
+      quality.fpsGraph.length = 0;
+
+      if(navigator.vibrate) try { navigator.vibrate(8); } catch(err){}
     };
 
     const bw = document.createElement('div');
@@ -6563,6 +6738,7 @@ async function showConfigMenu(){
           <button class="cfgOpt" data-v="desert"><span class="ic">🏜️</span>Desierto</button>
           <button class="cfgOpt" data-v="snow"><span class="ic">❄️</span>Nieve</button>
           <button class="cfgOpt" data-v="volcano"><span class="ic">🌋</span>Volcán</button>
+          <button class="cfgOpt" data-v="cute"><span class="ic">🌸</span>Jardín</button>
         </div>
       </div>
     `;
@@ -7093,7 +7269,9 @@ function drawFpsOverlay(W, H){
 
   fpsCtx.fillStyle = 'rgba(220,220,220,0.85)';
   fpsCtx.textAlign = 'right';
-  fpsCtx.fillText(`${qIcon}${levelLabel} ${waveLabel}`, x + boxW - pad, y + pad);
+  // ⬇️ Agregar el cap al lado si está activo
+  const capLabel = (quality.fpsCap && quality.fpsCap < 144) ? ` /${quality.fpsCap}` : '';
+  fpsCtx.fillText(`${qIcon}${levelLabel}${capLabel} ${waveLabel}`, x + boxW - pad, y + pad);
 
   // Línea 2: promedio + mínimo
   const yLine2 = y + pad + lineH;
@@ -7218,6 +7396,34 @@ function drawWeatherParticles(W, H, dt){
       ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
     }
   }
+  else if(mode === 'petals'){
+    const t = performance.now() * 0.001;
+    for(let i=0;i<visible;i++){
+      const d = rainDrops[i];
+      d.y += d.spd * (0.22 + intensity * 0.40) * dt;
+      d.x += Math.sin(t + i * 1.3) * 0.0014 + 0.0004;
+      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); }
+      if(d.x > 1.05) d.x -= 1.1;
+      if(d.x < -0.05) d.x += 1.1;
+      const px = d.x * W, py = d.y * H;
+      const r = 1.6 + d.len * 20;
+      const rot = t * 1.2 + i;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(rot);
+      // Pétalo: elipse rosa/blanca
+      const pink = i % 4 === 0 ? 'rgba(255,245,252,0.85)'
+                : i % 4 === 1 ? 'rgba(255,205,230,0.85)'
+                : i % 4 === 2 ? 'rgba(255,180,215,0.85)'
+                :               'rgba(245,200,255,0.85)';
+      ctx.fillStyle = pink;
+      ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.55, 0, 0, 6.2832); ctx.fill();
+      // Brillo
+      ctx.fillStyle = 'rgba(255,255,255,0.50)';
+      ctx.beginPath(); ctx.ellipse(-r*0.28, -r*0.14, r*0.35, r*0.22, 0, 0, 6.2832); ctx.fill();
+      ctx.restore();
+    }
+  }
 }
 function drawBoardGrid(W, H){
   const style = getWaveStyle();
@@ -7244,12 +7450,30 @@ function drawBoardGrid(W, H){
   if(style === 'radial') drawGridRadial(W, H, phase);
   else                   drawGridStrips(W, H, phase);
 }
+
+// LOOP MAIN
+
 let lastT = performance.now();
+let lastRenderT = 0;   // ⬅️ cuándo renderizamos por última vez
+
 function loop(now){
+  // ⬇️ respetar el cap de FPS
+  const cap = quality.fpsCap || 60;
+  if(cap < 144){
+    const minInterval = 1000 / cap;
+    if(lastRenderT && (now - lastRenderT) < minInterval - 0.5){
+      requestAnimationFrame(loop);
+      return;
+    }
+    lastRenderT = now;
+  } else {
+    lastRenderT = now;
+  }
+
   const rawDt = Math.min(0.05, (now - lastT)/1000);
   lastT = now;
 
-  // ⬇️ NUEVO: monitor de FPS adaptativo
+  // ⬇️ monitor de FPS adaptativo
   if(!state.paused) updateQualityFromFPS(rawDt);
 
   // Cuando está pausado, congelar TODO el avance de simulación.
