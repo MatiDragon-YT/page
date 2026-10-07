@@ -1154,6 +1154,329 @@ function createNoiseBuffer(seconds){
   return buf;
 }
 
+function applyBiomeAudioTargets(biomeId){
+  if(!actx || !ambience.started) return;
+  const cfg = getBiomeAudio(biomeId);
+  const t = actx.currentTime;
+  const FADE = 1.8;   // segundos
+
+  // --- Capas continuas ---
+  ambience.windHiGain.gain.cancelScheduledValues(t);
+  ambience.windHiGain.gain.setTargetAtTime(cfg.windHigh * 0.09, t, FADE);
+
+  ambience.lavaGain.gain.cancelScheduledValues(t);
+  ambience.lavaGain.gain.setTargetAtTime(cfg.lavaBed * 0.16, t, FADE);
+
+  ambience.lavaSubGain.gain.cancelScheduledValues(t);
+  ambience.lavaSubGain.gain.setTargetAtTime(cfg.lavaBed * 0.075, t, FADE);
+
+  // --- Ajuste del filtro del viento grave (el que ya existe) ---
+  const windMul = cfg.windFilterMod;
+  ambience.windLp.frequency.setTargetAtTime(160 * windMul, t, FADE);
+
+  // --- El bus de eventos vive solo cuando el bioma tiene eventos ---
+  const eventLevel = cfg.events.length > 0 ? 1 : 0;
+  ambience.ambientEventGain.gain.setTargetAtTime(eventLevel, t, FADE);
+
+  // --- Reiniciar el scheduler de eventos para el nuevo bioma ---
+  resetBiomeEventScheduler();
+}
+function resetBiomeEventScheduler(){
+  if(!actx || !ambience.started) return;
+  // Cancelar timers pendientes
+  ambience.biomeEventToken++;
+  if(ambience.biomeEventTimer){
+    clearTimeout(ambience.biomeEventTimer);
+    ambience.biomeEventTimer = null;
+  }
+  // Arrancar de nuevo con un delay aleatorio corto
+  scheduleNextBiomeEvent(rnd(0.8, 2.5));
+}
+
+function scheduleNextBiomeEvent(delay){
+  const token = ambience.biomeEventToken;
+  ambience.biomeEventTimer = setTimeout(() => {
+    if(token !== ambience.biomeEventToken) return;   // cancelado
+    if(!actx || !soundEnabled) { scheduleNextBiomeEvent(1.5); return; }
+    if(state.paused) { scheduleNextBiomeEvent(1.0); return; }
+
+    // Elegir un evento aleatorio del bioma actual
+    const cfg = getBiomeAudio(currentBiome.id);
+    if(!cfg.events.length){ return; }
+
+    const ev = cfg.events[Math.floor(Math.random() * cfg.events.length)];
+    if(Math.random() < ev.chance){
+      playBiomeEvent(ev.type);
+    }
+    const nextDelay = rnd(ev.minInterval, ev.maxInterval);
+    scheduleNextBiomeEvent(nextDelay);
+  }, delay * 1000);
+}
+
+function playBiomeEvent(type){
+  if(!actx || !soundEnabled) return;
+  const now = actx.currentTime + 0.02;
+  switch(type){
+    case 'bird':         playBirdChirp(now); break;
+    case 'songBird':     playSongBird(now); break;
+    case 'leaves':       playLeavesRustle(now); break;
+    case 'windPuff':     playWindPuff(now); break;
+    case 'sandWhistle':  playSandWhistle(now); break;
+    case 'iceCrack':     playIceCrack(now); break;
+    case 'rockCrack':    playRockCrack(now); break;
+    case 'bubblePop':    playBubblePop(now); break;
+    case 'steamWhoosh':  playSteamWhoosh(now); break;
+    case 'butterfly':    playButterflyFlutter(now); break;
+  }
+}
+
+/* ---- PÁJARO SIMPLE (bosque, 1-3 píos cortos) ---- */
+function playBirdChirp(t0){
+  const notes = 1 + Math.floor(Math.random() * 3);
+  let t = t0;
+  const baseFreq = 2400 + Math.random() * 1400;
+  for(let i = 0; i < notes; i++){
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = 'triangle';
+    const f = baseFreq * (0.9 + Math.random() * 0.25);
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.exponentialRampToValueAtTime(f * (1.15 + Math.random() * 0.2), t + 0.08);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.09, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    o.connect(g).connect(ambience.ambientEventGain);
+    o.start(t); o.stop(t + 0.12);
+    t += 0.11 + Math.random() * 0.06;
+  }
+}
+
+/* ---- PÁJARO MELÓDICO (jardín, 4-6 notas con slides) ---- */
+function playSongBird(t0){
+  const notes = 4 + Math.floor(Math.random() * 3);
+  const scale = [0, 2, 4, 5, 7, 9, 11, 12];   // pentatónica extendida
+  const baseFreq = 1200 + Math.random() * 800;
+  let t = t0;
+  let lastIdx = Math.floor(Math.random() * scale.length);
+  for(let i = 0; i < notes; i++){
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = 'sine';
+    // Salto melódico suave entre notas vecinas
+    const step = (Math.random() < 0.6 ? 1 : -1) * (1 + Math.floor(Math.random() * 2));
+    lastIdx = Math.max(0, Math.min(scale.length - 1, lastIdx + step));
+    const f = baseFreq * Math.pow(2, scale[lastIdx] / 12);
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.exponentialRampToValueAtTime(f * 1.05, t + 0.14);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.07, t + 0.02);
+    g.gain.setValueAtTime(0.07, t + 0.10);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    o.connect(g).connect(ambience.ambientEventGain);
+    o.start(t); o.stop(t + 0.18);
+    t += 0.13 + Math.random() * 0.09;
+  }
+}
+
+/* ---- SUSURRO DE HOJAS (bosque, ruido filtrado con envelope) ---- */
+function playLeavesRustle(t0){
+  const dur = 0.6 + Math.random() * 0.8;
+  const n = Math.floor(actx.sampleRate * dur);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i = 0; i < n; i++){
+    const p = i / n;
+    const env = Math.sin(p * Math.PI);          // sube y baja
+    d[i] = (Math.random() * 2 - 1) * env;
+  }
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const bp = actx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 3200 + Math.random() * 800;
+  bp.Q.value = 0.9;
+  const g = actx.createGain(); g.gain.value = 0.10;
+  src.connect(bp).connect(g).connect(ambience.ambientEventGain);
+  src.start(t0);
+}
+
+/* ---- RÁFAGA DE VIENTO (nieve, crujido seco) ---- */
+function playWindPuff(t0){
+  const dur = 1.2 + Math.random() * 1.0;
+  const n = Math.floor(actx.sampleRate * dur);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for(let i = 0; i < n; i++){
+    const p = i / n;
+    const env = p < 0.3 ? (p / 0.3) : Math.pow(1 - (p - 0.3) / 0.7, 1.6);
+    const white = Math.random() * 2 - 1;
+    last = (last + 0.04 * white) / 1.04;
+    d[i] = last * env * 2.5;
+  }
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const lp = actx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 800;
+  lp.Q.value = 1.2;
+  const g = actx.createGain(); g.gain.value = 0.11;
+  src.connect(lp).connect(g).connect(ambience.ambientEventGain);
+  src.start(t0);
+}
+
+/* ---- SILBIDO DE ARENA (desierto, barrido agudo) ---- */
+function playSandWhistle(t0){
+  const dur = 0.8 + Math.random() * 1.4;
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = 'sine';
+  const f0 = 2800 + Math.random() * 1800;
+  o.frequency.setValueAtTime(f0 * 0.7, t0);
+  o.frequency.exponentialRampToValueAtTime(f0, t0 + dur * 0.4);
+  o.frequency.exponentialRampToValueAtTime(f0 * 0.85, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(0.035, t0 + dur * 0.3);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(ambience.ambientEventGain);
+  o.start(t0); o.stop(t0 + dur + 0.05);
+
+  // Capa de aire (ruido agudo filtrado)
+  const n = Math.floor(actx.sampleRate * dur);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i = 0; i < n; i++){
+    const p = i / n;
+    const env = Math.sin(p * Math.PI);
+    d[i] = (Math.random() * 2 - 1) * env;
+  }
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const bp = actx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 3500; bp.Q.value = 1.5;
+  const g2 = actx.createGain(); g2.gain.value = 0.05;
+  src.connect(bp).connect(g2).connect(ambience.ambientEventGain);
+  src.start(t0);
+}
+
+/* ---- CRUJIDO DE HIELO (nieve, impulso + resonancia) ---- */
+function playIceCrack(t0){
+  // Impulso corto con filtro HP
+  const dur = 0.15 + Math.random() * 0.2;
+  const n = Math.floor(actx.sampleRate * dur);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i = 0; i < n; i++){
+    const p = i / n;
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - p, 3);
+  }
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const hp = actx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1200;
+  const g = actx.createGain(); g.gain.value = 0.13;
+  src.connect(hp).connect(g).connect(ambience.ambientEventGain);
+  src.start(t0);
+
+  // Resonancia posterior (un "tick" en 400-700Hz)
+  const resOsc = actx.createOscillator();
+  const resG = actx.createGain();
+  resOsc.type = 'triangle';
+  resOsc.frequency.setValueAtTime(500 + Math.random() * 200, t0 + 0.02);
+  resOsc.frequency.exponentialRampToValueAtTime(300, t0 + 0.4);
+  resG.gain.setValueAtTime(0.0001, t0 + 0.02);
+  resG.gain.linearRampToValueAtTime(0.04, t0 + 0.05);
+  resG.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
+  resOsc.connect(resG).connect(ambience.ambientEventGain);
+  resOsc.start(t0 + 0.02); resOsc.stop(t0 + 0.45);
+}
+
+/* ---- CRUJIDO DE ROCA (volcán, grave con saturación) ---- */
+function playRockCrack(t0){
+  const dur = 0.25 + Math.random() * 0.4;
+  const n = Math.floor(actx.sampleRate * dur);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for(let i = 0; i < n; i++){
+    const p = i / n;
+    const white = Math.random() * 2 - 1;
+    last = (last + 0.15 * white) / 1.15;   // ruido marrón, cutoff bajo
+    d[i] = last * Math.pow(1 - p, 2.5) * 4;
+  }
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const lp = actx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 320; lp.Q.value = 1.4;
+  const g = actx.createGain(); g.gain.value = 0.16;
+  src.connect(lp).connect(g).connect(ambience.ambientEventGain);
+  src.start(t0);
+}
+
+/* ---- BURBUJA DE LAVA (volcán, pop corto) ---- */
+function playBubblePop(t0){
+  const dur = 0.08 + Math.random() * 0.08;
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = 'sine';
+  const f0 = 180 + Math.random() * 120;
+  o.frequency.setValueAtTime(f0, t0);
+  o.frequency.exponentialRampToValueAtTime(f0 * 0.4, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(0.11, t0 + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(ambience.ambientEventGain);
+  o.start(t0); o.stop(t0 + dur + 0.03);
+
+  // "Click" de superficie
+  const n = Math.floor(actx.sampleRate * 0.04);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/n, 4);
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const bp = actx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 800; bp.Q.value = 1.8;
+  const g2 = actx.createGain(); g2.gain.value = 0.09;
+  src.connect(bp).connect(g2).connect(ambience.ambientEventGain);
+  src.start(t0);
+}
+
+/* ---- WHOOSH DE VAPOR (volcán, siseo grave) ---- */
+function playSteamWhoosh(t0){
+  const dur = 1.0 + Math.random() * 1.2;
+  const n = Math.floor(actx.sampleRate * dur);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i = 0; i < n; i++){
+    const p = i / n;
+    const env = p < 0.15 ? (p / 0.15) : Math.pow(1 - (p - 0.15) / 0.85, 1.6);
+    d[i] = (Math.random() * 2 - 1) * env;
+  }
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const bp = actx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(200, t0);
+  bp.frequency.linearRampToValueAtTime(1400, t0 + dur * 0.6);
+  bp.frequency.linearRampToValueAtTime(400, t0 + dur);
+  bp.Q.value = 1.1;
+  const g = actx.createGain(); g.gain.value = 0.08;
+  src.connect(bp).connect(g).connect(ambience.ambientEventGain);
+  src.start(t0);
+}
+
+/* ---- ALETEO DE MARIPOSA (jardín, muy suave) ---- */
+function playButterflyFlutter(t0){
+  const pulses = 5 + Math.floor(Math.random() * 4);
+  const baseFreq = 90 + Math.random() * 40;
+  let t = t0;
+  for(let i = 0; i < pulses; i++){
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = 'sine';
+    o.frequency.value = baseFreq * (0.9 + Math.random() * 0.2);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.018, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+    o.connect(g).connect(ambience.ambientEventGain);
+    o.start(t); o.stop(t + 0.05);
+    t += 0.045 + Math.random() * 0.03;
+  }
+}
+
 function initAmbience(){
   if(!actx || ambience.started) return;
   ambience.started = true;
@@ -1196,8 +1519,103 @@ function initAmbience(){
   Object.assign(ambience, {
     rainSrc, rainHiSrc, windSrc,
     rainLp, rainBp, rainLpGain, rainBpGain,
-    windGain, cricketGain
+    windLp, windGain, cricketGain
   });
+
+	  // =========================================================
+  // CAPAS DE BIOMA (se crean siempre, su gain depende del bioma actual)
+  // =========================================================
+
+  // --- VIENTO AGUDO (silbido de arena / ventisca) ---
+  // Ruido filtrado en banda media-alta con LFO de amplitud para darle "voz"
+  const windHiSrc = actx.createBufferSource();
+  windHiSrc.buffer = noiseBuf; windHiSrc.loop = true;
+  const windHiBp = actx.createBiquadFilter();
+  windHiBp.type = 'bandpass';
+  windHiBp.frequency.value = 1500;
+  windHiBp.Q.value = 2.4;
+  const windHiGain = actx.createGain();
+  windHiGain.gain.value = 0;
+  windHiSrc.connect(windHiBp).connect(windHiGain).connect(masterGain);
+
+  // LFO que modula la frecuencia del filtro (silbido "cantado")
+  const windHiLfo = actx.createOscillator();
+  windHiLfo.type = 'sine';
+  windHiLfo.frequency.value = 0.13;
+  const windHiLfoGain = actx.createGain();
+  windHiLfoGain.gain.value = 420;   // ±420Hz alrededor de 1500Hz
+  windHiLfo.connect(windHiLfoGain).connect(windHiBp.frequency);
+
+  // Segundo LFO para la amplitud (ráfagas más lentas)
+  const windHiAmpLfo = actx.createOscillator();
+  windHiAmpLfo.type = 'sine';
+  windHiAmpLfo.frequency.value = 0.21;
+  const windHiAmpLfoGain = actx.createGain();
+  windHiAmpLfoGain.gain.value = 0.6;  // modula 40%-100% del gain base
+  const windHiAmpBase = actx.createConstantSource();
+  windHiAmpBase.offset.value = 0.7;
+  const windHiAmpSum = actx.createGain();
+  windHiAmpSum.gain.value = 1;
+  windHiAmpBase.connect(windHiAmpSum);
+  windHiAmpLfo.connect(windHiAmpLfoGain).connect(windHiAmpSum);
+  // windHiAmpSum.gain se controla desde updateAmbience con setTargetAtTime
+  // El gain final es: windHiGain.gain * (base + lfo) → modulamos windHiGain.gain
+  // para que el LFO de amplitud se sume encima.
+
+  // --- RETUMBO DE LAVA ---
+  // Ruido marrón filtrado muy grave + sub-oscilador
+  const lavaSrc = actx.createBufferSource();
+  lavaSrc.buffer = noiseBuf; lavaSrc.loop = true;
+  const lavaLp = actx.createBiquadFilter();
+  lavaLp.type = 'lowpass';
+  lavaLp.frequency.value = 95;
+  lavaLp.Q.value = 1.6;
+  const lavaGain = actx.createGain();
+  lavaGain.gain.value = 0;
+  lavaSrc.connect(lavaLp).connect(lavaGain).connect(masterGain);
+
+  // Sub-oscilador para el "sentir" del retumbo (30-45Hz)
+  const lavaSubOsc = actx.createOscillator();
+  lavaSubOsc.type = 'sine';
+  lavaSubOsc.frequency.value = 38;
+  const lavaSubGain = actx.createGain();
+  lavaSubGain.gain.value = 0;
+  lavaSubOsc.connect(lavaSubGain).connect(masterGain);
+
+  // LFO que modula el retumbo (respiración lenta de la lava)
+  const lavaLfo = actx.createOscillator();
+  lavaLfo.type = 'sine';
+  lavaLfo.frequency.value = 0.08;
+  const lavaLfoGain = actx.createGain();
+  lavaLfoGain.gain.value = 0.35;
+  lavaLfo.connect(lavaLfoGain).connect(lavaGain.gain);
+
+  // --- BUS DE EVENTOS (pájaros, crujidos, burbujas) ---
+  const ambientEventGain = actx.createGain();
+  ambientEventGain.gain.value = 0;
+  ambientEventGain.connect(masterGain);
+
+  // Arrancar todo
+  windHiSrc.start();
+  windHiLfo.start();
+  windHiAmpLfo.start();
+  windHiAmpBase.start();
+  lavaSrc.start();
+  lavaSubOsc.start();
+  lavaLfo.start();
+
+  Object.assign(ambience, {
+    windHiSrc, windHiBp, windHiGain, windHiLfo, windHiLfoGain,
+    lavaSrc, lavaLp, lavaGain, lavaSubOsc, lavaSubGain, lavaLfo,
+    ambientEventGain,
+    // Estado para el scheduler de eventos por bioma
+    biomeEventTimer: null,
+    biomeEventToken: 0,
+    biomeEventMin: 0, biomeEventMax: 0
+  });
+
+  // Aplicar targets del bioma actual
+  applyBiomeAudioTargets(currentBiome.id);
 
   scheduleCricket();
 }
@@ -1227,20 +1645,16 @@ function updateAmbience(){
   const pauseFactor = state.paused ? 0 : 1;
   const t = actx.currentTime;
 
-  // --- LLUVIA: sin base, arranca de 0 ---
-  // El wobble modula la intensidad entre ~0.68 y 1.00, tipo "rachas"
-    // Curva exponencial: con poca lluvia suena MUCHO más bajo, pero el pico se mantiene
+    // --- LLUVIA: con modificadores según bioma ---
+  const bAudio = getBiomeAudio(currentBiome.id);
+  const rm = bAudio.rainMod;
   const rainCurve = Math.pow(rl, 1.7);
-  const rainAudioMul = currentBiome.weather.mode === 'petals' ? 0.25
-                   : currentBiome.weather.mode === 'dust'   ? 0.35
-                   : 1.0;
-const lpGain = (rainCurve * 0.22 * wobble) * pauseFactor * rainAudioMul;
-const hiGain = (rainCurve * 0.18 * wobble) * pauseFactor * rainAudioMul;
+  const lpGain = (rainCurve * 0.22 * wobble) * pauseFactor * rm.gainMul;
+  const hiGain = (rainCurve * 0.18 * wobble) * pauseFactor * rm.gainMul;
   ambience.rainLpGain.gain.setTargetAtTime(lpGain, t, 0.35);
   ambience.rainBpGain.gain.setTargetAtTime(hiGain, t, 0.35);
-  // Con más lluvia, filtro más abierto (retumbo más grave y presente)
-  ambience.rainLp.frequency.setTargetAtTime(200 + rl * 380, t, 0.6);
-  ambience.rainBp.frequency.setTargetAtTime(2100 + rl * 1900, t, 0.6);
+  ambience.rainLp.frequency.setTargetAtTime(rm.lpBase + rl * rm.lpScale, t, 0.6);
+  ambience.rainBp.frequency.setTargetAtTime(rm.hiBase + rl * rm.hiScale, t, 0.6);
 
   // --- VIENTO: sin base fija. Si el generador dice 0, no se oye nada ---
   const windG = windLevel * 0.055 * pauseFactor;
@@ -1250,6 +1664,31 @@ const hiGain = (rainCurve * 0.18 * wobble) * pauseFactor * rainAudioMul;
   const cricketLevel = nl * cricketEner * (1 - rl * 0.9);
   ambience.cricketTarget = cricketLevel;
   ambience.cricketGain.gain.setTargetAtTime(cricketLevel * 0.6 * pauseFactor, t, 1.8);
+  
+    // --- Modulación del silbido de viento por la intensidad climática ---
+  if(bAudio.windHigh > 0.01){
+    // El viento agudo sube con la lluvia (más tormenta = más silbido)
+    const windHiLevel = bAudio.windHigh * (0.6 + rainAmt * 0.6);
+    ambience.windHiGain.gain.setTargetAtTime(
+      windHiLevel * 0.09 * pauseFactor, t, 0.8
+    );
+    // Modulamos la frecuencia del filtro con la velocidad del viento global
+    ambience.windHiBp.frequency.setTargetAtTime(
+      1500 + windState.strength * 500,
+      t, 0.5
+    );
+  }
+
+  // --- El retumbo de lava respira con el tiempo ---
+  if(bAudio.lavaBed > 0.01){
+    const lavaLevel = bAudio.lavaBed * (0.85 + Math.sin(now * 0.0004) * 0.15);
+    ambience.lavaGain.gain.setTargetAtTime(
+      lavaLevel * 0.16 * pauseFactor, t, 1.2
+    );
+    ambience.lavaSubGain.gain.setTargetAtTime(
+      lavaLevel * 0.075 * pauseFactor, t, 1.2
+    );
+  }
 }
 
 function scheduleCricket(){
@@ -1558,7 +1997,8 @@ const state = {
   aiBusy: false,
   lastMove: { from: null, to: null, prevFrom: null, prevTo: null },
   shieldHits: { w: {}, b: {} },
-  powerHighlights: [],   // ⬅️ NUEVO
+  powerHighlights: [],
+  userPaused: false,
 };
 let iraResolve = null;
 
@@ -2922,7 +3362,75 @@ const BIOMES = {
 	]
   }
 };
+
 const BIOME_KEYS = ['forest','desert','snow','volcano','cute'];
+
+/* =========================================================
+   PERFIL DE AUDIO POR BIOMA
+   Cada bioma define:
+   - windHigh:    viento agudo (silbido). 0..1
+   - lavaBed:     retumbo de lava. 0..1
+   - rainFilter:  modificadores de filtros de lluvia existentes
+   - events:      lista de eventos puntuales con intervalo y tipo
+   ========================================================= */
+const BIOME_AUDIO = {
+  forest: {
+    windHigh: 0.00,
+    lavaBed: 0.00,
+    rainMod: { lpBase: 200, hiBase: 2100, lpScale: 380, hiScale: 1900, gainMul: 1.00 },
+    windFilterMod: 1.0,
+    events: [
+      { type: 'bird',     minInterval: 2.5, maxInterval: 9,  chance: 0.55 },
+      { type: 'leaves',   minInterval: 4,   maxInterval: 11, chance: 0.35 }
+    ]
+  },
+  desert: {
+    windHigh: 0.55,
+    lavaBed: 0.00,
+    rainMod: { lpBase: 140, hiBase: 1600, lpScale: 220, hiScale: 1400, gainMul: 0.45 },
+    windFilterMod: 1.9,
+    events: [
+      { type: 'sandWhistle', minInterval: 6, maxInterval: 18, chance: 0.45 },
+      { type: 'sandWhistle', minInterval: 3, maxInterval: 8,  chance: 0.20 }
+    ]
+  },
+  snow: {
+    windHigh: 0.28,
+    lavaBed: 0.00,
+    rainMod: { lpBase: 120, hiBase: 1800, lpScale: 160, hiScale: 900, gainMul: 0.55 },
+    windFilterMod: 1.3,
+    events: [
+      { type: 'iceCrack', minInterval: 8,  maxInterval: 22, chance: 0.55 },
+      { type: 'windPuff', minInterval: 5,  maxInterval: 14, chance: 0.40 }
+    ]
+  },
+  volcano: {
+    windHigh: 0.00,
+    lavaBed: 0.85,
+    rainMod: { lpBase: 90, hiBase: 900, lpScale: 140, hiScale: 500, gainMul: 0.70 },
+    windFilterMod: 0.55,
+    events: [
+      { type: 'rockCrack',  minInterval: 4,  maxInterval: 12, chance: 0.60 },
+      { type: 'bubblePop',  minInterval: 1.5, maxInterval: 5, chance: 0.55 },
+      { type: 'steamWhoosh',minInterval: 8,  maxInterval: 20, chance: 0.35 }
+    ]
+  },
+  cute: {
+    windHigh: 0.00,
+    lavaBed: 0.00,
+    rainMod: { lpBase: 260, hiBase: 2400, lpScale: 260, hiScale: 1600, gainMul: 0.30 },
+    windFilterMod: 0.75,
+    events: [
+      { type: 'songBird',  minInterval: 1.5, maxInterval: 5, chance: 0.70 },
+      { type: 'songBird',  minInterval: 3,   maxInterval: 9, chance: 0.35 },
+      { type: 'butterfly', minInterval: 6,   maxInterval: 14, chance: 0.25 }
+    ]
+  }
+};
+
+function getBiomeAudio(biomeId){
+  return BIOME_AUDIO[biomeId] || BIOME_AUDIO.forest;
+}
 
 /* =========================================================
    PREFERENCIAS PERSISTENTES
@@ -3662,6 +4170,8 @@ const PHASES = [
 ];
 const CYCLE_SECONDS = 150;
 let worldTime = Math.random() * CYCLE_SECONDS;
+let gameTime = 0;
+
 function getPhase(){
   const t = (worldTime % CYCLE_SECONDS) / CYCLE_SECONDS;
   let i = 0;
@@ -3731,6 +4241,7 @@ function scheduleWindGust(){
 }
 
 function updateWindState(dt){
+	if(state.paused) return;
   const now = performance.now();
   if(windState.nextChange === 0) scheduleWindGust();
   if(now >= windState.nextChange) scheduleWindGust();
@@ -3871,6 +4382,7 @@ function getVortexProfile(){
 }
 
 function updateVortices(dt, W, H, intensity){
+	if(state.paused) return;
   // Biomas sin vórtices → limpiar y salir
   if(!currentBiome.hasVortices){
     if(vortices.list.length) vortices.list.length = 0;
@@ -4107,6 +4619,10 @@ function applyWeatherState(w){
     org.rainWobble.level = 0.85; org.rainWobble.target = 0.85; org.rainWobble.nextChange = 0;
     org.crickets.level = 0;  org.crickets.target = 0;  org.crickets.nextChange = 0;
   }
+	// Aplicar audio del bioma actual al reentrar en la partida
+	if(typeof applyBiomeAudioTargets === 'function'){
+		applyBiomeAudioTargets(currentBiome.id);
+	}
 	// Resetear vortices
 	vortices.list.length = 0;
 	vortices.targetCount = 0;
@@ -4799,6 +5315,7 @@ function clearHighlights(){
   hoveredSq = null;
 }
 function showHoverPreview(sq){
+  if(!chess) return;
   if(state.selected) return;         // ya hay selección real
   if(state.targeting) return;        // modo targeting, no interferir
   if(state.busy || state.gameOver || replay.active || state.paused || state.aiBusy) return;
@@ -5024,21 +5541,19 @@ function handleTimeout(loser){
 /* =========================================================
    PAUSA
    ========================================================= */
-function togglePause(){
-  if(state.gameOver || replay.active) return;
-  // Cancelar cualquier drag en curso
-    if(drag){
-    const d = drag; drag = null;
-    if(d.captured){
-      try { gridEl.releasePointerCapture(d.pointerId); } catch(e){}
-    }
-    endDrag(d);
-    clearHighlights();
-  }
-  state.paused = !state.paused;
-  $('#pauseOverlay').classList.toggle('hidden', !state.paused);
+function updatePauseState(){
+  // ¿Hay algún modal visible que no sea el panel de debug?
+  const anyModal = !!document.querySelector('.modal-overlay:not(.hidden):not(#debugPanel)');
+  const newPaused = state.userPaused || anyModal;
 
-  // Fade maestro: silencia TODO el audio (ambience + efectos) al pausar
+  if(newPaused === state.paused) return;   // nada cambió
+
+  state.paused = newPaused;
+
+  // El overlay de PAUSA solo se muestra si el usuario pausó manualmente
+  $('#btnPause') && ($('#btnPause').textContent = state.userPaused ? '▶' : '⏸');
+
+  // Fade maestro del audio: silencia TODO si está pausado
   if(actx && masterGain){
     const target = (state.paused || !soundEnabled) ? 0 : 1;
     try {
@@ -5047,11 +5562,28 @@ function togglePause(){
     } catch(e){}
   }
 
+  // Congelar/reanudar reloj de ajedrez
   if(state.paused){
     gameTimer.running = false;
   } else if(gameTimer.enabled && !state.gameOver){
     gameTimer.running = true;
   }
+
+  // Cancelar cualquier drag en curso al pausar
+  if(state.paused && drag){
+    const d = drag; drag = null;
+    if(d.captured){
+      try { gridEl.releasePointerCapture(d.pointerId); } catch(e){}
+    }
+    endDrag(d);
+    clearHighlights();
+  }
+}
+
+function togglePause(){
+  if(state.gameOver || replay.active) return;
+  state.userPaused = !state.userPaused;
+  updatePauseState();
 }
 
 /* =========================================================
@@ -7752,6 +8284,7 @@ function startReplayFromStored(match){
   if(match.biomeId && BIOMES[match.biomeId]){
     currentBiome = BIOMES[match.biomeId];
     if(boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
+	applyBiomeAudioTargets(currentBiome.id);
   }
 
   // ⬇️ NUEVO: restaurar la orientación original de esa partida
@@ -8403,6 +8936,7 @@ function wireDebugWorld(){
 
 	  generateTerrain();
 	  if(boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
+	  applyBiomeAudioTargets(currentBiome.id);
 	  toast(`${currentBiome.icon} ${currentBiome.name}`, '#c080ff');
 	  renderDebugTab('world');
 	};
@@ -9135,8 +9669,9 @@ async function restartGame(){
   aiSearchAbort = true;
   state.aiBusy = false;
   stopTimer();
-  state.paused = false;
   $('#pauseOverlay').classList.add('hidden');
+  state.userPaused = false;
+  updatePauseState();
   await startGame();
 }
 async function exitToMenu(){
@@ -9150,10 +9685,12 @@ async function exitToMenu(){
   aiSearchAbort = true;
   state.aiBusy = false;
   stopTimer();
-  state.paused = false;
   $('#pauseOverlay').classList.add('hidden');
+  state.userPaused = false;
+  updatePauseState();
   await startGame();
 }
+
 function newGame(){
   lastHandSignature = '';
   lastOppHandSignature = '';
@@ -9170,6 +9707,7 @@ function newGame(){
   }
   generateTerrain();
   if(boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
+  applyBiomeAudioTargets(currentBiome.id);
   setTimeout(() => toast(`${currentBiome.icon} ${currentBiome.name}`, '#c8b898'), 350);
   
   // ⬇️ NUEVO: decidir orientación antes de reconstruir nada
@@ -9186,6 +9724,7 @@ function newGame(){
   state.graveyard = { w: [], b: [] };
   state.busy = false; state.gameOver = false;
   state.selected = null; state.legalMoves = []; state.targeting = null;
+  state.userPaused = false;
   state.paused = false;
   iraResolve = null;
   state.lastMove = { from: null, to: null, prevFrom: null, prevTo: null };
@@ -9960,6 +10499,7 @@ function loop(now){
   const dt = state.paused ? 0 : rawDt;
 
   worldTime += dt;
+  gameTime  += dt;
   if(dt > 0){
     updateWeather(dt);
     updateParticles(dt);
@@ -9988,8 +10528,7 @@ function loop(now){
   if(terrainOffscreen) ctx.drawImage(terrainOffscreen, 0, 0, W, H);
   else { ctx.fillStyle = '#1a2418'; ctx.fillRect(0,0,W,H); }
 
-	// ⬇️ NUEVO: agua animada sobre el terreno
-  if(dt > 0) drawWaterLayer(W, H, now / 1000);
+  drawWaterLayer(W, H, gameTime);
 
   drawBoardGrid(W, H);
 
@@ -10621,6 +11160,23 @@ function boot(){
   if(document.fonts && document.fonts.ready){
     document.fonts.ready.then(()=>setTimeout(layout, 100));
   }
+  
+  // Detectar apertura/cierre de modales para pausar/reanudar el juego
+	const modalObserver = new MutationObserver((mutations) => {
+	  for(const m of mutations){
+		for(const node of m.addedNodes){
+		  if(node.nodeType === 1 && node.classList?.contains('modal-overlay')){
+			updatePauseState(); return;
+		  }
+		}
+		for(const node of m.removedNodes){
+		  if(node.nodeType === 1 && node.classList?.contains('modal-overlay')){
+			updatePauseState(); return;
+		  }
+		}
+	  }
+	});
+	modalObserver.observe(document.body, { childList: true });
   startGame();
 }
 boot();
