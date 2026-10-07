@@ -1000,9 +1000,12 @@ function isAIPlayer(color){
 function setDebugMode(on){
   debugState.enabled = !!on;
   const btn = $('#debugBtn');
-  if(btn) btn.classList.toggle('hidden', !debugState.enabled);
+  if(btn){
+    btn.classList.toggle('hidden', !debugState.enabled);
+    btn.title = 'Panel de Debug (tecla D)';
+  }
   if(debugState.enabled){
-    toast('🛠️ Modo Debug activado', '#c080ff');
+    toast('🛠️ Modo Debug activado — presioná D para abrir el panel', '#c080ff');
   }
 }
 
@@ -8110,6 +8113,9 @@ function isDesktopDebugLayout(){
 }
 
 function openDebugPanel(){
+  // ⬇️ Guard: si ya está abierto, no hacer nada
+  if(!$('#debugPanel').classList.contains('hidden')) return;
+
   debugState.wasPausedBeforeOpen = state.paused;
 
   // Solo pausamos si el panel va a tapar todo (móvil/tablet).
@@ -8125,6 +8131,9 @@ function openDebugPanel(){
 }
 
 function closeDebugPanel(){
+  // ⬇️ Guard: si ya está cerrado, no hacer nada
+  if($('#debugPanel').classList.contains('hidden')) return;
+
   const wasPaused = debugState.wasPausedBeforeOpen;
   const wasDesktop = isDesktopDebugLayout();
 
@@ -9061,12 +9070,21 @@ function newGame(){
   startTimer();
   updateClocks();
   
-  // Debug mode
-  setDebugMode(debugState.enabled);
-  if(debugState.enabled){
-    debugState.aiColors = { w: false, b: false };
-    debugState.editingPiece = null;
-  }
+	// Debug mode
+	setDebugMode(debugState.enabled);
+	if(debugState.enabled){
+	  debugState.aiColors = { w: false, b: false };
+	  debugState.editingPiece = null;
+
+	  // ⬇️ NUEVO: en desktop, auto-abrir el panel al entrar en debug
+	  if(isDesktopDebugLayout()){
+		// Pequeño delay para que el layout inicial termine (board, canvas, etc.)
+		setTimeout(() => {
+		  if(!$('#debugPanel').classList.contains('hidden')) return;  // ya está abierto
+		  openDebugPanel();
+		}, 300);
+	  }
+	}
   // Permitir que empiece una nueva búsqueda de IA
   setTimeout(() => { aiSearchAbort = false; }, 100);
 }
@@ -10380,13 +10398,27 @@ document.addEventListener('keydown', (e) => {
   const tag = (e.target && e.target.tagName) || '';
   if(tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
 
-  // Atajo FPS (ya existente)
-  if(e.key === 'f' || e.key === 'F'){
-    if(document.querySelector('.modal-overlay')) return;
-    setShowFps(!quality.showFps);
-    toast(quality.showFps ? '📊 FPS activados' : '📊 FPS desactivados', '#8ad0ff');
-    return;
-  }
+  // Atajo FPS
+	if(e.key === 'f' || e.key === 'F'){
+	  // ⬇️ Antes: cualquier .modal-overlay bloqueaba (incluido #debugPanel.hidden)
+	  //    Ahora: solo bloquea si hay un modal REALMENTE visible que no sea el debug
+	  const blockingModal = document.querySelector('.modal-overlay:not(.hidden):not(#debugPanel)');
+	  if(blockingModal) return;
+	  setShowFps(!quality.showFps);
+	  toast(quality.showFps ? '📊 FPS activados' : '📊 FPS desactivados', '#8ad0ff');
+	  return;
+	}
+	// Panel de debug
+	if((e.key === 'd' || e.key === 'D') && debugState.enabled){
+	  // No disparar si hay modales abiertos que no sean el debug
+	  const blockingModal = document.querySelector('.modal-overlay:not(.hidden):not(#debugPanel)');
+	  if(blockingModal) return;
+	  e.preventDefault();
+	  const panel = $('#debugPanel');
+	  if(panel.classList.contains('hidden')) openDebugPanel();
+	  else closeDebugPanel();
+	  return;
+	}
 
   // ⬇️ NUEVO: navegación del replay con teclado
   if(replay.active && !replayAnimating){
