@@ -884,13 +884,12 @@ display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;
 <div id="app">
   <div id="topBar">
     <div class="tbTitle">♚ Ajedrez Mágico</div>
-    <div class="tbBtns">
-      <button class="topBtn" id="btnPause" title="Pausa">⏸</button>
-      <button class="topBtn" id="btnSound" title="Sonido">🔊</button>
-      <button class="topBtn" id="btnConfig" title="Opciones">⚙</button>
-      <button class="topBtn warn" id="btnRestart" title="Reiniciar">↻</button>
-      <button class="topBtn warn" id="btnExit" title="Salir al menú">✖</button>
-    </div>
+	<div class="tbBtns">
+	  <button class="topBtn" id="btnConfig" title="Opciones / Pausa">⚙</button>
+	  <button class="topBtn" id="btnSound" title="Sonido">🔊</button>
+	  <button class="topBtn warn" id="btnRestart" title="Reiniciar">↻</button>
+	  <button class="topBtn warn" id="btnExit" title="Salir al menú">✖</button>
+	</div>
   </div>
   <div id="history"></div>
   <div id="boardWrap">
@@ -900,9 +899,9 @@ display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;
     <canvas id="fpsCanvas"></canvas>   <!-- ⬅️ NUEVO -->
     <div id="dragLayer"></div>
     <div id="pauseOverlay" class="hidden">
-      <div class="pt">PAUSA</div>
-      <div class="ps">Toca ⏸ para continuar</div>
-    </div>
+	  <div class="pt">PAUSA</div>
+	  <div class="ps">Elegí una opción para continuar</div>
+	</div>
   </div>
   <div id="controls">
     <div id="turnBar">
@@ -4537,6 +4536,7 @@ function showModal(title, body, buttons, opts){
   return new Promise(resolve => {
     const ov = document.createElement('div');
     ov.className = 'modal-overlay';
+    if(opts && opts.id) ov.id = opts.id;     // ⬅️ NUEVA línea
     const m = document.createElement('div');
     m.className = 'modal' + (opts && opts.wide ? ' wide' : '');
     m.innerHTML = `<h3>${title}</h3>` + (body ? `<p>${body}</p>` : '');
@@ -4890,7 +4890,6 @@ function togglePause(){
   }
   state.paused = !state.paused;
   $('#pauseOverlay').classList.toggle('hidden', !state.paused);
-  $('#btnPause').textContent = state.paused ? '▶' : '⏸';
 
   // Fade maestro: silencia TODO el audio (ambience + efectos) al pausar
   if(actx && masterGain){
@@ -8985,7 +8984,6 @@ async function restartGame(){
   stopTimer();
   state.paused = false;
   $('#pauseOverlay').classList.add('hidden');
-  $('#btnPause').textContent = '⏸';
   await startGame();
 }
 async function exitToMenu(){
@@ -9001,7 +8999,6 @@ async function exitToMenu(){
   stopTimer();
   state.paused = false;
   $('#pauseOverlay').classList.add('hidden');
-  $('#btnPause').textContent = '⏸';
   await startGame();
 }
 function newGame(){
@@ -9054,7 +9051,6 @@ function newGame(){
   replay.storedMatch = null; replay.originalHistory = null;
   $('#replayUI').classList.add('hidden');
   $('#pauseOverlay').classList.add('hidden');
-  $('#btnPause').textContent = '⏸';
   undoStack.length = 0;
   undoUsed = 0;
   turnSnapshotTaken = false;
@@ -10318,7 +10314,6 @@ gridEl.addEventListener('contextmenu', (e) => {
 });
 $('#cancelBtn').onclick = () => cancelTargeting();
 $('#undoBtn').onclick = () => { initAudio(); performUndo(); };
-$('#btnPause').onclick = () => togglePause();
 $('#btnSound').onclick = () => {
   initAudio();
   soundEnabled = !soundEnabled;
@@ -10332,7 +10327,9 @@ $('#btnSound').onclick = () => {
   if(soundEnabled && !state.paused) tone(660, .12, 'sine', .05, 200);
 };
 $('#btnConfig').onclick = () => {
-  togglePause();
+  // Si ya está pausado, no volver a togglear; solo abrir el modal
+  if(!state.paused) togglePause();
+  // Pequeño delay para que el overlay de pausa aparezca antes que el modal
   setTimeout(() => { openQuickConfig(); }, 50);
 };
 $('#btnRestart').onclick = () => restartGame();
@@ -10344,14 +10341,14 @@ async function openQuickConfig(){
     { label:'🎨 Calidad visual', value:'quality', cls:'' },
     { label:'🔄 Reiniciar', value:'restart', cls:'no' },
     { label:'🚪 Salir al menú', value:'exit', cls:'danger' }
-  ]);
+  ], { id: 'quickConfigModal' });
+
   if(res === 'continue'){
     if(state.paused) togglePause();
     return;
   }
   if(res === 'quality'){
     await openQualitySettings();
-    // No reanudar todavía: el usuario puede querer tocar más
     return openQuickConfig();
   }
   if(res === 'restart'){ restartGame(); return; }
