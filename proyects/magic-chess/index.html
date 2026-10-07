@@ -1923,6 +1923,675 @@ function resetAchState(){
 }
 
 /* =========================================================
+   SPRITE CACHE — todo pre-renderizado una sola vez
+   ========================================================= */
+const SPRITE_SIZE = 64;
+
+function makeSprite(drawFn){
+  const c = document.createElement('canvas');
+  c.width = SPRITE_SIZE;
+  c.height = SPRITE_SIZE;
+  const cx = c.getContext('2d');
+  drawFn(cx, SPRITE_SIZE);
+  return c;
+}
+
+const sprites = {
+  leaf: {},        // { green: canvas, yellow: canvas }
+  butterfly: {},   // { pink: [f0,f1,f2,f3], yellow: [...], lavender: [...] }
+  beetle: [],      // [f0, f1, f2, f3]
+  ember: null,
+  snowDrift: null
+};
+
+function buildSprites(){
+
+  // ---------- HOJAS ----------
+  const leafColors = { green: '#8ec25a', yellow: '#c8b055' };
+  for(const [name, color] of Object.entries(leafColors)){
+    sprites.leaf[name] = makeSprite((cx, s) => {
+      const c = s / 2;
+      cx.fillStyle = color;
+      cx.beginPath();
+      cx.ellipse(c, c, s * 0.42, s * 0.24, 0, 0, 6.2832);
+      cx.fill();
+      cx.strokeStyle = 'rgba(0,0,0,0.22)';
+      cx.lineWidth = s * 0.02;
+      cx.beginPath();
+      cx.moveTo(c - s * 0.38, c);
+      cx.lineTo(c + s * 0.38, c);
+      cx.stroke();
+      cx.strokeStyle = 'rgba(255,255,255,0.35)';
+      cx.lineWidth = s * 0.015;
+      for(let i = -2; i <= 2; i++){
+        const px = c + i * s * 0.10;
+        cx.beginPath();
+        cx.moveTo(px, c - s * 0.02);
+        cx.lineTo(px + s * 0.06, c - s * 0.14);
+        cx.stroke();
+        cx.beginPath();
+        cx.moveTo(px, c + s * 0.02);
+        cx.lineTo(px + s * 0.06, c + s * 0.14);
+        cx.stroke();
+      }
+    });
+  }
+
+  // ---------- MARIPOSAS (4 frames por color) ----------
+  const bflyColors = {
+    pink:     ['#ffd0e8', '#ffb0d0'],
+    yellow:   ['#ffe070', '#ffc840'],
+    lavender: ['#d0b8ff', '#b090ff']
+  };
+  for(const [name, [c1, c2]] of Object.entries(bflyColors)){
+    const frames = [];
+    const flaps = [0.35, 0.70, 1.00, 0.70];   // cerrado → abierto → abierto → medio
+    for(let f = 0; f < 4; f++){
+      const flap = flaps[f];
+      frames.push(makeSprite((cx, s) => {
+        const c = s / 2;
+        const wingW = s * 0.20 * (0.4 + flap * 0.6);
+        const wingH = s * 0.32;
+        // Alas
+        cx.fillStyle = c1;
+        cx.beginPath();
+        cx.ellipse(c - wingW * 0.9, c, wingW, wingH, -0.35, 0, 6.2832);
+        cx.fill();
+        cx.beginPath();
+        cx.ellipse(c + wingW * 0.9, c, wingW, wingH, 0.35, 0, 6.2832);
+        cx.fill();
+        // Manchas
+        cx.fillStyle = c2;
+        cx.beginPath();
+        cx.ellipse(c - wingW * 1.0, c - wingH * 0.2, wingW * 0.4, wingH * 0.4, -0.35, 0, 6.2832);
+        cx.fill();
+        cx.beginPath();
+        cx.ellipse(c + wingW * 1.0, c - wingH * 0.2, wingW * 0.4, wingH * 0.4, 0.35, 0, 6.2832);
+        cx.fill();
+        // Cuerpo
+        cx.fillStyle = '#2a1810';
+        cx.beginPath();
+        cx.ellipse(c, c, s * 0.045, s * 0.22, 0, 0, 6.2832);
+        cx.fill();
+        // Antenas
+        cx.strokeStyle = '#2a1810';
+        cx.lineWidth = s * 0.012;
+        cx.beginPath();
+        cx.moveTo(c, c - s * 0.15);
+        cx.quadraticCurveTo(c - s * 0.08, c - s * 0.25, c - s * 0.12, c - s * 0.30);
+        cx.moveTo(c, c - s * 0.15);
+        cx.quadraticCurveTo(c + s * 0.08, c - s * 0.25, c + s * 0.12, c - s * 0.30);
+        cx.stroke();
+      }));
+    }
+    sprites.butterfly[name] = frames;
+  }
+
+  // ---------- ESCARABAJO (4 frames de caminata) ----------
+  for(let f = 0; f < 4; f++){
+    const legPhase = (f / 4) * Math.PI * 2;
+    sprites.beetle.push(makeSprite((cx, s) => {
+      const c = s / 2;
+      const body = s * 0.30;
+      // Patas
+      cx.strokeStyle = '#1a0e08';
+      cx.lineWidth = s * 0.035;
+      cx.lineCap = 'round';
+      for(let i = -1; i <= 1; i++){
+        const wobble = Math.sin(legPhase + i * 1.2) * s * 0.10;
+        cx.beginPath();
+        cx.moveTo(c + i * body * 0.4, c - body * 0.3);
+        cx.lineTo(c + i * body * 0.4 + wobble, c - body * 0.85);
+        cx.stroke();
+        cx.beginPath();
+        cx.moveTo(c + i * body * 0.4, c + body * 0.3);
+        cx.lineTo(c + i * body * 0.4 - wobble, c + body * 0.85);
+        cx.stroke();
+      }
+      // Cuerpo
+      cx.fillStyle = '#2a1810';
+      cx.beginPath();
+      cx.ellipse(c, c, body, body * 0.68, 0, 0, 6.2832);
+      cx.fill();
+      // Cabeza
+      cx.beginPath();
+      cx.arc(c + body * 0.9, c, body * 0.35, 0, 6.2832);
+      cx.fill();
+      // Brillo
+      cx.fillStyle = 'rgba(255,255,255,0.20)';
+      cx.beginPath();
+      cx.ellipse(c - body * 0.2, c - body * 0.15, body * 0.35, body * 0.20, -0.2, 0, 6.2832);
+      cx.fill();
+      // Línea central
+      cx.strokeStyle = 'rgba(0,0,0,0.35)';
+      cx.lineWidth = s * 0.012;
+      cx.beginPath();
+      cx.moveTo(c - body * 0.9, c);
+      cx.lineTo(c + body * 0.55, c);
+      cx.stroke();
+    }));
+  }
+
+  // ---------- BRASA ----------
+  sprites.ember = makeSprite((cx, s) => {
+    const c = s / 2;
+    const g = cx.createRadialGradient(c, c, 0, c, c, s * 0.5);
+    g.addColorStop(0.00, 'rgba(255,240,200,1)');
+    g.addColorStop(0.15, 'rgba(255,220,150,1)');
+    g.addColorStop(0.40, 'rgba(255,140,40,0.7)');
+    g.addColorStop(0.70, 'rgba(255,60,10,0.25)');
+    g.addColorStop(1.00, 'rgba(255,30,0,0)');
+    cx.fillStyle = g;
+    cx.fillRect(0, 0, s, s);
+  });
+
+    // ---------- CONEJO DE NIEVE (3 frames: sentado, salto, aterrizaje) ----------
+  sprites.bunny = [];
+  const bunnyPose = [
+    { bodyY: 0, bodyH: 0.30, headY: -0.28, earAngle: 0.10, tailY: 0.10 },  // sentado
+    { bodyY: -0.18, bodyH: 0.26, headY: -0.42, earAngle: 0.25, tailY: -0.10 },  // salto
+    { bodyY: 0.06, bodyH: 0.32, headY: -0.20, earAngle: 0.02, tailY: 0.14 }  // aterrizaje
+  ];
+  for(const pose of bunnyPose){
+    sprites.bunny.push(makeSprite((cx, s) => {
+      const c = s / 2;
+      const bodyW = s * 0.26;
+      const bodyH = s * pose.bodyH;
+      const bodyCy = c + pose.bodyY * s;
+
+      // Sombra debajo
+      cx.fillStyle = 'rgba(80,100,140,0.20)';
+      cx.beginPath();
+      cx.ellipse(c, c + s * 0.20, s * 0.24, s * 0.05, 0, 0, 6.2832);
+      cx.fill();
+
+      // Cola (pom-pom)
+      cx.fillStyle = '#ffffff';
+      cx.beginPath();
+      cx.arc(c - bodyW * 1.0, bodyCy + pose.tailY * s, s * 0.09, 0, 6.2832);
+      cx.fill();
+      cx.fillStyle = 'rgba(200,215,235,0.5)';
+      cx.beginPath();
+      cx.arc(c - bodyW * 1.05, bodyCy + pose.tailY * s + s * 0.03, s * 0.045, 0, 6.2832);
+      cx.fill();
+
+      // Cuerpo
+      cx.fillStyle = '#f4f8fc';
+      cx.beginPath();
+      cx.ellipse(c, bodyCy, bodyW, bodyH, 0, 0, 6.2832);
+      cx.fill();
+      // Sombra lateral del cuerpo
+      cx.fillStyle = 'rgba(190,210,230,0.35)';
+      cx.beginPath();
+      cx.ellipse(c + bodyW * 0.15, bodyCy + bodyH * 0.15, bodyW * 0.75, bodyH * 0.70, 0, 0, 6.2832);
+      cx.fill();
+
+      // Patas traseras (visibles)
+      cx.fillStyle = '#f4f8fc';
+      cx.beginPath();
+      cx.ellipse(c + bodyW * 0.35, bodyCy + bodyH * 0.55, s * 0.10, s * 0.06, 0.2, 0, 6.2832);
+      cx.fill();
+
+      // Cabeza
+      const headCy = c + pose.headY * s;
+      cx.fillStyle = '#f4f8fc';
+      cx.beginPath();
+      cx.arc(c + bodyW * 0.55, headCy, s * 0.15, 0, 6.2832);
+      cx.fill();
+      cx.fillStyle = 'rgba(190,210,230,0.35)';
+      cx.beginPath();
+      cx.arc(c + bodyW * 0.60, headCy + s * 0.02, s * 0.10, 0, 6.2832);
+      cx.fill();
+
+      // Orejas
+      const earA = pose.earAngle;
+      for(let side = 0; side < 2; side++){
+        const dx = side === 0 ? -0.04 : 0.05;
+        const earCx = c + bodyW * 0.55 + dx * s;
+        const earCy = headCy - s * 0.15;
+        const tilt = side === 0 ? -earA : earA;
+        cx.save();
+        cx.translate(earCx, earCy);
+        cx.rotate(tilt);
+        // Oreja externa
+        cx.fillStyle = '#f4f8fc';
+        cx.beginPath();
+        cx.ellipse(0, -s * 0.11, s * 0.045, s * 0.14, 0, 0, 6.2832);
+        cx.fill();
+        // Oreja interna (rosa)
+        cx.fillStyle = '#ffc8d8';
+        cx.beginPath();
+        cx.ellipse(0, -s * 0.11, s * 0.022, s * 0.09, 0, 0, 6.2832);
+        cx.fill();
+        cx.restore();
+      }
+
+      // Ojo
+      cx.fillStyle = '#1a1210';
+      cx.beginPath();
+      cx.arc(c + bodyW * 0.70, headCy - s * 0.01, s * 0.022, 0, 6.2832);
+      cx.fill();
+      // Brillo del ojo
+      cx.fillStyle = 'rgba(255,255,255,0.9)';
+      cx.beginPath();
+      cx.arc(c + bodyW * 0.72, headCy - s * 0.02, s * 0.008, 0, 6.2832);
+      cx.fill();
+
+      // Nariz
+      cx.fillStyle = '#ffb0c0';
+      cx.beginPath();
+      cx.arc(c + bodyW * 0.88, headCy + s * 0.02, s * 0.015, 0, 6.2832);
+      cx.fill();
+
+    }));
+  }
+
+  // ---------- DESTELLO DE ESCARCHA ----------
+  sprites.sparkle = makeSprite((cx, s) => {
+    const c = s / 2;
+    // Halo exterior suave
+    const grad = cx.createRadialGradient(c, c, 0, c, c, s * 0.5);
+    grad.addColorStop(0,    'rgba(220,240,255,0.9)');
+    grad.addColorStop(0.35, 'rgba(160,210,255,0.35)');
+    grad.addColorStop(1,    'rgba(120,180,255,0)');
+    cx.fillStyle = grad;
+    cx.fillRect(0, 0, s, s);
+
+    // Estrella de 4 puntas
+    cx.fillStyle = '#ffffff';
+    cx.beginPath();
+    cx.moveTo(c, c - s * 0.42);
+    cx.lineTo(c + s * 0.06, c - s * 0.06);
+    cx.lineTo(c + s * 0.42, c);
+    cx.lineTo(c + s * 0.06, c + s * 0.06);
+    cx.lineTo(c, c + s * 0.42);
+    cx.lineTo(c - s * 0.06, c + s * 0.06);
+    cx.lineTo(c - s * 0.42, c);
+    cx.lineTo(c - s * 0.06, c - s * 0.06);
+    cx.closePath();
+    cx.fill();
+
+    // Núcleo brillante
+    cx.fillStyle = 'rgba(255,255,255,1)';
+    cx.beginPath();
+    cx.arc(c, c, s * 0.06, 0, 6.2832);
+    cx.fill();
+  });
+}
+
+/* =========================================================
+   VIDA AMBIENTAL — dibujo con drawImage, sin paths
+   ========================================================= */
+const ambientLife = [];
+let ambientLifeSpawnedFor = null;
+
+const AMBIENT_TYPES = {
+
+  leaf: {
+	  spawn: () => ({
+		x: rnd(0, 1), y: rnd(-0.1, 1),
+		vx: rnd(-15, 15) / 1000,
+		vy: rnd(15, 35) / 1000,
+		rot: rnd(0, 6.28),
+		rotSpd: rnd(-1.2, 1.2),
+		wobble: rnd(0, 6.28),
+		size: rnd(5, 9),
+		spriteKey: Math.random() < 0.5 ? 'green' : 'yellow',
+		_activity: 0
+	  }),
+	  update(e, dt, weather){
+		// Viento aumenta la velocidad horizontal y el wobble
+		const windBoost = 1 + weather.wind * 2.5 + weather.rain * 1.8;
+		const wobbleBoost = 1 + weather.rain * 2.0 + weather.wind * 1.5;
+
+		e.wobble += dt * 2.5 * wobbleBoost;
+
+		// El viento direccional empuja la hoja hacia un lado
+		const windPush = windState.direction * windState.strength * 0.06;
+
+		e.x += (e.vx * windBoost + Math.sin(e.wobble) * 0.02 + windPush) * dt;
+		e.y += e.vy * windBoost * dt;
+		e.rot += e.rotSpd * windBoost * dt;
+
+		if(e.y > 1.05){ e.y = -0.05; e.x = Math.random(); }
+		if(e.x > 1.05) e.x -= 1.1;
+		if(e.x < -0.05) e.x += 1.1;
+
+		e._activity = 1;
+	  },
+	  draw(ctx, e, W, H){
+		const sprite = sprites.leaf[e.spriteKey];
+		if(!sprite) return;
+		const px = e.x * W, py = e.y * H;
+		const half = e.size;
+		ctx.save();
+		ctx.globalAlpha = 0.9;
+		ctx.translate(px, py);
+		ctx.rotate(e.rot);
+		ctx.drawImage(sprite, -half, -half * 0.6, half * 2, half * 1.2);
+		ctx.restore();
+	  }
+	},
+  butterfly: {
+	  spawn: () => ({
+		anchorX: rnd(0.15, 0.85),
+		anchorY: rnd(0.15, 0.85),
+		rx: rnd(0.05, 0.12),
+		ry: rnd(0.04, 0.10),
+		phase: rnd(0, 6.28),
+		flapPhase: rnd(0, 6.28),
+		speed: rnd(0.4, 0.9),
+		size: rnd(7, 11),
+		colorKey: ['pink', 'yellow', 'lavender'][Math.floor(Math.random() * 3)],
+		x: 0.5, y: 0.5,
+		_activity: 1
+	  }),
+	  update(e, dt, weather){
+		// Objetivo: 1 si no llueve, 0 si llueve mucho.
+		// Entre 0.15 y 0.55 de lluvia, transición suave.
+		let target;
+		if(weather.rain < 0.15)      target = 1;
+		else if(weather.rain > 0.55) target = 0;
+		else                         target = 1 - (weather.rain - 0.15) / 0.40;
+
+		// Suavizado: tarda ~1.2s en esconderse, ~2s en volver
+		const speed = target < e._activity ? 4.5 : 2.5;
+		e._activity += (target - e._activity) * Math.min(1, speed * dt);
+		e._activity = Math.max(0, Math.min(1, e._activity));
+
+		// Sigue volando normalmente pero más lento si está "semi-escondida"
+		e.phase += dt * e.speed * (0.3 + e._activity * 0.7);
+		e.flapPhase += dt * 12 * (0.5 + e._activity * 0.5);
+		e.x = e.anchorX + Math.cos(e.phase) * e.rx;
+		e.y = e.anchorY + Math.sin(e.phase * 1.7) * e.ry;
+	  },
+	  draw(ctx, e, W, H){
+		if(e._activity < 0.03) return;   // escondida del todo → no dibujar
+		const frames = sprites.butterfly[e.colorKey];
+		if(!frames) return;
+		const frameIdx = Math.floor(e.flapPhase) & 3;
+		const sprite = frames[frameIdx];
+		const px = e.x * W, py = e.y * H;
+		const half = e.size;
+		ctx.save();
+		ctx.globalAlpha = 0.95 * e._activity;
+		ctx.translate(px, py);
+		ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+		ctx.restore();
+	  }
+	},
+
+  beetle: {
+	  spawn: () => ({
+		x: rnd(-0.05, 1.05), y: rnd(0.2, 0.9),
+		vx: (Math.random() < 0.5 ? -1 : 1) * rnd(0.015, 0.035),
+		phase: rnd(0, 6.28),
+		size: rnd(4, 6),
+		_activity: 1
+	  }),
+	  update(e, dt, weather){
+		// Con lluvia se mueven más rápido, como buscando refugio
+		const boost = 1 + weather.rain * 2.2;
+		e.phase += dt * 8 * boost;
+		e.x += e.vx * boost * dt;
+		if(e.x < -0.08) e.x = 1.08;
+		if(e.x > 1.08) e.x = -0.08;
+
+		e._activity = 1;
+	  },
+	  draw(ctx, e, W, H){
+		if(!sprites.beetle.length) return;
+		const sprite = sprites.beetle[Math.floor(e.phase) & 3];
+		const px = e.x * W, py = e.y * H;
+		const half = e.size;
+		ctx.save();
+		ctx.globalAlpha = 0.9;
+		ctx.translate(px, py);
+		if(e.vx < 0) ctx.scale(-1, 1);
+		ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+		ctx.restore();
+	  }
+	},
+
+  ember: {
+	  spawn: () => ({
+		x: rnd(0, 1), y: rnd(0.4, 1),
+		vy: -rnd(15, 40) / 1000,
+		vx: rnd(-8, 8) / 1000,
+		phase: rnd(0, 6.28),
+		size: rnd(4, 7),
+		life: rnd(1.5, 4),
+		maxLife: 4,
+		_activity: 1
+	  }),
+	  update(e, dt, weather){
+		// Las brasas se apagan con lluvia fuerte
+		let target;
+		if(weather.rain < 0.20)      target = 1;
+		else if(weather.rain > 0.60) target = 0.15;   // quedan algunas, débiles
+		else                         target = 1 - (weather.rain - 0.20) / 0.40 * 0.85;
+
+		e._activity += (target - e._activity) * Math.min(1, 3 * dt);
+
+		// El viento las empuja y las agita
+		const windBoost = 1 + weather.wind * 1.5;
+
+		e.phase += dt * 3 * windBoost;
+		e.life -= dt;
+		e.x += (e.vx * windBoost + Math.sin(e.phase) * 0.005 + windState.direction * windState.strength * 0.02) * dt;
+		e.y += e.vy * windBoost * dt;
+
+		if(e.life <= 0 || e.y < -0.05){
+		  e.x = rnd(0, 1);
+		  e.y = rnd(0.5, 1.05);
+		  e.life = rnd(1.5, 4);
+		}
+	  },
+	  draw(ctx, e, W, H){
+		if(e._activity < 0.03) return;
+		const sprite = sprites.ember;
+		if(!sprite) return;
+		const t = Math.max(0, e.life / e.maxLife);
+		const blink = Math.sin(e.phase * 4) * 0.4 + 0.6;
+		const alpha = t * blink * 0.85 * e._activity;
+		if(alpha < 0.03) return;
+		const px = e.x * W, py = e.y * H;
+		const half = e.size * 2;
+		ctx.save();
+		ctx.globalAlpha = alpha;
+		ctx.globalCompositeOperation = 'lighter';
+		ctx.drawImage(sprite, px - half, py - half, half * 2, half * 2);
+		ctx.restore();
+	  }
+	},
+    // Conejo que salta
+	  bunny: {
+		    spawn: () => {
+			  const vx = (Math.random() < 0.5 ? -1 : 1) * rnd(0.02, 0.05);
+			  return {
+				x: rnd(0.05, 0.95),
+				y: rnd(0.35, 0.85),
+				vx,
+				hopPhase: rnd(0, 1),
+				hopSpeed: rnd(1.2, 2.0),
+				size: rnd(11, 15),
+				facing: vx < 0 ? -1 : 1,   // ⬅️ derivado del vx real
+				_activity: 1,
+				pauseTimer: 0,
+				paused: false
+			  };
+			},
+		update(e, dt, weather){
+		  // Los conejos se esconden con nieve muy intensa
+		  let target;
+		  if(weather.rain < 0.35)      target = 1;
+		  else if(weather.rain > 0.85) target = 0;
+		  else                         target = 1 - (weather.rain - 0.35) / 0.50;
+		  e._activity += (target - e._activity) * Math.min(1, 3 * dt);
+		  if(e._activity < 0.02) return;
+
+		  // Pausa ocasional: el conejo se queda quieto mirando
+		  if(e.paused){
+			e.pauseTimer -= dt;
+			if(e.pauseTimer <= 0){ e.paused = false; e.hopPhase = 0; }
+			return;
+		  }
+
+		  // Saltar
+		  e.hopPhase += dt * e.hopSpeed;
+		  if(e.hopPhase >= 1){
+			e.hopPhase -= 1;
+			// 25% de chance de pausar después de un salto
+			if(Math.random() < 0.25){
+			  e.paused = true;
+			  e.pauseTimer = rnd(0.6, 1.8);
+			} else {
+			  // A veces cambia de dirección
+			  if(Math.random() < 0.3){
+				e.vx = -e.vx;
+				e.facing = -e.facing;
+			  }
+			}
+		  }
+
+		  // Avance horizontal proporcional a la fase de salto
+		  // (avanza más rápido en la parte media del salto)
+		  const speedCurve = Math.sin(e.hopPhase * Math.PI);
+		  e.x += e.vx * speedCurve * dt;
+
+		  // Wrap horizontal
+		  if(e.x < -0.06) e.x = 1.06;
+		  if(e.x > 1.06) e.x = -0.06;
+		},
+		draw(ctx, e, W, H){
+		  if(e._activity < 0.05) return;
+		  if(!sprites.bunny) return;
+
+		  // Elegir frame según hopPhase:
+		  //   0.0–0.15 → aterrizaje (frame 2)
+		  //   0.15–0.5 → despegue (frame 1)
+		  //   0.5–0.85 → vuelo (frame 1)
+		  //   0.85–1.0 → aterrizaje (frame 2)
+		  let frameIdx;
+		  if(e.paused)             frameIdx = 0;
+		  else if(e.hopPhase < 0.15) frameIdx = 2;
+		  else if(e.hopPhase > 0.85) frameIdx = 2;
+		  else                     frameIdx = 1;
+
+		  const sprite = sprites.bunny[frameIdx];
+		  const px = e.x * W;
+
+		  // Altura extra durante el salto (parábola)
+		  const hopArc = e.paused ? 0 : Math.sin(e.hopPhase * Math.PI) * 8;
+		  const py = e.y * H - hopArc;
+
+		  const half = e.size;
+		  ctx.save();
+		  ctx.globalAlpha = 0.95 * e._activity;
+		  ctx.translate(px, py);
+		  if(e.vx < 0) ctx.scale(-1, 1);
+		  ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+		  ctx.restore();
+		}
+	  },
+
+	  // Destello de escarcha en la nieve
+	  sparkle: {
+		spawn: () => ({
+		  x: rnd(0, 1),
+		  y: rnd(0.10, 0.98),         // por todo el terreno, no solo abajo
+		  size: rnd(5, 9),
+		  phase: rnd(0, 6.28),
+		  speed: rnd(0.8, 1.8),        // velocidad de titileo
+		  offset: rnd(0, 6.28),
+		  _activity: 1,
+		  life: rnd(1.5, 4),           // cuánto dura antes de "desaparecer"
+		  maxLife: 4
+		}),
+		update(e, dt, weather){
+		  // Los destellos son MÁS visibles con cielos despejados o poca nieve
+		  const target = 1 - weather.rain * 0.6;
+		  e._activity += (target - e._activity) * Math.min(1, 1.5 * dt);
+
+		  e.phase += dt * e.speed;
+		  e.life -= dt;
+		  if(e.life <= 0){
+			e.x = rnd(0, 1);
+			e.y = rnd(0.10, 0.98);
+			e.life = rnd(1.5, 4);
+		  }
+		},
+		draw(ctx, e, W, H){
+		  if(e._activity < 0.05) return;
+		  const sprite = sprites.sparkle;
+		  if(!sprite) return;
+
+		  // Titileo con doble envolvente:
+		  //  - una lenta por vida (aparece/desaparece suave)
+		  //  - una rápida por sin (parpadeo de estrella)
+		  const lifeT = e.life / e.maxLife;
+		  const lifeEnv = Math.sin(lifeT * Math.PI);   // 0 → 1 → 0 en el ciclo
+		  const twinkle = 0.55 + Math.sin(e.phase * 4 + e.offset) * 0.45;
+
+		  const alpha = lifeEnv * twinkle * e._activity * 0.85;
+		  if(alpha < 0.04) return;
+
+		  const px = e.x * W;
+		  const py = e.y * H;
+		  const half = e.size * (0.7 + twinkle * 0.5);
+
+		  ctx.save();
+		  ctx.globalAlpha = alpha;
+		  ctx.globalCompositeOperation = 'lighter';
+		  ctx.drawImage(sprite, px - half, py - half, half * 2, half * 2);
+		  ctx.restore();
+		}
+	  },
+};
+
+function spawnAmbientLife(W, H){
+  ambientLife.length = 0;
+  if(!currentBiome.ambientLife) return;
+  for(const spec of currentBiome.ambientLife){
+    const type = AMBIENT_TYPES[spec.type];
+    if(!type) continue;
+    for(let i = 0; i < spec.count; i++){
+      const ent = type.spawn();
+      ent._type = type;
+      ambientLife.push(ent);
+    }
+  }
+  ambientLifeSpawnedFor = currentBiome.id;
+}
+
+function updateAmbientLife(dt){
+  const rain = rainAmt;
+  const wind = Math.abs(windState.direction) * windState.strength;
+  const weather = { rain, wind };
+
+  for(const e of ambientLife){
+    if(e._type) e._type.update(e, dt, weather);
+  }
+}
+
+function drawAmbientLife(W, H){
+  const q = currentQuality();
+  if(!q.fireflies) return;              // emergency → nada
+  const scale = q.particles;
+  if(scale >= 1){
+    for(const e of ambientLife) e._type.draw(ctx, e, W, H);
+  } else {
+    // En calidad baja dibujamos solo una fracción
+    const skipStep = Math.max(2, Math.round(1 / scale));
+    for(let i = 0; i < ambientLife.length; i++){
+      if(i % skipStep !== 0) continue;
+      const e = ambientLife[i];
+      e._type.draw(ctx, e, W, H);
+    }
+  }
+}
+
+/* =========================================================
    PARTÍCULAS
    ========================================================= */
 const particles = [];
@@ -2071,7 +2740,11 @@ const BIOMES = {
     biomeTint: { r:0, g:0, b:0, a:0 },
     weather: { mode:'rain' },
     firefly: { mode:'float', core:[220,255,150], mid:[140,255,100], edge:[80,255,60] },
-    hasWater:true, hasFireflies:true, isVolcano:false
+    hasWater:true, hasFireflies:true, isVolcano:false, hasVortices: false,
+	ambientLife: [
+	  { type: 'leaf', count: 14 },
+	  { type: 'beetle', count: 2 }
+	],
   },
   desert: {
     id:'desert', name:'Desierto', icon:'🏜️',
@@ -2089,7 +2762,10 @@ const BIOMES = {
     biomeTint: { r:255, g:210, b:140, a:0.07 },
     weather: { mode:'dust' },
     firefly: { mode:'none' },
-    hasWater:true, hasFireflies:false, isVolcano:false
+    hasWater:true, hasFireflies:false, isVolcano:false, hasVortices: false,
+	ambientLife: [
+	  { type: 'beetle', count: 4 }
+	],
   },
   snow: {
     id:'snow', name:'Nieve', icon:'❄️',
@@ -2107,7 +2783,11 @@ const BIOMES = {
     biomeTint: { r:180, g:210, b:255, a:0.06 },
     weather: { mode:'snow' },
     firefly: { mode:'none' },
-    hasWater:true, hasFireflies:false, isVolcano:false
+    hasWater:true, hasFireflies:false, isVolcano:false, hasVortices: true,
+	ambientLife: [
+	  { type: 'bunny', count: 3 },
+	  { type: 'sparkle', count: 4 }
+	],
   },
   volcano: {
     id:'volcano', name:'Volcán', icon:'🌋',
@@ -2125,7 +2805,10 @@ const BIOMES = {
     biomeTint: { r:255, g:100, b:40, a:0.06 },
     weather: { mode:'ash' },
     firefly: { mode:'rise', core:[255,240,200], mid:[255,140,40], edge:[200,60,10] },
-    hasWater:true, hasFireflies:true, isVolcano:true
+    hasWater:true, hasFireflies:true, isVolcano:true, hasVortices: true,
+	ambientLife: [
+	  { type: 'ember', count: 16 }
+	],
   },
   cute: {
     id:'cute', name:'Jardín', icon:'🌸',
@@ -2143,8 +2826,13 @@ const BIOMES = {
     biomeTint: { r:255, g:220, b:240, a:0.05 },           // tinte rosa suave
     weather: { mode:'petals' },                           // pétalos cayendo
     firefly: { mode:'float', core:[255,250,220], mid:[255,210,240], edge:[255,180,220] },
-    hasWater:true, hasFireflies:true, isVolcano:false,
-    hasFlowers:true                                       // flag nueva
+    hasWater:true, hasFireflies:true, isVolcano:false, hasVortices: true,
+    hasFlowers:true,                                       // flag nueva
+	ambientLife: [
+	  { type: 'butterfly', count: 3 },
+	  { type: 'leaf', count: 3 },
+	  { type: 'bunny', count: 2 },
+	]
   }
 };
 const BIOME_KEYS = ['forest','desert','snow','volcano','cute'];
@@ -2188,6 +2876,12 @@ let currentBiome = BIOMES.forest;
 const TERR_N = 96;
 const terr = { h: null, water: null, rocks: [], fireflies: [], rivers: [], lakes: [], seed: 0, flowers: [] };
 let terrainOffscreen = null;
+let waterMaskOffscreen = null;      // máscara del agua
+let waterLayerOffscreen = null;     // capa compuesta por frame
+let waterLayerCtx = null;
+let waterPatternCanvas = null;      // 256×256 tileable
+let waterPattern = null;            // createPattern result
+
 function generateTerrain(){
   const N = TERR_N;
   const h = new Float32Array(N*N);
@@ -2622,6 +3316,97 @@ function generateTerrain(){
 
   terr.h = h; terr.water = water; terr.rocks = rocks; terr.fireflies = fireflies; terr.flowers = flowers;
 }
+
+function buildWaterLayers(W, H){
+  const N = TERR_N;
+  const water = terr.water;
+  if(!water) return;
+
+  const W_ = currentBiome.water;
+  const mode = W_.mode;
+
+  // ---------- Máscara (blanco donde hay agua) ----------
+  const mask = document.createElement('canvas');
+  mask.width = Math.max(1, Math.floor(W));
+  mask.height = Math.max(1, Math.floor(H));
+  const mc = mask.getContext('2d');
+  const cw = mask.width / N, ch = mask.height / N;
+  mc.fillStyle = '#fff';
+  for(let y=0;y<N;y++){
+    for(let x=0;x<N;x++){
+      if(!water[y*N+x]) continue;
+      mc.fillRect(
+        Math.floor(x*cw),
+        Math.floor(y*ch),
+        Math.ceil(cw)+1,
+        Math.ceil(ch)+1
+      );
+    }
+  }
+  waterMaskOffscreen = mask;
+
+  // ---------- Capa compuesta (se regenera cada frame) ----------
+  const layer = document.createElement('canvas');
+  layer.width = Math.max(1, Math.floor(W));
+  layer.height = Math.max(1, Math.floor(H));
+  waterLayerOffscreen = layer;
+  waterLayerCtx = layer.getContext('2d');
+
+  // ---------- Patrón 256×256 tileable ----------
+  const PSIZE = 256;
+  const pat = document.createElement('canvas');
+  pat.width = PSIZE;
+  pat.height = PSIZE;
+  const pc = pat.getContext('2d');
+  const img = pc.createImageData(PSIZE, PSIZE);
+  const TWO_PI = Math.PI * 2;
+
+  for(let py=0; py<PSIZE; py++){
+    const fy = py / PSIZE;
+    for(let px=0; px<PSIZE; px++){
+      const fx = px / PSIZE;
+      const i = (py*PSIZE + px)*4;
+
+      if(mode === 'lava'){
+        // Ondas de calor: senos con frecuencias enteras (tileables)
+        const a = Math.sin(fx * TWO_PI * 3 + Math.sin(fy * TWO_PI * 2) * 2);
+        const b = Math.sin(fy * TWO_PI * 4 + Math.cos(fx * TWO_PI * 3) * 2);
+        const v = clamp((a + b) * 0.25 + 0.5, 0, 1);
+        // Naranja oscuro → amarillo brillante
+        img.data[i]   = 255;
+        img.data[i+1] = Math.floor(90 + v * 130);
+        img.data[i+2] = Math.floor(20 + v * 50);
+        img.data[i+3] = Math.floor(140 + v * 100);
+      }
+      else if(mode === 'ice'){
+        // Vetas cristalinas finas
+        const a = Math.sin(fx * TWO_PI * 6 + Math.sin(fy * TWO_PI * 3) * 1.5);
+        const b = Math.sin(fy * TWO_PI * 5 + Math.cos(fx * TWO_PI * 4) * 1.2);
+        const v = clamp((a + b) * 0.25 + 0.5, 0, 1);
+        img.data[i]   = Math.floor(200 + v * 40);
+        img.data[i+1] = Math.floor(225 + v * 25);
+        img.data[i+2] = Math.floor(245 + v * 10);
+        img.data[i+3] = Math.floor(60 + v * 100);
+      }
+      else {
+        // Agua: caustics con dos ondas grandes + una fina
+        const a = Math.sin(fx * TWO_PI * 2 + Math.sin(fy * TWO_PI * 3) * 2.5);
+        const b = Math.sin(fy * TWO_PI * 3 + Math.cos(fx * TWO_PI * 2) * 2.0);
+        const c = Math.sin((fx + fy) * TWO_PI * 5);
+        const v = clamp((a + b + c * 0.5) * 0.2 + 0.5, 0, 1);
+        img.data[i]   = Math.floor(W_.r + v * 100);
+        img.data[i+1] = Math.floor(W_.g + v * 80);
+        img.data[i+2] = Math.floor(W_.b + v * 60);
+        img.data[i+3] = Math.floor(100 + v * 120);
+      }
+    }
+  }
+  pc.putImageData(img, 0, 0);
+
+  waterPatternCanvas = pat;
+  waterPattern = waterLayerCtx.createPattern(pat, 'repeat');
+}
+
 function renderTerrain(W, H){
   const N = TERR_N;
   const oc = document.createElement('canvas');
@@ -2745,6 +3530,12 @@ function renderTerrain(W, H){
   o.lineWidth = Math.max(1.5, oc.width/260);
   o.strokeRect(o.lineWidth/2, o.lineWidth/2, oc.width - o.lineWidth, oc.height - o.lineWidth);
   terrainOffscreen = oc;
+  
+  buildWaterLayers(W, H);
+  
+  if(ambientLifeSpawnedFor !== currentBiome.id){
+    spawnAmbientLife(W, H);
+  }
 }
 
 /* =========================================================
@@ -2878,7 +3669,7 @@ function pickVortexScale(intensity){
   return scale;
 }
 
-function spawnVortex(W, H, scale = 1){
+function spawnStormVortex(W, H, scale = 1){
   const cxc = rnd(W * 0.15, W * 0.85);
   const cyc = rnd(-30 * scale, H * 0.30);
   const maxR = rnd(60, 130) * scale;
@@ -2907,13 +3698,20 @@ function spawnVortex(W, H, scale = 1){
 }
 
 function updateVortices(dt, W, H, intensity){
+  // Biomas sin vórtices → limpiar y salir
+  if(!currentBiome.hasVortices){
+    if(vortices.list.length) vortices.list.length = 0;
+    vortices.targetCount = 0;
+    return;
+  }
+
   updateVortexCount(intensity);
 
   // ---- Spawn ----
   const now = performance.now();
   if(vortices.list.length < vortices.targetCount && now - vortices.lastCheck > 350){
     const scale = pickVortexScale(intensity);
-    vortices.list.push(spawnVortex(W, H, scale));
+    vortices.list.push(spawnStormVortex(W, H, scale));
     vortices.lastCheck = now;
   }
 
@@ -2979,7 +3777,17 @@ function updateVortices(dt, W, H, intensity){
  * Devuelve false si debe usar la caída normal (la maneja drawWeatherParticles).
  */
 function stepWeatherParticle(d, dt, intensity, W, H){
-  // ---- Buscar el vórtice dominante (el de mayor falloff) ----
+  // ⬅️ Biomas sin vórtices: la partícula nunca se engancha
+  if(!currentBiome.hasVortices){
+    if(d.attachedVortex !== null){
+      d.attachedVortex = null;
+      d.consumeClock = 0;
+      d.consumeTime = 0;
+    }
+    return false;
+  }
+
+  // ---- Buscar el vórtice dominante ----
   let bestV = null, bestFalloff = 0;
   if(vortices.list.length){
     const px = d.x * W, py = d.y * H;
@@ -7273,17 +8081,27 @@ function wireDebugWorld(){
   // Bioma
   document.querySelectorAll('#dbgBiome .cfgOpt').forEach(b => {
     b.onclick = () => {
-      const v = b.dataset.v;
-      const id = v === 'random'
-        ? BIOME_KEYS[Math.floor(Math.random() * BIOME_KEYS.length)]
-        : v;
-      currentBiome = BIOMES[id];
-      pendingBiome = id;
-      generateTerrain();
-      if(boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
-      toast(`${currentBiome.icon} ${currentBiome.name}`, '#c080ff');
-      renderDebugTab('world');
-    };
+	  const v = b.dataset.v;
+	  const id = v === 'random'
+		? BIOME_KEYS[Math.floor(Math.random() * BIOME_KEYS.length)]
+		: v;
+	  currentBiome = BIOMES[id];
+	  pendingBiome = id;
+
+	  // ⬅️ Limpiar vórtices al instante
+	  vortices.list.length = 0;
+	  vortices.targetCount = 0;
+	  for(const d of rainDrops){
+		d.attachedVortex = null;
+		d.consumeClock = 0;
+		d.consumeTime = 0;
+	  }
+
+	  generateTerrain();
+	  if(boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
+	  toast(`${currentBiome.icon} ${currentBiome.name}`, '#c080ff');
+	  renderDebugTab('world');
+	};
   });
   // Sliders
   const rain = $('#dbgRain');
@@ -8446,6 +9264,53 @@ function drawFpsOverlay(W, H){
   fpsCtx.restore();
 }
 
+function drawWaterLayer(W, H, t){
+  if(!waterLayerOffscreen || !waterMaskOffscreen || !waterPattern) return;
+  const wctx = waterLayerCtx;
+  if(!wctx) return;
+
+  const mode = currentBiome.water.mode;
+
+  // Velocidad de scroll según el bioma
+  let sx, sy;
+  if(mode === 'lava'){
+    sx = t * 10;  sy = t * 4;
+  } else if(mode === 'ice'){
+    sx = t * 3;   sy = t * 1;
+  } else {
+    sx = t * 22;  sy = t * 9;
+  }
+
+  // 1. Limpiar
+  wctx.clearRect(0, 0, W, H);
+
+  // 2. Rellenar con el patrón desplazado (módulo PSIZE para no alejarse infinito)
+  const PSIZE = 256;
+  wctx.save();
+  wctx.translate(-(sx % PSIZE), -(sy % PSIZE));
+  wctx.fillStyle = waterPattern;
+  wctx.fillRect(0, 0, W + PSIZE, H + PSIZE);
+  wctx.restore();
+
+  // 3. Recortar con la máscara
+  wctx.globalCompositeOperation = 'destination-in';
+  wctx.drawImage(waterMaskOffscreen, 0, 0, W, H);
+  wctx.globalCompositeOperation = 'source-over';
+
+  // 4. Dibujar sobre el tablero
+  ctx.save();
+  if(mode === 'lava'){
+    ctx.globalAlpha = 0.55;
+    ctx.globalCompositeOperation = 'lighter';
+  } else if(mode === 'ice'){
+    ctx.globalAlpha = 0.35;
+  } else {
+    ctx.globalAlpha = 0.50;
+  }
+  ctx.drawImage(waterLayerOffscreen, 0, 0, W, H);
+  ctx.restore();
+}
+
 function drawWeatherParticles(W, H, dt){
   const q = getRainScale();
   if(q <= 0) return;
@@ -8671,6 +9536,9 @@ function loop(now){
   if(terrainOffscreen) ctx.drawImage(terrainOffscreen, 0, 0, W, H);
   else { ctx.fillStyle = '#1a2418'; ctx.fillRect(0,0,W,H); }
 
+	// ⬇️ NUEVO: agua animada sobre el terreno
+  if(dt > 0) drawWaterLayer(W, H, now / 1000);
+
   drawBoardGrid(W, H);
 
   const ph = getPhase();
@@ -8763,6 +9631,9 @@ function loop(now){
   }
   ctx.restore();
   drawWeatherParticles(W, H, dt);
+  // Vida ambiental
+  if(dt > 0) updateAmbientLife(dt);
+  drawAmbientLife(W, H);
   // VIÑETA
   const vg = ctx.createRadialGradient(W/2, H/2, H*0.32, W/2, H/2, H*0.78);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
@@ -9264,7 +10135,9 @@ function boot(){
   }
 
   buildGrid();
+  buildSprites();
   generateTerrain();
+  
   updateSoundButton();
   setupDecks(['ray','shield','teleport'], ['ray','shield','teleport']);
   requestAnimationFrame(() => {
