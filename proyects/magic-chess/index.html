@@ -1955,6 +1955,56 @@ const sprites = {
   snowDrift: null
 };
 
+const spriteCache = {
+  firefly: {},   // { biomeId: canvas 24×24 }
+  fog: {},       // { biomeId: canvas 256×256 }
+  gridV: null,   // tira vertical con gradiente
+  gridH: null,   // tira horizontal con gradiente
+  gridCross: null,
+  gridCellGlow: null,
+  gridKey: ''    // WxH|stops|quality  — para invalidar
+};
+
+function getFireflySprite(biomeId){
+  if(spriteCache.firefly[biomeId]) return spriteCache.firefly[biomeId];
+  const FF = BIOMES[biomeId]?.firefly;
+  if(!FF || FF.mode === 'none'){
+    spriteCache.firefly[biomeId] = null;
+    return null;
+  }
+  const SIZE = 24;
+  const c = document.createElement('canvas');
+  c.width = c.height = SIZE;
+  const cx = c.getContext('2d');
+  const h = SIZE / 2;
+  const g = cx.createRadialGradient(h, h, 0, h, h, h);
+  g.addColorStop(0,    `rgba(${FF.core[0]},${FF.core[1]},${FF.core[2]},1)`);
+  g.addColorStop(0.35, `rgba(${FF.mid[0]},${FF.mid[1]},${FF.mid[2]},0.65)`);
+  g.addColorStop(1,    `rgba(${FF.edge[0]},${FF.edge[1]},${FF.edge[2]},0)`);
+  cx.fillStyle = g;
+  cx.fillRect(0, 0, SIZE, SIZE);
+  spriteCache.firefly[biomeId] = c;
+  return c;
+}
+
+function getFogSprite(biomeId){
+  if(spriteCache.fog[biomeId]) return spriteCache.fog[biomeId];
+  const F = BIOMES[biomeId]?.fog;
+  if(!F){ spriteCache.fog[biomeId] = null; return null; }
+  const SIZE = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = SIZE;
+  const cx = c.getContext('2d');
+  const h = SIZE / 2;
+  const g = cx.createRadialGradient(h, h, 0, h, h, h);
+  g.addColorStop(0, `rgba(${F.r},${F.g},${F.b},1)`);
+  g.addColorStop(1, `rgba(${F.r},${F.g},${F.b},0)`);
+  cx.fillStyle = g;
+  cx.fillRect(0, 0, SIZE, SIZE);
+  spriteCache.fog[biomeId] = c;
+  return c;
+}
+
 function buildSprites(){
 
   // ---------- HOJAS ----------
@@ -4130,6 +4180,7 @@ function updateWeather(dt){
   }
   rainAmt = lerp(rainAmt, rainTarget, dt * weatherTransitionSpeed);
 }
+
 const fogBlobs = [];
 for(let i=0;i<7;i++){
   fogBlobs.push({ x: Math.random(), y: Math.random()*0.75 + 0.15,
@@ -4166,6 +4217,99 @@ function visualRCToSquare(r, c){
 function squareCenter(sq){ 
   const {r,c} = sqToVisualRC(sq); 
   return { x: (c+0.5)*cellSize, y: (r+0.5)*cellSize }; 
+}
+
+function buildGridSprites(W, H, lw, stops){
+  // ---------- Tira VERTICAL ----------
+  const wV = Math.max(2, Math.ceil(lw) + 2);
+  const cV = document.createElement('canvas');
+  cV.width = wV; cV.height = H;
+  const cxV = cV.getContext('2d');
+  const gradV = cxV.createLinearGradient(0, 0, 0, H);
+  const waveWidth = 0.14;
+  const echoWidth = 0.22;
+  const baseA = 0.040, peakA = 0.46, echoPeakA = 0.14;
+  for(let s = 0; s <= stops; s++){
+    const f = s / stops;
+    const d = f - 0.5;
+    const b = Math.exp(-(d*d)/(waveWidth*waveWidth));
+    const de = d + 0.11;
+    const e = Math.exp(-(de*de)/(echoWidth*echoWidth));
+    const a = Math.min(0.78, baseA + b * (peakA - baseA) + e * echoPeakA);
+    const r = Math.round(220 + b * 35);
+    const g = Math.round(232 + b * 20);
+    const bl = Math.round(255 - b * 55);
+    gradV.addColorStop(f, `rgba(${r},${g},${bl},${a})`);
+  }
+  cxV.strokeStyle = gradV;
+  cxV.lineWidth = lw;
+  cxV.lineCap = 'round';
+  cxV.beginPath();
+  cxV.moveTo(wV/2, 0);
+  cxV.lineTo(wV/2, H);
+  cxV.stroke();
+
+  // ---------- Tira HORIZONTAL ----------
+  const hH = Math.max(2, Math.ceil(lw) + 2);
+  const cH = document.createElement('canvas');
+  cH.width = W; cH.height = hH;
+  const cxH = cH.getContext('2d');
+  const gradH = cxH.createLinearGradient(0, 0, W, 0);
+  for(let s = 0; s <= stops; s++){
+    const f = s / stops;
+    const d = f - 0.5;
+    const b = Math.exp(-(d*d)/(waveWidth*waveWidth));
+    const de = d + 0.11;
+    const e = Math.exp(-(de*de)/(echoWidth*echoWidth));
+    const a = Math.min(0.78, baseA + b * (peakA - baseA) + e * echoPeakA);
+    const r = Math.round(220 + b * 35);
+    const g = Math.round(232 + b * 20);
+    const bl = Math.round(255 - b * 55);
+    gradH.addColorStop(f, `rgba(${r},${g},${bl},${a})`);
+  }
+  cxH.strokeStyle = gradH;
+  cxH.lineWidth = lw;
+  cxH.lineCap = 'round';
+  cxH.beginPath();
+  cxH.moveTo(0, hH/2);
+  cxH.lineTo(W, hH/2);
+  cxH.stroke();
+
+  // ---------- Cruce ----------
+  const CSIZE = 32;
+  const cC = document.createElement('canvas');
+  cC.width = cC.height = CSIZE;
+  const cxC = cC.getContext('2d');
+  const hC = CSIZE / 2;
+  const gC = cxC.createRadialGradient(hC, hC, 0, hC, hC, hC);
+  gC.addColorStop(0, 'rgba(255,252,232,1)');
+  gC.addColorStop(1, 'rgba(255,252,232,0)');
+  cxC.fillStyle = gC;
+  cxC.fillRect(0, 0, CSIZE, CSIZE);
+
+  // ---------- Cell glow ----------
+  const GSIZE = 64;
+  const cG = document.createElement('canvas');
+  cG.width = cG.height = GSIZE;
+  const cxG = cG.getContext('2d');
+  const hG = GSIZE / 2;
+  const gG = cxG.createRadialGradient(hG, hG, 0, hG, hG, hG);
+  gG.addColorStop(0, 'rgba(255,245,210,1)');
+  gG.addColorStop(1, 'rgba(255,245,210,0)');
+  cxG.fillStyle = gG;
+  cxG.fillRect(0, 0, GSIZE, GSIZE);
+
+  spriteCache.gridV = cV;
+  spriteCache.gridH = cH;
+  spriteCache.gridCross = cC;
+  spriteCache.gridCellGlow = cG;
+}
+
+function ensureGridSprites(W, H, lw, stops){
+  const key = `${W}x${H}|${lw.toFixed(2)}|${stops}`;
+  if(spriteCache.gridKey === key) return;
+  buildGridSprites(W, H, lw, stops);
+  spriteCache.gridKey = key;
 }
 
 function buildGrid(){
@@ -9124,112 +9268,93 @@ function drawGridRadial(W, H, phase){
   const lw = Math.max(1, W / 480);
   const stops = q.gridStops;
 
-  const wrapDist = (fase) => {
-    let d = fase - phase;
-    if(d < -0.5) d += 1;
-    if(d >  0.5) d -= 1;
-    return d;
-  };
-  const waveWidth = 0.14;
-  const waveAmp = (fase) => {
-    const d = wrapDist(fase);
-    return Math.exp(-(d * d) / (waveWidth * waveWidth));
-  };
-  const echoWidth = 0.22;
-  const echoAmp = (fase) => {
-    const d = wrapDist(fase + 0.11);
-    return Math.exp(-(d * d) / (echoWidth * echoWidth));
-  };
+  ensureGridSprites(W, H, lw, stops);
 
-  const baseA = 0.040, peakA = 0.46, echoPeakA = 0.14;
-  const rgbAt = (b) => ({
-    r: Math.round(220 + b * 35),
-    g: Math.round(232 + b * 20),
-    bl: Math.round(255 - b * 55)
-  });
-  const alphaAt = (fase) => {
-    const b = waveAmp(fase);
-    const e = echoAmp(fase);
-    return Math.min(0.78, baseA + b * (peakA - baseA) + e * echoPeakA);
-  };
+  const spriteV = spriteCache.gridV;
+  const spriteH = spriteCache.gridH;
+  const spriteCross = spriteCache.gridCross;
+  const spriteGlow = spriteCache.gridCellGlow;
 
-  // ---- Líneas verticales y horizontales con gradiente ----
+  // ⬇️ OFFSET: en el sprite, la gaussiana está centrada en el medio.
+  //    Para la línea `i`, el pico real está en f_peak = 2*(phase - i/16).
+  //    La posición Y del pico es f_peak * H. El sprite tiene el pico en H/2.
+  //    Entonces hay que dibujarlo con topY = f_peak * H - H/2.
+  //    Si se sale por arriba o por abajo, lo repetimos con wrap.
+
   ctx.save();
-  ctx.lineWidth = lw;
   ctx.lineCap = 'round';
 
+  // ---- Líneas verticales ----
   for(let i = 0; i <= 8; i++){
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    for(let s = 0; s <= stops; s++){
-      const f = s / stops;
-      const fase = i / 16 + f * 0.5;
-      const c = rgbAt(waveAmp(fase));
-      grad.addColorStop(f, `rgba(${c.r},${c.g},${c.bl},${alphaAt(fase)})`);
-    }
-    ctx.strokeStyle = grad;
-    ctx.beginPath();
-    ctx.moveTo(i * step + lw * 0.5, 0);
-    ctx.lineTo(i * step + lw * 0.5, H);
-    ctx.stroke();
+    const fPeak = 2 * (phase - i/16);
+    const centerY = fPeak * H;
+    const topY = centerY - H/2;
+    const xPos = i * step + lw * 0.5 - spriteV.width / 2;
+    ctx.drawImage(spriteV, xPos, topY);
+    // Wrap: si topY < 0, dibujar también abajo (+H)
+    if(topY < 0) ctx.drawImage(spriteV, xPos, topY + H);
+    // Wrap: si topY + H > H (o sea topY > 0), dibujar también arriba (-H)
+    if(topY > 0) ctx.drawImage(spriteV, xPos, topY - H);
   }
+
+  // ---- Líneas horizontales ----
   for(let i = 0; i <= 8; i++){
-    const grad = ctx.createLinearGradient(0, 0, W, 0);
-    for(let s = 0; s <= stops; s++){
-      const f = s / stops;
-      const fase = i / 16 + f * 0.5;
-      const c = rgbAt(waveAmp(fase));
-      grad.addColorStop(f, `rgba(${c.r},${c.g},${c.bl},${alphaAt(fase)})`);
-    }
-    ctx.strokeStyle = grad;
-    ctx.beginPath();
-    ctx.moveTo(0, i * step + lw * 0.5);
-    ctx.lineTo(W, i * step + lw * 0.5);
-    ctx.stroke();
+    const fPeak = 2 * (phase - i/16);
+    const centerX = fPeak * W;
+    const leftX = centerX - W/2;
+    const yPos = i * step + lw * 0.5 - spriteH.height / 2;
+    ctx.drawImage(spriteH, leftX, yPos);
+    if(leftX < 0) ctx.drawImage(spriteH, leftX + W, yPos);
+    if(leftX > 0) ctx.drawImage(spriteH, leftX - W, yPos);
   }
+
   ctx.restore();
 
-  // ---- Cruces radiales (subsampleados según q.crossings) ----
+  // ---- Cruces radiales (subsampleadas según q.crossings) ----
   const N = q.crossings;
-  if(N > 0){
+  if(N > 0 && spriteCross){
+    const SIZE = 32;
+    const half = SIZE / 2;
+    const radius = lw * 2.4;
     for(let i = 0; i < N; i++){
       const fi = N > 1 ? i / (N - 1) : 0.5;
       const px = fi * W;
       for(let j = 0; j < N; j++){
         const fj = N > 1 ? j / (N - 1) : 0.5;
         const py = fj * H;
-
-        // Mapear al sistema de fase original (0..1 en cada eje, /16 como antes)
-        const phaseIndex = (fi * 8 + fj * 8) / 16;
-        const b = waveAmp(phaseIndex);
+        // Recalcular b directamente (evitamos waveAmp para no crear funciones)
+        // Equivale a lo que hacía waveAmp en el código original
+        let d = (i / 16 + j / 16) - phase;
+        if(d < -0.5) d += 1; if(d > 0.5) d -= 1;
+        const b = Math.exp(-(d*d)/(0.14*0.14));
         if(b < 0.55) continue;
-
         const a = (b - 0.55) / 0.45 * 0.85;
-        const r = lw * 2.4;
-        const g = ctx.createRadialGradient(px, py, 0, px, py, r);
-        g.addColorStop(0, `rgba(255,252,232,${a})`);
-        g.addColorStop(1, 'rgba(255,252,232,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
+        ctx.globalAlpha = a;
+        ctx.drawImage(spriteCross, px - radius, py - radius, radius*2, radius*2);
       }
     }
+    ctx.globalAlpha = 1;
   }
 
   // ---- Cell glow (solo en high/medium) ----
-  if(q.cellGlow){
+  if(q.cellGlow && spriteGlow){
     ctx.globalCompositeOperation = 'lighter';
+    const SIZE = 64;
+    const half = SIZE / 2;
+    const radius = step * 0.7;
     for(let r = 0; r < 8; r++){
       for(let c = 0; c < 8; c++){
-        const b = waveAmp((r + c + 1) / 16);
+        let d = ((r + c + 1) / 16) - phase;
+        if(d < -0.5) d += 1; if(d > 0.5) d -= 1;
+        const b = Math.exp(-(d*d)/(0.14*0.14));
         if(b < 0.4) continue;
         const a = (b - 0.4) / 0.6 * 0.16;
         const cx = (c + 0.5) * step, cy = (r + 0.5) * step;
-        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, step * 0.7);
-        g.addColorStop(0, `rgba(255,245,210,${a})`);
-        g.addColorStop(1, 'rgba(255,245,210,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(c * step, r * step, step, step);
+        ctx.globalAlpha = a;
+        ctx.drawImage(spriteGlow, cx - radius, cy - radius, radius*2, radius*2);
       }
     }
+    ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
   }
 }
@@ -9911,52 +10036,59 @@ function loop(now){
       ctx.fillRect(0, 0, W, H);
     }
 
-
+	// LUCIÉRNAGAS
     const inten = clamp((ph.dark - 0.08) / 0.20, 0, 1);
-    if(currentQuality().fireflies && currentBiome.hasFireflies && currentBiome.firefly.mode !== 'none'){
-      const FF = currentBiome.firefly;
-      const isRise = FF.mode === 'rise';
-      for(const f of terr.fireflies){
-        f.t += dt * f.spd;
-        const px = (f.x + Math.sin(f.t*0.7 + f.phase)*f.ax) * W;
-        let py;
-        if(isRise){
-          const yy = ((f.y - f.t * 0.10) % 1 + 1) % 1;
-          py = yy * H;
-        } else {
-          py = (f.y + Math.cos(f.t*0.5 + f.phase*1.3)*f.ay) * H;
-        }
-        const blink = (Math.sin(f.t*3.2 + f.phase)*0.5 + 0.5);
-        const a = blink * inten * (isRise ? 0.85 : 1.0);
-        if(a < 0.05) continue;
-        ctx.globalAlpha = a;
-        const g = ctx.createRadialGradient(px, py, 0, px, py, 9);
-        g.addColorStop(0,    `rgba(${FF.core[0]},${FF.core[1]},${FF.core[2]},1)`);
-        g.addColorStop(0.35, `rgba(${FF.mid[0]},${FF.mid[1]},${FF.mid[2]},0.65)`);
-        g.addColorStop(1,    `rgba(${FF.edge[0]},${FF.edge[1]},${FF.edge[2]},0)`);
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(px, py, 9, 0, 6.2832); ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-    }
+	if(currentQuality().fireflies && currentBiome.hasFireflies && currentBiome.firefly.mode !== 'none'){
+	  const FF = currentBiome.firefly;
+	  const isRise = FF.mode === 'rise';
+	  const sprite = getFireflySprite(currentBiome.id);
+	  if(sprite){
+		const HALF = 12;
+		for(const f of terr.fireflies){
+		  f.t += dt * f.spd;
+		  const px = (f.x + Math.sin(f.t*0.7 + f.phase)*f.ax) * W;
+		  let py;
+		  if(isRise){
+			const yy = ((f.y - f.t * 0.10) % 1 + 1) % 1;
+			py = yy * H;
+		  } else {
+			py = (f.y + Math.cos(f.t*0.5 + f.phase*1.3)*f.ay) * H;
+		  }
+		  const blink = (Math.sin(f.t*3.2 + f.phase)*0.5 + 0.5);
+		  const a = blink * inten * (isRise ? 0.85 : 1.0);
+		  if(a < 0.05) continue;
+		  ctx.globalAlpha = a;
+		  // ⬇️ drawImage en vez de createRadialGradient + arc + fill
+		  ctx.drawImage(sprite, px - HALF, py - HALF, HALF*2, HALF*2);
+		}
+		ctx.globalAlpha = 1;
+	  }
+	}
   }
   ctx.save();
-  for(const f of fogBlobs){
-    f.x += f.spd * dt;
-    if(f.x > 1.3) f.x = -0.3;
-    if(f.x < -0.3) f.x = 1.3;
-    const px = f.x * W;
-    const py = (f.y + Math.sin(now*0.0002 + f.ph)*0.03) * H;
-    const pr = f.r * W;
-    const g = ctx.createRadialGradient(px, py, 0, px, py, pr);
-    const alpha = f.a * (1 + Math.sin(now*0.0004 + f.ph)*0.25);
-    const F = currentBiome.fog;
-    g.addColorStop(0, `rgba(${F.r},${F.g},${F.b},${alpha})`);
-    g.addColorStop(1, `rgba(${F.r},${F.g},${F.b},0)`);
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.ellipse(px, py, pr, pr*0.55, 0, 0, 6.2832); ctx.fill();
-  }
-  ctx.restore();
+  
+	const fogSprite = getFogSprite(currentBiome.id);
+	if(fogSprite){
+	  for(const f of fogBlobs){
+		f.x += f.spd * dt;
+		if(f.x > 1.3) f.x = -0.3;
+		if(f.x < -0.3) f.x = 1.3;
+		const px = f.x * W;
+		const py = (f.y + Math.sin(now*0.0002 + f.ph)*0.03) * H;
+		const pr = f.r * W;
+		const alpha = f.a * (1 + Math.sin(now*0.0004 + f.ph)*0.25);
+		ctx.globalAlpha = alpha;
+		// ⬇️ drawImage con escala no uniforme (ellipse)
+		ctx.drawImage(
+		  fogSprite,
+		  px - pr, py - pr * 0.55,
+		  pr * 2, pr * 1.1
+		);
+	  }
+	}
+	ctx.restore();
+	ctx.globalAlpha = 1;
+  
   drawWeatherParticles(W, H, dt);
   // Vida ambiental
   if(dt > 0) updateAmbientLife(dt);
