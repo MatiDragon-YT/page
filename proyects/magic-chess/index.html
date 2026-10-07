@@ -1016,6 +1016,8 @@ function setDebugMode(on){
    ========================================================= */
 let actx = null;
 let masterGain = null;
+let uiGain = null;
+
 function initAudio(){
   if(actx){
     if(actx.state === 'suspended') {
@@ -1028,12 +1030,32 @@ function initAudio(){
     masterGain = actx.createGain();
     masterGain.gain.value = soundEnabled ? 1 : 0;
     masterGain.connect(actx.destination);
+	
+    uiGain = actx.createGain();
+    uiGain.gain.value = soundEnabled ? 1 : 0;
+    uiGain.connect(actx.destination);
+	
     initAmbience();
     // *** FIX: despertar el contexto apenas se crea ***
     if(actx.state === 'suspended') {
       actx.resume().catch(()=>{});
     }
   } catch(e){}
+  
+  document.addEventListener('pointerdown', (e) => {
+	  const btn = e.target.closest(
+		'.pbtn, .abtn, .mbtn, .cfgOpt, .topBtn, .draftCard, .debugBtn, .matchItem .acts button'
+	  );
+	  if(!btn) return;
+	  if(btn.classList.contains('dis') || btn.disabled) return;
+
+	  // *** Clave: forzar initAudio ANTES de sonar. En el primer click, wakeAudio
+	  //     todavía no corrió porque este listener está en capture phase. ***
+	  initAudio();
+
+	  // Sonido
+	  sfx('ui-click');
+	}, true);
 }
 
 document.addEventListener('pointerdown', function wakeAudio(){
@@ -1941,17 +1963,18 @@ function playThunder(intensity, distance){
   ts.start(t0 + tailDelay);
 }
 
-function tone(freq, dur, type='sine', vol=0.06, slide=0){
+function tone(freq, dur, type='sine', vol=0.06, slide=0, bus=null){
   if(!actx || !soundEnabled) return;
   const o = actx.createOscillator(), g = actx.createGain();
   o.type = type; o.frequency.setValueAtTime(freq, actx.currentTime);
   if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(40,freq+slide), actx.currentTime+dur);
   g.gain.setValueAtTime(vol, actx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+dur);
-  o.connect(g); g.connect(masterGain);
+  o.connect(g); g.connect(bus || masterGain);   // ⬅️ cambio acá
   o.start(); o.stop(actx.currentTime+dur);
 }
-function noiseBurst(dur, vol=0.05, filterFreq=1200){
+
+function noiseBurst(dur, vol=0.05, filterFreq=1200, bus=null){
   if(!actx || !soundEnabled) return;
   const n = Math.floor(actx.sampleRate * dur);
   const buf = actx.createBuffer(1, n, actx.sampleRate);
@@ -1960,8 +1983,10 @@ function noiseBurst(dur, vol=0.05, filterFreq=1200){
   const src = actx.createBufferSource(); src.buffer = buf;
   const f = actx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=filterFreq;
   const g = actx.createGain(); g.gain.value = vol;
-  src.connect(f); f.connect(g); g.connect(masterGain); src.start();
+  src.connect(f); f.connect(g); g.connect(bus || masterGain);   // ⬅️ cambio acá
+  src.start();
 }
+
 function sfx(kind){
   if(!actx) return;
   switch(kind){
@@ -1979,6 +2004,97 @@ function sfx(kind){
     case 'ach': [659,880,1174].forEach((f,i)=>setTimeout(()=>tone(f,.25,'sine',.07),i*90)); break;
     case 'undo': tone(340,.18,'triangle',.05,-80); tone(220,.22,'sine',.04,-60); break;
     case 'timeout': [330,262,196].forEach((f,i)=>setTimeout(()=>tone(f,.35,'sawtooth',.06,-40),i*130)); break;
+	case 'check': 
+	  tone(880, .18, 'square', .05, -180); 
+	  tone(660, .22, 'square', .035, -120); 
+	  break;
+	case 'deny':
+	  tone(180, .12, 'square', .04, -30); 
+	  tone(140, .16, 'square', .035, -20); 
+	  break;
+	case 'win':
+	  // Fanfarria ascendente, brillante
+	  [523,659,784,1047,1319].forEach((f,i)=>
+		setTimeout(()=>tone(f,.35,'triangle',.06,20), i*110));
+	  break;
+	case 'lose':
+	  // Descendente, apagada
+	  [523,440,349,262,196].forEach((f,i)=>
+		setTimeout(()=>tone(f,.4,'sawtooth',.05,-30), i*130));
+	  break;
+	case 'ui-click':      tone(1900, .025, 'triangle', .018, -500, uiGain); break;
+	case 'modal-open':    tone(700, .10, 'sine', .035, 180, uiGain); break;
+	case 'modal-close':   tone(500, .10, 'sine', .030, -140, uiGain); break;
+	case 'deny':          
+	  tone(180, .12, 'square', .04, -30, uiGain); 
+	  tone(140, .16, 'square', .035, -20, uiGain); 
+	  break;
+	case 'select':        tone(1400, .04, 'triangle', .022, -300, uiGain); break;
+	case 'cycle':         tone(1200, .05, 'sine', .03, 400, uiGain); break;
+	case 'shield-break':
+	  // Cristal rompiéndose: ruido agudo + tonos descendentes disonantes
+	  noiseBurst(.22, .10, 4500);
+	  noiseBurst(.35, .07, 2800);
+	  tone(1200, .18, 'triangle', .05, -600);
+	  tone(900, .25, 'triangle', .04, -500);
+	  tone(600, .30, 'sine', .03, -300);
+	  break;
+	case 'shield-cancel':
+	  // Apagado, se desvanece — no es un evento dramático
+	  tone(600, .15, 'sine', .035, -200);
+	  tone(400, .20, 'triangle', .025, -120);
+	  break;
+	case 'enroque':
+	  // Dos golpes secos: rey + torre
+	  tone(280, .08, 'triangle', .05, -40);
+	  setTimeout(() => tone(320, .10, 'triangle', .05, -60), 90);
+	  break;
+	case 'ep-capture':
+	  // Captura al paso: impacto + silbido corto del peón que se desvanece
+	  noiseBurst(.16, .08, 2600);
+	  tone(180, .14, 'square', .04, -90);
+	  tone(1400, .08, 'sine', .025, -800);
+	  break;
+	case 'mana':
+	  // Blip cristalino ascendente
+	  tone(1400, .07, 'sine', .04, 500);
+	  tone(2100, .06, 'sine', .025, 300);
+	  break;
+	case 'ira-charge':
+	  // Power-up: sweep ascendente con armónico — distinto de 'ira' (que es la ejecución)
+	  tone(180, .55, 'sawtooth', .05, 500);
+	  tone(270, .50, 'triangle', .04, 700);
+	  noiseBurst(.4, .03, 3500);
+	  break;
+	case 'ira-blocked':
+	  // Impacto metálico grave + cristal rompiéndose, más dramático que shield-break
+	  noiseBurst(.3, .12, 2000);
+	  tone(160, .35, 'sawtooth', .06, -80);
+	  tone(800, .25, 'triangle', .05, -500);
+	  tone(500, .30, 'sine', .04, -300);
+	  break;
+	case 'cycle':
+	  // Whoosh sutil de carta rotando
+	  noiseBurst(.18, .04, 5000);
+	  tone(800, .12, 'sine', .025, 300);
+	  break;
+	case 'draft-pick':
+	  // "Pling" cristalino, satisfactorio
+	  tone(880, .12, 'sine', .05, 400);
+	  tone(1320, .10, 'sine', .035, 200);
+	  break;
+	case 'draft-done':
+	  // Acorde ascendente corto (3 notas)
+	  [659, 880, 1174].forEach((f,i)=>setTimeout(()=>tone(f,.22,'sine',.05,80),i*80));
+	  break;
+	case 'game-start':
+	  // Fanfarria corta, épica
+	  [392, 523, 659, 784].forEach((f,i)=>setTimeout(()=>tone(f,.30,'triangle',.05,40),i*140));
+	  break;
+	case 'timeout-warn':
+	  // Tick seco e insistente
+	  tone(880, .06, 'square', .05, -100);
+	  break;
   }
 }
 
@@ -2335,6 +2451,7 @@ function cycleCard(color, key){
   const drawn = deck.queue.shift();
   deck.queue.push(key);
   deck.hand.push(drawn);
+  sfx('cycle');
 }
 
 /* =========================================================
@@ -5607,9 +5724,11 @@ function showDraftModal(color){
         else {
           if(picks.size >= 3) return;
           picks.add(key); card.classList.add('picked');
+		  sfx('draft-pick');
         }
         counter.textContent = `${picks.size} / 3 seleccionadas`;
-        if(picks.size === 3){			
+        if(picks.size === 3){
+			sfx('draft-done');			
 			// ⬇️ Cerrar el tooltip YA, sin esperar el setTimeout
 			  hidePowerTooltip();
 
@@ -5865,14 +5984,28 @@ function stopTimer(){
 function tickTimer(){
   if(!gameTimer.running || state.paused || state.gameOver || replay.active) return;
   const turn = chess.turn();
+  const before = turn === 'w' ? gameTimer.w : gameTimer.b;
   if(turn === 'w') gameTimer.w = Math.max(0, gameTimer.w - 0.1);
   else gameTimer.b = Math.max(0, gameTimer.b - 0.1);
+  const after = turn === 'w' ? gameTimer.w : gameTimer.b;
+
+  // ⬇️ NUEVO: aviso sonoro cada segundo cuando queda <= 10s
+  if(after > 0 && after <= 10){
+    if(Math.ceil(after) !== Math.ceil(before)){
+      sfx('timeout-warn');
+      if(after <= 3 && navigator.vibrate){
+        try { navigator.vibrate(20); } catch(e){}
+      }
+    }
+  }
+
   updateClocks();
   if(gameTimer.w <= 0 || gameTimer.b <= 0){
     stopTimer();
     handleTimeout(gameTimer.w <= 0 ? 'w' : 'b');
   }
 }
+
 function updateClocks(){
   const cw = $('#clockW'), cb = $('#clockB');
   if(!gameTimer.enabled){ cw.classList.add('hidden'); cb.classList.add('hidden'); return; }
@@ -6266,7 +6399,10 @@ function checkGameEnd(){
     vibrate([80, 80, 80, 80, 220]);
     saveCurrentMatch(winnerName, winner);
     setTimeout(async () => {
-      const achList = renderAchSummary();
+	  const humanWins = (winner === humanColor);
+	  sfx(humanWins ? 'win' : 'lose');
+      
+	  const achList = renderAchSummary();
       const choice = await showModal('¡Jaque Mate!',
         `<div style="margin-bottom:10px">Las ${winnerName} ganan la partida.</div>${achList}`,
         [ { label:'🔄 Ver repetición', value:'replay', cls:'replay' },
@@ -6429,7 +6565,7 @@ async function doPlayerMove(mv){
       const c = squareCenter(capturedSquare);
       ripples.push({ x:c.x, y:c.y, r:2, maxR: cellSize*1.7, life:.65, maxLife:.65, color:'180,220,255' });
       burst(c.x, c.y, 34, { color:'#c8e0ff', spMin:60, spMax:220, lifeMin:.25, lifeMax:.6, sizeMin:1, sizeMax:3, shape:'tri' });
-      sfx('shield');
+      sfx('shield-break');
       toast('💥 ¡El escudo se rompe! El ataque pasa.', '#ff8080');
       // ⬅️ NO return: el movimiento sigue normal y captura
     } else {
@@ -6506,6 +6642,7 @@ if(!moveResult){ state.busy = false; return; }
 
   if(state.shields[turn].includes(mv.from)){
     removeShield(turn, mv.from);
+	sfx('shield-cancel');
     toast('🛡️ Escudo cancelado al mover la pieza', '#7ac0ff');
   }
   if(capturedSquare){
@@ -6519,8 +6656,14 @@ if(!moveResult){ state.busy = false; return; }
   }
 }
 
-  sfx(moveResult.captured ? 'capture' : 'move');
-  await animateMove(mv.from, mv.to, capturedSquare);
+  const isCastle    = moveResult.flags && (moveResult.flags.includes('k') || moveResult.flags.includes('q'));
+	const isEpCapture = mv.flags.includes('e');
+	if(isCastle)             sfx('enroque');
+	else if(isEpCapture)     sfx('ep-capture');
+	else if(moveResult.captured) sfx('capture');
+	else                     sfx('move');
+
+	await animateMove(mv.from, mv.to, capturedSquare);
 
   const didCapture = !!(moveResult.captured || mv.flags.includes('e'));
 
@@ -6559,9 +6702,12 @@ if(!moveResult){ state.busy = false; return; }
   });
 
   state.mana[turn] = Math.min(state.maxMana, state.mana[turn] + 1);
+  setTimeout(() => sfx('mana'), 60);
+  
   if(movingPiece && movingPiece.type === 'k' && didCapture){
     state.mana[turn] = Math.min(state.maxMana, state.mana[turn] + 1);
     toast('¡Rey cazador! +1 maná extra', '#ffd070');
+	setTimeout(() => sfx('mana'), 140);
   }
   if(movingPiece && isSpecial(movingPiece.type)){
     if(!state.iraCharge[turn]){
@@ -6570,7 +6716,7 @@ if(!moveResult){ state.busy = false; return; }
         state.specialCount[turn] = 0;
         state.iraCharge[turn] = true;
         toast('¡IRA DE BATALLA CARGADA!', '#ffa040');
-        sfx('ira');
+        sfx('ira-charge');
       }
     }
   }
@@ -6578,6 +6724,11 @@ if(!moveResult){ state.busy = false; return; }
   state.busy = false;
   syncPieces();
   updateUI();
+  
+  if(chess.in_check() && !chess.in_checkmate()){
+    toast('¡Jaque!', '#ff8080');
+    sfx('check');
+  }
 
   if(movingPiece && isSpecial(movingPiece.type) && didCapture && state.iraCharge[turn]){
   state.busy = true;
@@ -6651,7 +6802,7 @@ async function iraTargeting(fromSq, color){
     ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*2.0, life:.8, maxLife:.8, color:'180,220,255' });
     burst(C.x, C.y, 40, { color:'#c8e0ff', spMin:80, spMax:260, lifeMin:.3, lifeMax:.7, sizeMin:1, sizeMax:3.5, shape:'tri' });
     burst(C.x, C.y, 20, { color:'#8ecbff', spMin:30, spMax:140, lifeMin:.4, lifeMax:.9, sizeMin:2, sizeMax:5 });
-    sfx('shield');
+    sfx('ira-blocked');
     vibrate([40, 30, 80]);
     removeShield(targetPiece.color, targetSq);
     state.iraCharge[color] = false;
@@ -6782,7 +6933,7 @@ function startPower(key){
 }
 async function handleHealStart(turn){
   const pile = state.graveyard[turn];
-  if(!pile.length){ toast('No tienes piezas caídas para revivir', '#ff8080'); return; }
+  if(!pile.length){ toast('No tienes piezas caídas para revivir', '#ff8080'); sfx('deny'); return; }
   const counts = {};
   for(const t of pile) counts[t] = (counts[t] || 0) + 1;
   const entries = Object.entries(counts)
@@ -6803,14 +6954,15 @@ async function handleHealStart(turn){
   if(typeof chosenRaw === 'string' && chosenRaw.startsWith('__unaffordable_')){
     const t = chosenRaw.replace('__unaffordable_', '');
     toast(`Necesitas ${healCostFor(t)} maná para revivir esa pieza`, '#ff8080');
+	sfx('deny');
     return handleHealStart(turn);
   }
   const chosen = chosenRaw;
   const cost = healCostFor(chosen);
-  if(state.mana[turn] < cost){ toast('Maná insuficiente', '#ff8080'); return; }
+  if(state.mana[turn] < cost){ toast('Maná insuficiente', '#ff8080'); sfx('deny'); return; }
   if(!pile.includes(chosen)){ toast('Esa pieza ya no está en tu cementerio', '#ff8080'); return; }
   const empties = getAdjacentEmptySquares(turn);
-  if(!empties.length){ toast('No hay casillas vacías disponibles', '#ff8080'); return; }
+  if(!empties.length){ toast('No hay casillas vacías disponibles', '#ff8080'); sfx('deny'); return; }
   state.targeting = { key: 'heal', step: 2, target: 'heal',
     data: { type: chosen, emptySquares: empties, cost } };
   highlightTargeting(); updateUI();
@@ -6858,7 +7010,10 @@ function highlightTargeting(){
 		toast(`Destino (2/4/6 · maná: ${mana})`, '#7affa0');
 	  }
   } else if(T.key === 'shield'){
-    if(state.shields[turn].length > 0) toast('Ya tienes un escudo activo — solo uno a la vez', '#7ac0ff');
+    if(state.shields[turn].length > 0){
+		toast('Ya tienes un escudo activo — solo uno a la vez', '#7ac0ff');
+		sfx('deny');
+	}
     for(let r=0;r<8;r++) for(let c=0;c<8;c++){
       const p = board[r][c];
       if(p && p.color === turn){
@@ -6882,6 +7037,7 @@ function highlightTargeting(){
       cell.appendChild(tag);
     }
     toast(`Maná: ${mana} · Los objetivos oscuros no son alcanzables`, '#ff7070');
+	sfx('deny');
   } else if(T.key === 'zombie'){
     let any = false;
     for(let r=0;r<8;r++) for(let c=0;c<8;c++){
@@ -6894,8 +7050,14 @@ function highlightTargeting(){
         }
       }
     }
-    if(!any) toast('Sin enemigos adyacentes a un aliado', '#c07aff');
-    else toast('Selecciona un enemigo pegado a un aliado', '#c07aff');
+    if(!any) {
+		toast('Sin enemigos adyacentes a un aliado', '#c07aff');
+		sfx('deny');
+	}
+    else {
+		toast('Selecciona un enemigo pegado a un aliado', '#c07aff');
+		sfx('deny');
+	}
   } else if(T.key === 'heal' && T.step === 2){
     for(const sq of (T.data.emptySquares || [])){
       const el = gridEl.querySelector(`[data-sq="${sq}"]`);
@@ -7007,7 +7169,7 @@ async function handleTargetingClick(sq){
 	  // Validaciones defensivas por si el estado cambió desde el último highlight
 	  const from = T.data.from;
 	  const cost = entry.cost;
-	  if(cost > state.mana[turn]){ toast('Maná insuficiente', '#ff8080'); highlightTargeting(); return; }
+	  if(cost > state.mana[turn]){ toast('Maná insuficiente', '#ff8080'); sfx('deny'); highlightTargeting(); return; }
 	  if(simMoveLeavesKingInCheck(from, sq, turn)){
 		toast('¡Ese salto dejaría a tu Rey en Jaque!', '#ff8080');
 		highlightTargeting();
@@ -7041,7 +7203,7 @@ async function handleTargetingClick(sq){
   if(T.key === 'heal' && T.step === 2){
     if(piece) return;
     const type = T.data.type, cost = T.data.cost;
-    if(cost > state.mana[turn]){ toast('Maná insuficiente', '#ff8080'); return; }
+    if(cost > state.mana[turn]){ toast('Maná insuficiente', '#ff8080'); sfx('deny'); return; }
     state.targeting = null; clearHighlights();
     await execHeal(sq, type, turn, cost); return;
   }
@@ -7075,9 +7237,10 @@ async function execTeleport(from, to, cost){
     try { chess.load(parts.join(' '), { skipValidation: true }); } catch(e){}
   }
   if(state.shields[turn].includes(from)){
-  removeShield(turn, from);
-  toast('🛡️ Escudo cancelado al teletransportar', '#7ac0ff');
-}
+	  removeShield(turn, from);
+	  sfx('shield-cancel');
+	  toast('🛡️ Escudo cancelado al teletransportar', '#7ac0ff');
+	}
   validateAndFixBoard();
   const el2 = pieceEls.get(to);
   if(el2){ el2.style.opacity = '0'; el2.getBoundingClientRect(); el2.style.opacity = '1'; }
@@ -7468,7 +7631,10 @@ function finishPower(entry){
     if(entry.powerKey) cycleCard(entry.color, entry.powerKey);
     recordHistory(entry);
   }
-  if(chess.in_check()) toast('¡Jaque!', '#ff8080');
+  if(chess.in_check()){
+	  toast('¡Jaque!', '#ff8080');
+	  sfx('check'); 
+  }
   state.busy = false;
   endTurn();
 }
@@ -10116,6 +10282,7 @@ function newGame(){
   updateUI();
   startTimer();
   updateClocks();
+  setTimeout(() => sfx('game-start'), 700);
   
 	// Debug mode
 	setDebugMode(debugState.enabled);
@@ -11443,7 +11610,9 @@ $('#btnSound').onclick = () => {
     const target = (soundEnabled && !state.paused) ? 1 : 0;
     masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.08);
   }
-  // Solo suena el "ping" si activás el sonido Y no estás pausado
+  if(uiGain){
+    uiGain.gain.setTargetAtTime(soundEnabled ? 1 : 0, actx.currentTime, 0.08);
+  }
   if(soundEnabled && !state.paused) tone(660, .12, 'sine', .05, 200);
 };
 $('#btnConfig').onclick = () => {
