@@ -2916,6 +2916,7 @@ let waterLayerOffscreen = null;     // capa compuesta por frame
 let waterLayerCtx = null;
 let waterPatternCanvas = null;      // 256×256 tileable
 let waterPattern = null;            // createPattern result
+let waterBounds = { x: 0, y: 0, w: 0, h: 0 };
 
 function generateTerrain(){
   const N = TERR_N;
@@ -3367,20 +3368,48 @@ function buildWaterLayers(W, H){
   const mc = mask.getContext('2d');
   const cw = mask.width / N, ch = mask.height / N;
   mc.fillStyle = '#fff';
+
+  // ⬇️ Bounding box mientras pintamos la máscara
+  let minX = mask.width, minY = mask.height, maxX = 0, maxY = 0;
+  let hasWater = false;
+
   for(let y=0;y<N;y++){
     for(let x=0;x<N;x++){
       if(!water[y*N+x]) continue;
-      mc.fillRect(
-        Math.floor(x*cw),
-        Math.floor(y*ch),
-        Math.ceil(cw)+1,
-        Math.ceil(ch)+1
-      );
+      hasWater = true;
+      const px = Math.floor(x*cw);
+      const py = Math.floor(y*ch);
+      const pw = Math.ceil(cw)+1;
+      const ph = Math.ceil(ch)+1;
+      mc.fillRect(px, py, pw, ph);
+      if(px < minX) minX = px;
+      if(py < minY) minY = py;
+      if(px + pw > maxX) maxX = px + pw;
+      if(py + ph > maxY) maxY = py + ph;
     }
   }
   waterMaskOffscreen = mask;
 
-  // ---------- Capa compuesta (se regenera cada frame) ----------
+  if(!hasWater){
+    // Sin agua → nada que dibujar
+    waterLayerOffscreen = null;
+    waterLayerCtx = null;
+    waterPatternCanvas = null;
+    waterPattern = null;
+    waterBounds = { x: 0, y: 0, w: 0, h: 0 };
+    return;
+  }
+
+  // Añadimos un colchón por si el pattern shift queda al borde
+  const PAD = 4;
+  minX = Math.max(0, minX - PAD);
+  minY = Math.max(0, minY - PAD);
+  maxX = Math.min(mask.width, maxX + PAD);
+  maxY = Math.min(mask.height, maxY + PAD);
+
+  waterBounds = { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+
+  // ---------- Capa compuesta (mismo tamaño completo) ----------
   const layer = document.createElement('canvas');
   layer.width = Math.max(1, Math.floor(W));
   layer.height = Math.max(1, Math.floor(H));
@@ -3403,18 +3432,15 @@ function buildWaterLayers(W, H){
       const i = (py*PSIZE + px)*4;
 
       if(mode === 'lava'){
-        // Ondas de calor: senos con frecuencias enteras (tileables)
         const a = Math.sin(fx * TWO_PI * 3 + Math.sin(fy * TWO_PI * 2) * 2);
         const b = Math.sin(fy * TWO_PI * 4 + Math.cos(fx * TWO_PI * 3) * 2);
         const v = clamp((a + b) * 0.25 + 0.5, 0, 1);
-        // Naranja oscuro → amarillo brillante
         img.data[i]   = 255;
         img.data[i+1] = Math.floor(90 + v * 130);
         img.data[i+2] = Math.floor(20 + v * 50);
         img.data[i+3] = Math.floor(140 + v * 100);
       }
       else if(mode === 'ice'){
-        // Vetas cristalinas finas
         const a = Math.sin(fx * TWO_PI * 6 + Math.sin(fy * TWO_PI * 3) * 1.5);
         const b = Math.sin(fy * TWO_PI * 5 + Math.cos(fx * TWO_PI * 4) * 1.2);
         const v = clamp((a + b) * 0.25 + 0.5, 0, 1);
@@ -3424,7 +3450,6 @@ function buildWaterLayers(W, H){
         img.data[i+3] = Math.floor(60 + v * 100);
       }
       else {
-        // Agua: caustics con dos ondas grandes + una fina
         const a = Math.sin(fx * TWO_PI * 2 + Math.sin(fy * TWO_PI * 3) * 2.5);
         const b = Math.sin(fy * TWO_PI * 3 + Math.cos(fx * TWO_PI * 2) * 2.0);
         const c = Math.sin((fx + fy) * TWO_PI * 5);
@@ -9305,38 +9330,57 @@ function drawFpsOverlay(W, H){
 
 function drawWaterLayer(W, H, t){
   if(!waterLayerOffscreen || !waterMaskOffscreen || !waterPattern) return;
+  if(!waterBounds || waterBounds.w <= 0 || waterBounds.h <= 0) return;
+
   const wctx = waterLayerCtx;
   if(!wctx) return;
 
   const mode = currentBiome.water.mode;
+  const bx = waterBounds.x, by = waterBounds.y;
+  const bw = waterBounds.w, bh = waterBounds.h;
+  const PSIZE = 256;
 
-  // Velocidad de scroll según el bioma
+  // ---- Offset del patrón ----
   let sx, sy;
-  if(mode === 'lava'){
-    sx = t * 10;  sy = t * 4;
-  } else if(mode === 'ice'){
-    sx = t * 3;   sy = t * 1;
+  if(mode === 'lava'){         sx = t * 10;  sy = t * 4; }
+  else if(mode === 'ice'){     sx = t * 3;   sy = t * 1; }
+  else {                       sx = t * 22;  sy = t * 9; }
+
+  const ox = ((sx % PSIZE) + PSIZE) % PSIZE;
+  const oy = ((sy % PSIZE) + PSIZE) % PSIZE;
+
+  // ---- 1 + 2. Rellenar SOLO el bbox con el patrón desplazado ----
+  wctx.save();
+
+  if(typeof waterPattern.setTransform === 'function'){
+    // ---- Camino rápido ----
+    // setTransform no toca el sistema de coordenadas del ctx, así que
+    // el resto de operaciones trabaja en píxeles absolutos del canvas.
+    waterPattern.setTransform({ a: 1, b: 0, c: 0, d: 1, e: ox, f: oy });
+    wctx.globalCompositeOperation = 'copy';
+    wctx.fillStyle = waterPattern;
+    wctx.fillRect(bx, by, bw, bh);
   } else {
-    sx = t * 22;  sy = t * 9;
+    // ---- Fallback: navegadores viejos sin Pattern.setTransform ----
+    // 1. Limpiamos solo el bbox (necesario porque acá sí hay blend).
+    wctx.globalCompositeOperation = 'source-over';
+    wctx.clearRect(bx, by, bw, bh);
+    // 2. Trasladamos el origen del ctx y pintamos con el patrón sin offset.
+    wctx.translate(-ox, -oy);
+    wctx.fillStyle = waterPattern;
+    // Con el sistema movido -ox/-oy, el bbox original (bx,by) queda en (bx+ox, by+oy).
+    wctx.fillRect(bx + ox, by + oy, bw, bh);
   }
 
-  // 1. Limpiar
-  wctx.clearRect(0, 0, W, H);
-
-  // 2. Rellenar con el patrón desplazado (módulo PSIZE para no alejarse infinito)
-  const PSIZE = 256;
-  wctx.save();
-  wctx.translate(-(sx % PSIZE), -(sy % PSIZE));
-  wctx.fillStyle = waterPattern;
-  wctx.fillRect(0, 0, W + PSIZE, H + PSIZE);
   wctx.restore();
 
-  // 3. Recortar con la máscara
+  // ---- 3. Aplicar la máscara, también solo en el bbox ----
+  wctx.save();
   wctx.globalCompositeOperation = 'destination-in';
-  wctx.drawImage(waterMaskOffscreen, 0, 0, W, H);
-  wctx.globalCompositeOperation = 'source-over';
+  wctx.drawImage(waterMaskOffscreen, bx, by, bw, bh, bx, by, bw, bh);
+  wctx.restore();
 
-  // 4. Dibujar sobre el tablero
+  // ---- 4. Dibujar la capa final al canvas principal ----
   ctx.save();
   if(mode === 'lava'){
     ctx.globalAlpha = 0.55;
@@ -9346,7 +9390,7 @@ function drawWaterLayer(W, H, t){
   } else {
     ctx.globalAlpha = 0.50;
   }
-  ctx.drawImage(waterLayerOffscreen, 0, 0, W, H);
+  ctx.drawImage(waterLayerOffscreen, bx, by, bw, bh, bx, by, bw, bh);
   ctx.restore();
 }
 
