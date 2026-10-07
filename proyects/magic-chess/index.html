@@ -1223,8 +1223,11 @@ function updateAmbience(){
   // El wobble modula la intensidad entre ~0.68 y 1.00, tipo "rachas"
     // Curva exponencial: con poca lluvia suena MUCHO más bajo, pero el pico se mantiene
   const rainCurve = Math.pow(rl, 1.7);
-  const lpGain = (rainCurve * 0.22 * wobble) * pauseFactor;
-  const hiGain = (rainCurve * 0.18 * wobble) * pauseFactor;
+  const rainAudioMul = currentBiome.weather.mode === 'petals' ? 0.25
+                   : currentBiome.weather.mode === 'dust'   ? 0.35
+                   : 1.0;
+const lpGain = (rainCurve * 0.22 * wobble) * pauseFactor * rainAudioMul;
+const hiGain = (rainCurve * 0.18 * wobble) * pauseFactor * rainAudioMul;
   ambience.rainLpGain.gain.setTargetAtTime(lpGain, t, 0.35);
   ambience.rainBpGain.gain.setTargetAtTime(hiGain, t, 0.35);
   // Con más lluvia, filtro más abierto (retumbo más grave y presente)
