@@ -3716,13 +3716,16 @@ function updateVortexCount(intensity){
    60% chico (1x), 30% doble (2x), 10% triple (3x).
    En tormentas fuertes, sube la chance de grandes. */
 function pickVortexScale(intensity){
+  const profile = getVortexProfile();
   const roll = Math.random();
-  let scale = 1;
-  if(roll < 0.10)      scale = 3;
-  else if(roll < 0.40) scale = 2;
-  // resto → 1
+  const c = profile.scaleChance;
 
-  // En tormenta fuerte (intensity > 0.85), 35% de chance de subir un escalón
+  let scale;
+  if(roll < c[0])                                scale = 1;
+  else if(roll < c[0] + c[1])                    scale = 2;
+  else                                           scale = 3;
+
+  // En tormenta fuerte, sube la chance de grandes
   if(intensity > 0.85 && Math.random() < 0.35){
     scale = Math.max(scale, 2);
   }
@@ -3730,31 +3733,89 @@ function pickVortexScale(intensity){
 }
 
 function spawnStormVortex(W, H, scale = 1){
+  const profile = getVortexProfile();
   const cxc = rnd(W * 0.15, W * 0.85);
   const cyc = rnd(-30 * scale, H * 0.30);
-  const maxR = rnd(60, 130) * scale;
-  const life = rnd(3.5, 6.5) * scale;
+  const maxR = rnd(profile.sizeMin, profile.sizeMax) * scale;
+  // Escala alarga un poco la vida, pero no tanto como antes (era *scale puro)
+  const life = rnd(profile.lifeMin, profile.lifeMax) * (0.75 + scale * 0.25);
 
-  // Duración del grow/shrink según escala
-  const growDur  = scale === 1 ? 0.3 : (scale === 2 ? 0.7 : 1.5);
-  const shrinkDur = growDur;   // simétrico
+	// ⬇️ Cuando más intensa la tormenta, más violento el vórtice
+	const intensityBoost = 0.8 + rainAmt * 0.6;   // 0.8x a 1.4x
 
   return {
     id: ++vortexIdCounter,
     scale,
     x: cxc, y: cyc,
     maxR,
-    r: 0,                       // arranca en 0
+    r: 0,
     life: 0,
     maxLife: life,
-    growDur,
-    shrinkDur,
+    growDur: profile.growDur,
+    shrinkDur: profile.shrinkDur,
     dir: Math.random() < 0.5 ? 1 : -1,
-    strength: rnd(0.65, 1.15),
+    strength: rnd(profile.strengthMin, profile.strengthMax) * intensityBoost,
     phase: Math.random() * 6.28,
-    xDrift: rnd(-8, 8) * scale,
-    baseYDrift: rnd(28, 55) * (1 + (3 - scale) * 0.6)
+    xDrift: rnd(-profile.xDrift, profile.xDrift) * scale * intensityBoost,
+    baseYDrift: rnd(profile.yDriftMin, profile.yDriftMax),
+    // ⬇️ Los valores angulares se guardan en el vórtice para que
+    //     stepWeatherParticle no tenga que consultar el bioma cada vez
+    angularBase: profile.angularBase,
+    angularFalloff: profile.angularFalloff
   };
+}
+
+const VORTEX_PROFILES = {
+  snow: {
+    scaleChance: [0.55, 0.35, 0.10],   // 1x / 2x / 3x
+    strengthMin: 0.35, strengthMax: 0.70,
+    sizeMin: 70, sizeMax: 140,
+    lifeMin: 4.5, lifeMax: 7.5,
+    growDur: 0.5, shrinkDur: 0.5,
+    xDrift: 4,
+    yDriftMin: 15, yDriftMax: 30,
+    angularBase: 60, angularFalloff: 160,
+    spawnRate: 400
+  },
+  volcano: {
+    scaleChance: [0.40, 0.40, 0.20],
+    strengthMin: 0.85, strengthMax: 1.35,
+    sizeMin: 50, sizeMax: 110,
+    lifeMin: 2.5, lifeMax: 4.5,
+    growDur: 0.15, shrinkDur: 0.15,
+    xDrift: 14,
+    yDriftMin: 40, yDriftMax: 80,
+    angularBase: 130, angularFalloff: 380,
+    spawnRate: 200
+  },
+  cute: {
+    scaleChance: [0.75, 0.25, 0.00],   // nunca grandes
+    strengthMin: 0.25, strengthMax: 0.50,
+    sizeMin: 50, sizeMax: 90,
+    lifeMin: 5.0, lifeMax: 9.0,
+    growDur: 1.2, shrinkDur: 1.2,
+    xDrift: 3,
+    yDriftMin: 8, yDriftMax: 18,
+    angularBase: 40, angularFalloff: 100,
+    spawnRate: 800
+  }
+};
+
+// Fallback por si algún bioma con hasVortices no está en la tabla
+const VORTEX_DEFAULT = {
+  scaleChance: [0.60, 0.30, 0.10],
+  strengthMin: 0.65, strengthMax: 1.15,
+  sizeMin: 60, sizeMax: 130,
+  lifeMin: 3.5, lifeMax: 6.5,
+  growDur: 0.3, shrinkDur: 0.3,
+  xDrift: 8,
+  yDriftMin: 28, yDriftMax: 55,
+  angularBase: 90, angularFalloff: 280,
+  spawnRate: 350
+};
+
+function getVortexProfile(){
+  return VORTEX_PROFILES[currentBiome?.id] || VORTEX_DEFAULT;
 }
 
 function updateVortices(dt, W, H, intensity){
@@ -3769,7 +3830,7 @@ function updateVortices(dt, W, H, intensity){
 
   // ---- Spawn ----
   const now = performance.now();
-  if(vortices.list.length < vortices.targetCount && now - vortices.lastCheck > 350){
+  if(vortices.list.length < vortices.targetCount && now - vortices.lastCheck > getVortexProfile().spawnRate){
     const scale = pickVortexScale(intensity);
     vortices.list.push(spawnStormVortex(W, H, scale));
     vortices.lastCheck = now;
@@ -3933,7 +3994,7 @@ function stepWeatherParticle(d, dt, intensity, W, H){
   d.orbitRadiusTarget = d.orbitBaseR * (0.08 + d.orbitRatioOffset * 0.82);
 
   // Velocidad angular: más rápida cerca del centro (w = v/r)
-  const tangentialSpeed = 90 + 280 * bestFalloff;
+  const tangentialSpeed = bestV.angularBase + bestV.angularFalloff * bestFalloff;
   const omega = bestV.dir * tangentialSpeed / Math.max(24, d.orbitRadius);
   d.orbitAngle += omega * dt;
 
