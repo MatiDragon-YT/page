@@ -1934,7 +1934,7 @@ function resetAchState(){
 /* =========================================================
    SPRITE CACHE — todo pre-renderizado una sola vez
    ========================================================= */
-const SPRITE_SIZE = 64;
+const SPRITE_SIZE = 160;
 
 function makeSprite(drawFn){
   const c = document.createElement('canvas');
@@ -2097,101 +2097,127 @@ function buildSprites(){
     // ---------- CONEJO DE NIEVE (3 frames: sentado, salto, aterrizaje) ----------
   sprites.bunny = [];
   const bunnyPose = [
-    { bodyY: 0, bodyH: 0.30, headY: -0.28, earAngle: 0.10, tailY: 0.10 },  // sentado
-    { bodyY: -0.18, bodyH: 0.26, headY: -0.42, earAngle: 0.25, tailY: -0.10 },  // salto
-    { bodyY: 0.06, bodyH: 0.32, headY: -0.20, earAngle: 0.02, tailY: 0.14 }  // aterrizaje
+    // Sentado (reposo)
+    {
+      earTilt: 0.08, earW: 10, earH: 18,
+      headOX: 18, headOY: -20, headR: 15,
+      bodyW: 30, bodyH: 25, bodyOY: 20,
+      tailOX: -30, tailOY: 15, tailR: 9,
+      legSpread: 8
+    },
+    // Salto (cuerpo arriba, orejas hacia atrás)
+    {
+      earTilt: 0.32, earW: 10, earH: 16,
+      headOX: 18, headOY: -30, headR: 14,
+      bodyW: 28, bodyH: 22, bodyOY: 10,
+      tailOX: -28, tailOY: 0, tailR: 9,
+      legSpread: 6
+    },
+    // Aterrizaje (cuerpo bajo, patas estiradas)
+    {
+      earTilt: 0.02, earW: 10, earH: 18,
+      headOX: 18, headOY: -18, headR: 15,
+      bodyW: 32, bodyH: 27, bodyOY: 25,
+      tailOX: -32, tailOY: 18, tailR: 9,
+      legSpread: 10
+    }
   ];
+
   for(const pose of bunnyPose){
     sprites.bunny.push(makeSprite((cx, s) => {
-      const c = s / 2;
-      const bodyW = s * 0.26;
-      const bodyH = s * pose.bodyH;
-      const bodyCy = c + pose.bodyY * s;
+      const c = s / 2;                          // 80
+      const bodyCx = c;
+      const bodyCy = c + pose.bodyOY;
+      const headCx = c + pose.headOX;
+      const headCy = c + pose.headOY;
+      const earBaseX = headCx;
+      const earBaseY = headCy - pose.headR * 0.6;
 
       // Sombra debajo
       cx.fillStyle = 'rgba(80,100,140,0.20)';
       cx.beginPath();
-      cx.ellipse(c, c + s * 0.20, s * 0.24, s * 0.05, 0, 0, 6.2832);
+      cx.ellipse(bodyCx, c + 60, s * 0.15, s * 0.035, 0, 0, 6.2832);
       cx.fill();
 
-      // Cola (pom-pom)
+      // Cola (pompón)
       cx.fillStyle = '#ffffff';
       cx.beginPath();
-      cx.arc(c - bodyW * 1.0, bodyCy + pose.tailY * s, s * 0.09, 0, 6.2832);
+      cx.arc(c + pose.tailOX, c + pose.tailOY, pose.tailR, 0, 6.2832);
       cx.fill();
       cx.fillStyle = 'rgba(200,215,235,0.5)';
       cx.beginPath();
-      cx.arc(c - bodyW * 1.05, bodyCy + pose.tailY * s + s * 0.03, s * 0.045, 0, 6.2832);
+      cx.arc(c + pose.tailOX - 1, c + pose.tailOY + 2, pose.tailR * 0.5, 0, 6.2832);
       cx.fill();
 
       // Cuerpo
       cx.fillStyle = '#f4f8fc';
       cx.beginPath();
-      cx.ellipse(c, bodyCy, bodyW, bodyH, 0, 0, 6.2832);
+      cx.ellipse(bodyCx, bodyCy, pose.bodyW, pose.bodyH, 0, 0, 6.2832);
       cx.fill();
       // Sombra lateral del cuerpo
       cx.fillStyle = 'rgba(190,210,230,0.35)';
       cx.beginPath();
-      cx.ellipse(c + bodyW * 0.15, bodyCy + bodyH * 0.15, bodyW * 0.75, bodyH * 0.70, 0, 0, 6.2832);
+      cx.ellipse(bodyCx + pose.bodyW * 0.15, bodyCy + pose.bodyH * 0.15,
+                 pose.bodyW * 0.75, pose.bodyH * 0.70, 0, 0, 6.2832);
       cx.fill();
 
-      // Patas traseras (visibles)
+      // Pata trasera
       cx.fillStyle = '#f4f8fc';
       cx.beginPath();
-      cx.ellipse(c + bodyW * 0.35, bodyCy + bodyH * 0.55, s * 0.10, s * 0.06, 0.2, 0, 6.2832);
-      cx.fill();
-
-      // Cabeza
-      const headCy = c + pose.headY * s;
-      cx.fillStyle = '#f4f8fc';
-      cx.beginPath();
-      cx.arc(c + bodyW * 0.55, headCy, s * 0.15, 0, 6.2832);
-      cx.fill();
-      cx.fillStyle = 'rgba(190,210,230,0.35)';
-      cx.beginPath();
-      cx.arc(c + bodyW * 0.60, headCy + s * 0.02, s * 0.10, 0, 6.2832);
+      cx.ellipse(bodyCx + pose.bodyW * 0.35,
+                 bodyCy + pose.bodyH + pose.legSpread * 0.6,
+                 pose.legSpread * 1.4, pose.legSpread * 0.7,
+                 0.2, 0, 6.2832);
       cx.fill();
 
       // Orejas
-      const earA = pose.earAngle;
       for(let side = 0; side < 2; side++){
-        const dx = side === 0 ? -0.04 : 0.05;
-        const earCx = c + bodyW * 0.55 + dx * s;
-        const earCy = headCy - s * 0.15;
-        const tilt = side === 0 ? -earA : earA;
+        const dx = side === 0 ? -3 : 4;
+        const earCx = earBaseX + dx;
+        const earCy = earBaseY;
+        const tilt = side === 0 ? -pose.earTilt : pose.earTilt;
         cx.save();
         cx.translate(earCx, earCy);
         cx.rotate(tilt);
         // Oreja externa
         cx.fillStyle = '#f4f8fc';
         cx.beginPath();
-        cx.ellipse(0, -s * 0.11, s * 0.045, s * 0.14, 0, 0, 6.2832);
+        cx.ellipse(0, -pose.earH, pose.earW * 0.55, pose.earH, 0, 0, 6.2832);
         cx.fill();
         // Oreja interna (rosa)
         cx.fillStyle = '#ffc8d8';
         cx.beginPath();
-        cx.ellipse(0, -s * 0.11, s * 0.022, s * 0.09, 0, 0, 6.2832);
+        cx.ellipse(0, -pose.earH, pose.earW * 0.28, pose.earH * 0.7, 0, 0, 6.2832);
         cx.fill();
         cx.restore();
       }
 
+      // Cabeza (encima, tapa la base de las orejas)
+      cx.fillStyle = '#f4f8fc';
+      cx.beginPath();
+      cx.arc(headCx, headCy, pose.headR, 0, 6.2832);
+      cx.fill();
+      cx.fillStyle = 'rgba(190,210,230,0.35)';
+      cx.beginPath();
+      cx.arc(headCx + 2, headCy + 2, pose.headR * 0.7, 0, 6.2832);
+      cx.fill();
+
       // Ojo
       cx.fillStyle = '#1a1210';
       cx.beginPath();
-      cx.arc(c + bodyW * 0.70, headCy - s * 0.01, s * 0.022, 0, 6.2832);
+      cx.arc(headCx + pose.headR * 0.35, headCy - 1, 2, 0, 6.2832);
       cx.fill();
-      // Brillo del ojo
+      // Brillo
       cx.fillStyle = 'rgba(255,255,255,0.9)';
       cx.beginPath();
-      cx.arc(c + bodyW * 0.72, headCy - s * 0.02, s * 0.008, 0, 6.2832);
+      cx.arc(headCx + pose.headR * 0.40, headCy - 3, 0.8, 0, 6.2832);
       cx.fill();
 
       // Nariz
       cx.fillStyle = '#ffb0c0';
       cx.beginPath();
-      cx.arc(c + bodyW * 0.88, headCy + s * 0.02, s * 0.015, 0, 6.2832);
+      cx.arc(headCx + pose.headR * 0.85, headCy + 2, 1.5, 0, 6.2832);
       cx.fill();
-
     }));
   }
 
@@ -2423,7 +2449,7 @@ const AMBIENT_TYPES = {
 				vx,
 				hopPhase: rnd(0, 1),
 				hopSpeed: rnd(1.2, 2.0),
-				size: rnd(11, 15),
+				size: rnd(22, 28),
 				facing: vx < 0 ? -1 : 1,   // ⬅️ derivado del vx real
 				_activity: 1,
 				pauseTimer: 0,
