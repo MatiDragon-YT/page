@@ -870,7 +870,17 @@ display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;
   }
 }
 
-
+#boardWrap{
+  animation: boardBreath 6.5s ease-in-out infinite;
+}
+@keyframes boardBreath{
+  0%,100%{ box-shadow: 0 8px 34px rgba(0,0,0,.8),
+                       inset 0 0 60px rgba(0,0,0,.4),
+                       0 0 0    rgba(255,200,120,0); }
+  50%    { box-shadow: 0 8px 34px rgba(0,0,0,.8),
+                       inset 0 0 60px rgba(0,0,0,.4),
+                       0 0 22px rgba(255,200,120,.18); }
+}
 </style>
 </head>
 <body>
@@ -1767,6 +1777,20 @@ function triggerLightning(rainLevel){
       color: col
     });
   }
+  
+    // Rayo dibujado en pantalla (no solo el flash)
+  const atmo = getBiomeAtmosphere();
+  if(atmo.lightningBolts && rainLevel > 0.30){
+    const W = boardW, H = boardH;
+    if(W > 0 && H > 0){
+      const bx = rnd(W * 0.10, W * 0.90);
+      const by = rnd(H * 0.35, H * 0.90);
+      spawnBolt(bx, by);
+      if(Math.random() < 0.35){
+        spawnBolt(rnd(W * 0.10, W * 0.90), rnd(H * 0.35, H * 0.90));
+      }
+    }
+  }
 
   // Sonido: el trueno llega después (distancia)
   setTimeout(() => playThunder(intensity, distance), distance * 1000);
@@ -2432,6 +2456,50 @@ function getFogSprite(biomeId){
   cx.fillStyle = g;
   cx.fillRect(0, 0, SIZE, SIZE);
   spriteCache.fog[biomeId] = c;
+  return c;
+}
+
+const _moteSprites = {};
+function getMoteSprite(biomeId){
+  if(_moteSprites[biomeId]) return _moteSprites[biomeId];
+  const cfg = BIOME_ATMOSPHERE[biomeId] || BIOME_ATMOSPHERE.forest;
+  if(cfg.motes.mode === 'none'){ _moteSprites[biomeId] = null; return null; }
+  const [r, g, b] = cfg.motes.color;
+  const SIZE = 32;
+  const c = document.createElement('canvas');
+  c.width = c.height = SIZE;
+  const cx = c.getContext('2d');
+  const h = SIZE / 2;
+  const grad = cx.createRadialGradient(h, h, 0, h, h, h);
+  grad.addColorStop(0,    `rgba(${r},${g},${b},1)`);
+  grad.addColorStop(0.30, `rgba(${r},${g},${b},0.55)`);
+  grad.addColorStop(1,    `rgba(${r},${g},${b},0)`);
+  cx.fillStyle = grad;
+  cx.fillRect(0, 0, SIZE, SIZE);
+  _moteSprites[biomeId] = c;
+  return c;
+}
+
+const _rippleSprites = {};
+function getRippleSprite(biomeId){
+  if(_rippleSprites[biomeId]) return _rippleSprites[biomeId];
+  const cfg = BIOME_ATMOSPHERE[biomeId] || BIOME_ATMOSPHERE.forest;
+  if(!cfg.rainRipples.enabled){ _rippleSprites[biomeId] = null; return null; }
+  const [r, g, b] = cfg.rainRipples.color.split(',').map(n => parseInt(n.trim(), 10));
+  const SIZE = 64;
+  const c = document.createElement('canvas');
+  c.width = c.height = SIZE;
+  const cx = c.getContext('2d');
+  const h = SIZE / 2;
+  const grad = cx.createRadialGradient(h, h, 0, h, h, h);
+  grad.addColorStop(0.00, `rgba(${r},${g},${b},0)`);
+  grad.addColorStop(0.55, `rgba(${r},${g},${b},0)`);
+  grad.addColorStop(0.78, `rgba(${r},${g},${b},0.85)`);
+  grad.addColorStop(0.95, `rgba(${r},${g},${b},0.20)`);
+  grad.addColorStop(1.00, `rgba(${r},${g},${b},0)`);
+  cx.fillStyle = grad;
+  cx.fillRect(0, 0, SIZE, SIZE);
+  _rippleSprites[biomeId] = c;
   return c;
 }
 
@@ -3109,6 +3177,256 @@ function drawAmbientLife(W, H){
 }
 
 /* =========================================================
+   ATMÓSFERA v3 — biome-aware
+   ========================================================= */
+const atmosphere = {
+  clouds: [],
+  motes: [],
+  birds: [],
+  rainRipples: [],
+  nextFlock: 0,
+};
+
+const _cloudSprites = {};
+function getCloudShadowSprite(biomeId){
+  if(_cloudSprites[biomeId]) return _cloudSprites[biomeId];
+  const cfg = BIOME_ATMOSPHERE[biomeId] || BIOME_ATMOSPHERE.forest;
+  const tint = cfg.clouds.tint || [14, 11, 20];
+  const SIZE = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = SIZE;
+  const cx = c.getContext('2d');
+  const h = SIZE / 2;
+  const g = cx.createRadialGradient(h, h, 0, h, h, h);
+  g.addColorStop(0,    `rgba(${tint[0]},${tint[1]},${tint[2]},0.55)`);
+  g.addColorStop(0.55, `rgba(${tint[0]},${tint[1]},${tint[2]},0.22)`);
+  g.addColorStop(1,    `rgba(${tint[0]},${tint[1]},${tint[2]},0)`);
+  cx.fillStyle = g;
+  cx.fillRect(0, 0, SIZE, SIZE);
+  _cloudSprites[biomeId] = c;
+  return c;
+}
+
+function initAtmosphere(){
+  const cfg = getBiomeAtmosphere();
+
+  atmosphere.clouds.length = 0;
+  for(let i = 0; i < cfg.clouds.count; i++){
+    atmosphere.clouds.push({
+      x: rnd(-0.4, 1.4),
+      y: rnd(-0.2, 1.1),
+      rx: rnd(0.20, 0.42),
+      ry: rnd(0.10, 0.22),
+      spd: rnd(0.008, 0.022) * (Math.random() < 0.5 ? 1 : -1),
+      a: rnd(0.10, 0.22) * cfg.clouds.alphaMul,
+      wobble: rnd(0, 6.28),
+    });
+  }
+
+  atmosphere.motes.length = 0;
+  if(cfg.motes.mode !== 'none' && cfg.motes.count > 0){
+    for(let i = 0; i < cfg.motes.count; i++){
+      atmosphere.motes.push({
+        x: Math.random(), y: Math.random(),
+        phase: rnd(0, 6.28),
+        speed: rnd(0.25, 0.95),
+        size: cfg.motes.mode === 'dust' ? rnd(0.6, 1.4) : rnd(0.7, 1.9),
+        bright: rnd(0.35, 1.0),
+        vx: rnd(-0.006, 0.006),
+        vy: rnd(-0.010, 0.010),
+      });
+    }
+  }
+
+  atmosphere.birds.length = 0;
+  atmosphere.nextFlock = performance.now() + rnd(9000, 22000);
+  atmosphere.rainRipples.length = 0;
+}
+
+function updateAtmosphere(dt, W, H){
+  const cfg = getBiomeAtmosphere();
+
+  // Nubes
+  for(const c of atmosphere.clouds){
+    c.x += c.spd * cfg.clouds.speedMul * dt;
+    c.wobble += dt * 0.4;
+    if(c.x >  1.6) c.x = -0.6;
+    if(c.x < -0.6) c.x =  1.6;
+  }
+
+  // Motas (polen o polvo)
+  const wx = windState.direction * windState.strength;
+  for(const p of atmosphere.motes){
+    p.phase += dt * p.speed;
+    p.x += (p.vx + Math.sin(p.phase) * 0.0018 + wx * 0.0035) * dt * 60;
+    p.y += (p.vy + Math.cos(p.phase * 0.7) * 0.0014) * dt * 60;
+    if(p.x >  1.05) p.x -= 1.1;
+    if(p.x < -0.05) p.x += 1.1;
+    if(p.y >  1.05) p.y -= 1.1;
+    if(p.y < -0.05) p.y += 1.1;
+  }
+
+  // Aves
+  const now = performance.now();
+  if(cfg.birds.enabled
+     && now > atmosphere.nextFlock
+     && rainAmt < cfg.birds.minRain
+     && !state.paused){
+    spawnBirdFlock();
+    atmosphere.nextFlock = now + rnd(14000, 38000);
+  }
+  for(let i = atmosphere.birds.length - 1; i >= 0; i--){
+    const b = atmosphere.birds[i];
+    b.t += dt;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    if(b.x > 1.3 || b.x < -0.3 || b.y > 1.3 || b.y < -0.3){
+      atmosphere.birds.splice(i, 1);
+    }
+  }
+
+  // Rizos en el agua
+  for(let i = atmosphere.rainRipples.length - 1; i >= 0; i--){
+    const r = atmosphere.rainRipples[i];
+    r.life -= dt;
+    r.r += r.maxR * dt * 3;
+    if(r.life <= 0) atmosphere.rainRipples.splice(i, 1);
+  }
+}
+
+function spawnBirdFlock(){
+  const cfg = getBiomeAtmosphere().birds;
+  const fromLeft = Math.random() < 0.5;
+  const baseX = fromLeft ? -0.08 : 1.08;
+  const baseY = rnd(0.15, 0.55);
+  const dirX  = fromLeft ? 1 : -1;
+  const speed = rnd(0.09, 0.17) * cfg.speedMul;
+  const count = 3 + Math.floor(Math.random() * 4);
+  const phase = rnd(0, 6.28);
+  for(let i = 0; i < count; i++){
+    const side  = i === 0 ? 0 : (i % 2 === 1 ? 1 : -1);
+    const depth = Math.ceil(i / 2);
+    atmosphere.birds.push({
+      x: baseX - dirX * depth * 0.020,
+      y: baseY + side * depth * 0.015,
+      vx: dirX * speed,
+      vy: rnd(-0.004, 0.004),
+      t: 0,
+      phase: phase + i * 1.3,
+      size: rnd(2.0, 3.5) * cfg.sizeMul,
+    });
+  }
+}
+
+function maybeSpawnRainRipple(xNorm, yNorm, W, H){
+  if(!getBiomeAtmosphere().rainRipples.enabled) return;
+  if(!terr.water) return;
+  if(Math.random() > 0.55) return;
+  if(atmosphere.rainRipples.length > 70) return;
+  const N  = TERR_N;
+  const tx = Math.floor(xNorm * N);
+  const ty = Math.floor(yNorm * N);
+  if(tx < 0 || ty < 0 || tx >= N || ty >= N) return;
+  if(!terr.water[ty * N + tx]) return;
+  atmosphere.rainRipples.push({
+    x: xNorm * W,
+    y: yNorm * H,
+    r: 1,
+    maxR: cellSize * rnd(0.20, 0.40),
+    life: 0.45,
+    maxLife: 0.45,
+  });
+}
+
+function drawCloudShadows(W, H){
+  const q = currentQuality();
+  if(q.level === 'emergency') return;
+  const sprite = getCloudShadowSprite(currentBiome.id);
+  if(!sprite) return;
+  const fade = 1 - rainAmt * 0.40;
+  ctx.save();
+  for(const c of atmosphere.clouds){
+    const px = c.x * W;
+    const py = (c.y + Math.sin(c.wobble) * 0.008) * H;
+    const rx = c.rx * W;
+    const ry = c.ry * H;
+    ctx.globalAlpha = c.a * fade;
+    ctx.drawImage(sprite, px - rx, py - ry, rx * 2, ry * 2);
+  }
+  ctx.restore();
+}
+
+function drawMotes(W, H){
+  const cfg = getBiomeAtmosphere().motes;
+  if(cfg.mode === 'none' || !atmosphere.motes.length) return;
+  const q = currentQuality();
+  if(q.level === 'emergency') return;
+  if(!quality.particlesEnabled) return;
+
+  const sprite = getMoteSprite(currentBiome.id);
+  if(!sprite) return;
+
+  const ph = getPhase();
+  const dayLight = Math.max(0, 1 - ph.dark * 1.4);
+  const rainFade = Math.max(0.10, 1 - rainAmt * 0.90);
+  const alpha = dayLight * rainFade * cfg.alphaMul;
+  if(alpha < 0.03) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const scale = q.particles;
+  const step = scale >= 1 ? 1 : Math.max(2, Math.round(1 / Math.max(0.25, scale)));
+  for(let i = 0; i < atmosphere.motes.length; i += step){
+    const p = atmosphere.motes[i];
+    const px = p.x * W, py = p.y * H;
+    const twinkle = 0.55 + Math.sin(p.phase * 3) * 0.45;
+    const a = alpha * twinkle * p.bright * 0.55;
+    if(a < 0.03) continue;
+    ctx.globalAlpha = a;
+    const half = p.size * 2.2;
+    ctx.drawImage(sprite, px - half, py - half, half * 2, half * 2);
+  }
+  ctx.restore();
+}
+
+function drawBirds(W, H){
+  const cfg = getBiomeAtmosphere().birds;
+  if(!cfg.enabled || !atmosphere.birds.length) return;
+  const ph = getPhase();
+  const alpha = 0.55 * Math.max(0, 1 - ph.dark * 1.5);
+  if(alpha < 0.05) return;
+  ctx.save();
+  ctx.strokeStyle = `rgba(${cfg.color},${alpha})`;
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = 'round';
+  for(const b of atmosphere.birds){
+    const px = b.x * W, py = b.y * H;
+    const s = b.size;
+    const flap = Math.sin(b.t * 8 + b.phase) * 0.55;
+    ctx.beginPath();
+    ctx.moveTo(px - s, py - s * flap);
+    ctx.quadraticCurveTo(px - s * 0.35, py + s * 0.15, px, py + s * 0.10);
+    ctx.quadraticCurveTo(px + s * 0.35, py + s * 0.15, px + s, py - s * flap);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawRainRipples(W, H){
+  if(!atmosphere.rainRipples.length) return;
+  const sprite = getRippleSprite(currentBiome.id);
+  if(!sprite) return;
+  ctx.save();
+  for(const r of atmosphere.rainRipples){
+    const t = r.life / r.maxLife;
+    ctx.globalAlpha = t * 0.75;
+    const half = r.r;
+    ctx.drawImage(sprite, r.x - half, r.y - half, half * 2, half * 2);
+  }
+  ctx.restore();
+}
+
+/* =========================================================
    PARTÍCULAS
    ========================================================= */
 const particles = [];
@@ -3417,6 +3735,52 @@ const BIOME_AUDIO = {
     ]
   }
 };
+
+/* =========================================================
+   ATMÓSFERA POR BIOMA
+   Cada bioma decide qué capas atmosféricas tiene y cómo se ven.
+   ========================================================= */
+const BIOME_ATMOSPHERE = {
+  forest: {
+    clouds:      { count: 3, alphaMul: 1.00, speedMul: 1.00, tint: [14, 11, 20] },
+    motes:       { mode: 'pollen', count: 46, color: [255, 248, 216], alphaMul: 1.00 },
+    birds:       { enabled: true,  sizeMul: 1.00, speedMul: 1.00, color: '28,22,16', minRain: 0.65 },
+    rainRipples: { enabled: true,  color: '210,230,255' },
+    lightningBolts: true,
+  },
+  desert: {
+    clouds:      { count: 1, alphaMul: 0.45, speedMul: 0.70, tint: [22, 16, 12] },
+    motes:       { mode: 'dust',   count: 26, color: [225, 195, 145], alphaMul: 0.55 },
+    birds:       { enabled: true,  sizeMul: 1.65, speedMul: 0.50, color: '42,32,22', minRain: 0.40 }, // buitres
+    rainRipples: { enabled: true,  color: '205,220,225' },
+    lightningBolts: true,
+  },
+  snow: {
+    clouds:      { count: 5, alphaMul: 1.35, speedMul: 0.50, tint: [18, 22, 30] },
+    motes:       { mode: 'none',   count: 0,  color: [255, 255, 255], alphaMul: 0 },
+    birds:       { enabled: false, sizeMul: 1.00, speedMul: 1.00, color: '30,30,40', minRain: 0.00 },
+    rainRipples: { enabled: true,  color: '200,225,240' },
+    lightningBolts: false,   // no hay rayos en nieve
+  },
+  volcano: {
+    clouds:      { count: 4, alphaMul: 1.70, speedMul: 0.60, tint: [48, 22, 10] },   // plumas de ceniza
+    motes:       { mode: 'none',   count: 0,  color: [255, 140, 60], alphaMul: 0 },  // ya hay brasas
+    birds:       { enabled: false, sizeMul: 1.00, speedMul: 1.00, color: '0,0,0', minRain: 0.00 },
+    rainRipples: { enabled: false, color: '255,180,80' },                            // lava no hace rizos
+    lightningBolts: false,
+  },
+  cute: {
+    clouds:      { count: 2, alphaMul: 0.65, speedMul: 0.90, tint: [255, 210, 235] }, // nubes rosadas
+    motes:       { mode: 'pollen', count: 60, color: [255, 230, 245], alphaMul: 1.15 },
+    birds:       { enabled: true,  sizeMul: 0.85, speedMul: 1.10, color: '95,60,85', minRain: 0.55 },
+    rainRipples: { enabled: true,  color: '200,230,255' },
+    lightningBolts: true,
+  },
+};
+
+function getBiomeAtmosphere(){
+  return BIOME_ATMOSPHERE[currentBiome?.id] || BIOME_ATMOSPHERE.forest;
+}
 
 function getBiomeAudio(biomeId){
   return BIOME_AUDIO[biomeId] || BIOME_AUDIO.forest;
@@ -4181,7 +4545,7 @@ let rainAmt = 0, rainTarget = 0, rainTimer = 0;
 
 const rainDrops = [];
 
-for(let i=0;i<1000;i++) rainDrops.push({
+for(let i=0;i<600;i++) rainDrops.push({
   x: Math.random(), y: Math.random(),
   len: rnd(0.010, 0.042),
   spd: rnd(0.50, 1.55),
@@ -9707,6 +10071,7 @@ function newGame(){
   }
   generateTerrain();
   if(boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
+  initAtmosphere();
   applyBiomeAudioTargets(currentBiome.id);
   setTimeout(() => toast(`${currentBiome.icon} ${currentBiome.name}`, '#c8b898'), 350);
   
@@ -10159,6 +10524,33 @@ function drawWaterLayer(W, H, t){
   ctx.restore();
 }
 
+/* =========================================================
+   LLUVIA — sprite pre-renderizado
+   ========================================================= */
+let _rainSprite = null;
+let _rainSpriteAlpha = -1;
+function getRainSprite(alpha){
+  if(_rainSprite && Math.abs(_rainSpriteAlpha - alpha) < 0.025) return _rainSprite;
+  const SW = 8, SH = 128;
+  const c = document.createElement('canvas');
+  c.width = SW; c.height = SH;
+  const cx = c.getContext('2d');
+  const grad = cx.createLinearGradient(0, 0, 0, SH);
+
+  grad.addColorStop(0.00, `rgba(180,210,240,0)`);              // cola desvanecida
+  grad.addColorStop(0.35, `rgba(190,215,245,${alpha * 0.18})`); // rastro tenue
+  grad.addColorStop(0.72, `rgba(210,225,250,${alpha * 0.70})`); // cuerpo medio
+  grad.addColorStop(0.94, `rgba(230,240,255,${alpha})`);        // cabeza brillante
+  grad.addColorStop(1.00, `rgba(230,240,255,${alpha * 0.85})`); // punta apenas suavizada
+
+  cx.fillStyle = grad;
+  cx.fillRect(SW/2 - 1, 0, 2, SH);
+
+  _rainSprite = c;
+  _rainSpriteAlpha = alpha;
+  return c;
+}
+
 function drawWeatherParticles(W, H, dt){
   const q = getRainScale();
   if(q <= 0) return;
@@ -10186,56 +10578,84 @@ function drawWeatherParticles(W, H, dt){
   // LLUVIA
   // =========================================================
   if(mode === 'rain'){
-    const lenScale = 0.65 + intensity * 4.20;
-    const lw = 0.55 + intensity * 0.75;
-    const speedMul = 0.85 + intensity * 1.15;
-    const slant = 0.14 + intensity * 0.14;
-    ctx.strokeStyle = `rgba(180,210,240,${alphaBase})`;
-    ctx.lineWidth = lw;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    for(let i=0;i<rainDrops.length;i++){
-      const d = rainDrops[i];
-      const inActiveRange = i < visible;
+	  const lenScale = 0.65 + intensity * 4.20;
+		const lw = 0.55 + intensity * 0.75;
+		const speedMul = 0.85 + intensity * 1.15;
 
-      if(!inActiveRange && d.finished) continue;
-      if(inActiveRange && d.finished){
-        d.finished = false;
-        d.y = -0.05 - Math.random() * 0.1;
-        d.x = Math.random();
-        d.attachedVortex = null;
-      }
+		// Viento direccional global: -1 (izquierda) a +1 (derecha)
+		const windX = windState.direction * windState.strength;
 
-      const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
-      if(!orbiting){
-        d.y += d.spd * speedMul * dt;
-        d.x += (d.spd * speedMul * 0.18 + d.vx / W) * dt;
-      }
+		// Baseline mínimo: apenas un pelín de slant para que no queden
+		// perfectamente verticales. El resto lo hace el viento.
+		const slant = 0.04 + intensity * 0.04;
+	  const sprite   = getRainSprite(alphaBase);
+	  if(!sprite) return;
+	  const SW = sprite.width;
 
-      if(d.x > 1.05) d.x -= 1.1;
-      if(d.x < -0.05) d.x += 1.1;
+	  // Buckets de tilt para batchear rotaciones (8 buckets es suficiente)
+	  const buckets = Array.from({length: 8}, () => []);
+	  const wxBase = windState.direction * windState.strength;
 
-      if(d.y > 1.05){
-        if(inActiveRange){
-          d.y = -0.05;
-          d.x = Math.random();
-          d.attachedVortex = null;
-        } else {
-          d.finished = true;
-          continue;
-        }
-      }
+	  for(let i=0;i<rainDrops.length;i++){
+		const d = rainDrops[i];
+		const inActiveRange = i < visible;
+		if(!inActiveRange && d.finished) continue;
+		if(inActiveRange && d.finished){
+		  d.finished = false;
+		  d.y = -0.05 - Math.random() * 0.1;
+		  d.x = Math.random();
+		  d.attachedVortex = null;
+		}
 
-      const px = d.x * W, py = d.y * H;
-      const L = d.len * lenScale;
-      const totalVx = d.spd * speedMul * 0.18 * W + d.vx;
-      const tilt = clamp(totalVx / Math.max(60, d.spd * speedMul * W), -0.7, 0.7);
-      ctx.moveTo(px, py);
-      ctx.lineTo(px - L * W * (slant + tilt), py + L * H);
-    }
-    ctx.stroke();
-    ctx.lineCap = 'butt';
-  }
+		const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
+		if(!orbiting){
+		  d.y += d.spd * speedMul * dt;
+		  d.x += (d.spd * speedMul * 0.06 + d.vx / W) * dt;
+		}
+
+		if(d.x > 1.05) d.x -= 1.1;
+		if(d.x < -0.05) d.x += 1.1;
+
+		if(d.y > 1.05){
+		  if(inActiveRange){
+			d.y = -0.05;
+			d.x = Math.random();
+			d.attachedVortex = null;
+		  } else {
+			d.finished = true;
+			continue;
+		  }
+		}
+
+		const px = d.x * W, py = d.y * H;
+		const L = d.len * lenScale;
+		const windTilt = -windX * 0.75;
+		const tilt = clamp(windTilt, -0.9, 0.9);
+		const dx = -L * W * (slant + tilt);
+		const dy =  L * H;
+		const lenPx = Math.hypot(dx, dy);
+		const theta = Math.atan2(-dx, dy);
+		const bucketIdx = Math.min(7, Math.max(0, Math.round((tilt + 0.7) / 1.4 * 7)));
+		buckets[bucketIdx].push({ px, py, lenPx, theta });
+	  }
+
+	  ctx.save();
+	  for(const bucket of buckets){
+		if(!bucket.length) continue;
+		// Un solo rotate por bucket
+		const theta = bucket[0].theta;
+		const cosT = Math.cos(theta), sinT = Math.sin(theta);
+		ctx.rotate(theta);
+		for(const it of bucket){
+		  // Transformar posición al espacio rotado
+		  const sx =  it.px * cosT + it.py * sinT;
+		  const sy = -it.px * sinT + it.py * cosT;
+		  ctx.drawImage(sprite, sx - SW/2, sy, SW, it.lenPx);
+		}
+		ctx.rotate(-theta);
+	  }
+	  ctx.restore();
+	}
 
   // =========================================================
   // NIEVE
@@ -10522,14 +10942,25 @@ function loop(now){
       }
     }
   }
-  const W = boardW, H = boardH;
+    const W = boardW, H = boardH;
+
+  if(dt > 0){
+    updateWeather(dt);
+    updateParticles(dt);
+    updateAtmosphere(dt, W, H);   // ⬅️ NUEVO
+  }
+  // (eliminá el bloque viejo "if(dt > 0){ updateWeather/updateParticles }"
+  //  que estaba más arriba en el loop, para no duplicar)
+
   ctx.clearRect(0, 0, W, H);
   if(terrainOffscreen) ctx.drawImage(terrainOffscreen, 0, 0, W, H);
   else { ctx.fillStyle = '#1a2418'; ctx.fillRect(0,0,W,H); }
 
   drawWaterLayer(W, H, gameTime);
-
+  drawCloudShadows(W, H);          // ⬅️ NUEVO
   drawBoardGrid(W, H);
+  drawRainRipples(W, H);           // ⬅️ NUEVO
+  drawBirds(W, H);                 // ⬅️ NUEVO
 
   const ph = getPhase();
 
@@ -10627,6 +11058,7 @@ function loop(now){
 	ctx.restore();
 	ctx.globalAlpha = 1;
   
+  drawMotes(W, H);
   drawWeatherParticles(W, H, dt);
   // Vida ambiental
   if(dt > 0) updateAmbientLife(dt);
@@ -11149,6 +11581,7 @@ function boot(){
   buildGrid();
   buildSprites();
   generateTerrain();
+  initAtmosphere();
   
   updateSoundButton();
   setupDecks(['ray','shield','teleport'], ['ray','shield','teleport']);
