@@ -5732,7 +5732,7 @@ function startPower(key){
   if(state.mana[turn] < minCost){ toast('Maná insuficiente'); return; }
   ensureTurnSnapshot();
   if(key === 'heal'){ handleHealStart(turn); return; }
-  state.targeting = { key, step: 1, data: {}, target: key };
+  state.targeting = { key, step: 1, data: { validTargets: null }, target: key };
   state.selected = null; state.legalMoves = [];
   clearHighlights(); highlightTargeting(); updateUI();
 }
@@ -5774,7 +5774,8 @@ async function handleHealStart(turn){
 function cancelTargeting(){
   if(!state.targeting) return;
   const wasIra = state.targeting.key === 'ira';
-  state.targeting = null; clearHighlights();
+  state.targeting = null;
+  clearHighlights();
   if(wasIra && iraResolve){ const r = iraResolve; iraResolve = null; r(null); return; }
   updateUI();
 }
@@ -5790,24 +5791,28 @@ function highlightTargeting(){
   const mana = state.mana[turn];
 
   if(T.key === 'teleport'){
-    if(T.step === 1){
-      for(let r=0;r<8;r++) for(let c=0;c<8;c++){
-        const p = board[r][c];
-        if(p && p.color === turn) gridEl.querySelector(`[data-sq="${rcToSquare(r,c)}"]`).classList.add('tgt');
-      }
-      toast('Selecciona una pieza para teletransportar', '#7ac0ff');
-    } else {
-      const from = T.data.from;
-      for(let r=0;r<8;r++) for(let c=0;c<8;c++){
-        if(board[r][c]) continue;
-        const sq = rcToSquare(r,c);
-        const cost = teleportCost(from, sq);
-        if(cost > mana) continue;
-        if(simMoveLeavesKingInCheck(from, sq, turn)) continue;
-        gridEl.querySelector(`[data-sq="${sq}"]`).classList.add('tgt2');
-      }
-      toast(`Destino (2/4/6 · maná: ${mana})`, '#7affa0');
-    }
+	  if(T.step === 1){
+		for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+		  const p = board[r][c];
+		  if(p && p.color === turn) gridEl.querySelector(`[data-sq="${rcToSquare(r,c)}"]`).classList.add('tgt');
+		}
+		T.data.validTargets = null;   // ⬅️ limpiamos al volver al paso 1
+		toast('Selecciona una pieza para teletransportar', '#7ac0ff');
+	  } else {
+		const from = T.data.from;
+		const valid = [];   // ⬅️ NUEVA: acá acumulamos los destinos válidos
+		for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+		  if(board[r][c]) continue;
+		  const sq = rcToSquare(r,c);
+		  const cost = teleportCost(from, sq);
+		  if(cost > mana) continue;
+		  if(simMoveLeavesKingInCheck(from, sq, turn)) continue;
+		  valid.push({ sq, cost });
+		  gridEl.querySelector(`[data-sq="${sq}"]`).classList.add('tgt2');
+		}
+		T.data.validTargets = valid;   // ⬅️ NUEVA: guardamos la lista
+		toast(`Destino (2/4/6 · maná: ${mana})`, '#7affa0');
+	  }
   } else if(T.key === 'shield'){
     if(state.shields[turn].length > 0) toast('Ya tienes un escudo activo — solo uno a la vez', '#7ac0ff');
     for(let r=0;r<8;r++) for(let c=0;c<8;c++){
@@ -5922,32 +5927,54 @@ async function handleTargetingClick(sq){
   const rc = sqToRC(sq);
   const piece = board[rc.r][rc.c];
 
-  if(T.key === 'teleport'){
-    if(T.step === 1){
-      if(!piece || piece.color !== turn) return;
-      T.data.from = sq;
-      T.step = 2;
-      highlightTargeting();
-      return;
-    } else {
-      if(piece && piece.color === turn){
-        T.data.from = sq;
-        highlightTargeting();
-        return;
-      }
-      if(piece) return;
-      const from = T.data.from;
-      const cost = teleportCost(from, sq);
-      if(!isFinite(cost)){ toast('Fuera de alcance (máx 3 casillas)', '#ff8080'); return; }
-      if(cost > state.mana[turn]){ toast('Maná insuficiente para esa distancia', '#ff8080'); return; }
-      if(simMoveLeavesKingInCheck(from, sq, turn)){
-        toast('¡Ese salto dejaría a tu Rey en Jaque!', '#ff8080');
-        return;
-      }
-      state.targeting = null; clearHighlights();
-      await execTeleport(from, sq, cost); return;
-    }
-  }
+	if(T.key === 'teleport'){
+	  if(T.step === 1){
+		// Solo aceptar piezas propias como origen
+		if(!piece || piece.color !== turn) return;
+		T.data.from = sq;
+		T.step = 2;
+		highlightTargeting();
+		return;
+	  }
+
+	  // ---- Paso 2: elegir destino ----
+	  // Cualquier click que NO esté en la lista de válidos se rechaza,
+	  // sin importar lo que digan las otras validaciones al vuelo.
+
+	  // Si clickeó una pieza propia distinta → cambiar el origen (volver a calcular)
+	  if(piece && piece.color === turn && sq !== T.data.from){
+		T.data.from = sq;
+		T.step = 2;
+		highlightTargeting();
+		return;
+	  }
+
+	  // Si hay cualquier pieza en el destino → no es válido
+	  if(piece) return;
+
+	  // ⬇️ LA VALIDACIÓN QUE FALTABA: chequeo contra la lista calculada
+	  const validList = T.data.validTargets || [];
+	  const entry = validList.find(v => v.sq === sq);
+	  if(!entry){
+		toast('Destino inválido · solo casillas marcadas en verde', '#ff8080');
+		return;
+	  }
+
+	  // Validaciones defensivas por si el estado cambió desde el último highlight
+	  const from = T.data.from;
+	  const cost = entry.cost;
+	  if(cost > state.mana[turn]){ toast('Maná insuficiente', '#ff8080'); highlightTargeting(); return; }
+	  if(simMoveLeavesKingInCheck(from, sq, turn)){
+		toast('¡Ese salto dejaría a tu Rey en Jaque!', '#ff8080');
+		highlightTargeting();
+		return;
+	  }
+
+	  state.targeting = null;
+	  clearHighlights();
+	  await execTeleport(from, sq, cost);
+	  return;
+	}
   if(T.key === 'shield'){
     if(!piece || piece.color !== turn) return;
     if(state.shields[turn].length > 0){ toast('Ya tienes un escudo activo', '#ff8080'); return; }
@@ -9461,17 +9488,26 @@ function drawWeatherParticles(W, H, dt){
   const mode = currentBiome.weather.mode;
   if(mode === 'none') return;
   const intensity = rainAmt;
-  if(intensity < 0.012) return;
 
-  // Actualizar vórtices
+  // Actualizar vórtices y viento aunque la intensidad sea 0 (se apagan solos)
   updateVortices(dt, W, H, intensity);
-  // Actualizar viento direccional
   updateWindState(dt);
 
-  const visible = Math.floor(rainDrops.length * q * (0.05 + 0.90 * Math.pow(intensity, 0.55)));
+  // ⬇️ Fade-out suave: antes de 0.05 se multiplica por una rampa lineal
+  //    para que la lluvia no desaparezca de golpe al cruzar el umbral.
+  const FADE_START = 0.05;
+  let visibilityCurve = 0.05 + 0.90 * Math.pow(intensity, 0.55);
+  if(intensity < FADE_START){
+    visibilityCurve *= intensity / FADE_START;
+  }
+  const visible = Math.max(0, Math.floor(rainDrops.length * q * visibilityCurve));
+
   const alphaBase = 0.20 + intensity * 0.24;
   const now = performance.now();
 
+  // =========================================================
+  // LLUVIA
+  // =========================================================
   if(mode === 'rain'){
     const lenScale = 0.65 + intensity * 4.20;
     const lw = 0.55 + intensity * 0.75;
@@ -9481,16 +9517,37 @@ function drawWeatherParticles(W, H, dt){
     ctx.lineWidth = lw;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    for(let i=0;i<visible;i++){
+    for(let i=0;i<rainDrops.length;i++){
       const d = rainDrops[i];
+      const inActiveRange = i < visible;
+
+      if(!inActiveRange && d.finished) continue;
+      if(inActiveRange && d.finished){
+        d.finished = false;
+        d.y = -0.05 - Math.random() * 0.1;
+        d.x = Math.random();
+        d.attachedVortex = null;
+      }
+
       const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
       if(!orbiting){
         d.y += d.spd * speedMul * dt;
-        d.x += (d.spd * speedMul * 0.18 + d.vx / W) * dt;   // ⬅️ agregar d.vx
+        d.x += (d.spd * speedMul * 0.18 + d.vx / W) * dt;
       }
-      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
+
       if(d.x > 1.05) d.x -= 1.1;
       if(d.x < -0.05) d.x += 1.1;
+
+      if(d.y > 1.05){
+        if(inActiveRange){
+          d.y = -0.05;
+          d.x = Math.random();
+          d.attachedVortex = null;
+        } else {
+          d.finished = true;
+          continue;
+        }
+      }
 
       const px = d.x * W, py = d.y * H;
       const L = d.len * lenScale;
@@ -9502,21 +9559,46 @@ function drawWeatherParticles(W, H, dt){
     ctx.stroke();
     ctx.lineCap = 'butt';
   }
+
+  // =========================================================
+  // NIEVE
+  // =========================================================
   else if(mode === 'snow'){
-    for(let i=0;i<visible;i++){
+    ctx.fillStyle = `rgba(245,250,255,${0.55 + intensity * 0.30})`;
+    for(let i=0;i<rainDrops.length;i++){
       const d = rainDrops[i];
+      const inActiveRange = i < visible;
+
+      if(!inActiveRange && d.finished) continue;
+      if(inActiveRange && d.finished){
+        d.finished = false;
+        d.y = -0.05 - Math.random() * 0.1;
+        d.x = Math.random();
+        d.attachedVortex = null;
+      }
+
       const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
       if(!orbiting){
         d.y += d.spd * (0.25 + intensity * 0.45) * dt;
-        d.x += (Math.sin(now * 0.001 + i) * 0.0008 + d.vx / W) * dt;   // ⬅️ agregar d.vx
+        d.x += (Math.sin(now * 0.001 + i) * 0.0008 + d.vx / W) * dt;
       }
-      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
+
       if(d.x > 1.05) d.x -= 1.1;
       if(d.x < -0.05) d.x += 1.1;
 
+      if(d.y > 1.05){
+        if(inActiveRange){
+          d.y = -0.05;
+          d.x = Math.random();
+          d.attachedVortex = null;
+        } else {
+          d.finished = true;
+          continue;
+        }
+      }
+
       const px = d.x * W, py = d.y * H;
       const r = 0.9 + d.len * 30;
-      ctx.fillStyle = `rgba(245,250,255,${0.55 + intensity * 0.30})`;
       const speedMag = Math.hypot(d.vx, d.vy);
       if(speedMag > 30){
         const ang = Math.atan2(d.vy, d.vx);
@@ -9524,36 +9606,92 @@ function drawWeatherParticles(W, H, dt){
         ctx.save();
         ctx.translate(px, py);
         ctx.rotate(ang);
-        ctx.beginPath(); ctx.ellipse(0, 0, r * stretch, r * 0.75, 0, 0, 6.2832); ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * stretch, r * 0.75, 0, 0, 6.2832);
+        ctx.fill();
         ctx.restore();
       } else {
-        ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, 6.2832);
+        ctx.fill();
       }
     }
   }
+
+  // =========================================================
+  // POLVO (Desierto)
+  // Se mueve en horizontal, no cae. La "retirada" es salir por la derecha.
+  // =========================================================
   else if(mode === 'dust'){
     ctx.fillStyle = `rgba(210,180,130,${0.32 + intensity * 0.30})`;
-    for(let i=0;i<visible;i++){
+    for(let i=0;i<rainDrops.length;i++){
       const d = rainDrops[i];
+      const inActiveRange = i < visible;
+
+      if(!inActiveRange && d.finished) continue;
+      if(inActiveRange && d.finished){
+        d.finished = false;
+        d.x = -0.05 - Math.random() * 0.1;
+        d.y = Math.random();
+      }
+
       const speed = (0.35 + intensity * 0.9) * d.spd;
       d.x += speed * dt * 0.55;
       d.y += speed * dt * 0.06;
-      if(d.x > 1.05){ d.x = -0.05; d.y = Math.random(); }
+
+      if(d.x > 1.05){
+        if(inActiveRange){
+          d.x = -0.05;
+          d.y = Math.random();
+        } else {
+          d.finished = true;
+          continue;
+        }
+      }
+
       const px = d.x * W, py = d.y * H;
       const r = 0.6 + d.len * 18;
-      ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, 6.2832);
+      ctx.fill();
     }
   }
+
+  // =========================================================
+  // CENIZA (Volcán)
+  // =========================================================
   else if(mode === 'ash'){
-    for(let i=0;i<visible;i++){
+    for(let i=0;i<rainDrops.length;i++){
       const d = rainDrops[i];
+      const inActiveRange = i < visible;
+
+      if(!inActiveRange && d.finished) continue;
+      if(inActiveRange && d.finished){
+        d.finished = false;
+        d.y = -0.05 - Math.random() * 0.1;
+        d.x = Math.random();
+        d.attachedVortex = null;
+      }
+
       const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
       if(!orbiting){
         d.y += d.spd * (0.35 + intensity * 0.55) * dt;
-        d.x += (Math.sin(now * 0.0007 + i * 1.7) * 0.0008 + 0.0006 + d.vx / W) * dt;   // ⬅️ agregar d.vx
+        d.x += (Math.sin(now * 0.0007 + i * 1.7) * 0.0008 + 0.0006 + d.vx / W) * dt;
       }
-      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
+
       if(d.x > 1.05) d.x -= 1.1;
+      if(d.x < -0.05) d.x += 1.1;
+
+      if(d.y > 1.05){
+        if(inActiveRange){
+          d.y = -0.05;
+          d.x = Math.random();
+          d.attachedVortex = null;
+        } else {
+          d.finished = true;
+          continue;
+        }
+      }
 
       const px = d.x * W, py = d.y * H;
       const isEmber = (i % 7 === 0);
@@ -9561,21 +9699,48 @@ function drawWeatherParticles(W, H, dt){
         ? `rgba(255,140,60,${0.55 + intensity * 0.35})`
         : `rgba(70,60,55,${0.45 + intensity * 0.30})`;
       const r = 0.7 + d.len * 16;
-      ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, 6.2832);
+      ctx.fill();
     }
   }
+
+  // =========================================================
+  // PÉTALOS (Jardín)
+  // =========================================================
   else if(mode === 'petals'){
     const t = now * 0.001;
-    for(let i=0;i<visible;i++){
+    for(let i=0;i<rainDrops.length;i++){
       const d = rainDrops[i];
+      const inActiveRange = i < visible;
+
+      if(!inActiveRange && d.finished) continue;
+      if(inActiveRange && d.finished){
+        d.finished = false;
+        d.y = -0.05 - Math.random() * 0.1;
+        d.x = Math.random();
+        d.attachedVortex = null;
+      }
+
       const orbiting = stepWeatherParticle(d, dt, intensity, W, H);
       if(!orbiting){
         d.y += d.spd * (0.22 + intensity * 0.40) * dt;
-        d.x += (Math.sin(t + i * 1.3) * 0.0014 + 0.0004 + d.vx / W) * dt;   // ⬅️ agregar d.vx
+        d.x += (Math.sin(t + i * 1.3) * 0.0014 + 0.0004 + d.vx / W) * dt;
       }
-      if(d.y > 1.05){ d.y = -0.05; d.x = Math.random(); d.attachedVortex = null; }
+
       if(d.x > 1.05) d.x -= 1.1;
       if(d.x < -0.05) d.x += 1.1;
+
+      if(d.y > 1.05){
+        if(inActiveRange){
+          d.y = -0.05;
+          d.x = Math.random();
+          d.attachedVortex = null;
+        } else {
+          d.finished = true;
+          continue;
+        }
+      }
 
       const px = d.x * W, py = d.y * H;
       const r = 1.6 + d.len * 20;
@@ -9588,9 +9753,13 @@ function drawWeatherParticles(W, H, dt){
                 : i % 4 === 2 ? 'rgba(255,180,215,0.85)'
                 :               'rgba(245,200,255,0.85)';
       ctx.fillStyle = pink;
-      ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.55, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r, r * 0.55, 0, 0, 6.2832);
+      ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.50)';
-      ctx.beginPath(); ctx.ellipse(-r*0.28, -r*0.14, r*0.35, r*0.22, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(-r*0.28, -r*0.14, r*0.35, r*0.22, 0, 0, 6.2832);
+      ctx.fill();
       ctx.restore();
     }
   }
