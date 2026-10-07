@@ -5245,7 +5245,19 @@ function showDraftModal(color){
           picks.add(key); card.classList.add('picked');
         }
         counter.textContent = `${picks.size} / 3 seleccionadas`;
-        if(picks.size === 3){
+        if(picks.size === 3){			
+			// ⬇️ Cerrar el tooltip YA, sin esperar el setTimeout
+			  hidePowerTooltip();
+
+			  // ⬇️ Forzar blur para que Android suelte el touch target
+			  try {
+				if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+				document.body.setAttribute('tabindex', '-1');
+				document.body.focus();
+				document.body.removeAttribute('tabindex');
+			  } catch(e){}
+			
+			
           setTimeout(() => {
             hidePowerTooltip();     // ⬅️ NUEVO: evitar tooltip huérfano
             ov.remove();
