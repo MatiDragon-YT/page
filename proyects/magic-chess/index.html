@@ -194,6 +194,12 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
 .piece.shielded-weak.ira .tok::before{
   border-color:rgba(200,220,255,0.85);
 }
+.piece.in-check-shielded .tok{
+  box-shadow: 0 0 0 3px rgba(255,80,80,.5),
+              0 0 14px 4px rgba(255,60,60,.35),
+              0 2px 6px rgba(0,0,0,.65);
+  animation: checkPulse .8s infinite alternate;
+}
 @keyframes checkPulse{
   from{filter:brightness(1) saturate(1.15)}
   to  {filter:brightness(1.35) saturate(1.55)}
@@ -4100,7 +4106,8 @@ el.classList.toggle('shielded', shielded);
 el.classList.toggle('shielded-weak', weakened);   // ⬅️ FALTA
 el.classList.toggle('ira', iraReady);
   const inCheck = !replay.active && p.type === 'k' && chess && chess.turn() === p.color && chess.in_check();
-  el.classList.toggle('in-check', inCheck);
+el.classList.toggle('in-check', inCheck);
+el.classList.toggle('in-check-shielded', inCheck && kingHasShield(p.color));
 }
 function syncPieces(){
   const board = chess.board();
