@@ -4556,7 +4556,10 @@ function showHoverPreview(sq){
   const cell = gridEl.querySelector(`[data-sq="${sq}"]`);
   if(cell) cell.classList.add('prev-sel');
 
-  const moves = chess.moves({ square: sq, verbose: true });
+  const moves = kingHasShield(chess.turn())
+  ? getMovesIgnoringCheck(sq, chess.turn())
+  : chess.moves({ square: sq, verbose: true });
+  
   for(const m of moves){
     const c = gridEl.querySelector(`[data-sq="${m.to}"]`);
     if(!c) continue;
@@ -10089,7 +10092,7 @@ document.addEventListener('keydown', (e) => {
     if(e.key === 'Escape'){     e.preventDefault(); closeReplay(); return; }
   }
   
-  if(e.key === 'Escape' && !document.body.classList.contains('debug-open') === false){
+  if(e.key === 'Escape' && document.body.classList.contains('debug-open')){
 	  closeDebugPanel();
 	}
 });
