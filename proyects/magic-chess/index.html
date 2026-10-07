@@ -107,13 +107,6 @@ html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#06070b;
 @keyframes pulseGreen{0%,100%{opacity:.5}50%{opacity:1}}
 @keyframes pulseRed{0%,100%{opacity:.45}50%{opacity:1}}
 @keyframes spinPulse{0%,100%{opacity:.55}50%{opacity:1}}
-#pauseOverlay{position:absolute;inset:0;z-index:15;background:rgba(0,0,0,.72);
-  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;
-  backdrop-filter:blur(5px);animation:fadeIn .18s}
-#pauseOverlay.hidden{display:none}
-#pauseOverlay .pt{font-size:38px;color:#ffe0a0;font-weight:800;letter-spacing:3px;
-  text-shadow:0 0 24px rgba(255,200,90,.7)}
-#pauseOverlay .ps{font-size:12px;color:#a89c86;letter-spacing:1px}
 #clockBar{display:flex;gap:6px;padding:0 4px;margin-top:-2px}
 .clock{flex:1;text-align:center;padding:4px 8px;border-radius:6px;
   background:#0a0c14;border:1px solid #2a3040;
@@ -898,10 +891,7 @@ display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;
     <div id="pieces"></div>
     <canvas id="fpsCanvas"></canvas>   <!-- ⬅️ NUEVO -->
     <div id="dragLayer"></div>
-    <div id="pauseOverlay" class="hidden">
-	  <div class="pt">PAUSA</div>
-	  <div class="ps">Elegí una opción para continuar</div>
-	</div>
+    
   </div>
   <div id="controls">
     <div id="turnBar">
@@ -9669,7 +9659,6 @@ async function restartGame(){
   aiSearchAbort = true;
   state.aiBusy = false;
   stopTimer();
-  $('#pauseOverlay').classList.add('hidden');
   state.userPaused = false;
   updatePauseState();
   await startGame();
@@ -9685,7 +9674,6 @@ async function exitToMenu(){
   aiSearchAbort = true;
   state.aiBusy = false;
   stopTimer();
-  $('#pauseOverlay').classList.add('hidden');
   state.userPaused = false;
   updatePauseState();
   await startGame();
@@ -9742,7 +9730,6 @@ function newGame(){
   replayAnimating = false;
   replay.storedMatch = null; replay.originalHistory = null;
   $('#replayUI').classList.add('hidden');
-  $('#pauseOverlay').classList.add('hidden');
   undoStack.length = 0;
   undoUsed = 0;
   turnSnapshotTaken = false;
