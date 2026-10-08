@@ -3785,6 +3785,295 @@ function drawAmbientLife(W, H){
 }
 
 /* =========================================================
+   DECALS — huellas persistentes de poderes
+   ========================================================= */
+const decals = [];
+const DECAL_LIFE = 180;         // segundos
+const DECAL_FADE_START = 140;   // a partir de acá empieza a desvanecerse
+const DECAL_MAX = 40;           // tope duro
+
+const _decalSprites = {};
+function getDecalSprite(kind){
+  if(_decalSprites[kind]) return _decalSprites[kind];
+  const SIZE = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = SIZE;
+  const cx = c.getContext('2d');
+  const h = SIZE / 2;
+
+  if(kind === 'ray'){
+    // Tierra quemada
+    const grad = cx.createRadialGradient(h, h, 0, h, h, h);
+    grad.addColorStop(0.00, 'rgba(20,10,5,0.85)');
+    grad.addColorStop(0.35, 'rgba(35,18,8,0.70)');
+    grad.addColorStop(0.70, 'rgba(60,35,15,0.35)');
+    grad.addColorStop(1.00, 'rgba(60,35,15,0)');
+    cx.fillStyle = grad;
+    cx.fillRect(0, 0, SIZE, SIZE);
+    // Grietas radiales
+    cx.strokeStyle = 'rgba(255,160,60,0.55)';
+    cx.lineCap = 'round';
+    for(let i = 0; i < 7; i++){
+      const a = (i / 7) * Math.PI * 2 + rnd(-0.3, 0.3);
+      const len = rnd(h * 0.55, h * 0.92);
+      cx.lineWidth = rnd(0.8, 1.6);
+      cx.beginPath();
+      cx.moveTo(h, h);
+      const segs = 4;
+      for(let s = 1; s <= segs; s++){
+        const t = s / segs;
+        const jitter = (1 - t) * rnd(-8, 8);
+        cx.lineTo(h + Math.cos(a) * len * t + Math.cos(a + 1.57) * jitter,
+                  h + Math.sin(a) * len * t + Math.sin(a + 1.57) * jitter);
+      }
+      cx.stroke();
+    }
+    // Brasas
+    for(let i = 0; i < 12; i++){
+      const a = Math.random() * Math.PI * 2;
+      const r = Math.random() * h * 0.75;
+      cx.fillStyle = `rgba(255,${120 + Math.floor(Math.random()*80)},40,${rnd(0.4,0.9)})`;
+      cx.beginPath();
+      cx.arc(h + Math.cos(a) * r, h + Math.sin(a) * r, rnd(1, 2.5), 0, 6.2832);
+      cx.fill();
+    }
+  }
+  else if(kind === 'quake'){
+    // Grietas grandes sobre el área
+    cx.fillStyle = 'rgba(40,28,18,0.30)';
+    cx.fillRect(0, 0, SIZE, SIZE);
+    cx.strokeStyle = 'rgba(20,12,6,0.75)';
+    cx.lineCap = 'round';
+    for(let i = 0; i < 4; i++){
+      const x0 = rnd(10, SIZE - 10);
+      const y0 = rnd(10, SIZE - 10);
+      cx.lineWidth = rnd(2, 4);
+      cx.beginPath();
+      cx.moveTo(x0, y0);
+      let x = x0, y = y0;
+      const steps = 5 + Math.floor(Math.random() * 4);
+      for(let s = 0; s < steps; s++){
+        x += rnd(-30, 30);
+        y += rnd(-30, 30);
+        x = clamp(x, 4, SIZE - 4);
+        y = clamp(y, 4, SIZE - 4);
+        cx.lineTo(x, y);
+      }
+      cx.stroke();
+    }
+    // Escombros
+    for(let i = 0; i < 22; i++){
+      const px = rnd(6, SIZE - 6);
+      const py = rnd(6, SIZE - 6);
+      cx.fillStyle = `rgba(${70+Math.floor(Math.random()*40)},${60+Math.floor(Math.random()*30)},${40+Math.floor(Math.random()*20)},0.85)`;
+      cx.beginPath();
+      cx.ellipse(px, py, rnd(2, 5), rnd(1.5, 3.5), Math.random() * 6.28, 0, 6.2832);
+      cx.fill();
+    }
+  }
+  else if(kind === 'zombie'){
+    // Mancha violácea
+    const grad = cx.createRadialGradient(h, h, 0, h, h, h);
+    grad.addColorStop(0.00, 'rgba(40,25,60,0.80)');
+    grad.addColorStop(0.50, 'rgba(60,35,90,0.55)');
+    grad.addColorStop(1.00, 'rgba(80,50,120,0)');
+    cx.fillStyle = grad;
+    cx.fillRect(0, 0, SIZE, SIZE);
+    // Hongos
+    for(let i = 0; i < 9; i++){
+      const a = Math.random() * Math.PI * 2;
+      const r = h * (0.35 + Math.random() * 0.55);
+      const mx = h + Math.cos(a) * r;
+      const my = h + Math.sin(a) * r;
+      const size = rnd(3, 7);
+      // Tallo
+      cx.strokeStyle = 'rgba(200,180,220,0.75)';
+      cx.lineWidth = 1.2;
+      cx.beginPath();
+      cx.moveTo(mx, my + size);
+      cx.lineTo(mx, my);
+      cx.stroke();
+      // Sombrero
+      cx.fillStyle = i % 2 ? 'rgba(180,120,220,0.85)' : 'rgba(140,90,180,0.85)';
+      cx.beginPath();
+      cx.ellipse(mx, my, size, size * 0.55, 0, 0, 6.2832);
+      cx.fill();
+      // Puntos brillantes
+      cx.fillStyle = 'rgba(230,200,255,0.85)';
+      cx.beginPath();
+      cx.arc(mx - size*0.25, my - size*0.10, 0.9, 0, 6.2832);
+      cx.fill();
+      cx.beginPath();
+      cx.arc(mx + size*0.20, my + size*0.05, 0.7, 0, 6.2832);
+      cx.fill();
+    }
+    // Esporas sueltas
+    for(let i = 0; i < 14; i++){
+      const a = Math.random() * Math.PI * 2;
+      const r = Math.random() * h * 0.85;
+      cx.fillStyle = `rgba(200,160,255,${rnd(0.3,0.8)})`;
+      cx.beginPath();
+      cx.arc(h + Math.cos(a) * r, h + Math.sin(a) * r, rnd(0.8, 1.8), 0, 6.2832);
+      cx.fill();
+    }
+  }
+  else if(kind === 'heal'){
+    // Círculo verde claro con brotes
+    const grad = cx.createRadialGradient(h, h, 0, h, h, h);
+    grad.addColorStop(0.00, 'rgba(140,255,180,0.55)');
+    grad.addColorStop(0.55, 'rgba(90,220,140,0.35)');
+    grad.addColorStop(1.00, 'rgba(60,180,100,0)');
+    cx.fillStyle = grad;
+    cx.fillRect(0, 0, SIZE, SIZE);
+    // Briznas de hierba
+    cx.strokeStyle = 'rgba(140,230,160,0.85)';
+    cx.lineWidth = 1.4;
+    cx.lineCap = 'round';
+    for(let i = 0; i < 16; i++){
+      const a = Math.random() * Math.PI * 2;
+      const r = h * (0.25 + Math.random() * 0.60);
+      const gx = h + Math.cos(a) * r;
+      const gy = h + Math.sin(a) * r;
+      const len = rnd(5, 12);
+      cx.beginPath();
+      cx.moveTo(gx, gy);
+      cx.quadraticCurveTo(gx + rnd(-3, 3), gy - len * 0.6, gx + rnd(-4, 4), gy - len);
+      cx.stroke();
+    }
+    // Florecitas
+    for(let i = 0; i < 5; i++){
+      const a = Math.random() * Math.PI * 2;
+      const r = h * (0.30 + Math.random() * 0.45);
+      const fx = h + Math.cos(a) * r;
+      const fy = h + Math.sin(a) * r;
+      cx.fillStyle = i % 2 ? 'rgba(255,220,240,0.95)' : 'rgba(255,250,200,0.95)';
+      for(let p = 0; p < 5; p++){
+        const pa = (p / 5) * Math.PI * 2;
+        cx.beginPath();
+        cx.ellipse(fx + Math.cos(pa) * 2.2, fy + Math.sin(pa) * 2.2, 1.8, 1.2, pa, 0, 6.2832);
+        cx.fill();
+      }
+      cx.fillStyle = 'rgba(255,200,80,0.95)';
+      cx.beginPath();
+      cx.arc(fx, fy, 1.2, 0, 6.2832);
+      cx.fill();
+    }
+  }
+  else if(kind === 'teleport'){
+    // Círculo rúnico
+    cx.strokeStyle = 'rgba(200,140,255,0.65)';
+    cx.lineWidth = 1.6;
+    cx.beginPath(); cx.arc(h, h, h * 0.75, 0, 6.2832); cx.stroke();
+    cx.strokeStyle = 'rgba(180,120,255,0.45)';
+    cx.lineWidth = 1.0;
+    cx.beginPath(); cx.arc(h, h, h * 0.55, 0, 6.2832); cx.stroke();
+    cx.beginPath(); cx.arc(h, h, h * 0.35, 0, 6.2832); cx.stroke();
+    // Estrella interior
+    cx.strokeStyle = 'rgba(220,180,255,0.55)';
+    cx.lineWidth = 1.0;
+    cx.beginPath();
+    for(let i = 0; i <= 5; i++){
+      const a = (i * 4 / 5) * Math.PI * 2 - Math.PI / 2;
+      const px = h + Math.cos(a) * h * 0.65;
+      const py = h + Math.sin(a) * h * 0.65;
+      if(i === 0) cx.moveTo(px, py); else cx.lineTo(px, py);
+    }
+    cx.closePath();
+    cx.stroke();
+    // Símbolos
+    for(let i = 0; i < 6; i++){
+      const a = (i / 6) * Math.PI * 2;
+      const px = h + Math.cos(a) * h * 0.90;
+      const py = h + Math.sin(a) * h * 0.90;
+      cx.fillStyle = 'rgba(220,180,255,0.75)';
+      cx.beginPath();
+      cx.arc(px, py, 2, 0, 6.2832);
+      cx.fill();
+    }
+  }
+  else if(kind === 'ira'){
+    // Manchas rojizas irregulares
+    for(let i = 0; i < 6; i++){
+      const ox = rnd(-h * 0.4, h * 0.4);
+      const oy = rnd(-h * 0.4, h * 0.4);
+      const r = rnd(6, 16);
+      const grad = cx.createRadialGradient(h + ox, h + oy, 0, h + ox, h + oy, r);
+      grad.addColorStop(0, 'rgba(160,30,20,0.65)');
+      grad.addColorStop(1, 'rgba(120,20,15,0)');
+      cx.fillStyle = grad;
+      cx.beginPath();
+      cx.arc(h + ox, h + oy, r, 0, 6.2832);
+      cx.fill();
+    }
+    // Marcas de garras
+    cx.strokeStyle = 'rgba(90,15,10,0.85)';
+    cx.lineWidth = 2.2;
+    cx.lineCap = 'round';
+    for(let i = 0; i < 3; i++){
+      const sx = h - 18 + i * 12;
+      const sy = h - 14;
+      cx.beginPath();
+      cx.moveTo(sx, sy);
+      cx.quadraticCurveTo(sx + 6, h, sx + 3, h + 16);
+      cx.stroke();
+    }
+  }
+
+  _decalSprites[kind] = c;
+  return c;
+}
+
+function addDecal(sq, kind, opts = {}){
+  if(!sq || !kind) return;
+  if(!quality.particlesEnabled) return;   // si el user apagó partículas, no molestar
+  if(currentQuality().level === 'emergency') return;
+
+  // Limitar cantidad
+  while(decals.length >= DECAL_MAX) decals.shift();
+
+  decals.push({
+    sq,
+    kind,
+    life: DECAL_LIFE,
+    maxLife: DECAL_LIFE,
+    alpha: opts.alpha !== undefined ? opts.alpha : 1.0,
+    scale: opts.scale !== undefined ? opts.scale : 1.0,
+  });
+}
+
+function updateDecals(dt){
+  for(let i = decals.length - 1; i >= 0; i--){
+    const d = decals[i];
+    d.life -= dt;
+    if(d.life <= 0) decals.splice(i, 1);
+  }
+}
+
+function drawDecals(W, H){
+  if(!decals.length) return;
+  const q = currentQuality();
+  if(q.level === 'emergency') return;
+
+  ctx.save();
+  for(const d of decals){
+    const sprite = getDecalSprite(d.kind);
+    if(!sprite) continue;
+    const C = squareCenter(d.sq);
+    const base = cellSize * (d.kind === 'quake' ? 3.0 : 1.35);
+    const size = base * d.scale;
+
+    // Fade en los últimos segundos
+    let alpha = d.alpha;
+    if(d.life < DECAL_LIFE - DECAL_FADE_START){
+      alpha *= Math.max(0, d.life / (DECAL_LIFE - DECAL_FADE_START));
+    }
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(sprite, C.x - size/2, C.y - size/2, size, size);
+  }
+  ctx.restore();
+}
+
+/* =========================================================
    ATMÓSFERA v3 — biome-aware
    ========================================================= */
 const atmosphere = {
@@ -7369,6 +7658,7 @@ async function iraTargeting(fromSq, color){
     vibrate([40, 30, 80]);
     removeShield(targetPiece.color, targetSq);
     state.iraCharge[color] = false;
+	addDecal(targetSq, 'ira', { alpha: 0.6 });
     toast('🛡️ ¡La Ira se estrella contra el escudo! Escudo roto · Ira consumida', '#ffb060');
     recordHistory({
       type: 'ira-blocked', color, powerIcon: '🛡️', powerName: 'Ira bloqueada',
@@ -7404,6 +7694,9 @@ async function iraTargeting(fromSq, color){
 	sfxCapture(res.captured);
 
 	await animateMove(mv.from, mv.to, capturedSquare, 400);
+	
+	addDecal(capturedSquare, 'ira', { alpha: 0.85 });
+	
     if(res.captured) addToGraveyard(res.captured, oppColor);
     if(res.captured) vibrate([20, 40, 55]);
     state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
@@ -7830,6 +8123,8 @@ async function execTeleport(from, to, cost){
 	  toast('🛡️ Escudo cancelado al teletransportar', '#7ac0ff');
 	}
   validateAndFixBoard();
+  addDecal(from, 'teleport', { alpha: 0.7 });
+  addDecal(to,   'teleport', { alpha: 0.85 });
   const el2 = pieceEls.get(to);
   if(el2){ el2.style.opacity = '0'; el2.getBoundingClientRect(); el2.style.opacity = '1'; }
   spawnVortex(B.x, B.y, '#d0a0ff', false);
@@ -7924,6 +8219,7 @@ if(victim){
   if(achState[turn].powersUsed >= 5) unlockAch(turn, 'magoDeMagos');
   toast(`Rayo Destructor · ${cost} maná`, '#ffe070');
   validateAndFixBoard();
+  addDecal(sq, 'ray');
   await sleep(520);
   state.busy = false;
   setPowerHighlight([sq], 'ray');
@@ -7953,6 +8249,7 @@ async function execZombie(sq){
   ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.7, life:.7, lifeMax:.7, color:'160,90,230' });
   burst(C.x, C.y, 30, { color:'#a060e0', spMin:30, spMax:160, lifeMin:.3, lifeMax:.8 });
   validateAndFixBoard();
+  addDecal(sq, 'zombie');
   const el = pieceEls.get(sq);
   if(el){ el.classList.add('spawn'); setTimeout(()=>el.classList.remove('spawn'), 420); }
   state.mana[turn] -= POWERS.zombie.cost;
@@ -8063,6 +8360,7 @@ async function execHeal(sq, type, color, cost){
   const prevEl = pieceEls.get(sq);
   if(prevEl){ prevEl.remove(); pieceEls.delete(sq); }
   validateAndFixBoard();
+  addDecal(sq, 'heal');
   const el = pieceEls.get(sq);
   if(el){ el.classList.add('spawn'); setTimeout(()=>el.classList.remove('spawn'), 420); }
   ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.7, lifeMax:.7, color:'140,255,180' });
@@ -8187,22 +8485,28 @@ if(movablePieces.length > 1){
 
   // Actualizar DOM y pieceEls
   for(const mp of movablePieces) pieceEls.delete(mp.sq);
-  for(let i=0;i<movablePieces.length;i++){
-    const mp = movablePieces[i];
-    const el = mp.el;
-    const newSq = chosenArrangement[i];
-    const pc = mp.piece;
-    el.dataset.code = pc.color + pc.type;
-    el.classList.toggle('white', pc.color === 'w');
-    el.classList.toggle('black', pc.color === 'b');
-    el.querySelector('.tok').textContent = GLYPH[pc.type];
-    pieceEls.set(newSq, el);
-    el.getBoundingClientRect();
-    positionPiece(el, newSq);
-    const c2 = squareCenter(newSq);
-    ripples.push({ x:c2.x, y:c2.y, r:2, maxR: cellSize*0.9, life:.5, maxLife:.5, color:'200,170,120' });
-  }
-}
+	  for(let i=0;i<movablePieces.length;i++){
+		const mp = movablePieces[i];
+		const el = mp.el;
+		const newSq = chosenArrangement[i];
+		const pc = mp.piece;
+		el.dataset.code = pc.color + pc.type;
+		el.classList.toggle('white', pc.color === 'w');
+		el.classList.toggle('black', pc.color === 'b');
+		el.querySelector('.tok').textContent = GLYPH[pc.type];
+		pieceEls.set(newSq, el);
+		el.getBoundingClientRect();
+		positionPiece(el, newSq);
+		const c2 = squareCenter(newSq);
+		ripples.push({ x:c2.x, y:c2.y, r:2, maxR: cellSize*0.9, life:.5, maxLife:.5, color:'200,170,120' });
+	  }
+	}
+	
+	for(const sq of squares){
+	  // Solo si la casilla tiene algo quemado que mostrar (todas sirven)
+	  addDecal(sq, 'quake', { alpha: 0.75, scale: 0.95 });     // ⬅️ NUEVO
+	}
+	
   state.mana[turn] -= POWERS.quake.cost;
   achState[turn].powersUsed++;
   if(achState[turn].powersUsed >= 5) unlockAch(turn, 'magoDeMagos');
@@ -9379,6 +9683,7 @@ clearHighlights();
 
   rebuildPieces();
   particles.length = 0; bolts.length = 0; curves.length = 0; ripples.length = 0;
+  decals.length = 0;
   updateReplayUI(entry, 0);
   updateReplayControls();
 }
@@ -9452,6 +9757,7 @@ function closeReplay(){
   }
   rebuildPieces();
   particles.length = 0; bolts.length = 0; curves.length = 0; ripples.length = 0;
+  decals.length = 0;
   for(const el of historyEl.children) el.classList.remove('replay-active');
   updateUI();
 }
@@ -10867,6 +11173,7 @@ function newGame(){
   historyLog.length = 0; historyEl.innerHTML = '';
   pieceEls.forEach(el => el.remove()); pieceEls.clear();
   particles.length = 0; bolts.length = 0; curves.length = 0; ripples.length = 0;
+  decals.length = 0;
   if(replay.active){ stopReplayAuto(); replay.active = false; }
   replayAnimating = false;
   replay.storedMatch = null; replay.originalHistory = null;
@@ -11712,7 +12019,8 @@ function loop(now){
   if(dt > 0){
     updateWeather(dt);
     updateParticles(dt);
-    updateAtmosphere(dt, W, H);   // ⬅️ NUEVO
+    updateAtmosphere(dt, W, H);
+	updateDecals(dt);
   }
   // (eliminá el bloque viejo "if(dt > 0){ updateWeather/updateParticles }"
   //  que estaba más arriba en el loop, para no duplicar)
@@ -11722,10 +12030,11 @@ function loop(now){
   else { ctx.fillStyle = '#1a2418'; ctx.fillRect(0,0,W,H); }
 
   drawWaterLayer(W, H, gameTime);
-  drawCloudShadows(W, H);          // ⬅️ NUEVO
+  drawDecals(W, H); 
+  drawCloudShadows(W, H);
   drawBoardGrid(W, H);
-  drawRainRipples(W, H);           // ⬅️ NUEVO
-  drawBirds(W, H);                 // ⬅️ NUEVO
+  drawRainRipples(W, H);
+  drawBirds(W, H);
 
   const ph = getPhase();
 
