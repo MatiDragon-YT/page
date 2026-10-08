@@ -2877,8 +2877,101 @@ const POWERS = {
   quake:    { name:'Terremoto', cost:6, icon:'🌋',
     desc:'Sacude un área de 3×3 y mezcla al azar las piezas que haya dentro. No puede dejar a tu Rey en jaque.' }
 };
+
+/* =========================================================
+   SKINS DE PODERES POR BIOMA
+   Cada poder cambia su color/estilo según dónde se lance.
+   NO cambia la mecánica — solo lo visual.
+   ========================================================= */
+const POWER_BIOME_SKINS = {
+  ray: {
+    forest: {
+      bolt: '#a8ff80', boltGlow: '#80ff40', core: '#e8ffe0',
+      spark1: '#fff8a0', spark2: '#80d040',
+      smoke: 'rgba(50,80,40,0.55)',
+      ripple: '180,255,120',
+      intensity: 1.0,
+    },
+    desert: {
+      bolt: '#ffe080', boltGlow: '#ffb040', core: '#fff8d0',
+      spark1: '#fff0c0', spark2: '#e08020',
+      smoke: 'rgba(120,90,50,0.55)',
+      ripple: '255,220,140',
+      intensity: 1.1,
+    },
+    snow: {
+      bolt: '#c0f0ff', boltGlow: '#80d0ff', core: '#ffffff',
+      spark1: '#e0f8ff', spark2: '#80c0f0',
+      smoke: 'rgba(180,210,240,0.55)',
+      ripple: '200,235,255',
+      intensity: 1.0,
+    },
+    volcano: {
+      bolt: '#ff8040', boltGlow: '#ff4020', core: '#fff0d0',
+      spark1: '#ffb060', spark2: '#c02010',
+      smoke: 'rgba(40,20,15,0.75)',
+      ripple: '255,140,60',
+      intensity: 1.25,
+    },
+    cute: {
+      bolt: '#ffb0e0', boltGlow: '#ff80c0', core: '#fff0f8',
+      spark1: '#fff0f8', spark2: '#ff90c0',
+      smoke: 'rgba(255,200,230,0.55)',
+      ripple: '255,200,230',
+      intensity: 0.9,
+    },
+  },
+
+  shield: {
+    forest: { hex: '140,220,120', glow: '#80d040', interior: 'rgba(80,160,60,0.4)', halo: '120,200,90' },
+    desert: { hex: '255,210,140', glow: '#e0a040', interior: 'rgba(180,140,80,0.4)', halo: '255,220,160' },
+    snow:   { hex: '200,235,255', glow: '#90c8ff', interior: 'rgba(140,190,240,0.4)', halo: '210,240,255' },
+    volcano:{ hex: '255,140,60',  glow: '#ff5010', interior: 'rgba(160,50,20,0.5)',  halo: '255,160,80' },
+    cute:   { hex: '255,190,235', glow: '#ff90d0', interior: 'rgba(255,170,220,0.4)', halo: '255,210,240' },
+  },
+
+  teleport: {
+    forest:  { v1: '#80ff80', v2: '#40c040', curve: 'rgba(120,255,120,0.85)', ripple: '120,255,140' },
+    desert:  { v1: '#ffd080', v2: '#e09030', curve: 'rgba(255,220,140,0.85)', ripple: '255,220,140' },
+    snow:    { v1: '#c0e0ff', v2: '#80b0e0', curve: 'rgba(180,220,255,0.85)', ripple: '180,220,255' },
+    volcano: { v1: '#ff9040', v2: '#ff4020', curve: 'rgba(255,140,80,0.9)',   ripple: '255,140,70' },
+    cute:    { v1: '#ffb0f0', v2: '#c090ff', curve: 'rgba(255,180,240,0.85)', ripple: '255,200,240' },
+  },
+
+  zombie: {
+    forest:  { spore: ['rgba(40,70,30,0.9)',  'rgba(90,140,60,0.85)'], ripple: '140,200,80'  },
+    desert:  { spore: ['rgba(80,60,40,0.9)',  'rgba(160,120,80,0.85)'], ripple: '200,160,100' },
+    snow:    { spore: ['rgba(50,70,90,0.9)',  'rgba(140,180,210,0.85)'], ripple: '160,200,230' },
+    volcano: { spore: ['rgba(60,20,10,0.9)',  'rgba(200,60,30,0.85)'],  ripple: '255,90,40'   },
+    cute:    { spore: ['rgba(120,80,160,0.9)','rgba(220,160,255,0.85)'], ripple: '220,160,255' },
+  },
+
+  heal: {
+    forest:  { beam: '120,255,170', particle: '#a8ffc0', ripple: '140,255,180', flower: '#ffe070' },
+    desert:  { beam: '140,230,220', particle: '#a0f0e0', ripple: '140,230,210', flower: '#fff0a0' },
+    snow:    { beam: '180,240,255', particle: '#c0f0ff', ripple: '180,235,255', flower: '#e0f0ff' },
+    volcano: { beam: '255,180,120', particle: '#ffc080', ripple: '255,180,120', flower: '#ffe0b0' },
+    cute:    { beam: '255,200,230', particle: '#ffd0e8', ripple: '255,210,240', flower: '#fff0f8' },
+  },
+
+  quake: {
+    forest:  { dust: ['#a08c6a', '#7a6a4a', '#c0b090'], smoke: 'rgba(120,100,70,0.5)'  },
+    desert:  { dust: ['#e0c090', '#b09060', '#f0d8b0'], smoke: 'rgba(200,170,110,0.5)' },
+    snow:    { dust: ['#d0e0f0', '#a0b8d0', '#f0f8ff'], smoke: 'rgba(200,220,240,0.5)' },
+    volcano: { dust: ['#602818', '#401810', '#a04020'], smoke: 'rgba(60,20,10,0.75)'   },
+    cute:    { dust: ['#ffc0e0', '#e0a0c0', '#fff0f8'], smoke: 'rgba(255,200,230,0.5)' },
+  },
+};
+
+function getPowerSkin(powerKey){
+  const table = POWER_BIOME_SKINS[powerKey];
+  if(!table) return null;
+  return table[currentBiome?.id] || table.forest;
+}
+
 const ALL_CARD_KEYS = Object.keys(POWERS);
 const TELEPORT_MAX_DIST = 3;
+
 function teleportCost(fromSq, toSq){
   const a = sqToRC(fromSq), b = sqToRC(toSq);
   const dist = Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.c));
@@ -3788,11 +3881,76 @@ function drawAmbientLife(W, H){
    DECALS — huellas persistentes de poderes
    ========================================================= */
 const decals = [];
-const DECAL_LIFE = 180;         // segundos
-const DECAL_FADE_START = 140;   // a partir de acá empieza a desvanecerse
-const DECAL_MAX = 40;           // tope duro
-
 const _decalSprites = {};
+
+/* =========================================================
+   CONFIG DE DECALS — duración, curva y opacidad por tipo
+   =========================================================
+   life:         segundos totales que dura la huella
+   fadeStart:    a partir de este segundo empieza a desvanecerse
+   fadeCurve:    'ease'  → ease-out cúbico (lento al principio, rápido al final)
+                 'hold'  → se mantiene y cae de golpe al final
+                 'smooth'→ smoothstep (suave en los dos extremos)
+                 'linear'→ el viejo comportamiento
+   peak:         multiplicador de opacidad durante la fase visible
+   ========================================================= */
+const DECAL_CONFIG = {
+  ray:      { life: 240, fadeStart: 180, fadeCurve: 'ease',   peak: 1.00 },
+  quake:    { life: 300, fadeStart: 220, fadeCurve: 'ease',   peak: 0.85 },
+  zombie:   { life: 200, fadeStart: 140, fadeCurve: 'hold',   peak: 1.00 },
+  heal:     { life: 120, fadeStart:  70, fadeCurve: 'smooth', peak: 0.95 },
+  teleport: { life: 150, fadeStart:  90, fadeCurve: 'ease',   peak: 0.80 },
+  ira:      { life: 180, fadeStart: 120, fadeCurve: 'ease',   peak: 0.90 },
+};
+
+function getDecalConfig(kind){
+  return DECAL_CONFIG[kind] || { life: 180, fadeStart: 120, fadeCurve: 'ease', peak: 1 };
+}
+
+const DECAL_MAX = 60;   // ⬅️ subido porque ahora duran más
+
+/* =========================================================
+   DECAL TINTING — cada bioma deja huellas con su color
+   ========================================================= */
+const _tintedDecalCache = {};
+
+const _decalBiomeTint = {
+  forest:  { r: 100, g: 180, b: 80,  a: 0.18 },
+  desert:  { r: 255, g: 200, b: 120, a: 0.22 },
+  snow:    { r: 180, g: 220, b: 255, a: 0.28 },
+  volcano: { r: 255, g: 120, b: 60,  a: 0.22 },
+  cute:    { r: 255, g: 180, b: 220, a: 0.20 },
+};
+
+function getTintedDecalSprite(kind, biomeId){
+  const key = kind + '|' + (biomeId || 'forest');
+  if(_tintedDecalCache[key]) return _tintedDecalCache[key];
+
+  const base = getDecalSprite(kind);
+  if(!base){ _tintedDecalCache[key] = null; return null; }
+
+  const t = _decalBiomeTint[biomeId];
+  if(!t){ _tintedDecalCache[key] = base; return base; }
+
+  // Re-tint sobre copia (source-atop respeta solo píxeles opacos del sprite)
+  const c = document.createElement('canvas');
+  c.width  = base.width;
+  c.height = base.height;
+  const cx = c.getContext('2d');
+  cx.drawImage(base, 0, 0);
+  cx.globalCompositeOperation = 'source-atop';
+  cx.fillStyle = `rgba(${t.r},${t.g},${t.b},${t.a})`;
+  cx.fillRect(0, 0, c.width, c.height);
+
+  _tintedDecalCache[key] = c;
+  return c;
+}
+
+// Invalida cache cuando cambia el bioma en debug
+function clearTintedDecalCache(){
+  for(const k in _tintedDecalCache) delete _tintedDecalCache[k];
+}
+
 function getDecalSprite(kind){
   if(_decalSprites[kind]) return _decalSprites[kind];
   const SIZE = 128;
@@ -4023,25 +4181,55 @@ function getDecalSprite(kind){
   return c;
 }
 
+/* Devuelve un multiplicador 0..1 para la opacidad del decal según su vida */
+function decalFadeFactor(d){
+  const cfg = getDecalConfig(d.kind);
+
+  // Proporción del fade dentro de la vida total de ESTE decal
+  const fadeRatio = cfg.fadeStart / cfg.life;   // ej: 180/240 = 0.75
+  const fadeStartLife = d.maxLife * (1 - fadeRatio);
+
+  // Todavía en la fase visible
+  if(d.life >= fadeStartLife) return 1;
+
+  // Progreso del fade para este decal
+  const fadeDur = fadeStartLife;
+  const fadeElapsed = fadeStartLife - d.life;
+  const t = clamp(fadeElapsed / fadeDur, 0, 1);
+
+  switch(cfg.fadeCurve){
+    case 'linear': return 1 - t;
+    case 'ease':   return Math.pow(1 - t, 3);
+    case 'hold':   return t < 0.85 ? 1 : 1 - (t - 0.85) / 0.15;
+    case 'smooth': return 1 - (3*t*t - 2*t*t*t);
+    default:       return 1 - t;
+  }
+}
+
 function addDecal(sq, kind, opts = {}){
   if(!sq || !kind) return;
-  if(!quality.particlesEnabled) return;   // si el user apagó partículas, no molestar
+  if(!quality.particlesEnabled) return;
   if(currentQuality().level === 'emergency') return;
 
-  // Limitar cantidad
   while(decals.length >= DECAL_MAX) decals.shift();
+
+  const cfg = getDecalConfig(kind);
+  const life = opts.life !== undefined ? opts.life : cfg.life;
 
   decals.push({
     sq,
     kind,
-    life: DECAL_LIFE,
-    maxLife: DECAL_LIFE,
+    biome: currentBiome.id,
+    life: life,
+    maxLife: life,
     alpha: opts.alpha !== undefined ? opts.alpha : 1.0,
     scale: opts.scale !== undefined ? opts.scale : 1.0,
   });
 }
 
 function updateDecals(dt){
+  if(replay.active) return;
+	
   for(let i = decals.length - 1; i >= 0; i--){
     const d = decals[i];
     d.life -= dt;
@@ -4054,24 +4242,125 @@ function drawDecals(W, H){
   const q = currentQuality();
   if(q.level === 'emergency') return;
 
+  const inReplay = replay.active;
   ctx.save();
   for(const d of decals){
-    const sprite = getDecalSprite(d.kind);
+    const sprite = getTintedDecalSprite(d.kind, d.biome);
     if(!sprite) continue;
     const C = squareCenter(d.sq);
     const base = cellSize * (d.kind === 'quake' ? 3.0 : 1.35);
     const size = base * d.scale;
 
-    // Fade en los últimos segundos
-    let alpha = d.alpha;
-    if(d.life < DECAL_LIFE - DECAL_FADE_START){
-      alpha *= Math.max(0, d.life / (DECAL_LIFE - DECAL_FADE_START));
+    let alpha;
+    if(inReplay && d._replayAlpha !== undefined){
+      // En replay: opacidad calculada por índice de acción
+      alpha = d._replayAlpha;
+    } else {
+      // En partida: la curva de siempre por tiempo
+      const cfg = getDecalConfig(d.kind);
+      const fadeFactor = decalFadeFactor(d);
+      alpha = d.alpha * cfg.peak * fadeFactor;
     }
+    if(alpha < 0.015) continue;
+
     ctx.globalAlpha = alpha;
     ctx.drawImage(sprite, C.x - size/2, C.y - size/2, size, size);
   }
   ctx.restore();
 }
+
+/* Reconstruye los decals activos hasta la acción `i`, usando el historial */
+function rebuildReplayDecals(i){
+  decals.length = 0;
+  if(!replay.active || !historyLog.length) return;
+
+  // Recorremos desde el principio hasta la acción actual
+  for(let j = 0; j <= i; j++){
+    const entry = historyLog[j];
+    if(!entry) continue;
+
+    const ages = i - j;   // cuántas acciones pasaron desde que nació
+
+    let kind = null, sq = null;
+
+    if(entry.type === 'spell'){
+      const name = entry.powerName;
+      if(name === 'Rayo' && entry.to){ kind = 'ray'; sq = entry.to; }
+      else if(name === 'Zombosis' && entry.to){ kind = 'zombie'; sq = entry.to; }
+      else if(name === 'Toque Curativo' && entry.to){ kind = 'heal'; sq = entry.to; }
+      else if(name === 'Teletransporte' && entry.from && entry.to){
+        // Teleport deja dos decals
+        addReplayDecal(entry.from, 'teleport', ages);
+        addReplayDecal(entry.to,   'teleport', ages);
+        continue;
+      }
+      else if(name === 'Terremoto' && entry.to){
+        // Quake deja 9 decals en el área 3x3
+        const { r:cr, c:cc } = sqToRC(entry.to);
+        for(let dr=-1; dr<=1; dr++) for(let dc=-1; dc<=1; dc++){
+          const r2 = cr+dr, c2 = cc+dc;
+          if(r2<0 || c2<0 || r2>=8 || c2>=8) continue;
+          addReplayDecal(rcToSquare(r2,c2), 'quake', ages);
+        }
+        continue;
+      }
+    }
+    else if(entry.type === 'ira' && entry.to){
+      kind = 'ira'; sq = entry.to;
+    }
+    else if(entry.type === 'ira-blocked' && entry.to){
+      kind = 'ira'; sq = entry.to;
+    }
+
+    if(kind && sq) addReplayDecal(sq, kind, ages);
+  }
+}
+
+function addReplayDecal(sq, kind, ages){
+  const life = getReplayDecalLife(kind);
+
+  // Ya murió
+  if(ages >= life) return;
+
+  // Curva de fade: hold hasta el último fadeRatio de la vida
+  const fadeStart = life * (1 - REPLAY_FADE_RATIO);
+  let alpha = 1;
+  if(ages > fadeStart){
+    const t = (ages - fadeStart) / (life - fadeStart);
+    // Ease-out cúbico, igual que en partida
+    alpha = Math.pow(1 - t, 3);
+  }
+  if(alpha < 0.02) return;
+
+  decals.push({
+    sq,
+    kind,
+    biome: currentBiome.id,
+    life: 1, maxLife: 1,   // no se usan en modo replay
+    alpha: 1,
+    scale: 1,
+    _replayAlpha: alpha,   // ⬅️ marca de que es un decal de replay
+  });
+}
+
+
+/* =========================================================
+   DECALS EN REPLAY
+   En replay no hay tiempo real, hay acciones. Cada decal
+   "envejece" según cuántas entradas del historial pasaron.
+   ========================================================= */
+const REPLAY_DECAL_LIFE = {
+  ray:      50,   // 50 acciones hasta desaparecer
+  quake:    56,
+  zombie:   36,
+  heal:     38,
+  teleport: 25,
+  ira:      25,
+};
+function getReplayDecalLife(kind){
+  return REPLAY_DECAL_LIFE[kind] || 24;
+}
+const REPLAY_FADE_RATIO = 0.40;   // últimos 40% de la vida = fade
 
 /* =========================================================
    ATMÓSFERA v3 — biome-aware
@@ -4373,7 +4662,12 @@ function spawnVortex(x, y, color, inward){
   }
 }
 
-function spawnBolt(x, y){
+function spawnBolt(x, y, skin = null){
+  const color1 = skin ? skin.bolt : '#fffbe0';
+  const color2 = skin ? skin.boltGlow : '#ffe070';
+  const color3 = skin ? skin.core : '#ffffff';
+  const rippleCol = skin ? skin.ripple : '255,230,140';
+
   const pts = []; let cx = x + rnd(-40,40), cy = 0; pts.push({x:cx, y:cy});
   const steps = 9;
   for(let i=1;i<=steps;i++){
@@ -4382,12 +4676,14 @@ function spawnBolt(x, y){
     const ny = lerp(cy, y, t);
     pts.push({x:nx, y:ny});
   }
-  bolts.push({ pts, life:0.42, maxLife:0.42 });
-  ripples.push({ x, y, r:2, maxR: cellSize*1.4, life:.5, maxLife:.5, color:'255,230,140' });
-  burst(x, y, 26, { color:'#fff2a0', spMin:60, spMax:240, lifeMin:.25, lifeMax:.6, sizeMin:1, sizeMax:3, shape:'tri' });
-  burst(x, y, 14, { color:'#ffb040', spMin:20, spMax:90, lifeMin:.4, lifeMax:.9, sizeMin:2, sizeMax:5 });
+  bolts.push({ pts, life:0.42, maxLife:0.42, c1:color1, c2:color2, c3:color3 });
+  ripples.push({ x, y, r:2, maxR: cellSize*1.4, life:.5, maxLife:.5, color: rippleCol });
+  burst(x, y, 26, { color:color1, spMin:60, spMax:240, lifeMin:.25, lifeMax:.6, sizeMin:1, sizeMax:3, shape:'tri' });
+  burst(x, y, 14, { color:color2, spMin:20, spMax:90,  lifeMin:.4,  lifeMax:.9, sizeMin:2, sizeMax:5 });
 }
+
 function spawnCurve(a, b, color){ curves.push({ a, b, life:0.4, maxLife:0.4, color }); }
+
 function spawnSmokeAt(x,y,color='rgba(60,60,60,0.5)'){
   for(let i=0;i<18;i++){
     addParticle({ x: x+rnd(-8,8), y: y+rnd(-6,6),
@@ -4395,6 +4691,7 @@ function spawnSmokeAt(x,y,color='rgba(60,60,60,0.5)'){
       size: rnd(4,10), color, g:-12, drag:.96 });
   }
 }
+
 function updateParticles(dt){
   for(let i=particles.length-1;i>=0;i--){
     const p = particles[i]; p.life -= dt;
@@ -4423,15 +4720,21 @@ function drawParticles(){
     }
   }
   ctx.globalAlpha = 1;
-  for(const b of bolts){
-    const t = b.life / b.maxLife;
-    ctx.globalAlpha = t; ctx.strokeStyle = '#fffbe0'; ctx.lineWidth = 3.4;
-    ctx.shadowColor = '#ffe070'; ctx.shadowBlur = 18;
-    ctx.beginPath(); ctx.moveTo(b.pts[0].x, b.pts[0].y);
-    for(let i=1;i<b.pts.length;i++) ctx.lineTo(b.pts[i].x, b.pts[i].y);
-    ctx.stroke(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-  }
+	for(const b of bolts){
+	  const t = b.life / b.maxLife;
+	  ctx.globalAlpha = t;
+	  ctx.strokeStyle = b.c1 || '#fffbe0';
+	  ctx.lineWidth = 3.4;
+	  ctx.shadowColor = b.c2 || '#ffe070';
+	  ctx.shadowBlur = 18;
+	  ctx.beginPath(); ctx.moveTo(b.pts[0].x, b.pts[0].y);
+	  for(let i=1;i<b.pts.length;i++) ctx.lineTo(b.pts[i].x, b.pts[i].y);
+	  ctx.stroke();
+	  ctx.strokeStyle = b.c3 || '#ffffff';
+	  ctx.lineWidth = 1.2;
+	  ctx.stroke();
+	  ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+	}
   for(const c of curves){
     const t = c.life / c.maxLife;
     ctx.globalAlpha = t; ctx.strokeStyle = c.color; ctx.lineWidth = 2.5;
@@ -8101,14 +8404,15 @@ async function execTeleport(from, to, cost){
   state.busy = true;
   vibrate([15, 30, 40]);
   const turn = chess.turn();
-  const A = squareCenter(from), B = squareCenter(to);
-  const el = pieceEls.get(from);
-  const piece = chess.get(from);
-  spawnVortex(A.x, A.y, '#b070ff', true); sfx('spell');
-  await sleep(320);
+  const skin = getPowerSkin('teleport');
+	const A = squareCenter(from), B = squareCenter(to);
+	const el = pieceEls.get(from);
+	const piece = chess.get(from);
+	spawnVortex(A.x, A.y, skin.v1, true); sfx('spell');
+	await sleep(320);
   if(el){ el.style.opacity = '0'; el.style.transition = 'opacity .16s'; await sleep(160); el.style.opacity = '1'; }
-  spawnCurve(A, B, 'rgba(180,120,255,0.85)');
-  await sleep(180);
+  spawnCurve(A, B, skin.curve);
+	await sleep(180);
   movePieceOnBoard(from, to);
   if(piece && piece.type === 'k'){
     const parts = chess.fen().split(' ');
@@ -8127,9 +8431,9 @@ async function execTeleport(from, to, cost){
   addDecal(to,   'teleport', { alpha: 0.85 });
   const el2 = pieceEls.get(to);
   if(el2){ el2.style.opacity = '0'; el2.getBoundingClientRect(); el2.style.opacity = '1'; }
-  spawnVortex(B.x, B.y, '#d0a0ff', false);
-  ripples.push({ x:B.x, y:B.y, r:2, maxR: cellSize*1.3, life:.55, lifeMax:.55, color:'190,140,255' });
-  burst(B.x, B.y, 24, { color:'#c890ff', spMin:30, spMax:150, lifeMin:.3, lifeMax:.7 });
+  spawnVortex(B.x, B.y, skin.v2, false);
+  ripples.push({ x:B.x, y:B.y, r:2, maxR: cellSize*1.3, life:.55, lifeMax:.55, color: skin.ripple });
+  burst(B.x, B.y, 24, { color: skin.v1, spMin:30, spMax:150, lifeMin:.3, lifeMax:.7 });
   state.mana[turn] -= cost;
   achState[turn].powersUsed++;
   if(achState[turn].powersUsed >= 5) unlockAch(turn, 'magoDeMagos');
@@ -8140,7 +8444,9 @@ async function execTeleport(from, to, cost){
   finishPower({ type:'spell', color: turn, powerIcon:'🌀', powerName:'Teletransporte', powerKey:'teleport',
     piece: piece ? { type: piece.type, color: turn } : null, from, to, cost });
 }
+
 async function execShield(sq){
+  const skin = getPowerSkin('shield');
   state.busy = true;
   vibrate([20, 20, 20, 20, 60]);
   const turn = chess.turn();
@@ -8149,25 +8455,29 @@ async function execShield(sq){
   sfx('shield');
   const start = performance.now(); const dur = 500;
   await new Promise(res => {
-    function frame(){
-      const t = clamp((performance.now()-start)/dur, 0, 1);
-      const r = cellSize * 0.15 + cellSize * 0.75 * t;
-      ctx.save(); ctx.globalAlpha = (1-t)*0.9 + 0.15;
-      ctx.strokeStyle = `rgba(120,190,255,${0.9*(1-t*0.4)})`;
-      ctx.lineWidth = 2.5; ctx.shadowColor = '#6ab0ff'; ctx.shadowBlur = 14;
-      ctx.beginPath();
-      for(let i=0;i<6;i++){
-        const a = i*Math.PI/3 - Math.PI/2;
-        const px = C.x + Math.cos(a)*r, py = C.y + Math.sin(a)*r;
-        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
-      }
-      ctx.closePath(); ctx.stroke(); ctx.restore();
-      if(t < 1) requestAnimationFrame(frame); else res();
-    }
-    frame();
+      function frame(){
+		const t = clamp((performance.now()-start)/dur, 0, 1);
+		const r = cellSize * 0.15 + cellSize * 0.75 * t;
+		ctx.save();
+		ctx.globalAlpha = (1-t)*0.9 + 0.15;
+		ctx.strokeStyle = `rgba(${skin.hex},${0.9*(1-t*0.4)})`;
+		ctx.lineWidth = 2.5;
+		ctx.shadowColor = skin.glow;
+		ctx.shadowBlur = 14;
+		ctx.beginPath();
+		for(let i=0;i<6;i++){
+		  const a = i*Math.PI/3 - Math.PI/2;
+		  const px = C.x + Math.cos(a)*r, py = C.y + Math.sin(a)*r;
+		  if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+		}
+		ctx.closePath(); ctx.stroke(); ctx.restore();
+		if(t < 1) requestAnimationFrame(frame); else res();
+	  }
+	  frame();
   });
-  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.6, lifeMax:.6, color:'130,190,255' });
-  burst(C.x, C.y, 26, { color:'#8ecbff', spMin:30, spMax:140, lifeMin:.3, lifeMax:.7 });
+  
+  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.6, lifeMax:.6, color: skin.halo });
+  burst(C.x, C.y, 26, { color: skin.glow, spMin:30, spMax:140, lifeMin:.3, lifeMax:.7 });
   
   if(!state.shields[turn].includes(sq)){
   state.shields[turn].push(sq);
@@ -8184,29 +8494,38 @@ async function execShield(sq){
   finishPower({ type:'spell', color: turn, powerIcon:'🛡️', powerName:'Escudo', powerKey:'shield',
     piece: piece ? { type: piece.type, color: turn } : null, to: sq, cost: POWERS.shield.cost });
 }
+
 async function execRay(sq, cost){
+	const skin = getPowerSkin('ray');
   state.busy = true;
   vibrate([40, 30, 80]);
   const turn = chess.turn();
   const C = squareCenter(sq);
   const victim = chess.get(sq);
-  sfx('ray'); spawnBolt(C.x, C.y);
-  boardWrap.animate([
-    { transform:'translate(0,0)' },{ transform:'translate(-4px,2px)' },
-    { transform:'translate(4px,-2px)' },{ transform:'translate(-2px,-1px)' },
-    { transform:'translate(0,0)' }
-  ], { duration: 320 });
-  await sleep(180);
-  const el = pieceEls.get(sq);
-  if(el){ el.classList.add('captured'); setTimeout(()=>el.remove(), 300); pieceEls.delete(sq); }
-  burst(C.x, C.y, 34, { color:'#fff0a0', spMin:60, spMax:260, lifeMin:.3, lifeMax:.75, sizeMin:1, sizeMax:3, shape:'tri' });
-  burst(C.x, C.y, 16, { color:'#ff8030', spMin:20, spMax:110, lifeMin:.4, lifeMax:.9, sizeMin:2, sizeMax:4 });
-  spawnSmokeAt(C.x, C.y, 'rgba(70,70,70,0.55)');
-removePieceOnBoard(sq);
-for(const col of ['w','b']){
-  if(state.shields[col].includes(sq)) removeShield(col, sq);
-}
-if(victim){
+	sfx('ray');
+	spawnBolt(C.x, C.y, skin);   // le pasamos la skin (ver cambio abajo)
+	boardWrap.animate([
+	  { transform:'translate(0,0)' },{ transform:'translate(-4px,2px)' },
+	  { transform:'translate(4px,-2px)' },{ transform:'translate(-2px,-1px)' },
+	  { transform:'translate(0,0)' }
+	], { duration: 320 });
+	await sleep(180);
+	const el = pieceEls.get(sq);
+	if(el){ el.classList.add('captured'); setTimeout(()=>el.remove(), 300); pieceEls.delete(sq); }
+	burst(C.x, C.y, Math.round(34 * skin.intensity), {
+	  color: skin.spark1, spMin:60, spMax:260,
+	  lifeMin:.3, lifeMax:.75, sizeMin:1, sizeMax:3, shape:'tri'
+	});
+	burst(C.x, C.y, Math.round(16 * skin.intensity), {
+	  color: skin.spark2, spMin:20, spMax:110,
+	  lifeMin:.4, lifeMax:.9, sizeMin:2, sizeMax:4
+	});
+	spawnSmokeAt(C.x, C.y, skin.smoke);
+  removePieceOnBoard(sq);
+	for(const col of ['w','b']){
+	  if(state.shields[col].includes(sq)) removeShield(col, sq);
+	}
+	if(victim){
     addToGraveyard(victim.type, victim.color);
     if(!firstBloodClaimed){ firstBloodClaimed = true; unlockAch(turn, 'primeraSangre'); }
     achState[turn].streak++;
@@ -8226,7 +8545,9 @@ if(victim){
   finishPower({ type:'spell', color: turn, powerIcon:'⚡', powerName:'Rayo', powerKey:'ray',
     targetPiece: victim ? { type: victim.type, color: victim.color } : null, to: sq, cost });
 }
+
 async function execZombie(sq){
+  const skin = getPowerSkin('zombie');
   state.busy = true;
   vibrate([30, 30, 30, 30, 100]);
   const turn = chess.turn();
@@ -8234,20 +8555,20 @@ async function execZombie(sq){
   const victim = chess.get(sq);
   if(!victim){ state.busy = false; return; }
   sfx('zombie');
-  for(let i=0;i<4;i++){
-    burst(C.x, C.y, 18, {
-      color: i%2 ? 'rgba(40,30,55,0.9)' : 'rgba(90,50,140,0.85)',
-      spMin:20, spMax:90, lifeMin:.5, lifeMax:1.1, sizeMin:3, sizeMax:8, g:-25, drag:.95
-    });
-    await sleep(130);
-  }
+	for(let i=0;i<4;i++){
+	  burst(C.x, C.y, 18, {
+		color: i%2 ? skin.spore[0] : skin.spore[1],
+		spMin:20, spMax:90, lifeMin:.5, lifeMax:1.1, sizeMin:3, sizeMax:8, g:-25, drag:.95
+	  });
+	  await sleep(130);
+	}
   const victimType = victim.type;
   const oldColor = victim.color;
   chess.remove(sq);
   try { chess.put({ type: victimType, color: turn }, sq); } catch(e){}
   if(state.shields[oldColor].includes(sq)) removeShield(oldColor, sq);
-  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.7, life:.7, lifeMax:.7, color:'160,90,230' });
-  burst(C.x, C.y, 30, { color:'#a060e0', spMin:30, spMax:160, lifeMin:.3, lifeMax:.8 });
+  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.7, life:.7, lifeMax:.7, color: skin.ripple });
+  burst(C.x, C.y, 30, { color: skin.spore[1], spMin:30, spMax:160, lifeMin:.3, lifeMax:.8 });
   validateAndFixBoard();
   addDecal(sq, 'zombie');
   const el = pieceEls.get(sq);
@@ -8264,7 +8585,9 @@ async function execZombie(sq){
     targetPiece: { type: victimType, color: oldColor },
     to: sq, cost: POWERS.zombie.cost });
 }
+
 async function execHeal(sq, type, color, cost){
+  const skin = getPowerSkin('heal');
   state.busy = true;
   vibrate([25, 25, 25, 25, 401]);
   const validTypes = ['p','n','b','r','q'];
@@ -8313,8 +8636,8 @@ async function execHeal(sq, type, color, cost){
 
       // Gradiente: sólido en la cabeza, transparente en la cola
       const grad = ctx.createLinearGradient(0, headY, 0, tailY);
-      grad.addColorStop(0, `rgba(120,255,170,${0.55*(1-t*0.7)})`);
-      grad.addColorStop(1, 'rgba(120,255,170,0)');
+	  grad.addColorStop(0, `rgba(${skin.beam},${0.55*(1-t*0.7)})`);
+	  grad.addColorStop(1, `rgba(${skin.beam},0)`);
 
       ctx.fillStyle = grad;
       const rectTop = Math.min(headY, tailY);
@@ -8332,7 +8655,7 @@ async function execHeal(sq, type, color, cost){
           vy: beamFromBottom ? rnd(-70,-30) : rnd(30, 70),
           life: rnd(.4, .9), maxLife: .9,
           size: rnd(1.2, 3),
-          color: '#a8ffc0',
+          color: skin.particle,
           g: beamFromBottom ? -15 : 15,
           drag: .96
         });
@@ -8363,8 +8686,8 @@ async function execHeal(sq, type, color, cost){
   addDecal(sq, 'heal');
   const el = pieceEls.get(sq);
   if(el){ el.classList.add('spawn'); setTimeout(()=>el.classList.remove('spawn'), 420); }
-  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.7, lifeMax:.7, color:'140,255,180' });
-  burst(C.x, C.y, 26, { color:'#a8ffc0', spMin:20, spMax:130, lifeMin:.4, lifeMax:.9, g:-40 });
+  ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.7, lifeMax:.7, color: skin.ripple });
+  burst(C.x, C.y, 26, { color: skin.particle, spMin:20, spMax:130, lifeMin:.4, lifeMax:.9, g:-40 });
   state.mana[color] -= cost;
   achState[color].powersUsed++;
   if(achState[color].powersUsed >= 5) unlockAch(color, 'magoDeMagos');
@@ -8375,7 +8698,9 @@ async function execHeal(sq, type, color, cost){
   finishPower({ type:'spell', color, powerIcon:'💚', powerName:'Toque Curativo', powerKey:'heal',
     piece: { type, color }, to: sq, cost });
 }
+
 async function execQuake(centerSq){
+  const skin = getPowerSkin('quake');
   state.busy = true;
   vibrate([80, 40, 80, 40, 1501]);
   const turn = chess.turn();
@@ -8395,11 +8720,15 @@ async function execQuake(centerSq){
     squares.push(rcToSquare(r,c));
   }
   for(let i=0;i<50;i++){
-    addParticle({ x: C.x + rnd(-cellSize*1.5, cellSize*1.5), y: C.y + rnd(-cellSize*1.5, cellSize*1.5),
-      vx: rnd(-70,70), vy: rnd(-260,-90), life: rnd(.6,1.3), maxLife:1.3, size: rnd(2,5),
-      color: i%3===0 ? '#a08c6a' : i%3===1 ? '#7a6a4a' : '#c0b090', g: 520, drag:.99 });
+	  addParticle({
+		x: C.x + rnd(-cellSize*1.5, cellSize*1.5),
+		y: C.y + rnd(-cellSize*1.5, cellSize*1.5),
+		vx: rnd(-70,70), vy: rnd(-260,-90),
+		life: rnd(.6,1.3), maxLife:1.3, size: rnd(2,5),
+		color: skin.dust[i%3], g: 520, drag:.99
+	  });
   }
-  spawnSmokeAt(C.x, C.y, 'rgba(120,100,70,0.5)');
+  spawnSmokeAt(C.x, C.y, skin.smoke);
   for(const sq of squares){
     const el = pieceEls.get(sq);
     if(el) el.classList.add('shake');
@@ -9684,9 +10013,11 @@ clearHighlights();
   rebuildPieces();
   particles.length = 0; bolts.length = 0; curves.length = 0; ripples.length = 0;
   decals.length = 0;
+  rebuildReplayDecals(0);
   updateReplayUI(entry, 0);
   updateReplayControls();
 }
+
 function startReplayFromStored(match){
   if(!match || !match.moves || !match.moves.length){
     toast('Partida vacía o corrupta', '#ff8080');
@@ -9719,6 +10050,7 @@ function startReplayFromStored(match){
   startReplay();
   return replay.active;
 }
+
 function closeReplay(){
   historyEl.classList.remove('replay-mode');
   stopReplayAuto();
@@ -9761,6 +10093,7 @@ function closeReplay(){
   for(const el of historyEl.children) el.classList.remove('replay-active');
   updateUI();
 }
+
 function updateReplayUI(entry, i){
   const descRow = $('#replayDescRow');
   descRow.innerHTML = renderHistoryItem(entry).innerHTML;
@@ -9782,10 +10115,15 @@ function updateReplayUI(entry, i){
     mb.querySelector('.lbl').textContent = state.mana.b + ' / ' + state.maxMana;
   }
 }
+
 function playReplayEffects(entry){
   if(!entry) return;
   const token = playToken;
   const alive = () => token === playToken && replay.active;
+
+  // =========================================================
+  // MOVIMIENTO / IRA — no son poderes, sin skins
+  // =========================================================
   if(entry.type === 'move' || entry.type === 'ira'){
     const isIra = entry.type === 'ira';
     if(entry.from && entry.to) spawnDust(entry.from, entry.to);
@@ -9799,35 +10137,60 @@ function playReplayEffects(entry){
     } else sfx('move');
     return;
   }
+
+  // =========================================================
+  // ESCUDO ABSORBE — usa skin shield del bioma
+  // =========================================================
   if(entry.type === 'shield-absorb' && entry.to){
+    const skin = getPowerSkin('shield');
     const c = squareCenter(entry.to);
-    ripples.push({ x:c.x, y:c.y, r:2, maxR: cellSize*1.5, life:.6, lifeMax:.6, color:'120,190,255' });
-    burst(c.x, c.y, 26, { color:'#8ecbff', spMin:40, spMax:180, lifeMin:.3, lifeMax:.7, sizeMin:1.5, sizeMax:3.5 });
-    sfx('shield'); return;
+    ripples.push({ x:c.x, y:c.y, r:2, maxR: cellSize*1.5, life:.6, lifeMax:.6, color: skin.halo });
+    burst(c.x, c.y, 26, {
+      color: skin.glow, spMin:40, spMax:180,
+      lifeMin:.3, lifeMax:.7, sizeMin:1.5, sizeMax:3.5
+    });
+    sfx('shield');
+    return;
   }
+
+  // =========================================================
+  // PODERES — todos usan skins por bioma
+  // =========================================================
   if(entry.type === 'spell'){
     const name = entry.powerName;
+
+    // ---- Teletransporte ----
     if(name === 'Teletransporte' && entry.from && entry.to){
+      const skin = getPowerSkin('teleport');
       const A = squareCenter(entry.from), B = squareCenter(entry.to);
-      spawnVortex(A.x, A.y, '#b070ff', true); sfx('spell');
-      if(alive()) spawnCurve(A, B, 'rgba(180,120,255,0.85)');
+      spawnVortex(A.x, A.y, skin.v1, true);
+      sfx('spell');
+      if(alive()) spawnCurve(A, B, skin.curve);
       setTimeout(() => {
         if(!alive()) return;
-        spawnVortex(B.x, B.y, '#d0a0ff', false);
-        ripples.push({ x:B.x, y:B.y, r:2, maxR: cellSize*1.3, life:.55, lifeMax:.55, color:'190,140,255' });
-        burst(B.x, B.y, 24, { color:'#c890ff', spMin:30, spMax:150, lifeMin:.3, lifeMax:.7 });
+        spawnVortex(B.x, B.y, skin.v2, false);
+        ripples.push({ x:B.x, y:B.y, r:2, maxR: cellSize*1.3, life:.55, lifeMax:.55, color: skin.ripple });
+        burst(B.x, B.y, 24, { color: skin.v1, spMin:30, spMax:150, lifeMin:.3, lifeMax:.7 });
       }, 260);
       return;
     }
+
+    // ---- Escudo ----
     if(name === 'Escudo' && entry.to){
+      const skin = getPowerSkin('shield');
       const C = squareCenter(entry.to);
-      ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.6, lifeMax:.6, color:'130,190,255' });
-      burst(C.x, C.y, 26, { color:'#8ecbff', spMin:30, spMax:140, lifeMin:.3, lifeMax:.7 });
-      sfx('shield'); return;
+      ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.6, lifeMax:.6, color: skin.halo });
+      burst(C.x, C.y, 26, { color: skin.glow, spMin:30, spMax:140, lifeMin:.3, lifeMax:.7 });
+      sfx('shield');
+      return;
     }
+
+    // ---- Rayo ----
     if(name === 'Rayo' && entry.to){
+      const skin = getPowerSkin('ray');
       const C = squareCenter(entry.to);
-      spawnBolt(C.x, C.y); sfx('ray');
+      spawnBolt(C.x, C.y, skin);   // ⬅️ le pasamos la skin
+      sfx('ray');
       if(alive()){
         boardWrap.animate([
           { transform:'translate(0,0)' },{ transform:'translate(-4px,2px)' },
@@ -9835,43 +10198,62 @@ function playReplayEffects(entry){
           { transform:'translate(0,0)' }
         ], { duration: 320 });
       }
-      spawnSmokeAt(C.x, C.y, 'rgba(70,70,70,0.55)'); return;
+      spawnSmokeAt(C.x, C.y, skin.smoke);
+      return;
     }
+
+    // ---- Zombosis ----
     if(name === 'Zombosis' && entry.to){
+      const skin = getPowerSkin('zombie');
       const C = squareCenter(entry.to);
       sfx('zombie');
       for(let i=0;i<4;i++){
         setTimeout(() => {
           if(!alive()) return;
           burst(C.x, C.y, 16, {
-            color: i%2 ? 'rgba(40,30,55,0.9)' : 'rgba(90,50,140,0.85)',
-            spMin:20, spMax:90, lifeMin:.5, lifeMax:1.1, sizeMin:3, sizeMax:8, g:-25, drag:.95
+            color: i%2 ? skin.spore[0] : skin.spore[1],
+            spMin:20, spMax:90, lifeMin:.5, lifeMax:1.1,
+            sizeMin:3, sizeMax:8, g:-25, drag:.95
           });
         }, i*130);
       }
       setTimeout(() => {
         if(!alive()) return;
-        ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.7, life:.7, lifeMax:.7, color:'160,90,230' });
-        burst(C.x, C.y, 30, { color:'#a060e0', spMin:30, spMax:160, lifeMin:.3, lifeMax:.8 });
-      }, 480); return;
+        ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.7, life:.7, lifeMax:.7, color: skin.ripple });
+        burst(C.x, C.y, 30, { color: skin.spore[1], spMin:30, spMax:160, lifeMin:.3, lifeMax:.8 });
+      }, 480);
+      return;
     }
+
+    // ---- Toque Curativo ----
     if(name === 'Toque Curativo' && entry.to){
+      const skin = getPowerSkin('heal');
       const C = squareCenter(entry.to);
       sfx('heal');
-      ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.7, lifeMax:.7, color:'140,255,180' });
-      burst(C.x, C.y, 26, { color:'#a8ffc0', spMin:20, spMax:130, lifeMin:.4, lifeMax:.9, g:-40 });
+      ripples.push({ x:C.x, y:C.y, r:2, maxR: cellSize*1.6, life:.7, lifeMax:.7, color: skin.ripple });
+      burst(C.x, C.y, 26, {
+        color: skin.particle, spMin:20, spMax:130,
+        lifeMin:.4, lifeMax:.9, g:-40
+      });
       for(let i=0;i<10;i++){
         setTimeout(() => {
           if(!alive()) return;
-          addParticle({ x: C.x + rnd(-cellSize*0.4, cellSize*0.4),
+          addParticle({
+            x: C.x + rnd(-cellSize*0.4, cellSize*0.4),
             y: C.y + rnd(-cellSize*0.2, cellSize*0.4),
-            vx: rnd(-12,12), vy: rnd(-70,-30), life: rnd(.4,.9), lifeMax:.9,
-            size: rnd(1.2,3), color: '#a8ffc0', g:-15, drag:.96 });
+            vx: rnd(-12,12), vy: rnd(-70,-30),
+            life: rnd(.4,.9), lifeMax:.9,
+            size: rnd(1.2,3), color: skin.particle,
+            g:-15, drag:.96
+          });
         }, i*60);
       }
       return;
     }
+
+    // ---- Terremoto ----
     if(name === 'Terremoto' && entry.to){
+      const skin = getPowerSkin('quake');
       const C = squareCenter(entry.to);
       sfx('quake');
       if(alive()){
@@ -9883,22 +10265,31 @@ function playReplayEffects(entry){
         ], { duration: 900, easing: 'ease-out' });
       }
       for(let i=0;i<50;i++){
-        addParticle({ x: C.x + rnd(-cellSize*1.5, cellSize*1.5), y: C.y + rnd(-cellSize*1.5, cellSize*1.5),
-          vx: rnd(-70,70), vy: rnd(-260,-90), life: rnd(.6,1.3), lifeMax:1.3, size: rnd(2,5),
-          color: i%3===0 ? '#a08c6a' : i%3===1 ? '#7a6a4a' : '#c0b090', g: 520, drag:.99 });
+        addParticle({
+          x: C.x + rnd(-cellSize*1.5, cellSize*1.5),
+          y: C.y + rnd(-cellSize*1.5, cellSize*1.5),
+          vx: rnd(-70,70), vy: rnd(-260,-90),
+          life: rnd(.6,1.3), lifeMax:1.3, size: rnd(2,5),
+          color: skin.dust[i%3], g: 520, drag:.99
+        });
       }
-      spawnSmokeAt(C.x, C.y, 'rgba(120,100,70,0.5)');
+      spawnSmokeAt(C.x, C.y, skin.smoke);
+
+      // ⬇️ Ripple por casilla. Si la skin de quake no tiene `ripple`,
+      //    usa un fallback neutro. Ver nota abajo.
+      const rippleCol = skin.ripple || '200,170,120';
       const { r:cr, c:cc } = sqToRC(entry.to);
       for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
         const r2 = cr+dr, c2 = cc+dc;
         if(r2<0||c2<0||r2>=8||c2>=8) continue;
         const c3 = squareCenter(rcToSquare(r2,c2));
-        ripples.push({ x:c3.x, y:c3.y, r:2, maxR: cellSize*0.9, life:.5, lifeMax:.5, color:'200,170,120' });
+        ripples.push({ x:c3.x, y:c3.y, r:2, maxR: cellSize*0.9, life:.5, lifeMax:.5, color: rippleCol });
       }
       return;
     }
   }
 }
+
 async function applyReplayFrameAnimated(i){
   if(replayAnimating) return;
   replayAnimating = true; updateReplayControls();
@@ -9986,21 +10377,25 @@ async function applyReplayFrameAnimated(i){
     pieceEls.set(np.sq, el);
     updatePieceClass(el, np.piece, np.sq);
   }
+  rebuildReplayDecals(i);
   playReplayEffects(entry);
   updateReplayUI(entry, i);
   await sleep(420 / replay.speedMult);
   replayAnimating = false;
   updateReplayControls();
 }
+
 async function replayGoTo(i){
   if(replayAnimating) return;
   if(i < 0 || i >= historyLog.length) return;
   replay.index = i;
   await applyReplayFrameAnimated(i);
 }
+
 function replayPrev(){ if(!replay.active) return; stopReplayAuto(); if(replay.index > 0) replayGoTo(replay.index - 1); }
 function replayNext(){ if(!replay.active) return; stopReplayAuto(); if(replay.index < historyLog.length - 1) replayGoTo(replay.index + 1); }
 function replayPlayPause(){ if(!replay.active) return; if(replay.playing) stopReplayAuto(); else startReplayAuto(); }
+
 async function startReplayAuto(){
   if(replay.playing) return;
   replay.playing = true;
@@ -10015,6 +10410,7 @@ async function startReplayAuto(){
   }
   if(token === playToken){ replay.playing = false; updateReplayControls(); }
 }
+
 function stopReplayAuto(){ playToken++; replay.playing = false; updateReplayControls(); }
 function updateReplayControls(){
   const btn = $('#rPlay');
@@ -10350,6 +10746,9 @@ function wireDebugWorld(){
 		: v;
 	  currentBiome = BIOMES[id];
 	  pendingBiome = id;
+	  
+	  clearTintedDecalCache();
+	  
 	  sfx('biome-change');
 
 	  // ⬅️ Limpiar vórtices al instante
