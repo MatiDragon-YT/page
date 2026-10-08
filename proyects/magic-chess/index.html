@@ -5167,6 +5167,7 @@ function saveCurrentMatch(result, resultColor) {
 		result,
 		resultColor,
 		biomeId: currentBiome ? currentBiome.id : 'forest', // ⬅️ NUEVO
+		terrainSeed: terr.seed,
 		moves: JSON.parse(JSON.stringify(historyLog)),
 		finalFen: chess ? chess.fen() : null,
 		weather: captureWeatherState() // snapshot del clima al terminar
@@ -8048,462 +8049,500 @@ let waterBounds = {
 	h: 0
 };
 
-function generateTerrain() {
-	const N = TERR_N;
-	const h = new Float32Array(N * N);
-	const water = new Uint8Array(N * N);
-	const seed = Math.random() * 1000;
-	terr.seed = seed;
-	for (let y = 0; y < N; y++)
-		for (let x = 0; x < N; x++) {
-			let v = fbm(x / N * 3.6, y / N * 3.6, seed);
-			v = v * 1.32 - 0.17;
-			const ex = Math.min(x, N - 1 - x) / (N * 0.5);
-			const ey = Math.min(y, N - 1 - y) / (N * 0.5);
-			const edge = Math.min(1, Math.min(ex, ey) * 2.4);
-			v = v * 0.82 + 0.10 + (1 - edge) * 0.05;
-			h[y * N + x] = clamp(v, 0, 1);
+function generateTerrain(seedOverride){
+  // ─── Override determinista de Math.random ───
+  const oldRandom = Math.random;
+  const useOverride = (seedOverride !== undefined && seedOverride !== null);
+  let seedValue;
+
+  if(useOverride){
+    seedValue = seedOverride;
+    // mulberry32 — PRNG rápido, determinista, buen distribution
+    let s = (Math.floor(seedValue * 1000000) | 0) >>> 0;
+    Math.random = () => {
+      s = (s + 0x6D2B79F5) >>> 0;
+      let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  } else {
+    seedValue = Math.random() * 1000;
+  }
+
+  try {
+    // ⬇️ ACÁ VA TODO el cuerpo original de generateTerrain sin cambios
+    const N = TERR_N;
+    const h = new Float32Array(N*N);
+    const water = new Uint8Array(N*N);
+    const seed = seedValue;              // ← usamos la seed calculada arriba
+    terr.seed = seed;
+		for (let y = 0; y < N; y++)
+			for (let x = 0; x < N; x++) {
+				let v = fbm(x / N * 3.6, y / N * 3.6, seed);
+				v = v * 1.32 - 0.17;
+				const ex = Math.min(x, N - 1 - x) / (N * 0.5);
+				const ey = Math.min(y, N - 1 - y) / (N * 0.5);
+				const edge = Math.min(1, Math.min(ex, ey) * 2.4);
+				v = v * 0.82 + 0.10 + (1 - edge) * 0.05;
+				h[y * N + x] = clamp(v, 0, 1);
+			}
+
+		terr.rivers = [];
+		terr.lakes = [];
+
+		/* =========================================================
+			 SISTEMA HÍDRICO v4
+			 - 28% sin ríos / 44% ríos normales (nivel 1) / 28% anchos (nivel 2)
+			 - Nunca se mezclan: si hay ríos anchos, no hay normales, y viceversa
+			 - Lagos: independientes, aparecen 60% (1 o 2), con forma orgánica
+			 ========================================================= */
+		const priorWaterSnapshot = new Uint8Array(N * N);
+		const edgesList = ['top', 'bottom', 'left', 'right'];
+
+		// ---- Helper: construir un río (devuelve array de samples o null) ----
+		function buildRiver(isWide) {
+			const pad = 3;
+			const overshoot = isWide ? 10 : 6;
+
+			for (let attempt = 0; attempt < 12; attempt++) {
+				const se = edgesList[Math.floor(Math.random() * 4)];
+				let ee;
+				do {
+					ee = edgesList[Math.floor(Math.random() * 4)];
+				} while (ee === se);
+
+				const pointOnEdge = (edge) => {
+					const t = 0.10 + Math.random() * 0.80;
+					switch (edge) {
+						case 'top':
+							return [pad + t * (N - 2 * pad), -overshoot];
+						case 'bottom':
+							return [pad + t * (N - 2 * pad), N - 1 + overshoot];
+						case 'left':
+							return [-overshoot, pad + t * (N - 2 * pad)];
+						case 'right':
+							return [N - 1 + overshoot, pad + t * (N - 2 * pad)];
+					}
+				};
+				const start = pointOnEdge(se);
+				const end = pointOnEdge(ee);
+
+				const dx = end[0] - start[0];
+				const dy = end[1] - start[1];
+				const len = Math.hypot(dx, dy) || 1;
+				if (len < N * 0.55) continue;
+
+				let perpX = -dy / len;
+				let perpY = dx / len;
+				const midX = (start[0] + end[0]) / 2;
+				const midY = (start[1] + end[1]) / 2;
+				if (perpX * (N / 2 - midX) + perpY * (N / 2 - midY) < 0) {
+					perpX = -perpX;
+					perpY = -perpY;
+				}
+
+				// Ríos anchos → más rectos y con menos amplitud
+				const isStraight = Math.random() < (isWide ? 0.65 : 0.45);
+				const A1 = isStraight ?
+					rnd(0.004, 0.015) * N :
+					(isWide ? rnd(0.020, 0.060) * N : rnd(0.030, 0.110) * N);
+				const A2 = isStraight ?
+					rnd(0.002, 0.008) * N :
+					(isWide ? rnd(0.005, 0.018) * N : rnd(0.008, 0.030) * N);
+				const f1 = isWide ? rnd(0.5, 1.0) : rnd(0.7, 1.4);
+				const f2 = rnd(2.0, 3.5);
+				const phase = Math.random() * Math.PI * 2;
+
+				const SAMPLES = 100;
+				const cand = [];
+				for (let i = 0; i <= SAMPLES; i++) {
+					const t = i / SAMPLES;
+					const baseX = start[0] + dx * t;
+					const baseY = start[1] + dy * t;
+					const envelope = Math.sin(t * Math.PI);
+					const offset = envelope * (
+						A1 * Math.sin(t * Math.PI * f1) +
+						A2 * Math.sin(t * Math.PI * f2 + phase)
+					);
+					cand.push([baseX + perpX * offset, baseY + perpY * offset]);
+				}
+
+				let firstInside = -1;
+				for (let i = 0; i < cand.length; i++) {
+					const [x, y] = cand[i];
+					if (x >= 0 && x < N && y >= 0 && y < N) {
+						firstInside = i;
+						break;
+					}
+				}
+				if (firstInside === -1) continue;
+
+				const [fx, fy] = cand[firstInside];
+				const cx = Math.round(fx),
+					cy = Math.round(fy);
+				const checkR = isWide ? 6 : 3;
+				let startsOnWater = false;
+				for (let ddy = -checkR; ddy <= checkR && !startsOnWater; ddy++) {
+					for (let ddx = -checkR; ddx <= checkR; ddx++) {
+						const nx = cx + ddx,
+							ny = cy + ddy;
+						if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+						if (priorWaterSnapshot[ny * N + nx]) {
+							startsOnWater = true;
+							break;
+						}
+					}
+				}
+				if (startsOnWater) continue;
+
+				return cand;
+			}
+			return null;
 		}
 
-	terr.rivers = [];
-	terr.lakes = [];
+		// ---- Helper: rasterizar un río con radio `rad` hasta el primer merge ----
+		function rasterizeRiver(samples, rad) {
+			const radCeil = Math.ceil(rad) + 2;
 
-	/* =========================================================
-	   SISTEMA HÍDRICO v4
-	   - 28% sin ríos / 44% ríos normales (nivel 1) / 28% anchos (nivel 2)
-	   - Nunca se mezclan: si hay ríos anchos, no hay normales, y viceversa
-	   - Lagos: independientes, aparecen 60% (1 o 2), con forma orgánica
-	   ========================================================= */
-	const priorWaterSnapshot = new Uint8Array(N * N);
-	const edgesList = ['top', 'bottom', 'left', 'right'];
-
-	// ---- Helper: construir un río (devuelve array de samples o null) ----
-	function buildRiver(isWide) {
-		const pad = 3;
-		const overshoot = isWide ? 10 : 6;
-
-		for (let attempt = 0; attempt < 12; attempt++) {
-			const se = edgesList[Math.floor(Math.random() * 4)];
-			let ee;
-			do {
-				ee = edgesList[Math.floor(Math.random() * 4)];
-			} while (ee === se);
-
-			const pointOnEdge = (edge) => {
-				const t = 0.10 + Math.random() * 0.80;
-				switch (edge) {
-					case 'top':
-						return [pad + t * (N - 2 * pad), -overshoot];
-					case 'bottom':
-						return [pad + t * (N - 2 * pad), N - 1 + overshoot];
-					case 'left':
-						return [-overshoot, pad + t * (N - 2 * pad)];
-					case 'right':
-						return [N - 1 + overshoot, pad + t * (N - 2 * pad)];
-				}
-			};
-			const start = pointOnEdge(se);
-			const end = pointOnEdge(ee);
-
-			const dx = end[0] - start[0];
-			const dy = end[1] - start[1];
-			const len = Math.hypot(dx, dy) || 1;
-			if (len < N * 0.55) continue;
-
-			let perpX = -dy / len;
-			let perpY = dx / len;
-			const midX = (start[0] + end[0]) / 2;
-			const midY = (start[1] + end[1]) / 2;
-			if (perpX * (N / 2 - midX) + perpY * (N / 2 - midY) < 0) {
-				perpX = -perpX;
-				perpY = -perpY;
-			}
-
-			// Ríos anchos → más rectos y con menos amplitud
-			const isStraight = Math.random() < (isWide ? 0.65 : 0.45);
-			const A1 = isStraight ?
-				rnd(0.004, 0.015) * N :
-				(isWide ? rnd(0.020, 0.060) * N : rnd(0.030, 0.110) * N);
-			const A2 = isStraight ?
-				rnd(0.002, 0.008) * N :
-				(isWide ? rnd(0.005, 0.018) * N : rnd(0.008, 0.030) * N);
-			const f1 = isWide ? rnd(0.5, 1.0) : rnd(0.7, 1.4);
-			const f2 = rnd(2.0, 3.5);
-			const phase = Math.random() * Math.PI * 2;
-
-			const SAMPLES = 100;
-			const cand = [];
-			for (let i = 0; i <= SAMPLES; i++) {
-				const t = i / SAMPLES;
-				const baseX = start[0] + dx * t;
-				const baseY = start[1] + dy * t;
-				const envelope = Math.sin(t * Math.PI);
-				const offset = envelope * (
-					A1 * Math.sin(t * Math.PI * f1) +
-					A2 * Math.sin(t * Math.PI * f2 + phase)
-				);
-				cand.push([baseX + perpX * offset, baseY + perpY * offset]);
-			}
-
-			let firstInside = -1;
-			for (let i = 0; i < cand.length; i++) {
-				const [x, y] = cand[i];
-				if (x >= 0 && x < N && y >= 0 && y < N) {
-					firstInside = i;
+			// Detección de merge (donde toca agua previa)
+			let mergedAt = -1;
+			for (let i = 0; i < samples.length; i++) {
+				const cx = Math.round(samples[i][0]);
+				const cy = Math.round(samples[i][1]);
+				if (cx < 0 || cy < 0 || cx >= N || cy >= N) continue;
+				if (priorWaterSnapshot[cy * N + cx]) {
+					mergedAt = i;
 					break;
 				}
 			}
-			if (firstInside === -1) continue;
+			const lastSample = mergedAt >= 0 ? mergedAt : samples.length - 1;
+			if (lastSample <= 2) return null;
 
-			const [fx, fy] = cand[firstInside];
-			const cx = Math.round(fx),
-				cy = Math.round(fy);
-			const checkR = isWide ? 6 : 3;
-			let startsOnWater = false;
-			for (let ddy = -checkR; ddy <= checkR && !startsOnWater; ddy++) {
-				for (let ddx = -checkR; ddx <= checkR; ddx++) {
-					const nx = cx + ddx,
-						ny = cy + ddy;
-					if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-					if (priorWaterSnapshot[ny * N + nx]) {
-						startsOnWater = true;
-						break;
+			for (let i = 0; i <= lastSample; i++) {
+				const cx = Math.round(samples[i][0]);
+				const cy = Math.round(samples[i][1]);
+				for (let ddy = -radCeil; ddy <= radCeil; ddy++) {
+					for (let ddx = -radCeil; ddx <= radCeil; ddx++) {
+						const nx = cx + ddx,
+							ny = cy + ddy;
+						if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+						const d = Math.hypot(ddx, ddy);
+						if (d <= rad) {
+							water[ny * N + nx] = 1;
+							h[ny * N + nx] = Math.min(h[ny * N + nx], 0.26 - (rad - d) * 0.05);
+						} else if (d <= rad + 1.5) {
+							h[ny * N + nx] = Math.min(h[ny * N + nx], 0.33);
+						}
 					}
 				}
 			}
-			if (startsOnWater) continue;
-
-			return cand;
+			return samples.slice(0, lastSample + 1);
 		}
-		return null;
-	}
 
-	// ---- Helper: rasterizar un río con radio `rad` hasta el primer merge ----
-	function rasterizeRiver(samples, rad) {
-		const radCeil = Math.ceil(rad) + 2;
+		// ---- Elegir tipo de sistema de ríos ----
+		const systemRoll = Math.random();
+		const riverMode = systemRoll < 0.28 ? 'none' :
+			systemRoll < 0.72 ? 'normal' :
+			'wide';
 
-		// Detección de merge (donde toca agua previa)
-		let mergedAt = -1;
-		for (let i = 0; i < samples.length; i++) {
-			const cx = Math.round(samples[i][0]);
-			const cy = Math.round(samples[i][1]);
-			if (cx < 0 || cy < 0 || cx >= N || cy >= N) continue;
-			if (priorWaterSnapshot[cy * N + cx]) {
-				mergedAt = i;
+		if (riverMode !== 'none') {
+			const isWide = riverMode === 'wide';
+			let riverCount;
+			if (isWide) {
+				// Nivel 2: 1 río casi siempre, 2 excepcional
+				riverCount = Math.random() < 0.85 ? 1 : 2;
+			} else {
+				// Nivel 1: 1-3 según roll
+				const r = Math.random();
+				riverCount = r < 0.60 ? 1 : (r < 0.90 ? 2 : 3);
+			}
+
+			for (let k = 0; k < riverCount; k++) {
+				priorWaterSnapshot.set(water);
+				const samples = buildRiver(isWide);
+				if (!samples) continue;
+
+				const rad = isWide ? rnd(3.2, 5.2) : rnd(0.5, 2.2);
+				const visibleSamples = rasterizeRiver(samples, rad);
+				if (!visibleSamples) continue;
+
+				terr.rivers.push({
+					type: riverMode,
+					width: rad,
+					samples: visibleSamples
+				});
+			}
+		}
+
+		// ---- Lagos (independientes del sistema de ríos) ----
+		/*  Tres modos exclusivos:
+			- 35% sin lagos
+			- 30% lagos pequeños (1 o 2, radio 4.0-9.5)
+			- 35% lago enorme (1 solo, radio 12.0-19.5) */
+		const lakesRoll = Math.random();
+		let lakeMode, lakeCount;
+		if (lakesRoll < 0.35) {
+			lakeMode = 'none';
+			lakeCount = 0;
+		} else if (lakesRoll < 0.65) {
+			lakeMode = 'small';
+			lakeCount = Math.random() < 0.60 ? 1 : 2;
+		} else {
+			lakeMode = 'huge';
+			lakeCount = 1;
+		}
+
+		for (let k = 0; k < lakeCount; k++) {
+			priorWaterSnapshot.set(water);
+
+			const isHuge = (lakeMode === 'huge');
+			const rMin = isHuge ? 12.0 : 4.0;
+			const rMax = isHuge ? 19.5 : 9.5;
+			const lumpMin = isHuge ? 0.18 : 0.15;
+			const lumpMax = isHuge ? 0.40 : 0.40;
+			const maxAttempts = isHuge ? 40 : 25;
+
+			for (let attempt = 0; attempt < maxAttempts; attempt++) {
+				const lcx = rnd(N * 0.20, N * 0.80);
+				const lcy = rnd(N * 0.20, N * 0.80);
+				const baseR = rnd(rMin, rMax);
+				const lumpiness = rnd(lumpMin, lumpMax);
+				const seed1 = Math.random() * 100;
+				const seed2 = Math.random() * 100;
+
+				const checkR = Math.ceil(baseR * (1 + lumpiness)) + 3;
+				const cx0 = Math.round(lcx);
+				const cy0 = Math.round(lcy);
+
+				// Que quepa dentro del mapa
+				if (cx0 - checkR < 1 || cx0 + checkR > N - 2) continue;
+				if (cy0 - checkR < 1 || cy0 + checkR > N - 2) continue;
+
+				// Que no toque agua previa
+				let overlaps = false;
+				for (let ddy = -checkR; ddy <= checkR && !overlaps; ddy++) {
+					for (let ddx = -checkR; ddx <= checkR; ddx++) {
+						const nx = cx0 + ddx,
+							ny = cy0 + ddy;
+						if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+						if (priorWaterSnapshot[ny * N + nx]) {
+							overlaps = true;
+							break;
+						}
+					}
+				}
+				if (overlaps) continue;
+
+				// Rasterizar el lago como blob orgánico
+				for (let ddy = -checkR; ddy <= checkR; ddy++) {
+					for (let ddx = -checkR; ddx <= checkR; ddx++) {
+						const nx = cx0 + ddx,
+							ny = cy0 + ddy;
+						if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+						const d = Math.hypot(ddx, ddy);
+						const ang = Math.atan2(ddy, ddx);
+						// Radio modulado por dos senos de frecuencias distintas → forma irregular
+						const rMod = 1 +
+							lumpiness * 0.60 * Math.sin(ang * 3 + seed1) +
+							lumpiness * 0.40 * Math.sin(ang * 5 + seed2);
+						const rEdge = baseR * rMod;
+						if (d <= rEdge) {
+							water[ny * N + nx] = 1;
+							h[ny * N + nx] = Math.min(h[ny * N + nx], 0.24 - (rEdge - d) * 0.03);
+						} else if (d <= rEdge + 1.8) {
+							h[ny * N + nx] = Math.min(h[ny * N + nx], 0.33);
+						}
+					}
+				}
+
+				terr.lakes.push({
+					x: lcx / N,
+					y: lcy / N,
+					r: baseR / N,
+					lumpiness,
+					type: lakeMode
+				});
 				break;
 			}
 		}
-		const lastSample = mergedAt >= 0 ? mergedAt : samples.length - 1;
-		if (lastSample <= 2) return null;
 
-		for (let i = 0; i <= lastSample; i++) {
-			const cx = Math.round(samples[i][0]);
-			const cy = Math.round(samples[i][1]);
-			for (let ddy = -radCeil; ddy <= radCeil; ddy++) {
-				for (let ddx = -radCeil; ddx <= radCeil; ddx++) {
-					const nx = cx + ddx,
-						ny = cy + ddy;
-					if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-					const d = Math.hypot(ddx, ddy);
-					if (d <= rad) {
-						water[ny * N + nx] = 1;
-						h[ny * N + nx] = Math.min(h[ny * N + nx], 0.26 - (rad - d) * 0.05);
-					} else if (d <= rad + 1.5) {
-						h[ny * N + nx] = Math.min(h[ny * N + nx], 0.33);
-					}
-				}
-			}
-		}
-		return samples.slice(0, lastSample + 1);
-	}
-
-	// ---- Elegir tipo de sistema de ríos ----
-	const systemRoll = Math.random();
-	const riverMode = systemRoll < 0.28 ? 'none' :
-		systemRoll < 0.72 ? 'normal' :
-		'wide';
-
-	if (riverMode !== 'none') {
-		const isWide = riverMode === 'wide';
-		let riverCount;
-		if (isWide) {
-			// Nivel 2: 1 río casi siempre, 2 excepcional
-			riverCount = Math.random() < 0.85 ? 1 : 2;
-		} else {
-			// Nivel 1: 1-3 según roll
-			const r = Math.random();
-			riverCount = r < 0.60 ? 1 : (r < 0.90 ? 2 : 3);
-		}
-
-		for (let k = 0; k < riverCount; k++) {
-			priorWaterSnapshot.set(water);
-			const samples = buildRiver(isWide);
-			if (!samples) continue;
-
-			const rad = isWide ? rnd(3.2, 5.2) : rnd(0.5, 2.2);
-			const visibleSamples = rasterizeRiver(samples, rad);
-			if (!visibleSamples) continue;
-
-			terr.rivers.push({
-				type: riverMode,
-				width: rad,
-				samples: visibleSamples
-			});
-		}
-	}
-
-	// ---- Lagos (independientes del sistema de ríos) ----
-	/*  Tres modos exclusivos:
-		- 35% sin lagos
-		- 30% lagos pequeños (1 o 2, radio 4.0-9.5)
-		- 35% lago enorme (1 solo, radio 12.0-19.5) */
-	const lakesRoll = Math.random();
-	let lakeMode, lakeCount;
-	if (lakesRoll < 0.35) {
-		lakeMode = 'none';
-		lakeCount = 0;
-	} else if (lakesRoll < 0.65) {
-		lakeMode = 'small';
-		lakeCount = Math.random() < 0.60 ? 1 : 2;
-	} else {
-		lakeMode = 'huge';
-		lakeCount = 1;
-	}
-
-	for (let k = 0; k < lakeCount; k++) {
-		priorWaterSnapshot.set(water);
-
-		const isHuge = (lakeMode === 'huge');
-		const rMin = isHuge ? 12.0 : 4.0;
-		const rMax = isHuge ? 19.5 : 9.5;
-		const lumpMin = isHuge ? 0.18 : 0.15;
-		const lumpMax = isHuge ? 0.40 : 0.40;
-		const maxAttempts = isHuge ? 40 : 25;
-
-		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			const lcx = rnd(N * 0.20, N * 0.80);
-			const lcy = rnd(N * 0.20, N * 0.80);
-			const baseR = rnd(rMin, rMax);
-			const lumpiness = rnd(lumpMin, lumpMax);
-			const seed1 = Math.random() * 100;
-			const seed2 = Math.random() * 100;
-
-			const checkR = Math.ceil(baseR * (1 + lumpiness)) + 3;
-			const cx0 = Math.round(lcx);
-			const cy0 = Math.round(lcy);
-
-			// Que quepa dentro del mapa
-			if (cx0 - checkR < 1 || cx0 + checkR > N - 2) continue;
-			if (cy0 - checkR < 1 || cy0 + checkR > N - 2) continue;
-
-			// Que no toque agua previa
-			let overlaps = false;
-			for (let ddy = -checkR; ddy <= checkR && !overlaps; ddy++) {
-				for (let ddx = -checkR; ddx <= checkR; ddx++) {
-					const nx = cx0 + ddx,
-						ny = cy0 + ddy;
-					if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-					if (priorWaterSnapshot[ny * N + nx]) {
-						overlaps = true;
-						break;
-					}
-				}
-			}
-			if (overlaps) continue;
-
-			// Rasterizar el lago como blob orgánico
-			for (let ddy = -checkR; ddy <= checkR; ddy++) {
-				for (let ddx = -checkR; ddx <= checkR; ddx++) {
-					const nx = cx0 + ddx,
-						ny = cy0 + ddy;
-					if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-					const d = Math.hypot(ddx, ddy);
-					const ang = Math.atan2(ddy, ddx);
-					// Radio modulado por dos senos de frecuencias distintas → forma irregular
-					const rMod = 1 +
-						lumpiness * 0.60 * Math.sin(ang * 3 + seed1) +
-						lumpiness * 0.40 * Math.sin(ang * 5 + seed2);
-					const rEdge = baseR * rMod;
-					if (d <= rEdge) {
-						water[ny * N + nx] = 1;
-						h[ny * N + nx] = Math.min(h[ny * N + nx], 0.24 - (rEdge - d) * 0.03);
-					} else if (d <= rEdge + 1.8) {
-						h[ny * N + nx] = Math.min(h[ny * N + nx], 0.33);
-					}
-				}
-			}
-
-			terr.lakes.push({
-				x: lcx / N,
-				y: lcy / N,
-				r: baseR / N,
-				lumpiness,
-				type: lakeMode
-			});
-			break;
-		}
-	}
-
-	const rocks = [];
-	for (let i = 0; i < 70; i++) {
-		const rx = Math.random(),
-			ry = Math.random();
-		const xi = Math.floor(rx * N),
-			yi = Math.floor(ry * N);
-		if (water[yi * N + xi]) continue;
-		if (h[yi * N + xi] < 0.34) continue;
-		rocks.push({
-			x: rx,
-			y: ry,
-			r: rnd(0.004, 0.011),
-			rot: rnd(0, 6.28)
-		});
-	}
-
-	// ---- Flores decorativas (solo biomas con hasFlowers) ----
-	const flowers = [];
-	if (currentBiome && currentBiome.hasFlowers) {
-		for (let i = 0; i < 160; i++) {
-			const fx = Math.random(),
-				fy = Math.random();
-			const xi = Math.floor(fx * N),
-				yi = Math.floor(fy * N);
+		const rocks = [];
+		for (let i = 0; i < 70; i++) {
+			const rx = Math.random(),
+				ry = Math.random();
+			const xi = Math.floor(rx * N),
+				yi = Math.floor(ry * N);
 			if (water[yi * N + xi]) continue;
-			if (h[yi * N + xi] < 0.32) continue;
-			const hue = Math.random() < 0.60 ? 'pink' :
-				(Math.random() < 0.55 ? 'white' : 'lavender');
-			flowers.push({
-				x: fx,
-				y: fy,
-				r: rnd(0.0035, 0.0075),
-				rot: rnd(0, 6.28),
-				hue
+			if (h[yi * N + xi] < 0.34) continue;
+			rocks.push({
+				x: rx,
+				y: ry,
+				r: rnd(0.004, 0.011),
+				rot: rnd(0, 6.28)
 			});
 		}
-	}
-	terr.flowers = flowers;
 
-
-	const fireflies = [];
-
-	/* =========================================================
-	   LUCIÉRNAGAS v2
-	   - Se recolectan TODOS los tiles elegibles (adyacentes a agua)
-	   - Se barajan para que no se acumulen arriba
-	   - Modo CLUSTER: aparecen en grupos de 4-14, no uniformes
-	   - Total: 30 a 320 por partida
-	   ========================================================= */
-	if (currentBiome && currentBiome.hasFireflies === false) {
-		terr.h = h;
-		terr.water = water;
-		terr.rocks = rocks;
-		terr.fireflies = [];
-		terr.flowers = flowers;
-		return;
-	}
-	const ffTarget = Math.floor(rnd(30, 320));
-	const ffDensity = rnd(0.06, 0.35);
-	const ffRadius = Math.random() < 0.30 ? 3 : 2;
-
-	// --- 1. Recolectar TODOS los tiles adyacentes a agua ---
-	const candidates = [];
-	for (let y = 0; y < N; y++) {
-		for (let x = 0; x < N; x++) {
-			const i = y * N + x;
-			if (water[i]) continue;
-			let nearWater = false;
-			for (let dy = -ffRadius; dy <= ffRadius && !nearWater; dy++) {
-				for (let dx = -ffRadius; dx <= ffRadius; dx++) {
-					const nx = x + dx,
-						ny = y + dy;
-					if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-					if (water[ny * N + nx]) {
-						nearWater = true;
-						break;
-					}
-				}
+		// ---- Flores decorativas (solo biomas con hasFlowers) ----
+		const flowers = [];
+		if (currentBiome && currentBiome.hasFlowers) {
+			for (let i = 0; i < 160; i++) {
+				const fx = Math.random(),
+					fy = Math.random();
+				const xi = Math.floor(fx * N),
+					yi = Math.floor(fy * N);
+				if (water[yi * N + xi]) continue;
+				if (h[yi * N + xi] < 0.32) continue;
+				const hue = Math.random() < 0.60 ? 'pink' :
+					(Math.random() < 0.55 ? 'white' : 'lavender');
+				flowers.push({
+					x: fx,
+					y: fy,
+					r: rnd(0.0035, 0.0075),
+					rot: rnd(0, 6.28),
+					hue
+				});
 			}
-			if (nearWater) {
-				// Peso mayor si el agua está a distancia 1 (borde mismo)
-				let distMin = Infinity;
-				for (let dy = -ffRadius; dy <= ffRadius; dy++) {
+		}
+		terr.flowers = flowers;
+
+
+		const fireflies = [];
+
+		/* =========================================================
+			 LUCIÉRNAGAS v2
+			 - Se recolectan TODOS los tiles elegibles (adyacentes a agua)
+			 - Se barajan para que no se acumulen arriba
+			 - Modo CLUSTER: aparecen en grupos de 4-14, no uniformes
+			 - Total: 30 a 320 por partida
+			 ========================================================= */
+		if (currentBiome && currentBiome.hasFireflies === false) {
+			terr.h = h;
+			terr.water = water;
+			terr.rocks = rocks;
+			terr.fireflies = [];
+			terr.flowers = flowers;
+			return;
+		}
+		const ffTarget = Math.floor(rnd(30, 320));
+		const ffDensity = rnd(0.06, 0.35);
+		const ffRadius = Math.random() < 0.30 ? 3 : 2;
+
+		// --- 1. Recolectar TODOS los tiles adyacentes a agua ---
+		const candidates = [];
+		for (let y = 0; y < N; y++) {
+			for (let x = 0; x < N; x++) {
+				const i = y * N + x;
+				if (water[i]) continue;
+				let nearWater = false;
+				for (let dy = -ffRadius; dy <= ffRadius && !nearWater; dy++) {
 					for (let dx = -ffRadius; dx <= ffRadius; dx++) {
 						const nx = x + dx,
 							ny = y + dy;
 						if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
 						if (water[ny * N + nx]) {
-							const d = Math.hypot(dx, dy);
-							if (d < distMin) distMin = d;
+							nearWater = true;
+							break;
 						}
 					}
 				}
-				candidates.push({
-					x,
-					y,
-					distMin
-				});
+				if (nearWater) {
+					// Peso mayor si el agua está a distancia 1 (borde mismo)
+					let distMin = Infinity;
+					for (let dy = -ffRadius; dy <= ffRadius; dy++) {
+						for (let dx = -ffRadius; dx <= ffRadius; dx++) {
+							const nx = x + dx,
+								ny = y + dy;
+							if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+							if (water[ny * N + nx]) {
+								const d = Math.hypot(dx, dy);
+								if (d < distMin) distMin = d;
+							}
+						}
+					}
+					candidates.push({
+						x,
+						y,
+						distMin
+					});
+				}
 			}
 		}
-	}
 
-	// --- 2. Barajar candidatos (Fisher-Yates) ---
-	for (let i = candidates.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-	}
-
-	// --- 3. Elegir modo: uniforme o clusters ---
-	const useClusters = Math.random() < 0.70; // 70% cluster, 30% uniforme
-
-	if (useClusters && candidates.length > 10) {
-		// --- Modo CLUSTER: elegir centros y agrupar alrededor ---
-		const clusterCount = 3 + Math.floor(Math.random() * 7); // 3 a 9 clusters
-		const clusterCenters = [];
-
-		// Tomamos candidatos distribuidos para elegir centros de cluster
-		const step = Math.max(1, Math.floor(candidates.length / clusterCount));
-		for (let i = 0; i < candidates.length && clusterCenters.length < clusterCount; i += step) {
-			clusterCenters.push(candidates[i]);
+		// --- 2. Barajar candidatos (Fisher-Yates) ---
+		for (let i = candidates.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[candidates[i], candidates[j]] = [candidates[j], candidates[i]];
 		}
 
-		// Cada cluster genera entre 4 y 14 luciérnagas alrededor
-		for (const center of clusterCenters) {
-			if (fireflies.length >= ffTarget) break;
-			const clusterSize = 4 + Math.floor(Math.random() * 11); // 4-14
-			const clusterRadius = 2 + Math.random() * 3; // 2-5 tiles
+		// --- 3. Elegir modo: uniforme o clusters ---
+		const useClusters = Math.random() < 0.70; // 70% cluster, 30% uniforme
 
-			// Buscar candidatos cercanos al centro
-			const nearby = candidates.filter(c => {
-				const d = Math.hypot(c.x - center.x, c.y - center.y);
-				return d <= clusterRadius;
-			});
+		if (useClusters && candidates.length > 10) {
+			// --- Modo CLUSTER: elegir centros y agrupar alrededor ---
+			const clusterCount = 3 + Math.floor(Math.random() * 7); // 3 a 9 clusters
+			const clusterCenters = [];
 
-			// Barajar nearby y tomar hasta clusterSize
-			for (let i = nearby.length - 1; i > 0; i--) {
-				const j = Math.floor(Math.random() * (i + 1));
-				[nearby[i], nearby[j]] = [nearby[j], nearby[i]];
+			// Tomamos candidatos distribuidos para elegir centros de cluster
+			const step = Math.max(1, Math.floor(candidates.length / clusterCount));
+			for (let i = 0; i < candidates.length && clusterCenters.length < clusterCount; i += step) {
+				clusterCenters.push(candidates[i]);
 			}
-			for (let k = 0; k < nearby.length && k < clusterSize; k++) {
+
+			// Cada cluster genera entre 4 y 14 luciérnagas alrededor
+			for (const center of clusterCenters) {
 				if (fireflies.length >= ffTarget) break;
-				if (Math.random() >= ffDensity) continue;
-				const c = nearby[k];
-				fireflies.push({
-					x: (c.x + rnd(-0.6, 0.6)) / N,
-					y: (c.y + rnd(-0.6, 0.6)) / N,
-					phase: rnd(0, 6.28),
-					spd: rnd(0.4, 1.2),
-					ax: rnd(0.004, 0.012),
-					ay: rnd(0.004, 0.012),
-					t: rnd(0, 100)
-				});
-			}
-		}
+				const clusterSize = 4 + Math.floor(Math.random() * 11); // 4-14
+				const clusterRadius = 2 + Math.random() * 3; // 2-5 tiles
 
-		// Si tras los clusters no llegamos al target, rellenar uniformemente
-		if (fireflies.length < ffTarget) {
+				// Buscar candidatos cercanos al centro
+				const nearby = candidates.filter(c => {
+					const d = Math.hypot(c.x - center.x, c.y - center.y);
+					return d <= clusterRadius;
+				});
+
+				// Barajar nearby y tomar hasta clusterSize
+				for (let i = nearby.length - 1; i > 0; i--) {
+					const j = Math.floor(Math.random() * (i + 1));
+					[nearby[i], nearby[j]] = [nearby[j], nearby[i]];
+				}
+				for (let k = 0; k < nearby.length && k < clusterSize; k++) {
+					if (fireflies.length >= ffTarget) break;
+					if (Math.random() >= ffDensity) continue;
+					const c = nearby[k];
+					fireflies.push({
+						x: (c.x + rnd(-0.6, 0.6)) / N,
+						y: (c.y + rnd(-0.6, 0.6)) / N,
+						phase: rnd(0, 6.28),
+						spd: rnd(0.4, 1.2),
+						ax: rnd(0.004, 0.012),
+						ay: rnd(0.004, 0.012),
+						t: rnd(0, 100)
+					});
+				}
+			}
+
+			// Si tras los clusters no llegamos al target, rellenar uniformemente
+			if (fireflies.length < ffTarget) {
+				for (const c of candidates) {
+					if (fireflies.length >= ffTarget) break;
+					if (Math.random() >= ffDensity * 0.5) continue;
+					fireflies.push({
+						x: (c.x + rnd(-0.6, 0.6)) / N,
+						y: (c.y + rnd(-0.6, 0.6)) / N,
+						phase: rnd(0, 6.28),
+						spd: rnd(0.4, 1.2),
+						ax: rnd(0.004, 0.012),
+						ay: rnd(0.004, 0.012),
+						t: rnd(0, 100)
+					});
+				}
+			}
+		} else {
+			// --- Modo UNIFORME: barajar y tomar hasta ffTarget ---
 			for (const c of candidates) {
 				if (fireflies.length >= ffTarget) break;
-				if (Math.random() >= ffDensity * 0.5) continue;
+				if (Math.random() >= ffDensity) continue;
 				fireflies.push({
 					x: (c.x + rnd(-0.6, 0.6)) / N,
 					y: (c.y + rnd(-0.6, 0.6)) / N,
@@ -8515,28 +8554,16 @@ function generateTerrain() {
 				});
 			}
 		}
-	} else {
-		// --- Modo UNIFORME: barajar y tomar hasta ffTarget ---
-		for (const c of candidates) {
-			if (fireflies.length >= ffTarget) break;
-			if (Math.random() >= ffDensity) continue;
-			fireflies.push({
-				x: (c.x + rnd(-0.6, 0.6)) / N,
-				y: (c.y + rnd(-0.6, 0.6)) / N,
-				phase: rnd(0, 6.28),
-				spd: rnd(0.4, 1.2),
-				ax: rnd(0.004, 0.012),
-				ay: rnd(0.004, 0.012),
-				t: rnd(0, 100)
-			});
-		}
-	}
 
-	terr.h = h;
-	terr.water = water;
-	terr.rocks = rocks;
-	terr.fireflies = fireflies;
-	terr.flowers = flowers;
+		terr.h = h;
+		terr.water = water;
+		terr.rocks = rocks;
+		terr.fireflies = fireflies;
+		terr.flowers = flowers;
+	
+  } finally {
+    Math.random = oldRandom;             // ← SIEMPRE restaurar
+  }
 }
 
 function buildWaterLayers(W, H) {
@@ -8836,6 +8863,37 @@ function renderTerrain(W, H) {
 	if (ambientLifeSpawnedFor !== currentBiome.id) {
 		spawnAmbientLife(W, H);
 	}
+}
+
+/* =========================================================
+   SEMILLA DETERMINISTA DERIVADA DEL ID DE LA PARTIDA
+   Si una partida vieja no tiene terrainSeed guardada, la
+   generamos desde su id (que es único y estable). Así el
+   terreno es siempre el mismo entre reproducciones, dispositivos
+   y limpiezas de storage.
+   ========================================================= */
+function seedFromString(str){
+  // FNV-1a de 32 bits, bien distribuido, rápido
+  let h = 0x811c9dc5;
+  for(let i = 0; i < str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  // Convertimos a float 0..1000 para que sea compatible con el rango
+  // que usa generateTerrain (Math.random() * 1000)
+  return (h % 1000000) / 1000;
+}
+
+function ensureMatchSeed(match){
+  if(!match) return null;
+  if(match.terrainSeed !== undefined && match.terrainSeed !== null){
+    return match.terrainSeed;
+  }
+  // Derivamos del id. Si por alguna razón no hay id, usamos date.
+  const src = match.id || String(match.date || Date.now());
+  const seed = seedFromString(src);
+  match.terrainSeed = seed;   // se muta el objeto (lo persistimos abajo)
+  return seed;
 }
 
 /* =========================================================
@@ -14593,9 +14651,30 @@ function startReplayFromStored(match) {
 	// *** FIX: aplicar el clima guardado de esa partida ***
 	if (match.weather) applyWeatherState(match.weather);
 
-	if (match.biomeId && BIOMES[match.biomeId]) {
+	if(match.biomeId && BIOMES[match.biomeId]){
 		currentBiome = BIOMES[match.biomeId];
-		if (boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
+
+		// ⬇️ Asegurar que la partida tenga seed (por si es muy vieja
+		//    y el backfill de boot no la agarró, o por si vino por import)
+		const seed = ensureMatchSeed(match);
+
+		if(seed !== undefined && seed !== null){
+			generateTerrain(seed);
+
+			// Persistir el cambio si recién se generó ahora
+			if(match.id){
+				const list = loadMatchList();
+				const idx = list.findIndex(m => m.id === match.id);
+				if(idx >= 0 && list[idx].terrainSeed !== seed){
+					list[idx].terrainSeed = seed;
+					saveMatchList(list);
+				}
+			}
+		} else {
+			generateTerrain();
+		}
+
+		if(boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
 		applyBiomeAudioTargets(currentBiome.id);
 	}
 
@@ -15242,6 +15321,7 @@ replayUIEl.addEventListener('wheel', (e) => {
    HISTORIAL DE PARTIDAS — UI
    ========================================================= */
 function openMatchHistory() {
+	backfillMatchSeeds();
 	return new Promise(resolve => {
 		const list = loadMatchList();
 		const ov = document.createElement('div');
@@ -16286,6 +16366,21 @@ async function showConfigMenu() {
 		m.appendChild(bw);
 		refreshPicked();
 	});
+}
+
+/* Recorre el listado y completa la seed de las partidas que no la tengan.
+   Persiste al storage solo si hubo cambios. */
+function backfillMatchSeeds(){
+  const list = loadMatchList();
+  let changed = false;
+  for(const match of list){
+    if(match.terrainSeed === undefined || match.terrainSeed === null){
+      ensureMatchSeed(match);
+      changed = true;
+    }
+  }
+  if(changed) saveMatchList(list);
+  return changed;
 }
 
 /* =========================================================
@@ -18104,6 +18199,7 @@ function boot() {
 
 	// ===== Aplicar preferencias guardadas ANTES de generar el terreno =====
 	const saved = loadPreferences();
+	try { backfillMatchSeeds(); } catch(e){ console.warn('backfill seeds:', e); }
 	if (saved) {
 		// Modo / lado
 		if (saved.mode) {
