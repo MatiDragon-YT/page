@@ -1200,6 +1200,13 @@ function applyBiomeAudioTargets(biomeId){
   const eventLevel = cfg.events.length > 0 ? 1 : 0;
   ambience.ambientEventGain.gain.setTargetAtTime(eventLevel, t, FADE);
 
+	if(ambience.reverbConv){
+	  ambience.reverbConv.buffer = getIR(biomeId);
+	  // Volumen de reverb según bioma (desierto poca, cueva mucha)
+	  const send = { forest: 0.35, desert: 0.10, volcano: 0.65, snow: 0.20, cute: 0.25 }[biomeId] || 0.3;
+	  ambience.reverbSend.gain.setTargetAtTime(send, t, 0.8);
+	}
+
   // --- Reiniciar el scheduler de eventos para el nuevo bioma ---
   resetBiomeEventScheduler();
 }
@@ -1218,15 +1225,31 @@ function resetBiomeEventScheduler(){
 function scheduleNextBiomeEvent(delay){
   const token = ambience.biomeEventToken;
   ambience.biomeEventTimer = setTimeout(() => {
-    if(token !== ambience.biomeEventToken) return;   // cancelado
+    if(token !== ambience.biomeEventToken) return;
     if(!actx || !soundEnabled) { scheduleNextBiomeEvent(1.5); return; }
     if(state.paused) { scheduleNextBiomeEvent(1.0); return; }
 
-    // Elegir un evento aleatorio del bioma actual
     const cfg = getBiomeAudio(currentBiome.id);
     if(!cfg.events.length){ return; }
 
-    const ev = cfg.events[Math.floor(Math.random() * cfg.events.length)];
+    // ⬇️ NUEVO: filtro por franja horaria
+    const ph = getPhase();
+    const isNight = ph.dark > 0.10;
+    const NOCTURNAL = new Set(['owl','coyote','wolfHowl']);
+    const DIURNAL   = new Set(['woodpecker','bees']);
+
+    const validEvents = cfg.events.filter(ev => {
+      if(NOCTURNAL.has(ev.type) && !isNight) return false;
+      if(DIURNAL.has(ev.type) && isNight)    return false;
+      return true;
+    });
+
+    if(validEvents.length === 0){
+      scheduleNextBiomeEvent(rnd(3, 8));
+      return;
+    }
+
+    const ev = validEvents[Math.floor(Math.random() * validEvents.length)];
     if(Math.random() < ev.chance){
       playBiomeEvent(ev.type);
     }
@@ -1249,6 +1272,237 @@ function playBiomeEvent(type){
     case 'bubblePop':    playBubblePop(now); break;
     case 'steamWhoosh':  playSteamWhoosh(now); break;
     case 'butterfly':    playButterflyFlutter(now); break;
+	case 'owl':          playOwl(now); break;
+    case 'woodpecker':   playWoodpecker(now); break;
+    case 'branchCrack':  playBranchCrack(now); break;
+    case 'wolfHowl':     playWolfHowl(now); break;
+    case 'tremor':       playTremor(now); break;
+    case 'rockSlide':    playRockSlide(now); break;
+    case 'bees':         playBees(now); break;
+    case 'coyote':       playCoyote(now); break;
+  }
+}
+
+/* ---- BÚHO (universal noche, bosque / jardín) ---- */
+function playOwl(t0){
+  const baseFreq = 320 + Math.random() * 80;
+  // "Oooh" grave con vibrato
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  const vib = actx.createOscillator();
+  const vibG = actx.createGain();
+  vib.frequency.value = 5.5;
+  vibG.gain.value = 8;
+  vib.connect(vibG).connect(o.frequency);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(baseFreq, t0);
+  o.frequency.setValueAtTime(baseFreq * 0.92, t0 + 0.35);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(0.08, t0 + 0.05);
+  g.gain.setValueAtTime(0.08, t0 + 0.30);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.55);
+  o.connect(g).connect(ambience.ambientEventGain);
+  o.start(t0); o.stop(t0 + 0.6);
+  vib.start(t0); vib.stop(t0 + 0.6);
+  // Segunda sílaba más corta, si "responde"
+  if(Math.random() < 0.5){
+    setTimeout(() => {
+      if(!actx || !soundEnabled) return;
+      const t1 = actx.currentTime;
+      const o2 = actx.createOscillator(), g2 = actx.createGain();
+      o2.type = 'sine';
+      o2.frequency.setValueAtTime(baseFreq * 0.95, t1);
+      o2.frequency.setValueAtTime(baseFreq * 0.85, t1 + 0.25);
+      g2.gain.setValueAtTime(0.0001, t1);
+      g2.gain.linearRampToValueAtTime(0.07, t1 + 0.04);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t1 + 0.4);
+      o2.connect(g2).connect(ambience.ambientEventGain);
+      o2.start(t1); o2.stop(t1 + 0.42);
+    }, 700 + Math.random() * 400);
+  }
+}
+
+/* ---- PÁJARO CARPINTERO (bosque, día) ---- */
+function playWoodpecker(t0){
+  const pulses = 8 + Math.floor(Math.random() * 6);
+  const baseFreq = 1800 + Math.random() * 800;
+  const pulseGap = 0.045 + Math.random() * 0.015;
+  let t = t0;
+  for(let i = 0; i < pulses; i++){
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'square';
+    o.frequency.value = baseFreq * (0.95 + Math.random() * 0.10);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.03, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.022);
+    o.connect(g).connect(ambience.ambientEventGain);
+    o.start(t); o.stop(t + 0.03);
+    t += pulseGap;
+  }
+}
+
+/* ---- CRUJIDO DE RAMA (bosque, día) ---- */
+function playBranchCrack(t0){
+  const n = Math.floor(actx.sampleRate * 0.28);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i = 0; i < n; i++){
+    const p = i / n;
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - p, 3);
+  }
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const bp = actx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 1500 + Math.random() * 800; bp.Q.value = 1.2;
+  const g = actx.createGain(); g.gain.value = 0.09;
+  src.connect(bp).connect(g).connect(ambience.ambientEventGain);
+  src.start(t0);
+  // Resonancia seca de madera
+  const o = actx.createOscillator(), og = actx.createGain();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(400, t0 + 0.05);
+  o.frequency.exponentialRampToValueAtTime(220, t0 + 0.35);
+  og.gain.setValueAtTime(0.0001, t0 + 0.05);
+  og.gain.linearRampToValueAtTime(0.035, t0 + 0.08);
+  og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
+  o.connect(og).connect(ambience.ambientEventGain);
+  o.start(t0 + 0.05); o.stop(t0 + 0.42);
+}
+
+/* ---- AULLIDO DE LOBO (nieve, lejano) ---- */
+function playWolfHowl(t0){
+  const baseFreq = 220 + Math.random() * 60;
+  const dur = 1.4 + Math.random() * 1.2;
+  const o = actx.createOscillator(), g = actx.createGain();
+  const vib = actx.createOscillator(), vibG = actx.createGain();
+  vib.frequency.value = 4.5; vibG.gain.value = 6;
+  vib.connect(vibG).connect(o.frequency);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(baseFreq * 0.75, t0);
+  o.frequency.linearRampToValueAtTime(baseFreq, t0 + dur * 0.25);
+  o.frequency.linearRampToValueAtTime(baseFreq * 1.05, t0 + dur * 0.55);
+  o.frequency.linearRampToValueAtTime(baseFreq * 0.85, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(0.055, t0 + dur * 0.20);
+  g.gain.setValueAtTime(0.055, t0 + dur * 0.65);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(ambience.ambientEventGain);
+  o.start(t0); o.stop(t0 + dur + 0.05);
+  vib.start(t0); vib.stop(t0 + dur + 0.05);
+  // Reverb falso: eco lejano
+  if(Math.random() < 0.6){
+    setTimeout(() => {
+      if(!actx || !soundEnabled) return;
+      const t1 = actx.currentTime;
+      const o2 = actx.createOscillator(), g2 = actx.createGain();
+      o2.type = 'sine';
+      o2.frequency.setValueAtTime(baseFreq * 0.98, t1);
+      o2.frequency.linearRampToValueAtTime(baseFreq * 0.80, t1 + dur * 0.8);
+      g2.gain.setValueAtTime(0.0001, t1);
+      g2.gain.linearRampToValueAtTime(0.02, t1 + 0.2);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t1 + dur * 0.8);
+      o2.connect(g2).connect(ambience.ambientEventGain);
+      o2.start(t1); o2.stop(t1 + dur * 0.9);
+    }, 500 + Math.random() * 300);
+  }
+}
+
+/* ---- TEMBLOR DE TIERRA (volcán, muy grave) ---- */
+function playTremor(t0){
+  const dur = 1.8 + Math.random() * 1.5;
+  const n = Math.floor(actx.sampleRate * dur);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for(let i = 0; i < n; i++){
+    const p = i / n;
+    const env = p < 0.2 ? (p / 0.2) : Math.pow(1 - (p - 0.2) / 0.8, 1.4);
+    const white = Math.random() * 2 - 1;
+    last = (last + 0.025 * white) / 1.025;   // cutoff muy bajo, ~80Hz
+    d[i] = last * env * 4;
+  }
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const lp = actx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 100; lp.Q.value = 1.4;
+  const g = actx.createGain(); g.gain.value = 0.14;
+  src.connect(lp).connect(g).connect(ambience.ambientEventGain);
+  src.start(t0);
+  // Sub-oscilador para "sentirlo"
+  const o = actx.createOscillator(), og = actx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(32, t0);
+  o.frequency.linearRampToValueAtTime(28, t0 + dur);
+  og.gain.setValueAtTime(0.0001, t0);
+  og.gain.linearRampToValueAtTime(0.06, t0 + 0.3);
+  og.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(og).connect(ambience.ambientEventGain);
+  o.start(t0); o.stop(t0 + dur + 0.05);
+}
+
+/* ---- ROCAS RODANDO (volcán) ---- */
+function playRockSlide(t0){
+  let t = t0;
+  const count = 3 + Math.floor(Math.random() * 4);
+  for(let i = 0; i < count; i++){
+    const dur = 0.08 + Math.random() * 0.06;
+    const n = Math.floor(actx.sampleRate * dur);
+    const buf = actx.createBuffer(1, n, actx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let j = 0; j < n; j++){
+      d[j] = (Math.random() * 2 - 1) * Math.pow(1 - j/n, 2);
+    }
+    const src = actx.createBufferSource(); src.buffer = buf;
+    const bp = actx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 200 + Math.random() * 600;
+    bp.Q.value = 1.8;
+    const g = actx.createGain(); g.gain.value = 0.08;
+    src.connect(bp).connect(g).connect(ambience.ambientEventGain);
+    src.start(t);
+    t += 0.06 + Math.random() * 0.14;
+  }
+}
+
+/* ---- ABEJAS (jardín, día) ---- */
+function playBees(t0){
+  const dur = 1.2 + Math.random() * 1.5;
+  const o = actx.createOscillator(), g = actx.createGain();
+  const vib = actx.createOscillator(), vibG = actx.createGain();
+  vib.frequency.value = 12 + Math.random() * 4;
+  vibG.gain.value = 25;
+  vib.connect(vibG).connect(o.frequency);
+  o.type = 'sawtooth';
+  o.frequency.value = 180 + Math.random() * 60;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(0.018, t0 + 0.3);
+  g.gain.setValueAtTime(0.018, t0 + dur - 0.3);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  const lp = actx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 1200;
+  o.connect(lp).connect(g).connect(ambience.ambientEventGain);
+  o.start(t0); o.stop(t0 + dur + 0.05);
+  vib.start(t0); vib.stop(t0 + dur + 0.05);
+}
+
+/* ---- COYOTE (desierto, noche) ---- */
+function playCoyote(t0){
+  const notes = 2 + Math.floor(Math.random() * 4);
+  let t = t0;
+  const baseFreq = 500 + Math.random() * 200;
+  for(let i = 0; i < notes; i++){
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sawtooth';
+    const f = baseFreq * (0.85 + Math.random() * 0.35);
+    o.frequency.setValueAtTime(f * 0.9, t);
+    o.frequency.exponentialRampToValueAtTime(f, t + 0.12);
+    o.frequency.exponentialRampToValueAtTime(f * 0.7, t + 0.30);
+    const lp = actx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 2200;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.035, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+    o.connect(lp).connect(g).connect(ambience.ambientEventGain);
+    o.start(t); o.stop(t + 0.35);
+    t += 0.22 + Math.random() * 0.15;
   }
 }
 
@@ -1499,6 +1753,93 @@ function playButterflyFlutter(t0){
   }
 }
 
+function createForestIR(){
+  const dur = 1.2, n = actx.sampleRate * dur;
+  const buf = actx.createBuffer(2, n, actx.sampleRate);
+  for(let c=0;c<2;c++){
+    const d = buf.getChannelData(c);
+    for(let i=0;i<n;i++){
+      const p = i/n;
+      // Decay suave, con reflexiones tempranas
+      const env = Math.pow(1-p, 2.2);
+      d[i] = (Math.random()*2-1) * env * 0.4;
+      if(i < actx.sampleRate*0.05) d[i] *= 0.3;
+    }
+  }
+  return buf;
+}
+function createDesertIR(){
+  const dur = 0.4, n = actx.sampleRate * dur;
+  const buf = actx.createBuffer(2, n, actx.sampleRate);
+  for(let c=0;c<2;c++){
+    const d = buf.getChannelData(c);
+    for(let i=0;i<n;i++){
+      const p = i/n;
+      d[i] = (Math.random()*2-1) * Math.pow(1-p, 4) * 0.6;   // muy corto, seco
+    }
+  }
+  return buf;
+}
+function createCaveIR(){   // volcán
+  const dur = 3.5, n = actx.sampleRate * dur;
+  const buf = actx.createBuffer(2, n, actx.sampleRate);
+  for(let c=0;c<2;c++){
+    const d = buf.getChannelData(c);
+    for(let i=0;i<n;i++){
+      const p = i/n;
+      const env = Math.pow(1-p, 1.8);
+      d[i] = (Math.random()*2-1) * env * 0.5;
+      // Reflexiones discretas que simulan eco de pared
+      if(c === 0){
+        if(Math.abs(p - 0.15) < 0.01) d[i] += 0.4;
+        if(Math.abs(p - 0.32) < 0.01) d[i] += 0.3;
+        if(Math.abs(p - 0.55) < 0.01) d[i] += 0.2;
+      }
+    }
+  }
+  return buf;
+}
+function createSnowIR(){
+  const dur = 0.8, n = actx.sampleRate * dur;
+  const buf = actx.createBuffer(2, n, actx.sampleRate);
+  for(let c=0;c<2;c++){
+    const d = buf.getChannelData(c);
+    for(let i=0;i<n;i++){
+      const p = i/n;
+      d[i] = (Math.random()*2-1) * Math.pow(1-p, 3) * 0.2;   // absorbe mucho
+    }
+  }
+  return buf;
+}
+function createGardenIR(){
+  const dur = 0.6, n = actx.sampleRate * dur;
+  const buf = actx.createBuffer(2, n, actx.sampleRate);
+  for(let c=0;c<2;c++){
+    const d = buf.getChannelData(c);
+    for(let i=0;i<n;i++){
+      const p = i/n;
+      d[i] = (Math.random()*2-1) * Math.pow(1-p, 2.5) * 0.25;  // abierto, poca reverb
+    }
+  }
+  return buf;
+}
+const BIOME_IR = {
+  forest: createForestIR,
+  desert: createDesertIR,
+  volcano: createCaveIR,
+  snow: createSnowIR,
+  cute: createGardenIR,
+};
+
+// ⬇️ cache de IRs generadas. Cada bioma se genera UNA sola vez.
+const _irCache = {};
+function getIR(biomeId){
+  if(_irCache[biomeId]) return _irCache[biomeId];
+  const factory = BIOME_IR[biomeId] || createForestIR;
+  _irCache[biomeId] = factory();
+  return _irCache[biomeId];
+}
+
 function initAmbience(){
   if(!actx || ambience.started) return;
   ambience.started = true;
@@ -1527,7 +1868,9 @@ function initAmbience(){
   const windLp = actx.createBiquadFilter();
   windLp.type = 'lowpass'; windLp.frequency.value = 160; windLp.Q.value = 0.5;
   const windGain = actx.createGain(); windGain.gain.value = 0;
-  windSrc.connect(windLp).connect(windGain).connect(masterGain);
+  const windPanner = actx.createStereoPanner();
+  windSrc.connect(windLp).connect(windPanner).connect(windGain).connect(masterGain);
+  Object.assign(ambience, { windPanner });
 
   // --- GRILLOS ---
   const cricketGain = actx.createGain();
@@ -1544,7 +1887,7 @@ function initAmbience(){
     windLp, windGain, cricketGain
   });
 
-	  // =========================================================
+  // =========================================================
   // CAPAS DE BIOMA (se crean siempre, su gain depende del bioma actual)
   // =========================================================
 
@@ -1616,6 +1959,39 @@ function initAmbience(){
   const ambientEventGain = actx.createGain();
   ambientEventGain.gain.value = 0;
   ambientEventGain.connect(masterGain);
+  
+  
+
+	// Drone de tensión — capa musical sutil
+	const droneOsc1 = actx.createOscillator();
+	const droneOsc2 = actx.createOscillator();
+	const droneGain = actx.createGain();
+	const droneLp = actx.createBiquadFilter();
+	droneOsc1.type = 'sine';
+	droneOsc1.frequency.value = 55;      // A1
+	droneOsc2.type = 'sine';
+	droneOsc2.frequency.value = 82.4;    // E2 (quinta)
+	droneLp.type = 'lowpass';
+	droneLp.frequency.value = 300;
+	droneLp.Q.value = 0.7;
+	droneGain.gain.value = 0;
+	droneOsc1.connect(droneLp);
+	droneOsc2.connect(droneLp);
+	droneLp.connect(droneGain).connect(masterGain);
+	droneOsc1.start();
+	droneOsc2.start();
+	Object.assign(ambience, { droneOsc1, droneOsc2, droneGain });
+
+	// Bus de reverb para sonidos ambientales y de bioma
+	const reverbConv = actx.createConvolver();
+	const reverbSend = actx.createGain();
+	const reverbReturn = actx.createGain();
+	reverbSend.gain.value = 0.35;
+	reverbReturn.gain.value = 0.55;
+	ambientEventGain.connect(reverbSend);
+	reverbSend.connect(reverbConv);
+	reverbConv.connect(reverbReturn).connect(masterGain);
+	Object.assign(ambience, { reverbConv, reverbSend, reverbReturn });
 
   // Arrancar todo
   windHiSrc.start();
@@ -1635,6 +2011,9 @@ function initAmbience(){
     biomeEventToken: 0,
     biomeEventMin: 0, biomeEventMax: 0
   });
+
+	// ⬇️ generar el IR del bioma actual ya mismo, no esperar al primer cambio
+  getIR(currentBiome.id);
 
   // Aplicar targets del bioma actual
   applyBiomeAudioTargets(currentBiome.id);
@@ -1681,6 +2060,10 @@ function updateAmbience(){
   // --- VIENTO: sin base fija. Si el generador dice 0, no se oye nada ---
   const windG = windLevel * 0.055 * pauseFactor;
   ambience.windGain.gain.setTargetAtTime(windG, t, 0.35);
+  if(ambience.windPanner){
+	  const pan = clamp(windState.direction * 0.85, -1, 1);
+	  ambience.windPanner.pan.setTargetAtTime(pan, t, 0.8);
+	}
 
   // --- GRILLOS: energía propia + noche + castigo por lluvia ---
   const cricketLevel = nl * cricketEner * (1 - rl * 0.9);
@@ -1711,6 +2094,20 @@ function updateAmbience(){
       lavaLevel * 0.075 * pauseFactor, t, 1.2
     );
   }
+  
+  // ⬇️ drone de tensión
+	if(ambience.droneGain && !state.gameOver){
+	  const totalPieces = chess ? chess.board().flat().filter(Boolean).length : 32;
+	  const tension = 1 - (totalPieces - 8) / 24;   // 0 al inicio, 1 en endgame pelado
+	  const inCheck = chess && chess.in_check() ? 0.4 : 0;
+	  const target = clamp((tension * 0.5 + inCheck) * 0.028, 0, 0.028);
+	  ambience.droneGain.gain.setTargetAtTime(target * pauseFactor, t, 2.5);
+
+	  // Micro-vibrato de afinación para que respire
+	  const wobble = Math.sin(now * 0.00015) * 1.5;
+	  ambience.droneOsc1.frequency.setTargetAtTime(55 + wobble, t, 1.5);
+	  ambience.droneOsc2.frequency.setTargetAtTime(82.4 - wobble, t, 1.5);
+	}
 }
 
 function scheduleCricket(){
@@ -1988,7 +2385,9 @@ function noiseBurst(dur, vol=0.05, filterFreq=1200, bus=null){
 }
 
 function sfx(kind){
+  if(!actx) initAudio();          // ⬅️ NUEVO: auto-init
   if(!actx) return;
+  if(!soundEnabled) return;       // ⬅️ NUEVO: chequeo explícito
   switch(kind){
     case 'move': tone(220,.09,'triangle',.045,-60); break;
     case 'capture': noiseBurst(.14,.07,2200); tone(140,.14,'square',.035,-70); break;
@@ -2095,6 +2494,94 @@ function sfx(kind){
 	  // Tick seco e insistente
 	  tone(880, .06, 'square', .05, -100);
 	  break;
+	case 'modal-open':
+	  tone(700, .10, 'sine', .035, 180, uiGain);
+	  tone(1050, .08, 'sine', .025, 120, uiGain);
+	  break;
+	case 'modal-close':
+	  tone(600, .10, 'sine', .030, -150, uiGain);
+	  tone(400, .08, 'sine', .020, -100, uiGain);
+	  break;
+	case 'side-pick':
+	  tone(1200, .05, 'sine', .03, 400, uiGain);
+	  break;
+	case 'quality-up':
+	  [784, 1047, 1319].forEach((f,i)=>setTimeout(()=>tone(f,.14,'sine',.04,40,uiGain),i*60));
+	  break;
+	case 'quality-down':
+	  [784, 622, 494].forEach((f,i)=>setTimeout(()=>tone(f,.16,'triangle',.035,-40,uiGain),i*70));
+	  break;
+	case 'biome-change':
+	  tone(523, .25, 'triangle', .05, 200, uiGain);
+	  noiseBurst(.3, .03, 2500, uiGain);
+	  tone(784, .3, 'sine', .04, 150, uiGain);
+	  break;
+	case 'tooltip-show':
+	  tone(1600, .04, 'sine', .018, -200, uiGain);
+	  break;
+	case 'toast-pop':
+	  tone(1350, .03, 'sine', .015, 0, uiGain);
+	  break;
+	case 'drag-lift':
+	  tone(480, .05, 'triangle', .025, 200, uiGain);
+	  break;
+	case 'drag-drop':
+	  noiseBurst(.05, .02, 2000, uiGain);
+	  tone(340, .07, 'triangle', .025, -80, uiGain);
+	  break;
+	case 'target-loop-ray':     tone(280, .5, 'sawtooth', .018, -20, uiGain); break;
+	case 'target-loop-heal':    tone(400, .5, 'sine',     .018, 20,  uiGain); break;
+	case 'target-loop-teleport':tone(520, .5, 'triangle', .018, 40,  uiGain); break;
+	case 'target-loop-shield':  tone(360, .5, 'sine',     .018, 30,  uiGain); break;
+	case 'target-loop-zombie':  tone(220, .5, 'sawtooth', .018, -30, uiGain); break;
+	case 'target-loop-quake':   tone(140, .5, 'triangle', .018, -10, uiGain); break;
+	case 'dice':
+	  noiseBurst(.08, .03, 4000, uiGain);
+	  noiseBurst(.06, .02, 3000, uiGain);
+	  tone(600, .06, 'triangle', .025, -200, uiGain);
+	  break;
+	case 'capture-pawn':
+	  noiseBurst(.10, .05, 2000);
+	  tone(150, .12, 'square', .03, -60);
+	  break;
+	case 'capture-minor':
+	  noiseBurst(.13, .07, 2400);
+	  tone(140, .15, 'square', .04, -70);
+	  tone(220, .10, 'triangle', .03, -50);
+	  break;
+	case 'capture-major':
+	  noiseBurst(.18, .09, 2600);
+	  tone(120, .22, 'sawtooth', .05, -50);
+	  tone(180, .18, 'square', .04, -60);
+	  tone(280, .12, 'triangle', .03, -40);
+	  break;
+	case 'capture-king':
+	  // No existe (el rey no se captura), pero por las dudas
+	  noiseBurst(.4, .12, 1200);
+	  tone(80, .5, 'sawtooth', .06, -40);
+	  break;
+	case 'no-moves':
+	  tone(220, .07, 'sine', .025, -30, uiGain);
+	  tone(180, .09, 'sine', .020, -20, uiGain);
+	  break;
+	case 'ach-common':
+	  [659, 880].forEach((f,i)=>setTimeout(()=>tone(f,.22,'sine',.06),i*90));
+	  break;
+	case 'ach-rare':
+	  [659, 880, 1174].forEach((f,i)=>setTimeout(()=>tone(f,.25,'sine',.06),i*80));
+	  break;
+	case 'ach-epic':
+	  [523, 659, 880, 1174, 1568].forEach((f,i)=>setTimeout(()=>tone(f,.30,'triangle',.06),i*70));
+	  noiseBurst(.35, .04, 3500);
+	  break;
+	case 'ach-legendary':
+	  [392, 523, 659, 880, 1047, 1319, 1568].forEach((f,i)=>setTimeout(()=>tone(f,.40,'triangle',.07,20),i*90));
+	  noiseBurst(.6, .05, 4500);
+	  [262, 392].forEach((f,i)=>setTimeout(()=>tone(f,1.2,'sine',.04),i*120));
+	  break;
+	case 'slider-tick':
+	  tone(1600, .022, 'triangle', .014, -180, uiGain);
+	  break;
   }
 }
 
@@ -2113,6 +2600,7 @@ const fpsCtx = fpsCanvas.getContext('2d');   // ⬅️ NUEVO
 const gridEl = $('#grid');
 const piecesEl = $('#pieces');
 const historyEl = $('#history');
+let targetingLoopTimer = null;
 
 const state = {
   mana: { w: 0, b: 0 },
@@ -2312,7 +2800,9 @@ function updateQualityFromFPS(dt){
 
   quality.effective = target;
   quality.lastChange = now;
-  console.log(`[quality] → ${target}  (p25: ${p25.toFixed(1)}  p50: ${p50.toFixed(1)})`);
+  //console.log(`[quality] → ${target}  (p25: ${p25.toFixed(1)}  p50: ${p50.toFixed(1)})`);
+  
+  sfx(isUpgrade ? 'quality-up' : 'quality-down');
 
   if(typeof toast === 'function'){
     const icon = { high:'✨', medium:'⚖️', low:'🍃', emergency:'⚡' }[target];
@@ -2338,18 +2828,18 @@ let turnSnapshotTaken = false;
 const UNDO_LIMITS = { easy: Infinity, normal: 3, hard: 0, ruby: 0, pvp: 0 };
 
 const ACH = {
-  primeraSangre: { name:'Primera Sangre', icon:'🩸', desc:'Primera captura de la partida' },
-  dobleFilo: { name:'Doble Filo', icon:'⚔️', desc:'Primera Ira de Batalla' },
-  dobleKill: { name:'Doble Kill', icon:'🔥', desc:'2 capturas seguidas' },
-  tripleKill: { name:'Triple Kill', icon:'🔥🔥', desc:'3 capturas seguidas' },
-  cuadrupleKill: { name:'Cuádruple Kill', icon:'💥', desc:'4 capturas seguidas' },
-  pentaKill: { name:'Penta Kill', icon:'💀', desc:'5 capturas seguidas' },
-  monsterKill: { name:'Monster Kill', icon:'👹', desc:'6+ capturas seguidas' },
-  reyCazador3: { name:'Rey Cazador x3', icon:'👑', desc:'El Rey comió 3 veces' },
-  inmortal: { name:'Inmortal', icon:'🛡️', desc:'Ganar sin perder piezas' },
-  escudoSalvador: { name:'Escudo Salvador', icon:'💙', desc:'Un escudo absorbió un ataque' },
-  magoDeMagos: { name:'Mago de Magos', icon:'🧙', desc:'Usar 5 poderes en una partida' },
-  reyDesnudo: { name:'Rey Desnudo', icon:'😱', desc:'Dar jaque mate con solo el Rey y un peón' }
+  primeraSangre: { name:'Primera Sangre', icon:'🩸', rarity:'common', desc:'Primera captura de la partida' },
+  dobleFilo: { name:'Doble Filo', icon:'⚔️', rarity:'common', desc:'Primera Ira de Batalla' },
+  dobleKill: { name:'Doble Kill', icon:'🔥', rarity:'common', desc:'2 capturas seguidas' },
+  tripleKill: { name:'Triple Kill', icon:'🔥🔥', rarity:'rare', desc:'3 capturas seguidas' },
+  cuadrupleKill: { name:'Cuádruple Kill', icon:'💥', rarity:'rare', desc:'4 capturas seguidas' },
+  pentaKill: { name:'Penta Kill', icon:'💀', rarity:'epic', desc:'5 capturas seguidas' },
+  monsterKill: { name:'Monster Kill', icon:'👹', rarity:'epic', desc:'6+ capturas seguidas' },
+  reyCazador3: { name:'Rey Cazador x3', icon:'👑', rarity:'rare', desc:'El Rey comió 3 veces' },
+  inmortal: { name:'Inmortal', icon:'🛡️', rarity:'legendary', desc:'Ganar sin perder piezas' },
+  escudoSalvador: { name:'Escudo Salvador', icon:'💙', rarity:'common', desc:'Un escudo absorbió un ataque' },
+  magoDeMagos: { name:'Mago de Magos', icon:'🧙', rarity:'epic', desc:'Usar 5 poderes en una partida' },
+  reyDesnudo: { name:'Rey Desnudo', icon:'😱', rarity:'legendary', desc:'Dar jaque mate con solo el Rey y un peón' }
 };
 const achState = {
   w: { unlocked:{}, streak:0, kingCaptures:0, lostPieces:0, powersUsed:0 },
@@ -2461,7 +2951,8 @@ function unlockAch(color, key){
   if(achState[color].unlocked[key]) return false;
   achState[color].unlocked[key] = true;
   showAchToast(color, key);
-  sfx('ach');
+  const rarity = ACH[key].rarity || 'common';
+  sfx('ach-' + rarity);
   renderAchStrip();
   return true;
 }
@@ -3806,7 +4297,10 @@ const BIOME_AUDIO = {
     windFilterMod: 1.0,
     events: [
       { type: 'bird',     minInterval: 2.5, maxInterval: 9,  chance: 0.55 },
-      { type: 'leaves',   minInterval: 4,   maxInterval: 11, chance: 0.35 }
+      { type: 'leaves',   minInterval: 4,   maxInterval: 11, chance: 0.35 },
+      { type: 'woodpecker',  minInterval: 8,   maxInterval: 22, chance: 0.30 },
+      { type: 'branchCrack', minInterval: 12,  maxInterval: 30, chance: 0.20 },
+      { type: 'owl',         minInterval: 15,  maxInterval: 40, chance: 0.35 },   // solo de noche
     ]
   },
   desert: {
@@ -3816,7 +4310,8 @@ const BIOME_AUDIO = {
     windFilterMod: 1.9,
     events: [
       { type: 'sandWhistle', minInterval: 6, maxInterval: 18, chance: 0.45 },
-      { type: 'sandWhistle', minInterval: 3, maxInterval: 8,  chance: 0.20 }
+      { type: 'sandWhistle', minInterval: 3, maxInterval: 8,  chance: 0.20 },
+      { type: 'coyote',      minInterval: 18, maxInterval: 45, chance: 0.40 },   // noche
     ]
   },
   snow: {
@@ -3826,7 +4321,8 @@ const BIOME_AUDIO = {
     windFilterMod: 1.3,
     events: [
       { type: 'iceCrack', minInterval: 8,  maxInterval: 22, chance: 0.55 },
-      { type: 'windPuff', minInterval: 5,  maxInterval: 14, chance: 0.40 }
+      { type: 'windPuff', minInterval: 5,  maxInterval: 14, chance: 0.40 },
+      { type: 'wolfHowl', minInterval: 20, maxInterval: 55, chance: 0.35 },      // noche
     ]
   },
   volcano: {
@@ -3837,7 +4333,9 @@ const BIOME_AUDIO = {
     events: [
       { type: 'rockCrack',  minInterval: 4,  maxInterval: 12, chance: 0.60 },
       { type: 'bubblePop',  minInterval: 1.5, maxInterval: 5, chance: 0.55 },
-      { type: 'steamWhoosh',minInterval: 8,  maxInterval: 20, chance: 0.35 }
+      { type: 'steamWhoosh',minInterval: 8,  maxInterval: 20, chance: 0.35 },
+      { type: 'tremor',      minInterval: 15,  maxInterval: 35, chance: 0.40 },
+      { type: 'rockSlide',   minInterval: 10,  maxInterval: 25, chance: 0.30 },
     ]
   },
   cute: {
@@ -3848,7 +4346,9 @@ const BIOME_AUDIO = {
     events: [
       { type: 'songBird',  minInterval: 1.5, maxInterval: 5, chance: 0.70 },
       { type: 'songBird',  minInterval: 3,   maxInterval: 9, chance: 0.35 },
-      { type: 'butterfly', minInterval: 6,   maxInterval: 14, chance: 0.25 }
+      { type: 'butterfly', minInterval: 6,   maxInterval: 14, chance: 0.25 },
+      { type: 'bees',      minInterval: 7,   maxInterval: 16, chance: 0.45 },     // día
+      { type: 'owl',       minInterval: 20,  maxInterval: 50, chance: 0.30 },     // noche
     ]
   }
 };
@@ -5660,6 +6160,7 @@ function toast(text, color){
   d.className = 'toast'; d.textContent = text;
   if(color) d.style.color = color;
   document.body.appendChild(d);
+  if(actx && soundEnabled) sfx('toast-pop');
   setTimeout(()=>d.remove(), 2250);
 }
 
@@ -5670,24 +6171,35 @@ function showModal(title, body, buttons, opts){
   return new Promise(resolve => {
     const ov = document.createElement('div');
     ov.className = 'modal-overlay';
-    if(opts && opts.id) ov.id = opts.id;     // ⬅️ NUEVA línea
+    if(opts && opts.id) ov.id = opts.id;
     const m = document.createElement('div');
     m.className = 'modal' + (opts && opts.wide ? ' wide' : '');
     m.innerHTML = `<h3>${title}</h3>` + (body ? `<p>${body}</p>` : '');
     const bw = document.createElement('div');
     bw.className = 'modal-btns';
+    const closeWith = (val) => {
+      sfx('modal-close');
+      ov.remove();
+      resolve(val);
+    };
     (buttons || []).forEach(b => {
       const el = document.createElement('button');
       el.className = 'mbtn' + (b.cls ? ' ' + b.cls : '');
       if(b.html) el.innerHTML = b.html;
       else el.textContent = b.label;
-      el.onclick = () => { ov.remove(); resolve(b.value); };
+      el.onclick = () => closeWith(b.value);
       bw.appendChild(el);
     });
     m.appendChild(bw); ov.appendChild(m);
     document.body.appendChild(ov);
+
+    // Sonido de apertura
+    if(!opts || opts.id !== 'quickConfigModal'){
+      sfx('modal-open');
+    }
   });
 }
+
 async function askPromotion(){
   const res = await showModal('Coronación', 'Elige la pieza en la que se transformará tu peón:', [
     { label:'♛', value:'q', cls:'glyph' },
@@ -5789,6 +6301,7 @@ function setLastMove(from, to, prev){
   state.powerHighlights = [];   // ⬅️ NUEVO: el movimiento pisa el poder
 }
 function clearHighlights(){
+	stopTargetingLoop();
   for(const c of gridEl.children){
     c.className = 'cell';
     const tag = c.querySelector('.costTag');
@@ -5971,16 +6484,19 @@ function updateUndoButton(){
 /* =========================================================
    RELOJ
    ========================================================= */
+
 function startTimer(){
   stopTimer();
   if(!gameTimer.enabled) return;
   gameTimer.running = true;
   gameTimer.intervalId = setInterval(tickTimer, 100);
 }
+
 function stopTimer(){
   if(gameTimer.intervalId){ clearInterval(gameTimer.intervalId); gameTimer.intervalId = null; }
   gameTimer.running = false;
 }
+
 function tickTimer(){
   if(!gameTimer.running || state.paused || state.gameOver || replay.active) return;
   const turn = chess.turn();
@@ -6186,6 +6702,7 @@ function showPowerTooltip(btn, key){
   arrowEl.style.marginLeft = '-6px';
 
   tooltipOwner = btn;
+  sfx('tooltip-show');
   requestAnimationFrame(() => el.classList.add('show'));
 }
 
@@ -6291,6 +6808,29 @@ function renderOppHand(){
     opp.appendChild(c);
   }
 }
+
+/* ---------- SLIDER TICK ---------- */
+let _lastSliderTick = 0;
+const SLIDER_TICK_MIN_MS = 28;   // ~35 ticks/seg máx
+
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  if(!el || el.type !== 'range') return;
+
+  // Rate limit: si arrastrás rápido no machine-gunea
+  const now = performance.now();
+  if(now - _lastSliderTick < SLIDER_TICK_MIN_MS) return;
+  _lastSliderTick = now;
+
+  initAudio();
+  sfx('slider-tick');
+
+  // En móvil, una microvibración acompaña
+  if(navigator.vibrate && el.dataset.haptic !== 'off'){
+    try { navigator.vibrate(4); } catch(err){}
+  }
+}, true);
+
 function updateUI(){
   if(!chess) return;
   const turn = chess.turn();
@@ -6499,6 +7039,14 @@ async function onSquareClick(sq){
     } else {
       state.legalMoves = chess.moves({ square: sq, verbose: true });
     }
+	
+	if(state.legalMoves.length === 0){
+		sfx('no-moves');
+		state.selected = null;
+		clearHighlights();
+		return;
+	  }
+  
     highlightLegalMoves();
   } else {
     state.selected = null; state.legalMoves = []; clearHighlights();
@@ -6538,6 +7086,13 @@ function aiChoosePromotion(mv){
     if(score > bestScore){ bestScore = score; bestPick = piece; }
   }
   return bestPick;
+}
+
+function sfxCapture(type){
+  if(!type) return;
+  if(type === 'q') sfx('capture-major');
+  else if(type === 'r' || type === 'b' || type === 'n') sfx('capture-minor');
+  else sfx('capture-pawn');
 }
 
 /* =========================================================
@@ -6658,10 +7213,18 @@ if(!moveResult){ state.busy = false; return; }
 
   const isCastle    = moveResult.flags && (moveResult.flags.includes('k') || moveResult.flags.includes('q'));
 	const isEpCapture = mv.flags.includes('e');
-	if(isCastle)             sfx('enroque');
-	else if(isEpCapture)     sfx('ep-capture');
-	else if(moveResult.captured) sfx('capture');
-	else                     sfx('move');
+	if(isCastle) {
+		sfx('enroque');
+	}
+	else if(isEpCapture) {
+		sfx('ep-capture');
+	}
+	else if(moveResult.captured) {
+		sfxCapture(moveResult.captured);
+	}
+	else {
+		sfx('move');
+	}
 
 	await animateMove(mv.from, mv.to, capturedSquare);
 
@@ -6837,8 +7400,10 @@ async function iraTargeting(fromSq, color){
       try { chess.load(savedFen, { skipValidation: true }); } catch(err){}
       return null;
     }
-    sfx('capture');
-    await animateMove(mv.from, mv.to, capturedSquare, 400);
+    
+	sfxCapture(res.captured);
+
+	await animateMove(mv.from, mv.to, capturedSquare, 400);
     if(res.captured) addToGraveyard(res.captured, oppColor);
     if(res.captured) vibrate([20, 40, 55]);
     state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
@@ -6930,7 +7495,29 @@ function startPower(key){
   state.targeting = { key, step: 1, data: { validTargets: null }, target: key };
   state.selected = null; state.legalMoves = [];
   clearHighlights(); highlightTargeting(); updateUI();
+  startTargetingLoop(key);
 }
+
+function stopTargetingLoop(){
+  if(targetingLoopTimer){ 
+    clearInterval(targetingLoopTimer); 
+    targetingLoopTimer = null; 
+  }
+}
+function startTargetingLoop(key){
+  stopTargetingLoop();
+  if(!actx || !soundEnabled) return;
+  const sfxKey = 'target-loop-' + key;
+  sfx(sfxKey);
+  targetingLoopTimer = setInterval(() => {
+    if(!state.targeting || !actx || !soundEnabled || state.paused){
+      stopTargetingLoop();
+      return;
+    }
+    sfx(sfxKey);
+  }, 550);
+}
+
 async function handleHealStart(turn){
   const pile = state.graveyard[turn];
   if(!pile.length){ toast('No tienes piezas caídas para revivir', '#ff8080'); sfx('deny'); return; }
@@ -6968,6 +7555,7 @@ async function handleHealStart(turn){
   highlightTargeting(); updateUI();
 }
 function cancelTargeting(){
+  stopTargetingLoop();
   if(!state.targeting) return;
   const wasIra = state.targeting.key === 'ira';
   state.targeting = null;
@@ -9456,6 +10044,7 @@ function wireDebugWorld(){
 		: v;
 	  currentBiome = BIOMES[id];
 	  pendingBiome = id;
+	  sfx('biome-change');
 
 	  // ⬅️ Limpiar vórtices al instante
 	  vortices.list.length = 0;
@@ -10031,12 +10620,14 @@ async function showConfigMenu(){
       m.querySelectorAll('#cfgBiome .cfgOpt').forEach(b => b.classList.toggle('picked', b.dataset.v === cfg.biome));
     }
     m.querySelector('#cfgBiome').onclick = (e) => {
+	  sfx('side-pick');
       const b = e.target.closest('.cfgOpt');
       if(!b) return;
       cfg.biome = b.dataset.v;
       refreshPicked();
     };
     m.querySelector('#cfgMode').onclick = (e) => {
+	  sfx('side-pick');
 	  const b = e.target.closest('.cfgOpt');
 	  if(!b) return;
 	  if(b.dataset.v === 'history'){
@@ -10055,12 +10646,14 @@ async function showConfigMenu(){
 	};
 	
     m.querySelector('#cfgSide').onclick = (e) => {
+	  sfx('side-pick');
       const b = e.target.closest('.cfgOpt');
       if(!b) return;
       cfg.side = b.dataset.v;
       refreshPicked();
     };
     m.querySelector('#cfgTime').onclick = async (e) => {
+	  sfx('side-pick');
       const b = e.target.closest('.cfgOpt');
       if(!b) return;
       const v = b.dataset.v;
@@ -10133,15 +10726,20 @@ async function showStartMenu(){
         debugState.editingPiece = null;
         debugState.tab = 'world';
       } else {
-        aiEnabled = true;
-        aiDifficulty = cfg.mode;
-        rubyMode = (cfg.mode === 'ruby');
-        humanColor = (cfg.side === 'random')
-          ? (Math.random() < 0.5 ? 'w' : 'b')
-          : (cfg.side || 'w');
-        aiColor = humanColor === 'w' ? 'b' : 'w';
-        debugState.enabled = false;
-      }
+		  aiEnabled = true;
+		  aiDifficulty = cfg.mode;
+		  rubyMode = (cfg.mode === 'ruby');
+		  humanColor = (cfg.side === 'random')
+			? (Math.random() < 0.5 ? 'w' : 'b')
+			: (cfg.side || 'w');
+		  aiColor = humanColor === 'w' ? 'b' : 'w';
+		  debugState.enabled = false;
+
+		  // ⬇️ NUEVO: si fue random, sonar el dado
+		  if(cfg.side === 'random'){
+			sfx('dice');
+		  }
+		}
 
       gameTimer.enabled = cfg.timerMinutes > 0;
       gameTimer.initial = cfg.timerMinutes * 60;
@@ -11315,6 +11913,7 @@ function startGhostDrag(d){
   el.style.transition = 'none';
   dragLayer.appendChild(el);
   d.ghostEl = el;
+  sfx('drag-lift');
 
   clearHighlights();
   const fromCell = gridEl.querySelector(`[data-sq="${d.fromSq}"]`);
@@ -11493,6 +12092,8 @@ gridEl.addEventListener('pointerup', async (e) => {
   }
 
   suppressNextClick = true;
+  
+  if(!d.isIraDrag) sfx('drag-drop');
 
   const target = document.elementFromPoint(e.clientX, e.clientY);
   const cell = target ? target.closest('.cell') : null;
