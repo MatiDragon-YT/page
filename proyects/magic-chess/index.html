@@ -2796,19 +2796,16 @@ function scheduleNextBiomeEvent(delay) {
 			return;
 		}
 
-		// ⬇️ NUEVO: filtro por franja horaria
+		// ⬇️ NUEVO: filtro por franja horaria y actividad que la fauna
 		const ph = getPhase();
-		const isNight = ph.dark > 0.10;
-		const NOCTURNAL = new Set(['owl', 'coyote', 'wolfHowl']);
-		const DIURNAL = new Set(['woodpecker', 'bees']);
-
 		const validEvents = cfg.events.filter(ev => {
-			if (NOCTURNAL.has(ev.type) && !isNight) return false;
-			if (DIURNAL.has(ev.type) && isNight) return false;
-			return true;
+			const activity = activityAtPhase(ev.type, ph.t);
+			if(activity < 0.10) return false;
+			// Chance ponderada por la actividad — un sonido diurno al mediodía suena más
+			return Math.random() < activity;
 		});
 
-		if (validEvents.length === 0) {
+		if(validEvents.length === 0){
 			scheduleNextBiomeEvent(rnd(3, 8));
 			return;
 		}
@@ -5584,7 +5581,6 @@ function buildSprites() {
 			legSpread: 10
 		}
 	];
-
 	for (const pose of bunnyPose) {
 		sprites.bunny.push(makeSprite((cx, s) => {
 			const c = s / 2; // 80
@@ -5714,16 +5710,884 @@ function buildSprites() {
 		cx.arc(c, c, s * 0.06, 0, 6.2832);
 		cx.fill();
 	});
+
+	/* ---------- ZORRO (4 frames, naranja) ---------- */
+	sprites.fox = [];
+	for(let f = 0; f < 4; f++){
+		const walkPhase = (f / 4) * Math.PI * 2;
+		sprites.fox.push(makeSprite((cx, s) => {
+			const c = s / 2;
+			const bodyW = s * 0.30;
+			const bodyH = s * 0.13;
+
+			const ORANGE   = '#e07830';
+			const CREAM    = '#faf0e0';
+			const BLACK    = '#1a1010';
+			const OUTLINE  = '#3a1e0a';
+			const EAR_IN   = 'rgba(255,180,180,0.6)';
+
+			cx.lineJoin = 'round';
+			cx.lineCap  = 'round';
+
+			// ─── Cola esponjosa con punta blanca ───
+			cx.fillStyle = ORANGE;
+			cx.strokeStyle = OUTLINE;
+			cx.lineWidth = s * 0.008;
+			cx.beginPath();
+			cx.moveTo(c - bodyW * 0.85, c - bodyH * 0.15);
+			cx.quadraticCurveTo(c - bodyW * 1.5, c - bodyH * 0.8, c - bodyW * 1.4, c - bodyH * 1.8);
+			cx.quadraticCurveTo(c - bodyW * 1.15, c - bodyH * 1.5, c - bodyW * 0.9, c - bodyH * 0.3);
+			cx.closePath();
+			cx.fill(); cx.stroke();
+			// Punta blanca
+			cx.fillStyle = CREAM;
+			cx.beginPath();
+			cx.ellipse(c - bodyW * 1.32, c - bodyH * 1.55, s * 0.045, s * 0.03, 0.5, 0, 6.2832);
+			cx.fill();
+
+			// ─── Patas traseras ───
+			for(let i = 0; i < 2; i++){
+				const baseX = c - bodyW * 0.5 + i * bodyW * 0.35;
+				const wobble = Math.sin(walkPhase + i * Math.PI) * s * 0.05;
+				cx.fillStyle = ORANGE;
+				cx.beginPath();
+				cx.ellipse(baseX + wobble * 0.5, c + bodyH * 0.9, s * 0.028, s * 0.06, 0, 0, 6.2832);
+				cx.fill();
+				cx.fillStyle = BLACK;   // patas negras (clásico del zorro)
+				cx.beginPath();
+				cx.ellipse(baseX + wobble, c + bodyH * 1.55, s * 0.026, s * 0.038, 0, 0, 6.2832);
+				cx.fill();
+			}
+
+			// ─── Cuerpo ───
+			cx.fillStyle = ORANGE;
+			cx.strokeStyle = OUTLINE;
+			cx.lineWidth = s * 0.008;
+			cx.beginPath();
+			cx.ellipse(c, c, bodyW, bodyH, 0, 0, 6.2832);
+			cx.fill(); cx.stroke();
+			// Panza crema
+			cx.fillStyle = CREAM;
+			cx.beginPath();
+			cx.ellipse(c + bodyW * 0.05, c + bodyH * 0.45, bodyW * 0.75, bodyH * 0.45, 0, 0, 6.2832);
+			cx.fill();
+
+			// ─── Patas delanteras ───
+			for(let i = 0; i < 2; i++){
+				const baseX = c + bodyW * 0.30 + i * bodyW * 0.28;
+				const wobble = Math.sin(walkPhase + (i + 2) * Math.PI) * s * 0.05;
+				cx.fillStyle = ORANGE;
+				cx.beginPath();
+				cx.ellipse(baseX + wobble * 0.5, c + bodyH * 0.9, s * 0.028, s * 0.06, 0, 0, 6.2832);
+				cx.fill();
+				cx.fillStyle = BLACK;
+				cx.beginPath();
+				cx.ellipse(baseX + wobble, c + bodyH * 1.55, s * 0.026, s * 0.038, 0, 0, 6.2832);
+				cx.fill();
+			}
+
+			// ─── Cuello ───
+			cx.fillStyle = ORANGE;
+			cx.strokeStyle = OUTLINE;
+			cx.beginPath();
+			cx.moveTo(c + bodyW * 0.65, c - bodyH * 0.5);
+			cx.lineTo(c + bodyW * 0.95, c - bodyH * 0.7);
+			cx.lineTo(c + bodyW * 1.0, c - bodyH * 0.2);
+			cx.lineTo(c + bodyW * 0.75, c + bodyH * 0.3);
+			cx.closePath();
+			cx.fill(); cx.stroke();
+			// Pecho crema
+			cx.fillStyle = CREAM;
+			cx.beginPath();
+			cx.ellipse(c + bodyW * 0.85, c - bodyH * 0.15, s * 0.04, s * 0.055, 0, 0, 6.2832);
+			cx.fill();
+
+			// ─── Cabeza ───
+			const headX = c + bodyW * 1.15;
+			const headY = c - bodyH * 0.55;
+			cx.fillStyle = ORANGE;
+			cx.strokeStyle = OUTLINE;
+			cx.lineWidth = s * 0.008;
+			cx.beginPath();
+			cx.ellipse(headX, headY, s * 0.095, s * 0.090, 0, 0, 6.2832);
+			cx.fill(); cx.stroke();
+
+			// ─── Hocico puntiagudo ───
+			cx.fillStyle = ORANGE;
+			cx.beginPath();
+			cx.moveTo(headX + s * 0.03, headY - s * 0.03);
+			cx.quadraticCurveTo(headX + s * 0.19, headY - s * 0.02,
+													headX + s * 0.20, headY + s * 0.010);
+			cx.quadraticCurveTo(headX + s * 0.19, headY + s * 0.028,
+													headX + s * 0.03, headY + s * 0.040);
+			cx.closePath();
+			cx.fill(); cx.stroke();
+			// Laterales del hocico blancos
+			cx.fillStyle = CREAM;
+			cx.beginPath();
+			cx.ellipse(headX + s * 0.10, headY + s * 0.025, s * 0.035, s * 0.018, 0, 0, 6.2832);
+			cx.fill();
+			// Nariz negra
+			cx.fillStyle = BLACK;
+			cx.beginPath();
+			cx.ellipse(headX + s * 0.195, headY + s * 0.010, s * 0.014, s * 0.010, 0, 0, 6.2832);
+			cx.fill();
+
+			// ─── Orejas GRANDES triangulares con punta negra ───
+			// Oreja trasera
+			cx.fillStyle = ORANGE;
+			cx.strokeStyle = OUTLINE;
+			cx.beginPath();
+			cx.moveTo(headX - s * 0.06, headY - s * 0.055);
+			cx.lineTo(headX - s * 0.10, headY - s * 0.175);
+			cx.lineTo(headX + s * 0.005, headY - s * 0.075);
+			cx.closePath();
+			cx.fill(); cx.stroke();
+			cx.fillStyle = BLACK;
+			cx.beginPath();
+			cx.moveTo(headX - s * 0.095, headY - s * 0.155);
+			cx.lineTo(headX - s * 0.10, headY - s * 0.175);
+			cx.lineTo(headX - s * 0.065, headY - s * 0.140);
+			cx.closePath();
+			cx.fill();
+			// Oreja delantera
+			cx.fillStyle = ORANGE;
+			cx.strokeStyle = OUTLINE;
+			cx.beginPath();
+			cx.moveTo(headX + s * 0.005, headY - s * 0.070);
+			cx.lineTo(headX + s * 0.045, headY - s * 0.190);
+			cx.lineTo(headX + s * 0.085, headY - s * 0.060);
+			cx.closePath();
+			cx.fill(); cx.stroke();
+			// Interior rosa
+			cx.fillStyle = EAR_IN;
+			cx.beginPath();
+			cx.moveTo(headX + s * 0.030, headY - s * 0.090);
+			cx.lineTo(headX + s * 0.045, headY - s * 0.160);
+			cx.lineTo(headX + s * 0.065, headY - s * 0.080);
+			cx.closePath();
+			cx.fill();
+			// Punta negra
+			cx.fillStyle = BLACK;
+			cx.beginPath();
+			cx.moveTo(headX + s * 0.042, headY - s * 0.170);
+			cx.lineTo(headX + s * 0.045, headY - s * 0.190);
+			cx.lineTo(headX + s * 0.058, headY - s * 0.150);
+			cx.closePath();
+			cx.fill();
+
+			// ─── Ojo pequeño con brillo ───
+			cx.fillStyle = BLACK;
+			cx.beginPath();
+			cx.arc(headX + s * 0.045, headY - s * 0.015, s * 0.012, 0, 6.2832);
+			cx.fill();
+			cx.fillStyle = 'rgba(255,255,255,0.9)';
+			cx.beginPath();
+			cx.arc(headX + s * 0.048, headY - s * 0.019, s * 0.004, 0, 6.2832);
+			cx.fill();
+		}));
+	}
+
+	/* ---------- ESCORPIÓN (3 frames: pinzas y cola) ---------- */
+	sprites.scorpion = [];
+	for(let f = 0; f < 3; f++){
+		const phase = (f / 3) * Math.PI * 2;
+		sprites.scorpion.push(makeSprite((cx, s) => {
+			const c = s / 2;
+			const bodyW = s * 0.22;
+			const bodyH = s * 0.16;
+
+			// Patas (8, 4 por lado)
+			cx.strokeStyle = '#2a1810';
+			cx.lineWidth = s * 0.025;
+			cx.lineCap = 'round';
+			for(let side = -1; side <= 1; side += 2){
+				for(let i = 0; i < 4; i++){
+					const lx = c + bodyW * (-0.6 + i * 0.4);
+					const ly = c + side * bodyH * 0.5;
+					const wobble = Math.sin(phase + i * 0.8) * s * 0.025;
+					cx.beginPath();
+					cx.moveTo(lx, ly);
+					cx.lineTo(lx + wobble * 0.5, ly + side * s * 0.11);
+					cx.lineTo(lx + wobble, ly + side * s * 0.14);
+					cx.stroke();
+				}
+			}
+
+			// Cola curvada hacia arriba
+			cx.strokeStyle = '#4a2818';
+			cx.lineWidth = s * 0.05;
+			cx.lineCap = 'round';
+			cx.beginPath();
+			cx.moveTo(c - bodyW * 0.9, c);
+			cx.quadraticCurveTo(c - bodyW * 1.6, c - s * 0.05, c - bodyW * 1.5, c - s * 0.22);
+			cx.stroke();
+			// Aguijón rojizo
+			cx.fillStyle = '#a04020';
+			cx.beginPath();
+			cx.arc(c - bodyW * 1.5, c - s * 0.24, s * 0.028, 0, 6.2832);
+			cx.fill();
+
+			// Cuerpo
+			cx.fillStyle = '#3a2010';
+			cx.beginPath();
+			cx.ellipse(c, c, bodyW, bodyH, 0, 0, 6.2832);
+			cx.fill();
+			// Segmentos
+			cx.strokeStyle = 'rgba(0,0,0,0.5)';
+			cx.lineWidth = s * 0.012;
+			for(let i = 1; i <= 2; i++){
+				cx.beginPath();
+				cx.moveTo(c - bodyW + i * bodyW * 0.6, c - bodyH * 0.9);
+				cx.lineTo(c - bodyW + i * bodyW * 0.6, c + bodyH * 0.9);
+				cx.stroke();
+			}
+			// Brillo
+			cx.fillStyle = 'rgba(255,255,255,0.15)';
+			cx.beginPath();
+			cx.ellipse(c - bodyW * 0.2, c - bodyH * 0.3, bodyW * 0.5, bodyH * 0.4, 0, 0, 6.2832);
+			cx.fill();
+
+			// Pinzas (dos, abriéndose/cerrándose)
+			const pinchOpen = Math.sin(phase) * 0.5 + 0.5;
+			for(let side = -1; side <= 1; side += 2){
+				const px = c + bodyW * 1.1;
+				const py = c + side * bodyH * 0.7;
+				// Brazo
+				cx.strokeStyle = '#4a2818';
+				cx.lineWidth = s * 0.035;
+				cx.beginPath();
+				cx.moveTo(c + bodyW * 0.8, c + side * bodyH * 0.4);
+				cx.lineTo(px, py);
+				cx.stroke();
+				// Pinza superior
+				cx.strokeStyle = '#3a2010';
+				cx.lineWidth = s * 0.028;
+				cx.beginPath();
+				cx.moveTo(px, py);
+				cx.lineTo(px + s * 0.08, py - s * 0.04 - side * pinchOpen * s * 0.02);
+				cx.stroke();
+				// Pinza inferior
+				cx.beginPath();
+				cx.moveTo(px, py);
+				cx.lineTo(px + s * 0.08, py + s * 0.04 + side * pinchOpen * s * 0.02);
+				cx.stroke();
+			}
+		}));
+	}
+
+	/* ---------- MARIQUITA (4 frames) ---------- */
+	sprites.ladybug = [];
+	for(let f = 0; f < 4; f++){
+		const phase = (f / 4) * Math.PI * 2;
+		sprites.ladybug.push(makeSprite((cx, s) => {
+			const c = s / 2;
+			const body = s * 0.30;
+
+			// Patas (6)
+			cx.strokeStyle = '#1a1a1a';
+			cx.lineWidth = s * 0.028;
+			cx.lineCap = 'round';
+			for(let side = -1; side <= 1; side += 2){
+				for(let i = -1; i <= 1; i++){
+					const lx = c + i * body * 0.4;
+					const ly = c + side * body * 0.5;
+					const wobble = Math.sin(phase + i * 1.5 + side * 0.7) * s * 0.04;
+					cx.beginPath();
+					cx.moveTo(lx, ly);
+					cx.lineTo(lx + wobble, ly + side * s * 0.09);
+					cx.stroke();
+				}
+			}
+
+			// Cuerpo (élitro rojo)
+			cx.fillStyle = '#d02830';
+			cx.beginPath();
+			cx.ellipse(c, c, body, body * 0.88, 0, 0, 6.2832);
+			cx.fill();
+			// Brillo del élitro
+			cx.fillStyle = 'rgba(255,255,255,0.30)';
+			cx.beginPath();
+			cx.ellipse(c - body * 0.3, c - body * 0.3, body * 0.35, body * 0.25, -0.3, 0, 6.2832);
+			cx.fill();
+
+			// Línea central negra
+			cx.strokeStyle = '#1a1a1a';
+			cx.lineWidth = s * 0.018;
+			cx.beginPath();
+			cx.moveTo(c - body * 0.9, c);
+			cx.lineTo(c + body * 0.3, c);
+			cx.stroke();
+
+			// Puntos negros (4)
+			cx.fillStyle = '#1a1a1a';
+			const dotPositions = [
+				[-body * 0.45, -body * 0.35],
+				[-body * 0.45,  body * 0.35],
+				[ body * 0.10, -body * 0.35],
+				[ body * 0.10,  body * 0.35],
+			];
+			for(const [dx, dy] of dotPositions){
+				cx.beginPath();
+				cx.arc(c + dx, c + dy, s * 0.028, 0, 6.2832);
+				cx.fill();
+			}
+
+			// Cabeza negra
+			cx.fillStyle = '#1a1a1a';
+			cx.beginPath();
+			cx.arc(c + body * 0.85, c, body * 0.42, 0, 6.2832);
+			cx.fill();
+
+			// Antenas
+			cx.strokeStyle = '#1a1a1a';
+			cx.lineWidth = s * 0.014;
+			cx.beginPath();
+			cx.moveTo(c + body * 0.85, c - body * 0.15);
+			cx.quadraticCurveTo(c + body * 1.2, c - body * 0.4, c + body * 1.35, c - body * 0.35);
+			cx.moveTo(c + body * 0.85, c + body * 0.15);
+			cx.quadraticCurveTo(c + body * 1.2, c + body * 0.4, c + body * 1.35, c + body * 0.35);
+			cx.stroke();
+
+			// Ojos blancos chiquitos
+			cx.fillStyle = '#ffffff';
+			cx.beginPath();
+			cx.arc(c + body * 0.95, c - body * 0.15, s * 0.015, 0, 6.2832);
+			cx.arc(c + body * 0.95, c + body * 0.15, s * 0.015, 0, 6.2832);
+			cx.fill();
+		}));
+	}
+
+	/* ---------- BÚHO (2 frames: giro de cabeza) ---------- */
+	sprites.owl = [];
+	for(let f = 0; f < 2; f++){
+		const headTurn = f === 0 ? 0 : 1;
+		sprites.owl.push(makeSprite((cx, s) => {
+			const c = s / 2;
+
+			// Rama
+			cx.strokeStyle = '#3a2818';
+			cx.lineWidth = s * 0.06;
+			cx.lineCap = 'round';
+			cx.beginPath();
+			cx.moveTo(c - s*0.35, c + s*0.28);
+			cx.lineTo(c + s*0.35, c + s*0.28);
+			cx.stroke();
+
+			// Cuerpo
+			cx.fillStyle = '#6a4a30';
+			cx.beginPath();
+			cx.ellipse(c, c + s*0.05, s*0.22, s*0.24, 0, 0, 6.2832);
+			cx.fill();
+			// Pecho más claro
+			cx.fillStyle = '#a08060';
+			cx.beginPath();
+			cx.ellipse(c, c + s*0.10, s*0.15, s*0.17, 0, 0, 6.2832);
+			cx.fill();
+			// Plumitas del pecho
+			cx.fillStyle = 'rgba(60,40,20,0.55)';
+			for(let i = 0; i < 4; i++){
+				for(let j = 0; j < 3; j++){
+					const px = c - s*0.08 + j * s*0.08 + i * s*0.015;
+					const py = c + s*0.05 + i * s*0.06;
+					cx.beginPath();
+					cx.ellipse(px, py, s*0.012, s*0.020, 0, 0, 6.2832);
+					cx.fill();
+				}
+			}
+
+			// Cabeza
+			const hx = c + headTurn * s*0.03;
+			cx.fillStyle = '#5a4028';
+			cx.beginPath();
+			cx.arc(hx, c - s*0.20, s*0.17, 0, 6.2832);
+			cx.fill();
+
+			// Penachos (orejas tipo cuernitos)
+			cx.fillStyle = '#5a4028';
+			cx.beginPath();
+			cx.moveTo(hx - s*0.14, c - s*0.28);
+			cx.lineTo(hx - s*0.10, c - s*0.36);
+			cx.lineTo(hx - s*0.05, c - s*0.30);
+			cx.closePath();
+			cx.fill();
+			cx.beginPath();
+			cx.moveTo(hx + s*0.05, c - s*0.30);
+			cx.lineTo(hx + s*0.10, c - s*0.36);
+			cx.lineTo(hx + s*0.14, c - s*0.28);
+			cx.closePath();
+			cx.fill();
+
+			// Ojos grandes (discos faciales)
+			cx.fillStyle = '#e8d8b8';
+			cx.beginPath();
+			cx.ellipse(hx - s*0.06, c - s*0.20, s*0.055, s*0.060, 0, 0, 6.2832);
+			cx.fill();
+			cx.beginPath();
+			cx.ellipse(hx + s*0.06, c - s*0.20, s*0.055, s*0.060, 0, 0, 6.2832);
+			cx.fill();
+			// Pupilas
+			cx.fillStyle = '#1a1008';
+			cx.beginPath();
+			cx.arc(hx - s*0.06, c - s*0.20, s*0.030, 0, 6.2832);
+			cx.fill();
+			cx.beginPath();
+			cx.arc(hx + s*0.06, c - s*0.20, s*0.030, 0, 6.2832);
+			cx.fill();
+			// Brillo
+			cx.fillStyle = '#ffd070';
+			cx.beginPath();
+			cx.arc(hx - s*0.06 - s*0.008, c - s*0.20 - s*0.008, s*0.010, 0, 6.2832);
+			cx.fill();
+			cx.beginPath();
+			cx.arc(hx + s*0.06 - s*0.008, c - s*0.20 - s*0.008, s*0.010, 0, 6.2832);
+			cx.fill();
+			// Pupila oscura central
+			cx.fillStyle = '#000';
+			cx.beginPath();
+			cx.arc(hx - s*0.06, c - s*0.20, s*0.012, 0, 6.2832);
+			cx.fill();
+			cx.beginPath();
+			cx.arc(hx + s*0.06, c - s*0.20, s*0.012, 0, 6.2832);
+			cx.fill();
+
+			// Pico
+			cx.fillStyle = '#e0a040';
+			cx.beginPath();
+			cx.moveTo(hx, c - s*0.16);
+			cx.lineTo(hx - s*0.025, c - s*0.12);
+			cx.lineTo(hx + s*0.025, c - s*0.12);
+			cx.closePath();
+			cx.fill();
+		}));
+	}
+
+	/* ---------- MURCIÉLAGO (4 frames de aleteo) ---------- */
+	sprites.bat = [];
+	for(let f = 0; f < 4; f++){
+		const flap = Math.sin((f / 4) * Math.PI * 2);
+		sprites.bat.push(makeSprite((cx, s) => {
+			const c = s / 2;
+			const wingSpan = s * 0.40;
+			const wingDrop = flap * s * 0.10;
+
+			// Alas
+			cx.fillStyle = '#2a1830';
+			cx.beginPath();
+			cx.moveTo(c, c);
+			cx.quadraticCurveTo(c - wingSpan*0.5, c - s*0.15 + wingDrop, c - wingSpan, c - s*0.05 + wingDrop);
+			cx.quadraticCurveTo(c - wingSpan*0.5, c + s*0.10 + wingDrop*0.5, c - s*0.04, c + s*0.04);
+			cx.closePath();
+			cx.fill();
+			cx.beginPath();
+			cx.moveTo(c, c);
+			cx.quadraticCurveTo(c + wingSpan*0.5, c - s*0.15 + wingDrop, c + wingSpan, c - s*0.05 + wingDrop);
+			cx.quadraticCurveTo(c + wingSpan*0.5, c + s*0.10 + wingDrop*0.5, c + s*0.04, c + s*0.04);
+			cx.closePath();
+			cx.fill();
+
+			// Huesos de las alas
+			cx.strokeStyle = 'rgba(90,60,110,0.6)';
+			cx.lineWidth = s * 0.008;
+			cx.beginPath();
+			cx.moveTo(c, c);
+			cx.lineTo(c - wingSpan*0.7, c - s*0.08 + wingDrop);
+			cx.moveTo(c, c);
+			cx.lineTo(c - wingSpan*0.5, c + s*0.08 + wingDrop*0.5);
+			cx.moveTo(c, c);
+			cx.lineTo(c + wingSpan*0.7, c - s*0.08 + wingDrop);
+			cx.moveTo(c, c);
+			cx.lineTo(c + wingSpan*0.5, c + s*0.08 + wingDrop*0.5);
+			cx.stroke();
+
+			// Cuerpo
+			cx.fillStyle = '#1a0e20';
+			cx.beginPath();
+			cx.ellipse(c, c, s*0.035, s*0.055, 0, 0, 6.2832);
+			cx.fill();
+
+			// Orejas
+			cx.fillStyle = '#1a0e20';
+			cx.beginPath();
+			cx.moveTo(c - s*0.025, c - s*0.04);
+			cx.lineTo(c - s*0.035, c - s*0.09);
+			cx.lineTo(c - s*0.008, c - s*0.05);
+			cx.closePath();
+			cx.fill();
+			cx.beginPath();
+			cx.moveTo(c + s*0.025, c - s*0.04);
+			cx.lineTo(c + s*0.035, c - s*0.09);
+			cx.lineTo(c + s*0.008, c - s*0.05);
+			cx.closePath();
+			cx.fill();
+		}));
+	}
+
+	/* ---------- RATA (4 frames de caminata) ---------- */
+	sprites.rat = [];
+	for(let f = 0; f < 4; f++){
+		const walkPhase = (f / 4) * Math.PI * 2;
+		sprites.rat.push(makeSprite((cx, s) => {
+			const c = s / 2;
+			const bodyW = s * 0.28;
+			const bodyH = s * 0.12;
+
+			// Cola larga
+			cx.strokeStyle = '#6a5060';
+			cx.lineWidth = s * 0.014;
+			cx.lineCap = 'round';
+			cx.beginPath();
+			cx.moveTo(c - bodyW * 1.0, c);
+			cx.quadraticCurveTo(c - bodyW * 1.8, c - s*0.06, c - bodyW * 2.2, c + s*0.02);
+			cx.stroke();
+
+			// Patas
+			cx.strokeStyle = '#4a3040';
+			cx.lineWidth = s * 0.020;
+			for(let i = 0; i < 4; i++){
+				const lx = c - bodyW*0.7 + i * bodyW * 0.5;
+				const wobble = Math.sin(walkPhase + i * 1.3) * s * 0.03;
+				cx.beginPath();
+				cx.moveTo(lx, c + bodyH * 0.5);
+				cx.lineTo(lx + wobble, c + bodyH * 1.5);
+				cx.stroke();
+			}
+
+			// Cuerpo
+			cx.fillStyle = '#7a6070';
+			cx.beginPath();
+			cx.ellipse(c, c, bodyW, bodyH, 0, 0, 6.2832);
+			cx.fill();
+			// Panza más clara
+			cx.fillStyle = '#a090a0';
+			cx.beginPath();
+			cx.ellipse(c, c + bodyH * 0.3, bodyW * 0.8, bodyH * 0.5, 0, 0, 6.2832);
+			cx.fill();
+
+			// Cabeza
+			const hx = c + bodyW * 1.0;
+			cx.fillStyle = '#6a5060';
+			cx.beginPath();
+			cx.ellipse(hx, c - s*0.01, s*0.10, s*0.08, 0, 0, 6.2832);
+			cx.fill();
+			// Hocico puntiagudo
+			cx.beginPath();
+			cx.moveTo(hx + s*0.05, c - s*0.02);
+			cx.lineTo(hx + s*0.13, c);
+			cx.lineTo(hx + s*0.05, c + s*0.03);
+			cx.closePath();
+			cx.fill();
+			// Nariz rosada
+			cx.fillStyle = '#ffa0b0';
+			cx.beginPath();
+			cx.arc(hx + s*0.13, c, s*0.012, 0, 6.2832);
+			cx.fill();
+
+			// Orejas redondas
+			cx.fillStyle = '#6a5060';
+			cx.beginPath();
+			cx.arc(hx - s*0.045, c - s*0.07, s*0.030, 0, 6.2832);
+			cx.fill();
+			// Interior rosa
+			cx.fillStyle = '#ffa0b0';
+			cx.beginPath();
+			cx.arc(hx - s*0.045, c - s*0.07, s*0.016, 0, 6.2832);
+			cx.fill();
+
+			// Ojo
+			cx.fillStyle = '#1a0a10';
+			cx.beginPath();
+			cx.arc(hx + s*0.03, c - s*0.025, s*0.012, 0, 6.2832);
+			cx.fill();
+			cx.fillStyle = '#ffffff';
+			cx.beginPath();
+			cx.arc(hx + s*0.033, c - s*0.028, s*0.004, 0, 6.2832);
+			cx.fill();
+
+			// Bigotes
+			cx.strokeStyle = 'rgba(200,200,200,0.7)';
+			cx.lineWidth = s * 0.004;
+			cx.beginPath();
+			cx.moveTo(hx + s*0.09, c - s*0.01);
+			cx.lineTo(hx + s*0.17, c - s*0.03);
+			cx.moveTo(hx + s*0.09, c + s*0.01);
+			cx.lineTo(hx + s*0.17, c + s*0.03);
+			cx.stroke();
+		}));
+	}
+
+	/* ---------- LOBO (4 frames, gris) ---------- */
+	sprites.wolf = [];
+	for(let f = 0; f < 4; f++){
+		const walkPhase = (f / 4) * Math.PI * 2;
+		sprites.wolf.push(makeSprite((cx, s) => {
+			const c = s / 2;
+			const bodyW = s * 0.36;      // más grande que el zorro
+			const bodyH = s * 0.16;
+
+			const GRAY      = '#8a8078';
+			const GRAY_D    = '#5a544c';
+			const GRAY_L    = '#c0b8ac';
+			const GRAY_DK   = '#3a342c';
+			const OUTLINE   = '#2a241c';
+			const EYE_AMBER = '#c89020';
+
+			cx.lineJoin = 'round';
+			cx.lineCap  = 'round';
+
+			// ─── Cola gruesa ───
+			cx.fillStyle = GRAY;
+			cx.strokeStyle = OUTLINE;
+			cx.lineWidth = s * 0.008;
+			cx.beginPath();
+			cx.moveTo(c - bodyW * 0.85, c - bodyH * 0.20);
+			cx.quadraticCurveTo(c - bodyW * 1.5, c - bodyH * 0.6, c - bodyW * 1.45, c - bodyH * 1.5);
+			cx.quadraticCurveTo(c - bodyW * 1.2, c - bodyH * 1.25, c - bodyW * 0.95, c - bodyH * 0.3);
+			cx.closePath();
+			cx.fill(); cx.stroke();
+			cx.fillStyle = GRAY_D;
+			cx.beginPath();
+			cx.ellipse(c - bodyW * 1.35, c - bodyH * 1.30, s * 0.050, s * 0.035, 0.5, 0, 6.2832);
+			cx.fill();
+
+			// ─── Patas traseras ───
+			for(let i = 0; i < 2; i++){
+				const baseX = c - bodyW * 0.5 + i * bodyW * 0.35;
+				const wobble = Math.sin(walkPhase + i * Math.PI) * s * 0.06;
+				cx.fillStyle = GRAY;
+				cx.strokeStyle = OUTLINE;
+				cx.lineWidth = s * 0.008;
+				cx.beginPath();
+				cx.ellipse(baseX + wobble * 0.5, c + bodyH * 0.95, s * 0.032, s * 0.065, 0, 0, 6.2832);
+				cx.fill(); cx.stroke();
+				cx.fillStyle = GRAY_DK;
+				cx.beginPath();
+				cx.ellipse(baseX + wobble, c + bodyH * 1.62, s * 0.030, s * 0.040, 0, 0, 6.2832);
+				cx.fill();
+			}
+
+			// ─── Cuerpo ───
+			cx.fillStyle = GRAY;
+			cx.strokeStyle = OUTLINE;
+			cx.lineWidth = s * 0.008;
+			cx.beginPath();
+			cx.ellipse(c, c, bodyW, bodyH, 0, 0, 6.2832);
+			cx.fill(); cx.stroke();
+			// Lomo oscuro
+			cx.fillStyle = GRAY_D;
+			cx.beginPath();
+			cx.ellipse(c, c - bodyH * 0.35, bodyW * 0.95, bodyH * 0.5, 0, 0, 6.2832);
+			cx.fill();
+			// Panza clara
+			cx.fillStyle = GRAY_L;
+			cx.beginPath();
+			cx.ellipse(c + bodyW * 0.05, c + bodyH * 0.45, bodyW * 0.8, bodyH * 0.4, 0, 0, 6.2832);
+			cx.fill();
+			// Pelaje erizado
+			cx.strokeStyle = GRAY_DK;
+			cx.lineWidth = s * 0.010;
+			for(let i = 0; i < 4; i++){
+				const px = c - bodyW * 0.55 + i * bodyW * 0.30;
+				cx.beginPath();
+				cx.moveTo(px, c - bodyH * 0.7);
+				cx.lineTo(px + s * 0.008, c - bodyH * 0.95);
+				cx.stroke();
+			}
+
+			// ─── Patas delanteras ───
+			for(let i = 0; i < 2; i++){
+				const baseX = c + bodyW * 0.30 + i * bodyW * 0.28;
+				const wobble = Math.sin(walkPhase + (i + 2) * Math.PI) * s * 0.06;
+				cx.fillStyle = GRAY;
+				cx.strokeStyle = OUTLINE;
+				cx.lineWidth = s * 0.008;
+				cx.beginPath();
+				cx.ellipse(baseX + wobble * 0.5, c + bodyH * 0.95, s * 0.032, s * 0.065, 0, 0, 6.2832);
+				cx.fill(); cx.stroke();
+				cx.fillStyle = GRAY_DK;
+				cx.beginPath();
+				cx.ellipse(baseX + wobble, c + bodyH * 1.62, s * 0.030, s * 0.040, 0, 0, 6.2832);
+				cx.fill();
+			}
+
+			// ─── Cuello ───
+			cx.fillStyle = GRAY;
+			cx.strokeStyle = OUTLINE;
+			cx.lineWidth = s * 0.008;
+			cx.beginPath();
+			cx.moveTo(c + bodyW * 0.65, c - bodyH * 0.5);
+			cx.lineTo(c + bodyW * 0.95, c - bodyH * 0.75);
+			cx.lineTo(c + bodyW * 1.0, c - bodyH * 0.20);
+			cx.lineTo(c + bodyW * 0.75, c + bodyH * 0.35);
+			cx.closePath();
+			cx.fill(); cx.stroke();
+
+			// ─── Cabeza ───
+			const headX = c + bodyW * 1.15;
+			const headY = c - bodyH * 0.60;
+			cx.fillStyle = GRAY;
+			cx.strokeStyle = OUTLINE;
+			cx.lineWidth = s * 0.008;
+			cx.beginPath();
+			cx.ellipse(headX, headY, s * 0.105, s * 0.100, 0, 0, 6.2832);
+			cx.fill(); cx.stroke();
+
+			// ─── Hocico ancho y redondeado ───
+			cx.fillStyle = GRAY;
+			cx.beginPath();
+			cx.moveTo(headX + s * 0.04, headY - s * 0.04);
+			cx.quadraticCurveTo(headX + s * 0.17, headY - s * 0.025,
+													headX + s * 0.18, headY + s * 0.010);
+			cx.quadraticCurveTo(headX + s * 0.17, headY + s * 0.035,
+													headX + s * 0.04, headY + s * 0.045);
+			cx.closePath();
+			cx.fill(); cx.stroke();
+			cx.fillStyle = '#1a1512';
+			cx.beginPath();
+			cx.ellipse(headX + s * 0.175, headY + s * 0.010, s * 0.016, s * 0.012, 0, 0, 6.2832);
+			cx.fill();
+			cx.strokeStyle = OUTLINE;
+			cx.lineWidth = s * 0.006;
+			cx.beginPath();
+			cx.moveTo(headX + s * 0.16, headY + s * 0.028);
+			cx.lineTo(headX + s * 0.06, headY + s * 0.042);
+			cx.stroke();
+
+			// ─── Orejas erguidas triangulares ───
+			cx.fillStyle = GRAY;
+			cx.strokeStyle = OUTLINE;
+			cx.lineWidth = s * 0.008;
+			cx.beginPath();
+			cx.moveTo(headX - s * 0.055, headY - s * 0.075);
+			cx.lineTo(headX - s * 0.075, headY - s * 0.195);
+			cx.lineTo(headX + s * 0.005, headY - s * 0.085);
+			cx.closePath();
+			cx.fill(); cx.stroke();
+			cx.beginPath();
+			cx.moveTo(headX + s * 0.010, headY - s * 0.090);
+			cx.lineTo(headX + s * 0.040, headY - s * 0.215);
+			cx.lineTo(headX + s * 0.085, headY - s * 0.080);
+			cx.closePath();
+			cx.fill(); cx.stroke();
+			cx.fillStyle = 'rgba(220,180,180,0.55)';
+			cx.beginPath();
+			cx.moveTo(headX + s * 0.028, headY - s * 0.110);
+			cx.lineTo(headX + s * 0.040, headY - s * 0.185);
+			cx.lineTo(headX + s * 0.062, headY - s * 0.105);
+			cx.closePath();
+			cx.fill();
+
+			// ─── Ojo ámbar ───
+			cx.fillStyle = '#1a1512';
+			cx.beginPath();
+			cx.arc(headX + s * 0.045, headY - s * 0.020, s * 0.016, 0, 6.2832);
+			cx.fill();
+			cx.fillStyle = EYE_AMBER;
+			cx.beginPath();
+			cx.arc(headX + s * 0.047, headY - s * 0.020, s * 0.010, 0, 6.2832);
+			cx.fill();
+			cx.fillStyle = '#1a1512';
+			cx.beginPath();
+			cx.arc(headX + s * 0.047, headY - s * 0.020, s * 0.005, 0, 6.2832);
+			cx.fill();
+			cx.fillStyle = 'rgba(255,255,255,0.9)';
+			cx.beginPath();
+			cx.arc(headX + s * 0.050, headY - s * 0.024, s * 0.003, 0, 6.2832);
+			cx.fill();
+		}));
+	}
+
 }
 
 /* =========================================================
-   VIDA AMBIENTAL — dibujo con drawImage, sin paths
+   VIDA AMBIENTAL DINÁMICA
+   Los pools gestionan cuántos individuos debería haber de
+   cada tipo, y spawnean/despawnan gradualmente según factores:
+   - hora del día (día/noche)
+   - clima (lluvia, viento)
+   - bioma
+   - ruido orgánico (fluctuación lenta sin razón aparente)
    ========================================================= */
 const ambientLife = [];
 let ambientLifeSpawnedFor = null;
+const ambientPools = new Map();   // typeKey → pool
+let _lastTargetCalc = 0;
+const TARGET_RECALC_MS = 2000;   // recalcular targets cada 2s
+
+const NOCTURNAL_TYPES = new Set(['fox', 'scorpion']);
+const DIURNAL_TYPES   = new Set(['ladybug', 'butterfly', 'bees', 'woodpecker']);
+
+/* Ruido orgánico 0..1 que fluctúa lento, con 3 capas de frecuencias */
+function organicNoise(t, seed){
+  return clamp(
+    0.5
+    + 0.30 * Math.sin(t * 0.00008 + seed)
+    + 0.15 * Math.sin(t * 0.00021 + seed * 1.7)
+    + 0.05 * Math.sin(t * 0.00053 + seed * 3.1),
+    0, 1
+  );
+}
+
+/* =========================================================
+   COMPORTAMIENTO TEMPORAL DE CADA TIPO DE FAUNA
+   ─ schedule: 'diurnal' | 'nocturnal' | 'crepuscular' | 'always'
+   ─ peaks:    momentos del ciclo (0..1) donde la actividad es máxima
+   ─ window:   ancho de la ventana de actividad (menor = más puntual)
+   
+   Referencia del ciclo (PHASES):
+     0.00 = amanecer
+     0.25 = mediodía
+     0.50 = atardecer
+     0.75 = medianoche
+   ========================================================= */
+const AMBIENT_BEHAVIOR = {
+  // ─── DIURNOS (pico al mediodía) ───
+  butterfly:   { schedule:'diurnal', peaks:[0.25], window:0.18 },
+  ladybug:     { schedule:'diurnal', peaks:[0.25], window:0.20 },
+  bees:        { schedule:'diurnal', peaks:[0.25], window:0.16 },
+  bunny:       { schedule:'diurnal', peaks:[0.25], window:0.22 },
+  woodpecker:  { schedule:'diurnal', peaks:[0.25], window:0.18 },
+  bird:        { schedule:'diurnal', peaks:[0.25], window:0.20 },
+  songBird:    { schedule:'diurnal', peaks:[0.25], window:0.20 },
+  beetle:      { schedule:'diurnal', peaks:[0.25], window:0.35 },  // tolera más
+  sparkle:     { schedule:'diurnal', peaks:[0.25], window:0.30 },
+
+  // ─── NOCTURNOS (pico a medianoche) ───
+  owl:         { schedule:'nocturnal', peaks:[0.75], window:0.20 },
+  wolf:        { schedule:'nocturnal', peaks:[0.75], window:0.16 },
+  fox:         { schedule:'crepuscular', peaks:[0.00, 0.50], window:0.18 },
+  scorpion:    { schedule:'nocturnal', peaks:[0.75], window:0.20 },
+  bat:         { schedule:'nocturnal', peaks:[0.75], window:0.18 },
+  rat:         { schedule:'nocturnal', peaks:[0.75], window:0.25 },
+
+  // ─── CREPUSCULARES (amanecer y atardecer) ───
+  deer:        { schedule:'crepuscular', peaks:[0.00, 0.50], window:0.10 },
+
+  // ─── SIEMPRE ───
+  leaf:        { schedule:'always' },
+  ember:       { schedule:'always' },
+};
+
+/* Ventana gaussiana circular: devuelve 0..1 según qué tan cerca
+   está `t` de alguno de los `peaks` */
+function activityAtPhase(typeKey, t){
+  const beh = AMBIENT_BEHAVIOR[typeKey];
+  if(!beh) return 1;
+  if(beh.schedule === 'always') return 1;
+
+  let maxAct = 0;
+  for(const peak of beh.peaks){
+    let d = t - peak;
+    if(d >  0.5) d -= 1;
+    if(d < -0.5) d += 1;
+    const a = Math.exp(-(d*d) / (beh.window * beh.window));
+    if(a > maxAct) maxAct = a;
+  }
+  return maxAct;
+}
 
 const AMBIENT_TYPES = {
-
+	// Hojas que caen
 	leaf: {
 		spawn: () => ({
 			x: rnd(0, 1),
@@ -5739,13 +6603,13 @@ const AMBIENT_TYPES = {
 		}),
 		update(e, dt, weather) {
 			// Viento aumenta la velocidad horizontal y el wobble
-			const windBoost = 1 + weather.wind * 2.5 + weather.rain * 1.8;
+			const windBoost = 4 + weather.wind * 2.5 + weather.rain * 20.0;
 			const wobbleBoost = 1 + weather.rain * 2.0 + weather.wind * 1.5;
 
 			e.wobble += dt * 2.5 * wobbleBoost;
 
 			// El viento direccional empuja la hoja hacia un lado
-			const windPush = windState.direction * windState.strength * 0.06;
+			const windPush = windState.direction * windState.strength * 0.1;
 
 			e.x += (e.vx * windBoost + Math.sin(e.wobble) * 0.02 + windPush) * dt;
 			e.y += e.vy * windBoost * dt;
@@ -5774,6 +6638,7 @@ const AMBIENT_TYPES = {
 			ctx.restore();
 		}
 	},
+	// Mariposas
 	butterfly: {
 		spawn: () => ({
 			anchorX: rnd(0.15, 0.85),
@@ -5824,7 +6689,7 @@ const AMBIENT_TYPES = {
 			ctx.restore();
 		}
 	},
-
+	// Escarabajos
 	beetle: {
 		spawn: () => ({
 			x: rnd(-0.05, 1.05),
@@ -5858,7 +6723,7 @@ const AMBIENT_TYPES = {
 			ctx.restore();
 		}
 	},
-
+  
 	ember: {
 		spawn: () => ({
 			x: rnd(0, 1),
@@ -6006,6 +6871,196 @@ const AMBIENT_TYPES = {
 		}
 	},
 
+	fox: {
+		spawn: () => {
+			const vx = (Math.random() < 0.5 ? -1 : 1) * rnd(0.03, 0.06);
+			return {
+				x: rnd(-0.05, 1.05),
+				y: rnd(0.40, 0.80),
+				vx,
+				walkPhase: rnd(0, 1),
+				walkSpeed: rnd(0.9, 1.4),
+				size: rnd(22, 28),
+				_activity: 1,
+				pauseTimer: 0,
+				paused: false,
+				pauseChance: 0.4,
+			};
+		},
+		update(e, dt, weather){
+			// Los zorros salen con poca nieve, se esconden con ventisca fuerte
+			let target;
+			if(weather.rain < 0.30)      target = 1;
+			else if(weather.rain > 0.75) target = 0;
+			else                         target = 1 - (weather.rain - 0.30) / 0.45;
+			e._activity += (target - e._activity) * Math.min(1, 2 * dt);
+			if(e._activity < 0.02) return;
+
+			if(e.paused){
+				e.pauseTimer -= dt;
+				if(e.pauseTimer <= 0){ e.paused = false; e.walkPhase = 0; }
+				return;
+			}
+
+			e.walkPhase += dt * e.walkSpeed;
+			if(e.walkPhase >= 1){
+				e.walkPhase -= 1;
+				if(Math.random() < e.pauseChance){
+					e.paused = true;
+					e.pauseTimer = rnd(0.8, 2.5);
+				} else if(Math.random() < 0.25){
+					e.vx = -e.vx;
+				}
+			}
+
+			// Movimiento constante (a diferencia del conejo que salta)
+			e.x += e.vx * dt;
+			if(e.x < -0.08) e.x = 1.08;
+			if(e.x > 1.08) e.x = -0.08;
+		},
+		draw(ctx, e, W, H){
+			if(e._activity < 0.04) return;
+			const sprite = sprites.fox[Math.floor(e.walkPhase * 4) & 3];
+			if(!sprite) return;
+			const px = e.x * W, py = e.y * H;
+			const half = e.size;
+			ctx.save();
+			ctx.globalAlpha = 0.95 * e._activity;
+			ctx.translate(px, py);
+			if(e.vx < 0) ctx.scale(-1, 1);
+			ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+			ctx.restore();
+		}
+	},
+
+	scorpion: {
+		spawn: () => ({
+			x: rnd(-0.05, 1.05),
+			y: rnd(0.30, 0.90),
+			vx: (Math.random() < 0.5 ? -1 : 1) * rnd(0.008, 0.018),
+			vy: 0,
+			phase: rnd(0, 6.28),
+			size: rnd(6, 9),
+			_activity: 1,
+			pauseTimer: 0,
+			paused: false,
+			// escorpiones son tímidos: mucho tiempo quieto
+			speedMul: 1,
+		}),
+		update(e, dt, weather){
+			// Los escorpiones prefieren el calor seco
+			const target = 1 - Math.min(1, weather.rain * 2.2);
+			e._activity += (target - e._activity) * Math.min(1, 2.5 * dt);
+			if(e._activity < 0.02) return;
+
+			if(e.paused){
+				e.pauseTimer -= dt;
+				if(e.pauseTimer <= 0){ e.paused = false; }
+				return;
+			}
+
+			e.phase += dt * 4;
+			e.x += e.vx * dt;
+			// Pequeña deriva vertical errática
+			e.y += Math.sin(e.phase * 0.7) * 0.0008 * dt;
+
+			if(e.x < -0.05) e.x = 1.05;
+			if(e.x > 1.05) e.x = -0.05;
+			if(e.y < 0.25) e.y = 0.25;
+			if(e.y > 0.95) e.y = 0.95;
+
+			// Se detiene y arranca erraticamente
+			if(Math.random() < 0.008){
+				e.paused = true;
+				e.pauseTimer = rnd(0.8, 2.2);
+			} else if(Math.random() < 0.006){
+				e.vx = -e.vx;
+				// Cambio de dirección vertical
+				e.y += rnd(-0.02, 0.02);
+				e.y = clamp(e.y, 0.25, 0.95);
+			}
+		},
+		draw(ctx, e, W, H){
+			if(e._activity < 0.05) return;
+			const sprite = sprites.scorpion[Math.floor(e.phase) & 2];   // 3 frames → 0,2 (loop)
+			if(!sprite) return;
+			const px = e.x * W, py = e.y * H;
+			const half = e.size;
+			ctx.save();
+			ctx.globalAlpha = 0.9 * e._activity;
+			ctx.translate(px, py);
+			if(e.vx < 0) ctx.scale(-1, 1);
+			ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+			ctx.restore();
+		}
+	},
+	
+	ladybug: {
+		spawn: () => ({
+			x: rnd(0.05, 0.95),
+			y: rnd(0.25, 0.90),
+			vx: (Math.random() < 0.5 ? -1 : 1) * rnd(0.012, 0.025),
+			vy: rnd(-0.008, 0.008),
+			phase: rnd(0, 6.28),
+			size: rnd(4, 6),
+			_activity: 1,
+			pauseTimer: 0,
+			paused: false,
+			tint: Math.random() < 0.85 ? 'red' : (Math.random() < 0.67 ? 'orange' : 'yellow'),
+		}),
+		update(e, dt, weather){
+			let target;
+			if(weather.rain < 0.20)      target = 1;
+			else if(weather.rain > 0.55) target = 0;
+			else                         target = 1 - (weather.rain - 0.20) / 0.35;
+			e._activity += (target - e._activity) * Math.min(1, 3 * dt);
+			if(e._activity < 0.02) return;
+
+			if(e.paused){
+				e.pauseTimer -= dt;
+				if(e.pauseTimer <= 0){ e.paused = false; }
+				return;
+			}
+
+			e.phase += dt * 10;
+			e.x += e.vx * dt;
+			e.y += e.vy * dt;
+
+			if(e.x < -0.05) e.x = 1.05;
+			if(e.x > 1.05) e.x = -0.05;
+			if(e.y < 0.15) { e.y = 0.15; e.vy = -e.vy; }
+			if(e.y > 0.95) { e.y = 0.95; e.vy = -e.vy; }
+
+			// Cambios de dirección frecuentes (mariquitas son caprichosas)
+			if(Math.random() < 0.015){
+				e.paused = true;
+				e.pauseTimer = rnd(0.3, 1.5);
+			} else if(Math.random() < 0.02){
+				e.vx = -e.vx;
+				e.vy = rnd(-0.008, 0.008);
+			}
+		},
+		draw(ctx, e, W, H){
+			const baseSprite = sprites.ladybug[Math.floor(e.phase) & 3];
+			if(!baseSprite) return;
+			const px = e.x * W, py = e.y * H;
+			const half = e.size;
+			ctx.save();
+			ctx.globalAlpha = 0.95 * e._activity;
+			ctx.translate(px, py);
+			if(e.vx < 0) ctx.scale(-1, 1);
+
+			// Tinte por variante
+			if(e.tint === 'orange'){
+				ctx.filter = 'hue-rotate(-25deg)';
+			} else if(e.tint === 'yellow'){
+				ctx.filter = 'hue-rotate(-55deg) saturate(1.2)';
+			}
+			ctx.drawImage(baseSprite, -half, -half, half * 2, half * 2);
+			ctx.restore();
+		}
+	},
+
 	// Destello de escarcha en la nieve
 	sparkle: {
 		spawn: () => ({
@@ -6058,51 +7113,430 @@ const AMBIENT_TYPES = {
 			ctx.restore();
 		}
 	},
+
+	owl: {
+		spawn: () => ({
+			anchorX: rnd(0.15, 0.85),
+			anchorY: rnd(0.20, 0.55),
+			headTurn: 0,
+			headTurnTarget: 0,
+			headTurnTimer: rnd(1.5, 4),
+			size: rnd(20, 26),
+			blink: 0,
+			blinkTimer: rnd(2, 6),
+			_activity: 1,
+			_exiting: false,
+			_bornAt: performance.now(),
+		}),
+		update(e, dt, weather){
+			// Los búhos son estáticos: solo giran la cabeza y parpadean
+			e.headTurnTimer -= dt;
+			if(e.headTurnTimer <= 0){
+				e.headTurnTarget = Math.random() < 0.5 ? 0 : 1;
+				e.headTurnTimer = rnd(2, 6);
+			}
+			e.headTurn += (e.headTurnTarget - e.headTurn) * Math.min(1, 3 * dt);
+
+			e.blinkTimer -= dt;
+			if(e.blinkTimer <= 0){
+				e.blink = 1;
+				e.blinkTimer = rnd(3, 8);
+			}
+			if(e.blink > 0) e.blink = Math.max(0, e.blink - dt * 8);
+		},
+		draw(ctx, e, W, H){
+			if(e._activity < 0.04) return;
+			// Frame según headTurn (2 frames: mirando de frente o girado)
+			const frameIdx = e.headTurn > 0.5 ? 1 : 0;
+			const sprite = sprites.owl[frameIdx];
+			if(!sprite) return;
+			const px = e.anchorX * W, py = e.anchorY * H;
+			const half = e.size;
+			ctx.save();
+			ctx.globalAlpha = 0.95 * e._activity;
+			ctx.translate(px, py);
+			ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+			// Párpado: un rectángulo oscuro que tapa los ojos cuando parpadea
+			if(e.blink > 0.2){
+				ctx.globalAlpha = (e.blink - 0.2) / 0.8 * 0.7 * e._activity;
+				ctx.fillStyle = '#3a2818';
+				ctx.fillRect(-half * 0.30, -half * 0.30, half * 0.60, half * 0.10);
+			}
+			ctx.restore();
+		}
+	},
+
+	bat: {
+		spawn: () => ({
+			anchorX: rnd(0.1, 0.9),
+			anchorY: rnd(0.15, 0.55),
+			rx: rnd(0.06, 0.14),
+			ry: rnd(0.04, 0.10),
+			phase: rnd(0, 6.28),
+			flapPhase: rnd(0, 6.28),
+			speed: rnd(1.0, 1.8),
+			size: rnd(8, 12),
+			_activity: 1,
+		}),
+		update(e, dt, weather){
+			// Vuelo rápido y errático
+			e.phase += dt * e.speed;
+			e.flapPhase += dt * 20;   // aleteo rápido
+			e.x = e.anchorX + Math.cos(e.phase) * e.rx;
+			e.y = e.anchorY + Math.sin(e.phase * 2.3) * e.ry;
+		},
+		draw(ctx, e, W, H){
+			if(e._activity < 0.04) return;
+			const frames = sprites.bat;
+			if(!frames || !frames.length) return;
+			const frameIdx = Math.floor(e.flapPhase) & 3;
+			const sprite = frames[frameIdx];
+			const px = e.x * W, py = e.y * H;
+			const half = e.size;
+			ctx.save();
+			ctx.globalAlpha = 0.90 * e._activity;
+			ctx.translate(px, py);
+			// Los murciélagos se ven "más grandes" con las alas abiertas
+			// sin necesidad de escalar — el sprite ya cambia de ancho
+			ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+			ctx.restore();
+		}
+	},
+
+	rat: {
+		spawn: () => ({
+			x: rnd(-0.05, 1.05),
+			y: rnd(0.40, 0.90),
+			vx: (Math.random() < 0.5 ? -1 : 1) * rnd(0.020, 0.040),
+			phase: rnd(0, 6.28),
+			size: rnd(5, 8),
+			_activity: 1,
+			pauseTimer: 0,
+			paused: false,
+			// Las ratas hacen pausas nerviosas
+			_scan: 0,
+		}),
+		update(e, dt, weather){
+			// Salen con poca lluvia
+			const target = 1 - Math.min(1, weather.rain * 1.5);
+			e._activity += (target - e._activity) * Math.min(1, 3 * dt);
+			if(e._activity < 0.02) return;
+
+			if(e.paused){
+				e.pauseTimer -= dt;
+				if(e.pauseTimer <= 0){ e.paused = false; e._scan = rnd(1.5, 3.5); }
+				return;
+			}
+
+			e.phase += dt * 10;
+			e.x += e.vx * dt;
+			e._scan -= dt;
+
+			if(e.x < -0.05) e.x = 1.05;
+			if(e.x > 1.05) e.x = -0.05;
+
+			// Pausas nerviosas frecuentes
+			if(e._scan <= 0 || Math.random() < 0.008){
+				e.paused = true;
+				e.pauseTimer = rnd(0.4, 1.5);
+			}
+		},
+		draw(ctx, e, W, H){
+			if(e._activity < 0.05) return;
+			const frames = sprites.rat;
+			if(!frames || !frames.length) return;
+			const frameIdx = Math.floor(e.phase) & 3;
+			const sprite = frames[frameIdx];
+			const px = e.x * W, py = e.y * H;
+			const half = e.size;
+			ctx.save();
+			ctx.globalAlpha = 0.90 * e._activity;
+			ctx.translate(px, py);
+			if(e.vx < 0) ctx.scale(-1, 1);
+			ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+			ctx.restore();
+		}
+	},
+
+	wolf: {
+		spawn: () => ({
+			x: rnd(-0.05, 1.05),
+			y: rnd(0.30, 0.60),
+			vx: (Math.random() < 0.5 ? -1 : 1) * rnd(0.025, 0.045),
+			walkPhase: rnd(0, 1),
+			walkSpeed: rnd(2.5, 3.5),
+			size: rnd(30, 36),
+			_activity: 1,
+			pauseTimer: 0,
+			paused: false,
+			howlChance: 0.25,
+		}),
+		update(e, dt, weather){
+			// Los lobos aparecen solo de noche y con poca lluvia
+			let target;
+			if(weather.rain < 0.35)      target = 1;
+			else if(weather.rain > 0.75) target = 0;
+			else                         target = 1 - (weather.rain - 0.35) / 0.40;
+			e._activity += (target - e._activity) * Math.min(1, 2 * dt);
+			if(e._activity < 0.02) return;
+
+			if(e.paused){
+				e.pauseTimer -= dt;
+				if(e.pauseTimer <= 0){ e.paused = false; }
+				return;
+			}
+
+			e.walkPhase += dt * e.walkSpeed;
+			e.x += e.vx * dt;
+
+			if(e.x < -0.08) e.x = 1.08;
+			if(e.x > 1.08) e.x = -0.08;
+
+			// Pausas largas (acechando o aullando)
+			if(Math.random() < 0.006){
+				e.paused = true;
+				e.pauseTimer = rnd(1.5, 4.0);
+			}
+		},
+		draw(ctx, e, W, H){
+			if(e._activity < 0.05) return;
+			const frames = sprites.wolf;
+			if(!frames || !frames.length) return;
+			// Frame según el phase, igual que el zorro y el conejo
+			const frameIdx = Math.floor(e.walkPhase * 4) & 3;
+			const sprite = frames[frameIdx];
+			const px = e.x * W, py = e.y * H;
+			const half = e.size;
+			ctx.save();
+			ctx.globalAlpha = 0.95 * e._activity;
+			ctx.translate(px, py);
+			if(e.vx < 0) ctx.scale(-1, 1);
+			ctx.drawImage(sprite, -half, -half, half * 2, half * 2);
+			ctx.restore();
+		}
+	},
 };
 
-function spawnAmbientLife(W, H) {
-	ambientLife.length = 0;
-	if (!currentBiome.ambientLife) return;
-	for (const spec of currentBiome.ambientLife) {
-		const type = AMBIENT_TYPES[spec.type];
-		if (!type) continue;
-		for (let i = 0; i < spec.count; i++) {
-			const ent = type.spawn();
-			ent._type = type;
-			ambientLife.push(ent);
-		}
-	}
-	ambientLifeSpawnedFor = currentBiome.id;
+function computeAmbientTarget(typeKey, pool){
+  const spec = pool.spec;
+  const now = performance.now();
+  const ph = getPhase();
+
+  // ─── 1. Actividad por hora del día ───
+  const activity = activityAtPhase(typeKey, ph.t);
+
+  // Si la actividad es muy baja, el target ES CERO. Sin excepciones.
+  // Esto es lo que hace que los conejos desaparezcan de verdad de noche.
+  if(activity < 0.10) return 0;
+
+  // ─── 2. Ruido orgánico (pequeño, para que no sea mecánico) ───
+  const noise = organicNoise(now, pool.seed);
+  const noiseMul = 0.75 + noise * 0.50;   // 0.75 .. 1.25
+
+  // ─── 3. Target base ───
+  let target = spec.count * activity * noiseMul;
+
+  // ─── 4. Modificadores por clima (más agresivos ahora) ───
+  const rain = rainAmt;
+
+  switch(typeKey){
+    case 'leaf':
+      target *= (1 - rain * 0.7);
+      target *= (1 + Math.abs(windState.direction) * windState.strength * 0.9);
+      break;
+    case 'butterfly':
+    case 'ladybug':
+    case 'bees':
+      // Con CUALQUIER lluvia notable, las mariposas ya no salen
+      if(rain > 0.15) return 0;
+      target *= 1 - rain * 3;
+      break;
+    case 'ember':
+      target *= 1 - rain * 0.85;
+      break;
+    case 'sparkle':
+      target *= 1 - rain * 0.5;
+      break;
+    case 'bunny':
+      if(rain > 0.55) return 0;              // se esconden con lluvia fuerte
+      target *= 1 - Math.max(0, (rain - 0.30) * 2);
+      break;
+    case 'fox':
+    case 'wolf':
+    case 'deer':
+      if(rain > 0.65) return 0;
+      target *= 1 - Math.max(0, (rain - 0.35) * 1.8);
+      break;
+    case 'scorpion':
+      if(rain > 0.20) return 0;              // insecto del desierto
+      break;
+    case 'owl':
+    case 'bat':
+    case 'rat':
+      // Salen aunque llueva (son nocturnos, no les molesta tanto)
+      target *= 1 - rain * 0.5;
+      break;
+  }
+
+  return Math.max(0, Math.round(target));
 }
 
-function updateAmbientLife(dt) {
-	const rain = rainAmt;
-	const wind = Math.abs(windState.direction) * windState.strength;
-	const weather = {
-		rain,
-		wind
-	};
-
-	for (const e of ambientLife) {
-		if (e._type) e._type.update(e, dt, weather);
-	}
+function spawnAmbientIndividual(pool, immediate = false){
+  const ent = pool.type.spawn();
+  ent._type = pool.type;
+  ent._poolKey = pool.spec.type;
+  ent._exiting = false;
+  ent._activity = immediate ? 1 : 0;   // fade-in desde 0 si no es inmediato
+  ent._bornAt = performance.now();
+  pool.individuals.add(ent);
+  ambientLife.push(ent);
 }
 
-function drawAmbientLife(W, H) {
-	const q = currentQuality();
-	if (!q.fireflies) return; // emergency → nada
-	const scale = q.particles;
-	if (scale >= 1) {
-		for (const e of ambientLife) e._type.draw(ctx, e, W, H);
-	} else {
-		// En calidad baja dibujamos solo una fracción
-		const skipStep = Math.max(2, Math.round(1 / scale));
-		for (let i = 0; i < ambientLife.length; i++) {
-			if (i % skipStep !== 0) continue;
-			const e = ambientLife[i];
-			e._type.draw(ctx, e, W, H);
-		}
-	}
+function markAmbientForExit(ent){
+  if(ent._exiting) return;
+  ent._exiting = true;
+  if(ent._poolKey && ambientPools.has(ent._poolKey)){
+    // Sacarlo del pool ya, así no lo volvemos a contar como "activo"
+    // (pero sigue vivo hasta que termine el fade-out)
+    ambientPools.get(ent._poolKey).individuals.delete(ent);
+  }
+}
+
+function spawnAmbientLife(W, H){
+  ambientLife.length = 0;
+  ambientPools.clear();
+  if(!currentBiome.ambientLife) return;
+
+  // Crear pools con target inicial 0
+  for(const spec of currentBiome.ambientLife){
+    const type = AMBIENT_TYPES[spec.type];
+    if(!type) continue;
+    ambientPools.set(spec.type, {
+      spec,
+      type,
+      target: 0,
+      individuals: new Set(),
+      spawnAcc: 0,
+      despawnAcc: 0,
+      spawnRate: spec.spawnRate || 1.4,     // individuos/segundo al spawnear
+      despawnRate: spec.despawnRate || 0.4, // individuos/segundo al despawnear
+      seed: Math.random() * 100,
+    });
+  }
+
+  // Spawn inicial: 60% del target calculado, para no arrancar vacío
+  for(const [key, pool] of ambientPools){
+    const initialTarget = computeAmbientTarget(key, pool);
+    const initialCount = Math.floor(initialTarget * 0.6);
+    for(let i = 0; i < initialCount; i++){
+      spawnAmbientIndividual(pool, /* immediate */ true);
+    }
+  }
+  ambientLifeSpawnedFor = currentBiome.id;
+}
+
+function updateAmbientLife(dt){
+  const now = performance.now();
+  const weather = {
+    rain: rainAmt,
+    wind: Math.abs(windState.direction) * windState.strength,
+  };
+
+  // ─── 1. Recalcular targets cada 2s ───
+  if(now - _lastTargetCalc > TARGET_RECALC_MS){
+    _lastTargetCalc = now;
+    for(const [key, pool] of ambientPools){
+      pool.target = computeAmbientTarget(key, pool);
+    }
+  }
+
+  // ─── 2. Spawn/despawn gradual por pool ───
+  for(const [key, pool] of ambientPools){
+    const current = pool.individuals.size;
+
+    if(current < pool.target){
+      // Faltan individuos → spawnear gradualmente
+      pool.spawnAcc += dt * pool.spawnRate;
+      while(pool.spawnAcc >= 1 && pool.individuals.size < pool.target){
+        pool.spawnAcc -= 1;
+        spawnAmbientIndividual(pool, false);
+      }
+      pool.despawnAcc = 0;   // resetear el otro acumulador
+
+    } else if(current > pool.target){
+      // Sobran → marcar el más viejo para salir
+      pool.despawnAcc += dt * pool.despawnRate;
+      while(pool.despawnAcc >= 1 && pool.individuals.size > pool.target){
+        pool.despawnAcc -= 1;
+        // Buscar el más viejo del pool
+        let oldest = null, oldestTime = Infinity;
+        for(const ind of pool.individuals){
+          if(ind._bornAt < oldestTime){ oldestTime = ind._bornAt; oldest = ind; }
+        }
+        if(oldest) markAmbientForExit(oldest);
+        else break;
+      }
+      pool.spawnAcc = 0;
+
+    } else {
+      // Está en el target → decaer los acumuladores
+      pool.spawnAcc = Math.max(0, pool.spawnAcc - dt * 0.5);
+      pool.despawnAcc = Math.max(0, pool.despawnAcc - dt * 0.5);
+    }
+  }
+
+  // ─── 3. Actualizar cada individuo ───
+  for(let i = ambientLife.length - 1; i >= 0; i--){
+    const e = ambientLife[i];
+
+    // Fade-in / fade-out
+    if(e._exiting){
+      e._activity = Math.max(0, e._activity - dt * 0.9);
+      if(e._activity < 0.02){
+        ambientLife.splice(i, 1);
+        continue;
+      }
+    } else if(e._activity < 1){
+      e._activity = Math.min(1, e._activity + dt * 1.5);
+    }
+
+    // Ciclo de vida natural: después de N segundos, se va solo
+    const age = (now - e._bornAt) / 1000;
+    const maxAge = e._poolKey && ambientPools.has(e._poolKey)
+      ? (ambientPools.get(e._poolKey).spec.maxAge || 45)
+      : 45;
+    if(!e._exiting && age > maxAge && Math.random() < dt * 0.2){
+      // Chance baja por frame: no todos se van al mismo tiempo
+      markAmbientForExit(e);
+    }
+
+    // Update del tipo (con el weather actual)
+    if(e._type){
+      // Escalar el efecto del clima según la "vida" del individuo
+      // (los que están saliendo casi no se mueven)
+      e._type.update(e, dt * e._activity, weather);
+    }
+  }
+}
+
+function drawAmbientLife(W, H){
+  const q = currentQuality();
+  if(!q.fireflies) return;
+  const scale = q.particles;
+  if(scale >= 1){
+    for(const e of ambientLife){
+      if(e._activity < 0.04) continue;
+      e._type.draw(ctx, e, W, H);
+    }
+  } else {
+    const skipStep = Math.max(2, Math.round(1 / scale));
+    for(let i = 0; i < ambientLife.length; i++){
+      if(i % skipStep !== 0) continue;
+      const e = ambientLife[i];
+      if(e._activity < 0.04) continue;
+      e._type.draw(ctx, e, W, H);
+    }
+  }
 }
 
 /* =========================================================
@@ -7277,14 +8711,13 @@ const BIOMES = {
 		hasFireflies: true,
 		isVolcano: false,
 		hasVortices: false,
-		ambientLife: [{
-				type: 'leaf',
-				count: 14
-			},
-			{
-				type: 'beetle',
-				count: 2
-			}
+		ambientLife: [
+			{ type: 'leaf',      count: 14, spawnRate: 2.5, despawnRate: 0.8, maxAge: 30 },
+			{ type: 'beetle',    count: 2,  spawnRate: 0.4, despawnRate: 0.15, maxAge: 60 },
+			{ type: 'butterfly', count: 1,  spawnRate: 0.3, despawnRate: 0.15, maxAge: 45 },
+			{ type: 'owl',       count: 2,  spawnRate: 0.15, despawnRate: 0.3, maxAge: 120 },  // ⬅️ NOCTURNO
+			{ type: 'bat',       count: 3,  spawnRate: 0.5, despawnRate: 0.6, maxAge: 30 },    // ⬅️ NOCTURNO
+			{ type: 'fox',  count: 1, spawnRate: 0.12, despawnRate: 0.5, maxAge: 90 },
 		],
 	},
 	desert: {
@@ -7364,10 +8797,11 @@ const BIOMES = {
 		hasFireflies: false,
 		isVolcano: false,
 		hasVortices: false,
-		ambientLife: [{
-			type: 'beetle',
-			count: 4
-		}],
+		ambientLife: [
+			{ type: 'beetle',    count: 4, spawnRate: 0.6, despawnRate: 0.25, maxAge: 55 },
+			{ type: 'scorpion',  count: 2, spawnRate: 0.25, despawnRate: 0.1, maxAge: 80 },
+			{ type: 'rat',       count: 3, spawnRate: 0.5, despawnRate: 0.5, maxAge: 40 },    // ⬅️ NOCTURNO
+		],
 	},
 	snow: {
 		id: 'snow',
@@ -7446,14 +8880,10 @@ const BIOMES = {
 		hasFireflies: false,
 		isVolcano: false,
 		hasVortices: true,
-		ambientLife: [{
-				type: 'bunny',
-				count: 3
-			},
-			{
-				type: 'sparkle',
-				count: 4
-			}
+		ambientLife: [
+			{ type: 'bunny',   count: 3, spawnRate: 0.5, despawnRate: 0.2, maxAge: 50 },
+			{ type: 'wolf',    count: 2, spawnRate: 0.10, despawnRate: 0.5, maxAge: 120 },    // ⬅️ NOCTURNO, raro
+			{ type: 'sparkle', count: 4, spawnRate: 1.2, despawnRate: 0.4, maxAge: 20 },
 		],
 	},
 	volcano: {
@@ -7536,10 +8966,12 @@ const BIOMES = {
 		hasFireflies: true,
 		isVolcano: true,
 		hasVortices: true,
-		ambientLife: [{
-			type: 'ember',
-			count: 16
-		}],
+		ambientLife: [
+			{ type: 'ember',   count: 16, spawnRate: 3.0, despawnRate: 1.0, maxAge: 25 },
+			{ type: 'beetle',  count: 2,  spawnRate: 0.3, despawnRate: 0.1, maxAge: 60 },
+			{ type: 'bat',     count: 2,  spawnRate: 0.3, despawnRate: 0.5, maxAge: 25 },    // ⬅️ NOCTURNO
+			{ type: 'rat',     count: 2,  spawnRate: 0.4, despawnRate: 0.5, maxAge: 35 },    // ⬅️ NOCTURNO
+		],
 	},
 	cute: {
 		id: 'cute',
@@ -7622,18 +9054,13 @@ const BIOMES = {
 		isVolcano: false,
 		hasVortices: true,
 		hasFlowers: true, // flag nueva
-		ambientLife: [{
-				type: 'butterfly',
-				count: 3
-			},
-			{
-				type: 'leaf',
-				count: 3
-			},
-			{
-				type: 'bunny',
-				count: 2
-			},
+		ambientLife: [
+			{ type: 'butterfly', count: 3, spawnRate: 0.6, despawnRate: 0.25, maxAge: 40 },
+			{ type: 'ladybug',   count: 4, spawnRate: 0.8, despawnRate: 0.3,  maxAge: 35 },
+			{ type: 'leaf',      count: 3, spawnRate: 1.0, despawnRate: 0.4,  maxAge: 30 },
+			{ type: 'bunny',     count: 2, spawnRate: 0.3, despawnRate: 0.15, maxAge: 55 },
+			{ type: 'owl',       count: 1, spawnRate: 0.10, despawnRate: 0.3, maxAge: 120 },  // ⬅️ NOCTURNO
+			{ type: 'bat',       count: 2, spawnRate: 0.35, despawnRate: 0.5, maxAge: 28 },   // ⬅️ NOCTURNO
 		]
 	}
 };
@@ -7660,36 +9087,13 @@ const BIOME_AUDIO = {
 			gainMul: 1.00
 		},
 		windFilterMod: 1.0,
-		events: [{
-				type: 'bird',
-				minInterval: 2.5,
-				maxInterval: 9,
-				chance: 0.55
-			},
-			{
-				type: 'leaves',
-				minInterval: 4,
-				maxInterval: 11,
-				chance: 0.35
-			},
-			{
-				type: 'woodpecker',
-				minInterval: 8,
-				maxInterval: 22,
-				chance: 0.30
-			},
-			{
-				type: 'branchCrack',
-				minInterval: 12,
-				maxInterval: 30,
-				chance: 0.20
-			},
-			{
-				type: 'owl',
-				minInterval: 15,
-				maxInterval: 40,
-				chance: 0.35
-			}, // solo de noche
+		events: [
+			{ type: 'bird',        minInterval: 2.5, maxInterval: 9,  chance: 0.55 },
+			{ type: 'leaves',      minInterval: 4,   maxInterval: 11, chance: 0.35 },
+			{ type: 'woodpecker',  minInterval: 8,   maxInterval: 22, chance: 0.30 },
+			{ type: 'branchCrack', minInterval: 12,  maxInterval: 30, chance: 0.20 },
+			{ type: 'owl',         minInterval: 6,   maxInterval: 18, chance: 0.55 },   // ahora sí, de noche
+			{ type: 'wolfHowl',    minInterval: 20,  maxInterval: 50, chance: 0.15 },   // raro pero aparece
 		]
 	},
 	desert: {
@@ -7734,24 +9138,11 @@ const BIOME_AUDIO = {
 			gainMul: 0.55
 		},
 		windFilterMod: 1.3,
-		events: [{
-				type: 'iceCrack',
-				minInterval: 8,
-				maxInterval: 22,
-				chance: 0.55
-			},
-			{
-				type: 'windPuff',
-				minInterval: 5,
-				maxInterval: 14,
-				chance: 0.40
-			},
-			{
-				type: 'wolfHowl',
-				minInterval: 20,
-				maxInterval: 55,
-				chance: 0.35
-			}, // noche
+		events: [
+			{ type: 'iceCrack', minInterval: 8,  maxInterval: 22, chance: 0.55 },
+			{ type: 'windPuff', minInterval: 5,  maxInterval: 14, chance: 0.40 },
+			{ type: 'wolfHowl', minInterval: 12, maxInterval: 30, chance: 0.55 },       // más seguido acá
+			{ type: 'owl',      minInterval: 15, maxInterval: 35, chance: 0.35 },
 		]
 	},
 	volcano: {
@@ -7808,36 +9199,12 @@ const BIOME_AUDIO = {
 			gainMul: 0.30
 		},
 		windFilterMod: 0.75,
-		events: [{
-				type: 'songBird',
-				minInterval: 1.5,
-				maxInterval: 5,
-				chance: 0.70
-			},
-			{
-				type: 'songBird',
-				minInterval: 3,
-				maxInterval: 9,
-				chance: 0.35
-			},
-			{
-				type: 'butterfly',
-				minInterval: 6,
-				maxInterval: 14,
-				chance: 0.25
-			},
-			{
-				type: 'bees',
-				minInterval: 7,
-				maxInterval: 16,
-				chance: 0.45
-			}, // día
-			{
-				type: 'owl',
-				minInterval: 20,
-				maxInterval: 50,
-				chance: 0.30
-			}, // noche
+		events: [
+			{ type: 'songBird',  minInterval: 1.5, maxInterval: 5,  chance: 0.70 },
+			{ type: 'songBird',  minInterval: 3,   maxInterval: 9,  chance: 0.35 },
+			{ type: 'butterfly', minInterval: 6,   maxInterval: 14, chance: 0.25 },
+			{ type: 'bees',      minInterval: 7,   maxInterval: 16, chance: 0.45 },
+			{ type: 'owl',       minInterval: 8,   maxInterval: 20, chance: 0.45 },
 		]
 	}
 };
@@ -8930,28 +10297,24 @@ const PHASES = [{
 		dark: 0.05
 	}
 ];
-const CYCLE_SECONDS = 150;
+const CYCLE_SECONDS = 150; // segundos de duracion de un ciclo de dia
 let worldTime = Math.random() * CYCLE_SECONDS;
 let gameTime = 0;
 
-function getPhase() {
-	const t = (worldTime % CYCLE_SECONDS) / CYCLE_SECONDS;
-	let i = 0;
-	for (let k = 0; k < PHASES.length - 1; k++) {
-		if (t >= PHASES[k].t && t <= PHASES[k + 1].t) {
-			i = k;
-			break;
-		}
-	}
-	const A = PHASES[i],
-		B = PHASES[i + 1];
-	const span = (B.t - A.t) || 1;
-	const f = (t - A.t) / span;
-	return {
-		tint: [lerp(A.tint[0], B.tint[0], f), lerp(A.tint[1], B.tint[1], f), lerp(A.tint[2], B.tint[2], f)],
-		a: lerp(A.a, B.a, f),
-		dark: lerp(A.dark, B.dark, f)
-	};
+function getPhase(){
+  const t = (worldTime % CYCLE_SECONDS) / CYCLE_SECONDS;
+  let i = 0;
+  for(let k=0;k<PHASES.length-1;k++){
+    if(t >= PHASES[k].t && t <= PHASES[k+1].t){ i = k; break; }
+  }
+  const A = PHASES[i], B = PHASES[i+1];
+  const span = (B.t - A.t) || 1;
+  const f = (t - A.t) / span;
+  return {
+    t: t,                                        // ⬅️ NUEVO: 0..1 del ciclo
+    tint: [lerp(A.tint[0],B.tint[0],f), lerp(A.tint[1],B.tint[1],f), lerp(A.tint[2],B.tint[2],f)],
+    a: lerp(A.a, B.a, f), dark: lerp(A.dark, B.dark, f)
+  };
 }
 
 let rainAmt = 0,
