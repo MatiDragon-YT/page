@@ -2357,6 +2357,225 @@ MODO DEBUG — LAYOUT ESCRITORIO (panel lateral)
 			0 0 22px rgba(255, 200, 120, .18);
 	}
 }
+
+/* =========================================================
+   CINEMÁTICAS DE PARTIDA — INTRO Y OUTRO
+   ========================================================= */
+.cine-overlay{
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.cine-overlay.hidden{ display: none; }
+
+/* Letterbox — barras negras que cierran el encuadre */
+.cine-letterbox-top,
+.cine-letterbox-bottom{
+  position: absolute;
+  left: 0; right: 0;
+  height: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, #000 0%, #06070b 100%);
+  transition: height 0.9s cubic-bezier(.5,.05,.2,1);
+  box-shadow: 0 0 40px 10px rgba(0,0,0,.85);
+}
+.cine-letterbox-top{ top: 0; }
+.cine-letterbox-bottom{
+  bottom: 0;
+  background: linear-gradient(0deg, #000 0%, #06070b 100%);
+}
+body.cinematic .cine-letterbox-top,
+body.cinematic .cine-letterbox-bottom{ height: 9vh; }
+
+/* Tarjeta de título */
+.cine-titlecard{
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  opacity: 0;
+  transform: scale(0.85) translateY(14px);
+  transition: opacity 0.55s ease, transform 0.75s cubic-bezier(.2,1.2,.4,1);
+  pointer-events: none;
+  padding: 18px 36px;
+}
+.cine-titlecard.show{
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+.cine-title-main{
+  font-size: clamp(28px, 7vw, 44px);
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ffe8a8;
+  font-family: "Cinzel", "Trajan Pro", Georgia, serif;
+  text-shadow:
+    0 0 12px rgba(255,200,90,.65),
+    0 0 34px rgba(255,180,60,.35),
+    0 4px 10px rgba(0,0,0,.9);
+  margin-bottom: 8px;
+  line-height: 1.05;
+}
+.cine-title-sub{
+  font-size: clamp(11px, 2.4vw, 14px);
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #d8c8a0;
+  text-shadow: 0 2px 8px rgba(0,0,0,.95);
+}
+
+/* === INTRO: cámara entra + piezas caen === */
+#boardWrap.cine-intro-board{
+  animation: cineBoardZoomIn 1.4s cubic-bezier(.2,.9,.3,1) both;
+  will-change: transform, filter;
+}
+@keyframes cineBoardZoomIn{
+  0%{
+    transform: scale(1.14);
+    filter: brightness(0.55) saturate(0.65) blur(5px);
+  }
+  60%{
+    filter: brightness(1.18) saturate(1.12) blur(0);
+  }
+  100%{
+    transform: scale(1);
+    filter: brightness(1) saturate(1) blur(0);
+  }
+}
+
+.piece.intro-fly .tok{
+  animation: pieceIntroFly 460ms cubic-bezier(.2,1.15,.4,1) both;
+}
+@keyframes pieceIntroFly{
+  0%{
+    transform: translateY(-150px) scale(0.25) rotate(-28deg);
+    opacity: 0;
+    filter: brightness(2.4) drop-shadow(0 0 22px rgba(255,220,140,.95));
+  }
+  55%{
+    transform: translateY(6px) scale(1.08) rotate(4deg);
+    opacity: 1;
+    filter: brightness(1.22) drop-shadow(0 0 10px rgba(255,220,140,.55));
+  }
+  100%{
+    transform: translateY(0) scale(1) rotate(0);
+    opacity: 1;
+    filter: brightness(1) drop-shadow(0 0 0 transparent);
+  }
+}
+
+#boardWrap.cine-intro-board{
+  animation: cineBoardIntro 2.0s cubic-bezier(.2,.85,.3,1) both;
+  will-change: transform, filter;
+}
+@keyframes cineBoardIntro{
+  0%{
+    transform: scale(1.16);
+    filter: brightness(0.5) saturate(0.6) blur(6px);
+    box-shadow:
+      0 8px 34px rgba(0,0,0,.8),
+      inset 0 0 60px rgba(0,0,0,.4),
+      0 0 0 rgba(255,220,140,0);
+  }
+  45%{
+    transform: scale(1.015);
+    filter: brightness(1.05) saturate(1.05) blur(0);
+    box-shadow:
+      0 8px 34px rgba(0,0,0,.8),
+      inset 0 0 60px rgba(0,0,0,.4),
+      0 0 0 rgba(255,220,140,0);
+  }
+  62%{
+    transform: scale(1);
+    filter: brightness(1.28) saturate(1.15) blur(0);
+    box-shadow:
+      0 8px 34px rgba(0,0,0,.8),
+      inset 0 0 100px rgba(255,220,140,.28),
+      0 0 56px rgba(255,220,140,.65);
+  }
+  100%{
+    transform: scale(1);
+    filter: brightness(1) saturate(1) blur(0);
+    box-shadow:
+      0 8px 34px rgba(0,0,0,.8),
+      inset 0 0 60px rgba(0,0,0,.4),
+      0 0 22px rgba(255,200,120,.18);
+  }
+}
+
+/* === OUTRO: desaturado + zoom al rey === */
+#boardWrap.cine-outro-board{
+  filter: saturate(0.32) brightness(0.62) contrast(1.18);
+  transition: filter 1.3s ease-out;
+  will-change: transform, filter;
+}
+
+#boardWrap.cine-zoom-winner{
+  transform-origin: var(--zoom-x, 50%) var(--zoom-y, 50%);
+  animation: cineZoomToKing 2.4s cubic-bezier(.3,.05,.2,1) forwards;
+}
+@keyframes cineZoomToKing{
+  0%{ transform: scale(1); }
+  40%{ transform: scale(1.28); }
+  100%{ transform: scale(1.36); }
+}
+
+#boardWrap.cine-zoom-draw{
+  animation: cineZoomDraw 2.4s cubic-bezier(.3,.05,.2,1) forwards;
+}
+@keyframes cineZoomDraw{
+  0%{ transform: scale(1); }
+  100%{ transform: scale(1.10); }
+}
+
+/* Rey vencedor: pulso dorado intenso */
+.piece.cine-victor-king .tok{
+  animation: cineVictorPulse 1.15s ease-in-out infinite alternate;
+  z-index: 20;
+}
+@keyframes cineVictorPulse{
+  from{
+    box-shadow:
+      0 0 0 4px rgba(255,220,120,.9),
+      0 0 32px 10px rgba(255,200,80,.7),
+      0 0 68px 22px rgba(255,180,60,.35);
+    filter: brightness(1.18);
+  }
+  to{
+    box-shadow:
+      0 0 0 6px rgba(255,240,160,1),
+      0 0 48px 18px rgba(255,220,120,.95),
+      0 0 100px 34px rgba(255,180,60,.5);
+    filter: brightness(1.55);
+  }
+}
+
+/* Rey caído: parpadeo rojo lento */
+.piece.cine-fallen-king .tok{
+  animation: cineFallenPulse 1.7s ease-in-out infinite alternate;
+}
+@keyframes cineFallenPulse{
+  from{
+    box-shadow:
+      0 0 0 3px rgba(180,40,40,.45),
+      0 0 22px 6px rgba(220,60,60,.32);
+    filter: brightness(0.82) saturate(0.75);
+  }
+  to{
+    box-shadow:
+      0 0 0 5px rgba(255,80,80,.78),
+      0 0 44px 14px rgba(220,40,40,.55);
+    filter: brightness(1) saturate(1);
+  }
+}
+
+body.cinematic{ overflow: hidden; }
+body.cinematic #boardWrap{ z-index: 12; }
 </style>
 </head>
 
@@ -8364,6 +8583,342 @@ function drawRainRipples(W, H) {
 }
 
 /* =========================================================
+   CINEMÁTICAS DE PARTIDA — INTRO Y OUTRO
+   ========================================================= */
+const cineState = {
+  active: false,
+  kind: null,
+  skip: false,
+  token: 0,
+};
+
+let _cineOverlay = null;
+let _cineTitleCard = null;
+let _introSeenThisSession = false;
+
+function prefersReducedMotion(){
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch(e){ return false; }
+}
+
+function ensureCinematicDOM(){
+  if(_cineOverlay && document.body.contains(_cineOverlay)) return _cineOverlay;
+  const ov = document.createElement('div');
+  ov.id = 'cinematicOverlay';
+  ov.className = 'cine-overlay hidden';
+  ov.innerHTML = `
+    <div class="cine-letterbox-top"></div>
+    <div class="cine-letterbox-bottom"></div>
+    <div class="cine-titlecard">
+      <div class="cine-title-main"></div>
+      <div class="cine-title-sub"></div>
+    </div>
+  `;
+  document.body.appendChild(ov);
+  _cineOverlay = ov;
+  _cineTitleCard = ov.querySelector('.cine-titlecard');
+
+  // Skip al tocar la pantalla durante la cinemática
+  ov.addEventListener('pointerdown', () => {
+    if(cineState.active) cineState.skip = true;
+  }, { passive: true });
+  ov.addEventListener('keydown', (e) => {
+    if(cineState.active && (e.key === ' ' || e.key === 'Escape')) cineState.skip = true;
+  });
+  return ov;
+}
+
+function showCineTitle(mainText, subText, holdMs){
+  ensureCinematicDOM();
+  const main = _cineOverlay.querySelector('.cine-title-main');
+  const sub  = _cineOverlay.querySelector('.cine-title-sub');
+  main.textContent = mainText || '';
+  sub.textContent  = subText  || '';
+  _cineTitleCard.classList.remove('show');
+  void _cineTitleCard.offsetWidth;      // reflow para reiniciar la transición
+  _cineTitleCard.classList.add('show');
+  if(holdMs){
+    setTimeout(() => _cineTitleCard.classList.remove('show'), holdMs);
+  }
+}
+
+/* Sleep que respeta el skip del usuario */
+async function cineSleep(ms){
+  const target = performance.now() + ms;
+  while(performance.now() < target){
+    if(cineState.skip) return 'skipped';
+    const remaining = target - performance.now();
+    await sleep(Math.min(40, Math.max(10, remaining)));
+  }
+  return 'done';
+}
+
+/* ¿Corresponde jugar la intro? */
+function shouldPlayIntro(){
+  if(replay.active) return false;
+  if(debugState.enabled) return false;
+  if(prefersReducedMotion()) return false;
+  if(quality.effective === 'emergency' || quality.effective === 'low') return false;
+  //if(_introSeenThisSession) return false;
+  return true;
+}
+
+/* =========================================================
+   INTRO — la partida se abre
+   ========================================================= */
+async function playCinematicIntro(){
+  if(!shouldPlayIntro()) return;
+  if(!boardW || boardW < 100) return;      // layout todavía no corrió
+  if(!pieceEls.size) return;
+
+  const myToken = ++cineState.token;
+  cineState.active = true;
+  cineState.kind = 'intro';
+  cineState.skip = false;
+  _introSeenThisSession = true;
+  //sessionStorage.setItem('ajedrez_intro_seen', '1');
+
+  const prevPaused = state.paused;
+  state.paused = true;
+  state.busy = true;
+
+  const ov = ensureCinematicDOM();
+  ov.classList.remove('hidden');
+  ov.classList.add('intro');
+  document.body.classList.add('cinematic');
+
+  // 1. Cámara: zoom-in + blur → nítido
+  boardWrap.classList.add('cine-intro-board');
+
+  // 2. Piezas caen en oleada desde el centro hacia afuera
+  const pieces = [...pieceEls.entries()];
+  pieces.sort((a, b) => {
+    const A = sqToVisualRC(a[0]);
+    const B = sqToVisualRC(b[0]);
+    const dA = Math.abs(A.r - 3.5) + Math.abs(A.c - 3.5);
+    const dB = Math.abs(B.r - 3.5) + Math.abs(B.c - 3.5);
+    return dA - dB;
+  });
+
+  const stagger = 20;
+  pieces.forEach(([sq, el], i) => {
+    el.classList.remove('intro-fly');
+    el.style.animationDelay = (i * stagger) + 'ms';
+    void el.offsetWidth;                  // reflow
+    el.classList.add('intro-fly');
+  });
+
+  // 3. Sonido: fanfarria corta + drone bajo de fondo
+  sfx('game-start');
+  try {
+    if(actx){
+      const t0 = actx.currentTime;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(65, t0);
+      o.frequency.linearRampToValueAtTime(98, t0 + 1.6);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(0.05, t0 + 0.5);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.4);
+      o.connect(g).connect(masterGain);
+      o.start(t0); o.stop(t0 + 2.5);
+    }
+  } catch(e){}
+
+  // 4. Esperar a que termine la ola
+  const totalMs = pieces.length * stagger + 520;
+  const r1 = await cineSleep(totalMs);
+  if(myToken !== cineState.token) return;
+
+  // 5. Título del bioma + modo
+  if(r1 !== 'skipped'){
+    const modeLabel = aiEnabled
+      ? (rubyMode ? 'MODO RUBY' : `IA ${aiDifficulty.toUpperCase()}`)
+      : '2 JUGADORES';
+    const sideLabel = aiEnabled
+      ? `VOS: ${humanColor === 'w' ? '♔ BLANCAS' : '♚ NEGRAS'}`
+      : 'PARTIDA LOCAL';
+    showCineTitle(
+      `${currentBiome.icon} ${currentBiome.name.toUpperCase()}`,
+      `${modeLabel} · ${sideLabel}`,
+      2200
+    );
+    // El pulso de luz ahora vive dentro de la animación cineBoardIntro
+  }
+
+  await cineSleep(1000);
+  if(myToken !== cineState.token) return;
+
+  // 7. Cleanup
+  for(const [, el] of pieceEls){
+    el.classList.remove('intro-fly');
+    el.style.animationDelay = '';
+  }
+  boardWrap.classList.remove('cine-intro-board');
+  _cineTitleCard.classList.remove('show');
+  ov.classList.add('hidden');
+  ov.classList.remove('intro');
+  document.body.classList.remove('cinematic');
+
+  state.paused = prevPaused;
+  state.busy = false;
+  cineState.active = false;
+  cineState.kind = null;
+
+  // 8. Si le toca a la IA, arrancamos su turno ahora
+  const turnNow = chess.turn();
+  if(isAIPlayer(turnNow) && !state.gameOver){
+    setTimeout(aiTurn, 500);
+  }
+}
+
+/* =========================================================
+   OUTRO — la partida se cierra
+   ========================================================= */
+async function playCinematicOutro(winner, reason){
+  if(replay.active) return;
+  if(debugState.enabled) return;
+  if(prefersReducedMotion()) return;
+  if(quality.effective === 'emergency') return;
+
+  const myToken = ++cineState.token;
+  cineState.active = true;
+  cineState.kind = 'outro';
+  cineState.skip = false;
+
+  const prevPaused = state.paused;
+  state.paused = true;                    // hit-stop inicial
+  state.busy = true;
+
+  const ov = ensureCinematicDOM();
+  ov.classList.remove('hidden');
+  ov.classList.add('outro');
+  document.body.classList.add('cinematic');
+
+  // 1. Hit-stop breve — el mundo se congela un instante
+  await cineSleep(220);
+  if(myToken !== cineState.token) return;
+
+  // 2. Desaturar + oscurecer + zoom al rey vencedor
+  boardWrap.classList.add('cine-outro-board');
+
+  const winnerKingSq = winner ? findKing(winner) : null;
+  const loserKingSq  = winner ? findKing(winner === 'w' ? 'b' : 'w') : null;
+
+  if(winnerKingSq){
+    const c = squareCenter(winnerKingSq);
+    const px = (c.x / boardW) * 100;
+    const py = (c.y / boardH) * 100;
+    boardWrap.style.setProperty('--zoom-x', px + '%');
+    boardWrap.style.setProperty('--zoom-y', py + '%');
+    boardWrap.classList.add('cine-zoom-winner');
+  } else if(reason === 'draw'){
+    boardWrap.classList.add('cine-zoom-draw');
+  }
+
+  // 3. Bajar el volumen del ambiente para que mande el SFX épico
+  if(masterGain && actx){
+    try { masterGain.gain.setTargetAtTime(0.35, actx.currentTime, 0.4); } catch(e){}
+  }
+
+  // 4. Marcar los reyes
+  if(winnerKingSq){
+    const kEl = pieceEls.get(winnerKingSq);
+    if(kEl) kEl.classList.add('cine-victor-king');
+  }
+  if(loserKingSq){
+    const lEl = pieceEls.get(loserKingSq);
+    if(lEl) lEl.classList.add('cine-fallen-king');
+  }
+
+  // 5. Unpause después del hit-stop — dejamos que las partículas corran
+  state.paused = prevPaused;
+
+  // 6. Lluvia de partículas doradas
+  const W = boardW, H = boardH;
+  const dustColor = reason === 'draw' ? '#c8c8d8' : '#ffd070';
+  for(let i = 0; i < 70; i++){
+    setTimeout(() => {
+      addParticle({
+        x: rnd(0, W),
+        y: -10,
+        vx: rnd(-18, 18),
+        vy: rnd(50, 140),
+        life: rnd(1.8, 3.6),
+        maxLife: 3.6,
+        size: rnd(1.4, 3.6),
+        color: dustColor,
+        g: 22,
+        drag: 0.995,
+      });
+    }, i * 22);
+  }
+
+  // 7. SFX según el tipo de final
+  if(reason === 'checkmate'){
+    sfx('win');
+    // Acorde sostenido por detrás
+    setTimeout(() => {
+      try {
+        [392, 494, 587, 784].forEach((f, i) =>
+          setTimeout(() => tone(f, 2.0, 'triangle', 0.035, 0), i * 60)
+        );
+      } catch(e){}
+    }, 400);
+  } else if(reason === 'draw'){
+    sfx('end');
+  } else if(reason === 'timeout'){
+    sfx('timeout');
+  }
+  vibrate([70, 40, 70, 40, 320]);
+
+  // 8. Título — esperamos lo justo para que se sienta el impacto
+  await cineSleep(560);
+  if(myToken !== cineState.token) return;
+
+  let mainTitle, subTitle;
+  if(reason === 'checkmate'){
+    mainTitle = `♛ JAQUE MATE`;
+    subTitle  = `VICTORIA ${winner === 'w' ? 'BLANCAS' : 'NEGRAS'}`;
+  } else if(reason === 'draw'){
+    mainTitle = `⚖ TABLAS`;
+    subTitle  = `EMPATE PERFECTO`;
+  } else {
+    mainTitle = `⏱ TIEMPO`;
+    subTitle  = `VICTORIA ${winner === 'w' ? 'BLANCAS' : 'NEGRAS'}`;
+  }
+  showCineTitle(mainTitle, subTitle, 2600);
+
+  await cineSleep(2900);
+  if(myToken !== cineState.token) return;
+
+  // 9. Cleanup
+  for(const [, el] of pieceEls){
+    el.classList.remove('cine-victor-king', 'cine-fallen-king');
+  }
+  boardWrap.classList.remove('cine-outro-board', 'cine-zoom-winner', 'cine-zoom-draw');
+  boardWrap.style.removeProperty('--zoom-x');
+  boardWrap.style.removeProperty('--zoom-y');
+  _cineTitleCard.classList.remove('show');
+  ov.classList.add('hidden');
+  ov.classList.remove('outro');
+  document.body.classList.remove('cinematic');
+
+  // 10. Restaurar volumen del ambiente
+  if(masterGain && actx){
+    const target = (soundEnabled && !state.paused) ? 1 : 0;
+    try { masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.6); } catch(e){}
+  }
+
+  state.paused = prevPaused;
+  state.busy = false;
+  cineState.active = false;
+  cineState.kind = null;
+}
+
+/* =========================================================
    PARTÍCULAS
    ========================================================= */
 const particles = [];
@@ -12017,11 +12572,11 @@ function handleTimeout(loser) {
 	aiSearchAbort = true;
 	const winner = loser === 'w' ? 'b' : 'w';
 	const winnerName = winner === 'w' ? 'Blancas' : 'Negras';
-	sfx('timeout');
 	saveCurrentMatch(winnerName, winner);
 	vibrate([200, 100, 200, 100, 400]);
 	setTimeout(async () => {
-		const choice = await showModal('⏱ ¡Tiempo agotado!',
+    await playCinematicOutro(winner, 'timeout');
+    const choice = await showModal('⏱ ¡Tiempo agotado!',
 			`Las ${winnerName} ganan por tiempo.`,
 			[{
 					label: '🔄 Ver repetición',
@@ -12447,9 +13002,8 @@ function checkGameEnd() {
 		vibrate([80, 80, 80, 80, 220]);
 		saveCurrentMatch(winnerName, winner);
 		setTimeout(async () => {
+			await playCinematicOutro(winner, 'checkmate');
 			const humanWins = (winner === humanColor);
-			sfx(humanWins ? 'win' : 'lose');
-
 			const achList = renderAchSummary();
 			const choice = await showModal('¡Jaque Mate!',
 				`<div style="margin-bottom:10px">Las ${winnerName} ganan la partida.</div>${achList}`,
@@ -12477,6 +13031,7 @@ function checkGameEnd() {
 		vibrate([100, 60, 100, 60, 200]);
 		saveCurrentMatch('Tablas', null);
 		setTimeout(async () => {
+			await playCinematicOutro(null, 'draw');
 			const achList = renderAchSummary();
 			const choice = await showModal('Tablas',
 				`<div style="margin-bottom:10px">La partida termina en empate.</div>${achList}`,
@@ -15791,6 +16346,7 @@ async function aiExecutePower(opt) {
 async function aiTurn() {
 	if (aiThinking) return;
 	if (state.gameOver || replay.active || state.paused) return;
+	if (cineState.active) return;
 	if (!isAIPlayer(chess.turn())) return;
 
 	aiThinking = true;
@@ -17248,12 +17804,19 @@ IA en debug usa dificultad fija "Difícil"
 <button class="debugBtn" id="dbgIraW">⚔️ Ira ♔</button>
 <button class="debugBtn" id="dbgIraB">⚔️ Ira ♚</button>
 <button class="debugBtn" id="dbgClearShields">🛡️ Quitar escudos</button>
+<button class="debugBtn" id="dbgReplayIntro">🎬 Repetir intro</button>
 </div>
 </div>
 `;
 }
 
 function wireDebugGame() {
+	$('#dbgReplayIntro').onclick = () => {
+		_introSeenThisSession = false;
+		sessionStorage.removeItem('ajedrez_intro_seen');
+		playCinematicIntro();
+	};
+	
 	$('#dbgAIW').onclick = () => {
 		debugState.aiColors.w = !debugState.aiColors.w;
 		renderDebugTab('game');
@@ -17916,9 +18479,10 @@ function newGame() {
 	if (boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
 	initAtmosphere();
 	applyBiomeAudioTargets(currentBiome.id);
-	setTimeout(() => toast(`${currentBiome.icon} ${currentBiome.name}`, '#c8b898'), 350);
-
-	// ⬇️ NUEVO: decidir orientación antes de reconstruir nada
+	//setTimeout(() => toast(`${currentBiome.icon} ${currentBiome.name}`, '#c8b898'), 350);
+  // La intro cinematográfica muestra el nombre del bioma — el toast lo omitimos
+	
+	// decidir orientación antes de reconstruir nada
 	flipBoard = aiEnabled && humanColor === 'b';
 	applyGridFlip();
 
@@ -18001,7 +18565,7 @@ function newGame() {
 	updateUI();
 	startTimer();
 	updateClocks();
-	setTimeout(() => sfx('game-start'), 700);
+	setTimeout(() => playCinematicIntro(), 100);
 
 	// Debug mode
 	setDebugMode(debugState.enabled);
