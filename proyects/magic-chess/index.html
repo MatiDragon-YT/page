@@ -2253,9 +2253,6 @@ MODO DEBUG
 /* =========================================================
 MODO DEBUG — LAYOUT ESCRITORIO (panel lateral)
 ========================================================= */
-/* =========================================================
-MODO DEBUG — LAYOUT ESCRITORIO (panel lateral acoplado)
-========================================================= */
 @media (min-width: 1024px) {
 
 	/* Reservar el 42% derecho para el panel */
@@ -3733,6 +3730,8 @@ function initAmbience() {
 }
 
 function updateAmbience() {
+	if (state.paused === 0) return;
+	
 	if (!actx || !ambience.started) return;
 	const now = performance.now();
 	const elapsed = Math.min(0.5, (now - ambience.lastUpdate) / 1000);
