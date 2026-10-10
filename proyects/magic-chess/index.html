@@ -2426,7 +2426,10 @@ body.cinematic .cine-letterbox-bottom{ height: 9vh; }
   letter-spacing: 3px;
   text-transform: uppercase;
   color: #d8c8a0;
-  text-shadow: 0 2px 8px rgba(0,0,0,.95);
+  text-shadow: 
+		-1px 1px 0 #827717,
+		1px 1px 0 #827717,
+		0 2px 8px rgba(0,0,0,.95);
 }
 
 /* === INTRO: cámara entra + piezas caen === */
@@ -2576,6 +2579,134 @@ body.cinematic .cine-letterbox-bottom{ height: 9vh; }
 
 body.cinematic{ overflow: hidden; }
 body.cinematic #boardWrap{ z-index: 12; }
+
+/* =========================================================
+   MODAL DE AUDIO
+   ========================================================= */
+.volRow{
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(20,15,10,.55);
+  border: 1px solid #3a2a1a;
+  transition: border-color .18s, background .18s;
+}
+.volRow.muted{
+  border-color: #6a2a2a;
+  background: rgba(30,12,12,.55);
+}
+.volHead{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #d8ccb0;
+}
+.volIcon{ font-size: 16px; line-height: 1; }
+.volName{
+  font-weight: 800;
+  letter-spacing: .4px;
+  flex: 1;
+  text-align: left;
+}
+.vol-val{
+  font-family: ui-monospace, monospace;
+  font-weight: 800;
+  font-size: 11px;
+  color: #7ac0ff;
+  min-width: 56px;
+  text-align: right;
+  text-shadow: 0 0 6px rgba(90,150,255,.5);
+}
+.volRow.muted .vol-val{ color: #ff8080; text-shadow: 0 0 6px rgba(255,90,90,.55); }
+
+.volSlider{
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #1a3a6a, #63a8ff, #a8d8ff);
+  outline: none;
+  cursor: pointer;
+  margin: 4px 0 2px;
+}
+.volRow.muted .volSlider{ background: linear-gradient(90deg, #3a1a1a, #6a2a2a); }
+.volSlider::-webkit-slider-thumb{
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(#3a2e1a, #20180e);
+  border: 2px solid #ffd070;
+  box-shadow: 0 0 10px rgba(255,200,90,.55);
+  cursor: grab;
+  transition: transform .1s;
+}
+.volSlider::-webkit-slider-thumb:active{ transform: scale(1.15); }
+.volSlider::-moz-range-thumb{
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(#3a2e1a, #20180e);
+  border: 2px solid #ffd070;
+  box-shadow: 0 0 10px rgba(255,200,90,.55);
+  cursor: grab;
+}
+.volHint{
+  font-size: 10px;
+  color: #8a8070;
+  text-align: left;
+  margin-top: 2px;
+  letter-spacing: .2px;
+}
+
+/* =========================================================
+   MODAL DE TABLERO
+   ========================================================= */
+.bsRow{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+}
+.bsRow input[type=range]{ flex: 1; }
+.bsRow .val{
+  min-width: 58px;
+  text-align: right;
+  font-family: ui-monospace, monospace;
+  font-weight: 800;
+  font-size: 12px;
+  color: #ffd070;
+  text-shadow: 0 0 6px rgba(255,200,90,.5);
+}
+
+/* =========================================================
+   TOGGLES DE RESALTADORES POST-ACCIÓN
+   Solo afectan la estela que deja cada acción — el targeting
+   mientras elegís objetivo NO se toca.
+   ========================================================= */
+
+/* Estela del último movimiento */
+body.hl-move-off .cell.last-from::after,
+body.hl-move-off .cell.last-to::after,
+body.hl-move-off .cell.last-prev::after{
+  display: none !important;
+}
+
+/* Estela del último poder tirado */
+body.hl-power-off .cell.last-power-ray::after,
+body.hl-power-off .cell.last-power-zombie::after,
+body.hl-power-off .cell.last-power-quake::after,
+body.hl-power-off .cell.last-power-teleport::after,
+body.hl-power-off .cell.last-power-heal::after{
+  display: none !important;
+}
+
+/* Los dos se desactivan a la vez desde el toggle maestro */
+body.hl-move-off.hl-power-off .cell .costTag{
+  /* nada — el costTag pertenece al targeting, no a la estela */
+}
+
 </style>
 </head>
 
@@ -2720,6 +2851,100 @@ function formatTime(sec) {
 }
 
 /* =========================================================
+   SISTEMA DE AUDIO — VOLÚMENES POR BUS
+   ========================================================= */
+function _loadVol(key, def){
+  const raw = localStorage.getItem(key);
+  if(raw === null) return def;
+  const v = parseFloat(raw);
+  return isFinite(v) ? clamp(v, 0, 1) : def;
+}
+
+const audioVolumes = {
+  master:   _loadVol('ajedrez_vol_master',   1.0),
+  ambience: _loadVol('ajedrez_vol_ambience', 1.0),
+  sfx:      _loadVol('ajedrez_vol_sfx',      1.0),
+  ui:       _loadVol('ajedrez_vol_ui',       0.85),
+};
+
+const busGains = {
+  ambience: null,
+  sfx:      null,
+  ui:       null,
+};
+
+let _ambienceSchedulersRunning = false;
+
+function setBusConnected(bus, connected){
+  if(!bus || !masterGain) return;
+  if(bus._connected === connected) return;
+  try {
+    if(connected) bus.connect(masterGain);
+    else          bus.disconnect();
+    bus._connected = connected;
+  } catch(e){}
+}
+
+/* Actualiza los gains de los buses y decide si suspender el contexto */
+function updateAudioBuses(){
+  if(!actx || !masterGain) return;
+  const t = actx.currentTime;
+  const paused = (state.paused && !cineState.active) || !soundEnabled;
+
+  // Master siempre existe; su gain refleja mute + volumen del slider
+  const masterTarget = paused ? 0 : audioVolumes.master;
+  try { masterGain.gain.setTargetAtTime(masterTarget, t, 0.08); } catch(e){}
+
+  // Buses: aplicar volumen y conectar/desconectar según corresponda
+  for(const [name, gain] of Object.entries(busGains)){
+    if(!gain) continue;
+    const vol = audioVolumes[name];
+    try { gain.gain.setTargetAtTime(vol, t, 0.08); } catch(e){}
+    // Si el bus queda en 0 → desconectar para no propagar (ahorra trabajo downstream)
+    setBusConnected(gain, vol > 0.001);
+  }
+
+  // --- Schedulers de ambience ---
+  const ambienceActive = audioVolumes.ambience > 0.001 && soundEnabled && !state.paused;
+  if(ambienceActive && !_ambienceSchedulersRunning){
+    _ambienceSchedulersRunning = true;
+    if(typeof resetBiomeEventScheduler === 'function') resetBiomeEventScheduler();
+  } else if(!ambienceActive && _ambienceSchedulersRunning){
+    _ambienceSchedulersRunning = false;
+    if(ambience.biomeEventTimer){ clearTimeout(ambience.biomeEventTimer); ambience.biomeEventTimer = null; }
+    ambience.biomeEventToken = (ambience.biomeEventToken || 0) + 1;
+  }
+
+  // --- Suspender el contexto si TODO está silenciado (ahorro real de CPU) ---
+  const totalActive = paused
+    ? 0
+    : audioVolumes.master * (audioVolumes.ambience + audioVolumes.sfx + audioVolumes.ui);
+
+  if(totalActive < 0.005){
+    // Fade corto y suspender
+    setTimeout(() => {
+      if(!actx) return;
+      const stillMuted =
+        (state.paused || !soundEnabled) ||
+        (audioVolumes.master * (audioVolumes.ambience + audioVolumes.sfx + audioVolumes.ui)) < 0.005;
+      if(stillMuted && actx.state === 'running'){
+        try { actx.suspend().catch(() => {}); } catch(e){}
+      }
+    }, 180);
+  } else {
+    if(actx.state === 'suspended'){
+      try { actx.resume().catch(() => {}); } catch(e){}
+    }
+  }
+}
+
+function saveAudioVolume(name, value){
+  audioVolumes[name] = clamp(value, 0, 1);
+  localStorage.setItem('ajedrez_vol_' + name, String(audioVolumes[name]));
+  updateAudioBuses();
+}
+
+/* =========================================================
    MODO DEBUG
    ========================================================= */
 const debugState = {
@@ -2770,15 +2995,23 @@ function initAudio() {
 	}
 	try {
 		actx = new(window.AudioContext || window.webkitAudioContext)();
-		masterGain = actx.createGain();
-		masterGain.gain.value = soundEnabled ? 1 : 0;
-		masterGain.connect(actx.destination);
+    masterGain = actx.createGain();
+    masterGain.gain.value = soundEnabled ? audioVolumes.master : 0;
+    masterGain.connect(actx.destination);
 
-		uiGain = actx.createGain();
-		uiGain.gain.value = soundEnabled ? 1 : 0;
-		uiGain.connect(actx.destination);
+    // Buses por categoría
+    for(const name of ['ambience','sfx','ui']){
+      const g = actx.createGain();
+      g.gain.value = audioVolumes[name];
+      g.connect(masterGain);
+      g._connected = true;
+      busGains[name] = g;
+    }
+    // Alias para compatibilidad con el código existente
+    uiGain = busGains.ui;
 
-		initAmbience();
+    initAmbience();
+    updateAudioBuses();
 		// *** FIX: despertar el contexto apenas se crea ***
 		if (actx.state === 'suspended') {
 			actx.resume().catch(() => {});
@@ -3743,7 +3976,7 @@ function initAmbience() {
 	rainLp.Q.value = 0.6;
 	const rainLpGain = actx.createGain();
 	rainLpGain.gain.value = 0;
-	rainSrc.connect(rainLp).connect(rainLpGain).connect(masterGain);
+	rainSrc.connect(rainLp).connect(rainLpGain).connect(busGains.ambience);
 
 	const rainHiSrc = actx.createBufferSource();
 	rainHiSrc.buffer = noiseBuf;
@@ -3754,7 +3987,7 @@ function initAmbience() {
 	rainBp.Q.value = 0.35;
 	const rainBpGain = actx.createGain();
 	rainBpGain.gain.value = 0;
-	rainHiSrc.connect(rainBp).connect(rainBpGain).connect(masterGain);
+	rainHiSrc.connect(rainBp).connect(rainBpGain).connect(busGains.ambience);
 
 	// --- VIENTO: ruido grave filtrado ---
 	const windSrc = actx.createBufferSource();
@@ -3767,7 +4000,7 @@ function initAmbience() {
 	const windGain = actx.createGain();
 	windGain.gain.value = 0;
 	const windPanner = actx.createStereoPanner();
-	windSrc.connect(windLp).connect(windPanner).connect(windGain).connect(masterGain);
+	windSrc.connect(windLp).connect(windPanner).connect(windGain).connect(busGains.ambience);
 	Object.assign(ambience, {
 		windPanner
 	});
@@ -3775,7 +4008,7 @@ function initAmbience() {
 	// --- GRILLOS ---
 	const cricketGain = actx.createGain();
 	cricketGain.gain.value = 0;
-	cricketGain.connect(masterGain);
+	cricketGain.connect(busGains.ambience);
 
 	rainSrc.start();
 	rainHiSrc.start();
@@ -3809,7 +4042,7 @@ function initAmbience() {
 	windHiBp.Q.value = 2.4;
 	const windHiGain = actx.createGain();
 	windHiGain.gain.value = 0;
-	windHiSrc.connect(windHiBp).connect(windHiGain).connect(masterGain);
+	windHiSrc.connect(windHiBp).connect(windHiGain).connect(busGains.ambience);
 
 	// LFO que modula la frecuencia del filtro (silbido "cantado")
 	const windHiLfo = actx.createOscillator();
@@ -3846,7 +4079,7 @@ function initAmbience() {
 	lavaLp.Q.value = 1.6;
 	const lavaGain = actx.createGain();
 	lavaGain.gain.value = 0;
-	lavaSrc.connect(lavaLp).connect(lavaGain).connect(masterGain);
+	lavaSrc.connect(lavaLp).connect(lavaGain).connect(busGains.ambience);
 
 	// Sub-oscilador para el "sentir" del retumbo (30-45Hz)
 	const lavaSubOsc = actx.createOscillator();
@@ -3854,7 +4087,7 @@ function initAmbience() {
 	lavaSubOsc.frequency.value = 38;
 	const lavaSubGain = actx.createGain();
 	lavaSubGain.gain.value = 0;
-	lavaSubOsc.connect(lavaSubGain).connect(masterGain);
+	lavaSubOsc.connect(lavaSubGain).connect(busGains.ambience);
 
 	// LFO que modula el retumbo (respiración lenta de la lava)
 	const lavaLfo = actx.createOscillator();
@@ -3867,7 +4100,7 @@ function initAmbience() {
 	// --- BUS DE EVENTOS (pájaros, crujidos, burbujas) ---
 	const ambientEventGain = actx.createGain();
 	ambientEventGain.gain.value = 0;
-	ambientEventGain.connect(masterGain);
+	ambientEventGain.connect(busGains.ambience);
 
 
 
@@ -3886,7 +4119,7 @@ function initAmbience() {
 	droneGain.gain.value = 0;
 	droneOsc1.connect(droneLp);
 	droneOsc2.connect(droneLp);
-	droneLp.connect(droneGain).connect(masterGain);
+	droneLp.connect(droneGain).connect(busGains.ambience);
 	droneOsc1.start();
 	droneOsc2.start();
 	Object.assign(ambience, {
@@ -3903,7 +4136,7 @@ function initAmbience() {
 	reverbReturn.gain.value = 0.55;
 	ambientEventGain.connect(reverbSend);
 	reverbSend.connect(reverbConv);
-	reverbConv.connect(reverbReturn).connect(masterGain);
+	reverbConv.connect(reverbReturn).connect(busGains.ambience);
 	Object.assign(ambience, {
 		reverbConv,
 		reverbSend,
@@ -3972,7 +4205,7 @@ function updateAmbience() {
 
 	const rl = ambience.rainLevel;
 	const nl = ambience.nightLevel;
-	const pauseFactor = state.paused ? 0 : 1;
+	const pauseFactor = (state.paused && !cineState.active) ? 0 : 1;
 	const t = actx.currentTime;
 
 	// --- LLUVIA: con modificadores según bioma ---
@@ -4041,6 +4274,11 @@ function updateAmbience() {
 
 function scheduleCricket() {
 	if (!actx || !ambience.started) return;
+	
+	if(audioVolumes.ambience < 0.001){
+    ambience.cricketTimer = setTimeout(scheduleCricket, 3000);
+    return;
+  }
 	// Ráfagas más irregulares, y se espacian si hay poca energía
 	const energy = ambience.cricketTarget;
 	const baseDelay = 900 + (1 - energy) * 3500;
@@ -4182,7 +4420,7 @@ function startBoom(tStart, dur, vol, cutoff, intensity, near) {
 	g.gain.linearRampToValueAtTime(vol, tStart + dur * 0.15);
 	g.gain.setValueAtTime(vol, tStart + dur * 0.30);
 	g.gain.exponentialRampToValueAtTime(0.0001, tStart + dur);
-	src.connect(lp).connect(g).connect(masterGain);
+	src.connect(lp).connect(g).connect(busGains.ambience);
 	src.start(tStart);
 	src.stop(tStart + dur + 0.05);
 
@@ -4211,7 +4449,7 @@ function startBoom(tStart, dur, vol, cutoff, intensity, near) {
 		pg.gain.setValueAtTime(0.0001, tStart);
 		pg.gain.linearRampToValueAtTime(pvol, tStart + dur * 0.10);
 		pg.gain.exponentialRampToValueAtTime(0.0001, tStart + dur * 0.75);
-		ps.connect(bp).connect(pg).connect(masterGain);
+		ps.connect(bp).connect(pg).connect(busGains.ambience);
 		ps.start(tStart);
 	}
 }
@@ -4254,7 +4492,7 @@ function playThunder(intensity, distance) {
 		cg.gain.setValueAtTime(0.0001, t0);
 		cg.gain.linearRampToValueAtTime(cvol, t0 + 0.012); // ataque 12ms
 		cg.gain.exponentialRampToValueAtTime(0.0001, t0 + cdur);
-		cs.connect(hp).connect(peak).connect(cg).connect(masterGain);
+		cs.connect(hp).connect(peak).connect(cg).connect(busGains.ambience);
 		cs.start(t0);
 	}
 
@@ -4299,49 +4537,65 @@ function playThunder(intensity, distance) {
 	tg.gain.setValueAtTime(0.0001, t0 + tailDelay);
 	tg.gain.linearRampToValueAtTime(tvol, t0 + tailDelay + 0.35);
 	tg.gain.exponentialRampToValueAtTime(0.0001, t0 + tailDelay + tailDur);
-	ts.connect(tlp).connect(tg).connect(masterGain);
+	ts.connect(tlp).connect(tg).connect(busGains.ambience);
 	ts.start(t0 + tailDelay);
 }
 
-function tone(freq, dur, type = 'sine', vol = 0.06, slide = 0, bus = null) {
-	if (!actx || !soundEnabled) return;
-	const o = actx.createOscillator(),
-		g = actx.createGain();
-	o.type = type;
-	o.frequency.setValueAtTime(freq, actx.currentTime);
-	if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), actx.currentTime + dur);
-	g.gain.setValueAtTime(vol, actx.currentTime);
-	g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
-	o.connect(g);
-	g.connect(bus || masterGain); // ⬅️ cambio acá
-	o.start();
-	o.stop(actx.currentTime + dur);
+function _tone(freq, dur, type = 'sine', vol = 0.06, slide = 0, bus = null) {
+  if (!actx || !soundEnabled) return;
+  const target = bus || busGains.sfx || masterGain;
+  if (!target) return;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, actx.currentTime);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), actx.currentTime + dur);
+  g.gain.setValueAtTime(vol, actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+  o.connect(g); g.connect(target);
+  o.start(); o.stop(actx.currentTime + dur);
 }
 
-function noiseBurst(dur, vol = 0.05, filterFreq = 1200, bus = null) {
-	if (!actx || !soundEnabled) return;
-	const n = Math.floor(actx.sampleRate * dur);
-	const buf = actx.createBuffer(1, n, actx.sampleRate);
-	const d = buf.getChannelData(0);
-	for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
-	const src = actx.createBufferSource();
-	src.buffer = buf;
-	const f = actx.createBiquadFilter();
-	f.type = 'lowpass';
-	f.frequency.value = filterFreq;
-	const g = actx.createGain();
-	g.gain.value = vol;
-	src.connect(f);
-	f.connect(g);
-	g.connect(bus || masterGain); // ⬅️ cambio acá
-	src.start();
+function _noiseBurst(dur, vol = 0.05, filterFreq = 1200, bus = null) {
+  if (!actx || !soundEnabled) return;
+  const target = bus || busGains.sfx || masterGain;
+  if (!target) return;
+  const n = Math.floor(actx.sampleRate * dur);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const src = actx.createBufferSource();
+  src.buffer = buf;
+  const f = actx.createBiquadFilter();
+  f.type = 'lowpass'; f.frequency.value = filterFreq;
+  const g = actx.createGain(); g.gain.value = vol;
+  src.connect(f); f.connect(g); g.connect(target); src.start();
 }
+
+const _UI_SFX_KINDS = new Set([
+  'ui-click','modal-open','modal-close','select','cycle','draft-pick',
+  'draft-done','tooltip-show','toast-pop','drag-lift','drag-drop',
+  'target-loop-ray','target-loop-heal','target-loop-teleport',
+  'target-loop-shield','target-loop-zombie','target-loop-quake',
+  'dice','no-moves','slider-tick','quality-up','quality-down',
+  'biome-change','side-pick','deny'
+]);
 
 function sfx(kind) {
-	if (!actx) initAudio(); // ⬅️ NUEVO: auto-init
-	if (!actx) return;
-	if (!soundEnabled) return; // ⬅️ NUEVO: chequeo explícito
-	switch (kind) {
+  if (!actx) initAudio();
+  if (!actx) return;
+  if (!soundEnabled) return;
+  if (state.paused) return;
+
+  const isUI = _UI_SFX_KINDS.has(kind);
+  const bus  = isUI ? busGains.ui : busGains.sfx;
+  const vol  = isUI ? audioVolumes.ui : audioVolumes.sfx;
+  if (!bus || vol < 0.001) return;      // ⬅️ early-return: 0 CPU
+
+  // Wrappers locales que capturan el bus — las ~80 llamadas del switch no cambian
+  const tone       = (f, d, t, v, s) => _tone(f, d, t, v, s, bus);
+  const noiseBurst = (d, v, ff)      => _noiseBurst(d, v, ff, bus);
+
+  switch (kind) {
 		case 'move':
 			tone(220, .09, 'triangle', .045, -60);
 			break;
@@ -4719,7 +4973,45 @@ const quality = {
 	moveBoost: false,
 	showFps: localStorage.getItem('ajedrez_showfps') === 'on',
 	fpsGraph: [], // historial corto para el mini-gráfico
+	cinematicsEnabled: localStorage.getItem('ajedrez_cine') !== 'off',
+	ambientEnabled: localStorage.getItem('ajedrez_ambient') !== 'off',
 };
+
+/* =========================================================
+   ESTILO DEL TABLERO — independiente de calidad gráfica
+   ========================================================= */
+const boardStyle = {
+  gridIntensity: parseFloat(localStorage.getItem('ajedrez_grid_i') || '1.0'),
+  checkerAlpha:  parseFloat(localStorage.getItem('ajedrez_checker_a') || '0'),
+  checkerMode:   localStorage.getItem('ajedrez_checker_m') || 'contrast',
+  hlMove:  localStorage.getItem('ajedrez_hl_move')  !== 'off',   // from/to del último movimiento
+  hlPower: localStorage.getItem('ajedrez_hl_power') !== 'off',   // last-power-* después de tirar la carta
+  decals:  localStorage.getItem('ajedrez_decals')   !== 'off',
+};
+
+function saveBoardStyle(){
+  localStorage.setItem('ajedrez_grid_i', String(boardStyle.gridIntensity));
+  localStorage.setItem('ajedrez_checker_a', String(boardStyle.checkerAlpha));
+  localStorage.setItem('ajedrez_checker_m', boardStyle.checkerMode);
+  localStorage.setItem('ajedrez_hl_move',  boardStyle.hlMove  ? 'on' : 'off');
+  localStorage.setItem('ajedrez_hl_power', boardStyle.hlPower ? 'on' : 'off');
+  localStorage.setItem('ajedrez_decals',   boardStyle.decals  ? 'on' : 'off');
+}
+
+function applyBoardVisualFlags(){
+  document.body.classList.toggle('hl-move-off',  !boardStyle.hlMove);
+  document.body.classList.toggle('hl-power-off', !boardStyle.hlPower);
+}
+
+let _checkerRebuildPending = false;
+function scheduleTerrainRebuild(){
+  if(_checkerRebuildPending) return;
+  _checkerRebuildPending = true;
+  requestAnimationFrame(() => {
+    _checkerRebuildPending = false;
+    if(terr.h && boardW > 0) renderTerrain(boardW, boardH);
+  });
+}
 
 /* FPS recientes: ¿hay señales de estrés? */
 function recentFpsStressed() {
@@ -4757,15 +5049,12 @@ function getRainScale() {
 }
 
 function paintPowerHighlights() {
-	if (!state.powerHighlights || !state.powerHighlights.length) return;
-	for (const {
-			sq,
-			kind
-		}
-		of state.powerHighlights) {
-		const c = gridEl.querySelector(`[data-sq="${sq}"]`);
-		if (c) c.classList.add('last-power-' + kind);
-	}
+  if(!boardStyle.hlPower) return;
+  if (!state.powerHighlights || !state.powerHighlights.length) return;
+  for (const {sq, kind} of state.powerHighlights) {
+    const c = gridEl.querySelector(`[data-sq="${sq}"]`);
+    if (c) c.classList.add('last-power-' + kind);
+  }
 }
 
 function setPowerHighlight(squares, kind) {
@@ -7654,6 +7943,7 @@ function spawnAmbientLife(W, H){
 }
 
 function updateAmbientLife(dt){
+	if(!quality.ambientEnabled) return;
   const now = performance.now();
   const weather = {
     rain: rainAmt,
@@ -7738,6 +8028,7 @@ function updateAmbientLife(dt){
 }
 
 function drawAmbientLife(W, H){
+	if(!quality.ambientEnabled) return;
   const q = currentQuality();
   if(!q.fireflies) return;
   const scale = q.particles;
@@ -8162,6 +8453,7 @@ function decalFadeFactor(d) {
 
 function addDecal(sq, kind, opts = {}) {
 	if (!sq || !kind) return;
+	if (!boardStyle.decals) return;
 	if (!quality.particlesEnabled) return;
 	if (currentQuality().level === 'emergency') return;
 
@@ -8192,6 +8484,7 @@ function updateDecals(dt) {
 }
 
 function drawDecals(W, H) {
+	if (!boardStyle.decals) return;
 	if (!decals.length) return;
 	const q = currentQuality();
 	if (q.level === 'emergency') return;
@@ -8656,11 +8949,11 @@ async function cineSleep(ms){
 
 /* ¿Corresponde jugar la intro? */
 function shouldPlayIntro(){
+	if(!quality.cinematicsEnabled) return false;
   if(replay.active) return false;
   if(debugState.enabled) return false;
   if(prefersReducedMotion()) return false;
   if(quality.effective === 'emergency' || quality.effective === 'low') return false;
-  //if(_introSeenThisSession) return false;
   return true;
 }
 
@@ -8677,7 +8970,6 @@ async function playCinematicIntro(){
   cineState.kind = 'intro';
   cineState.skip = false;
   _introSeenThisSession = true;
-  //sessionStorage.setItem('ajedrez_intro_seen', '1');
 
   const prevPaused = state.paused;
   state.paused = true;
@@ -10768,12 +11060,30 @@ function renderTerrain(W, H) {
 		o.lineTo(oc.width, i * step);
 		o.stroke();
 	}
-	o.fillStyle = 'rgba(255,255,255,0.022)';
-	for (let r = 0; r < 8; r++)
-		for (let c = 0; c < 8; c++) {
-			if ((r + c) % 2 === 0) continue;
-			o.fillRect(c * step, r * step, step, step);
-		}
+	  // Patrón de casillas configurable
+  if(boardStyle.checkerAlpha > 0.001){
+    const a = boardStyle.checkerAlpha;
+    const mode = boardStyle.checkerMode;
+    for(let r = 0; r < 8; r++){
+      for(let c = 0; c < 8; c++){
+        const isDark = (r + c) % 2 === 1;
+        let fill = null;
+        if(mode === 'white'){
+          if(isDark) fill = `rgba(255,250,235,${a})`;
+        } else if(mode === 'dark'){
+          if(!isDark) fill = `rgba(6,4,2,${a * 0.85})`;
+        } else { // contrast — máxima legibilidad con mínima alpha
+          fill = isDark
+            ? `rgba(255,250,235,${a})`
+            : `rgba(6,4,2,${a * 0.50})`;
+        }
+        if(fill){
+          o.fillStyle = fill;
+          o.fillRect(c * step, r * step, step, step);
+        }
+      }
+    }
+  }
 	o.strokeStyle = 'rgba(255,225,160,0.20)';
 	o.lineWidth = Math.max(1.5, oc.width / 260);
 	o.strokeRect(o.lineWidth / 2, o.lineWidth / 2, oc.width - o.lineWidth, oc.height - o.lineWidth);
@@ -10929,7 +11239,7 @@ function scheduleWindGust() {
 }
 
 function updateWindState(dt) {
-	if (state.paused) return;
+	if (state.paused && !cineState.active) return;
 	const now = performance.now();
 	if (windState.nextChange === 0) scheduleWindGust();
 	if (now >= windState.nextChange) scheduleWindGust();
@@ -11095,7 +11405,7 @@ function getVortexProfile() {
 }
 
 function updateVortices(dt, W, H, intensity) {
-	if (state.paused) return;
+	if (state.paused && !cineState.active) return;
 	// Biomas sin vórtices → limpiar y salir
 	if (!currentBiome.hasVortices) {
 		if (vortices.list.length) vortices.list.length = 0;
@@ -11506,9 +11816,10 @@ function buildGridSprites(W, H, lw, stops) {
 	const gradV = cxV.createLinearGradient(0, 0, 0, H);
 	const waveWidth = 0.14;
 	const echoWidth = 0.22;
-	const baseA = 0.040,
-		peakA = 0.46,
-		echoPeakA = 0.14;
+	const gi = boardStyle.gridIntensity;
+  const baseA = 0.040 * gi,
+        peakA = 0.46  * gi,
+        echoPeakA = 0.14 * gi;
 	for (let s = 0; s <= stops; s++) {
 		const f = s / stops;
 		const d = f - 0.5;
@@ -11586,11 +11897,11 @@ function buildGridSprites(W, H, lw, stops) {
 	spriteCache.gridCellGlow = cG;
 }
 
-function ensureGridSprites(W, H, lw, stops) {
-	const key = `${W}x${H}|${lw.toFixed(2)}|${stops}`;
-	if (spriteCache.gridKey === key) return;
-	buildGridSprites(W, H, lw, stops);
-	spriteCache.gridKey = key;
+function ensureGridSprites(W, H, lw, stops){
+  const key = `${W}x${H}|${lw.toFixed(2)}|${stops}|${boardStyle.gridIntensity.toFixed(2)}`;
+  if(spriteCache.gridKey === key) return;
+  buildGridSprites(W, H, lw, stops);
+  spriteCache.gridKey = key;
 }
 
 function buildGrid() {
@@ -12188,6 +12499,7 @@ function showDraftModal(color) {
    RESALTADOS
    ========================================================= */
 function paintLastMove() {
+	if(!boardStyle.hlMove) return;
 	const lm = state.lastMove;
 	if (!lm) return;
 	const currentSet = new Set();
@@ -12610,13 +12922,7 @@ function updatePauseState() {
 	$('#btnPause') && ($('#btnPause').textContent = state.userPaused ? '▶' : '⏸');
 
 	// Fade maestro del audio: silencia TODO si está pausado
-	if (actx && masterGain) {
-		const target = (state.paused || !soundEnabled) ? 0 : 1;
-		try {
-			masterGain.gain.cancelScheduledValues(actx.currentTime);
-			masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.10);
-		} catch (e) {}
-	}
+	if (actx && masterGain) updateAudioBuses();
 
 	// Congelar/reanudar reloj de ajedrez
 	if (state.paused) {
@@ -17947,6 +18253,322 @@ document.addEventListener('click', (e) => {
 	if (tab) renderDebugTab(tab.dataset.tab);
 }, true);
 
+async function openBoardSettings() {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    const m = document.createElement('div');
+    m.className = 'modal wide';
+
+    const PRESETS = [
+      { id:'off',      icon:'🕳️', label:'Apagado',  g:0.25, a:0.00, mode:'contrast' },
+      { id:'subtle',   icon:'✨', label:'Sutil',    g:0.70, a:0.04, mode:'contrast' },
+      { id:'normal',   icon:'⚖️', label:'Normal',   g:1.00, a:0.00, mode:'contrast' },
+      { id:'intense',  icon:'🔥', label:'Intenso',  g:1.45, a:0.08, mode:'contrast' },
+      { id:'classic',  icon:'♟️', label:'Clásico',  g:1.00, a:0.13, mode:'contrast' },
+      { id:'zen',      icon:'🧘', label:'Zen',      g:0.00, a:0.00, mode:'contrast' },
+    ];
+
+    m.innerHTML = `
+      <h3>🖼️ Estilo del tablero</h3>
+      <p style="margin-bottom:12px">Ajustá la cuadrícula, el patrón de casillas y qué resaltadores querés ver.</p>
+
+      <div class="section">
+        <div class="section-title">Ajustes rápidos</div>
+        <div class="cfgGrid c3" id="bsPresets">
+          ${PRESETS.map(p => `
+            <button class="cfgOpt" data-p="${p.id}">
+              <span class="ic">${p.icon}</span>${p.label}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Opacidad de cuadrícula</div>
+        <div class="bsRow">
+          <input type="range" id="bsGrid" min="0" max="200" step="5" class="volSlider">
+          <div class="val" id="bsGridVal">—</div>
+        </div>
+        <div class="volHint">0% = invisible · 100% = default · 200% = máximo</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Contraste de casillas</div>
+        <div class="bsRow">
+          <input type="range" id="bsChecker" min="0" max="30" step="1" class="volSlider">
+          <div class="val" id="bsCheckerVal">—</div>
+        </div>
+        <div class="volHint">0% = sin patrón · 30% = ajedrez bien marcado</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Modo del patrón</div>
+        <div class="cfgGrid c3" id="bsCheckerMode">
+          <button class="cfgOpt" data-v="contrast"><span class="ic">◐</span>Contraste</button>
+          <button class="cfgOpt" data-v="white"><span class="ic">◻️</span>Claro</button>
+          <button class="cfgOpt" data-v="dark"><span class="ic">◼️</span>Oscuro</button>
+        </div>
+      </div>
+
+      <div class="section">
+				<div class="section-title">Estelas post-acción</div>
+				<div class="cfgGrid" id="bsHighlights">
+					<button class="cfgOpt" data-v="hlMove">
+						<span class="ic">♟️</span>Último movimiento
+					</button>
+					<button class="cfgOpt" data-v="hlPower">
+						<span class="ic">⚡</span>Último poder
+					</button>
+				</div>
+				<div class="volHint" style="text-align:center;margin-top:6px">
+					Solo la marca que queda después. El targeting mientras elegís<br>
+					objetivo <b style="color:#c8a0e0">no se ve afectado</b>.
+				</div>
+			</div>
+
+      <div class="section">
+        <div class="section-title">Efectos persistentes</div>
+        <div class="cfgGrid" id="bsPersistent">
+          <button class="cfgOpt" data-v="decals">
+            <span class="ic">👣</span>Huellas de poderes
+          </button>
+        </div>
+        <div class="volHint" style="text-align:center;margin-top:6px">
+          Las marcas que dejan Rayo, Terremoto, Zombosis, etc.
+        </div>
+      </div>
+
+      <div class="modal-btns" style="margin-top:14px;flex-wrap:wrap">
+        <button class="mbtn" id="bsReset">↺ Restaurar</button>
+        <button class="mbtn yes" id="bsClose">Listo</button>
+      </div>
+    `;
+    ov.appendChild(m);
+    document.body.appendChild(ov);
+
+    const gridSlider    = m.querySelector('#bsGrid');
+    const checkerSlider = m.querySelector('#bsChecker');
+    const gridVal       = m.querySelector('#bsGridVal');
+    const checkerVal    = m.querySelector('#bsCheckerVal');
+
+    function refresh(){
+      const gi = Math.round(boardStyle.gridIntensity * 100);
+      const ca = Math.round(boardStyle.checkerAlpha * 100);
+      gridSlider.value = gi;
+      checkerSlider.value = ca;
+      gridVal.textContent = gi + '%';
+      checkerVal.textContent = ca + '%';
+
+      m.querySelectorAll('#bsCheckerMode .cfgOpt').forEach(b =>
+        b.classList.toggle('picked', b.dataset.v === boardStyle.checkerMode)
+      );
+
+      m.querySelectorAll('#bsHighlights .cfgOpt').forEach(b => {
+				if(b.dataset.v === 'hlMove')  b.classList.toggle('picked', boardStyle.hlMove);
+				if(b.dataset.v === 'hlPower') b.classList.toggle('picked', boardStyle.hlPower);
+			});
+
+      m.querySelectorAll('#bsPersistent .cfgOpt').forEach(b => {
+        if(b.dataset.v === 'decals') b.classList.toggle('picked', boardStyle.decals);
+      });
+
+      // Marca preset activo si coincide (solo compara g + a + mode)
+      let activeId = null;
+      for(const p of PRESETS){
+        if(Math.abs(boardStyle.gridIntensity - p.g) < 0.02 &&
+           Math.abs(boardStyle.checkerAlpha - p.a) < 0.005 &&
+           boardStyle.checkerMode === p.mode){
+          activeId = p.id; break;
+        }
+      }
+      m.querySelectorAll('#bsPresets .cfgOpt').forEach(b =>
+        b.classList.toggle('picked', b.dataset.p === activeId)
+      );
+    }
+
+    gridSlider.addEventListener('input', (e) => {
+      boardStyle.gridIntensity = parseInt(e.target.value, 10) / 100;
+      saveBoardStyle();
+      spriteCache.gridKey = '';              // fuerza reconstrucción del sprite
+      refresh();
+    });
+
+    checkerSlider.addEventListener('input', (e) => {
+      boardStyle.checkerAlpha = parseInt(e.target.value, 10) / 100;
+      saveBoardStyle();
+      scheduleTerrainRebuild();
+      refresh();
+    });
+
+    m.querySelector('#bsCheckerMode').onclick = (e) => {
+      const b = e.target.closest('.cfgOpt');
+      if(!b) return;
+      boardStyle.checkerMode = b.dataset.v;
+      saveBoardStyle();
+      scheduleTerrainRebuild();
+      refresh();
+    };
+
+    // Toggles de resaltadores (no reconstruyen terreno, solo clases en body)
+    m.querySelector('#bsHighlights').onclick = (e) => {
+			const b = e.target.closest('.cfgOpt');
+			if(!b) return;
+			if(b.dataset.v === 'hlMove'){
+				boardStyle.hlMove = !boardStyle.hlMove;
+			} else if(b.dataset.v === 'hlPower'){
+				boardStyle.hlPower = !boardStyle.hlPower;
+			}
+			saveBoardStyle();
+			applyBoardVisualFlags();
+			sfx('side-pick');
+
+			// Repintar por si el usuario reactivó: la estela del turno actual vuelve
+			clearHighlights();
+			updateUI();
+
+			refresh();
+		};
+
+    m.querySelector('#bsPersistent').onclick = (e) => {
+      const b = e.target.closest('.cfgOpt');
+      if(!b) return;
+      if(b.dataset.v === 'decals'){
+        boardStyle.decals = !boardStyle.decals;
+        sfx('side-pick');
+        if(!boardStyle.decals) decals.length = 0;   // limpia los que había
+      }
+      saveBoardStyle();
+      refresh();
+    };
+
+    m.querySelector('#bsPresets').onclick = (e) => {
+      const b = e.target.closest('.cfgOpt');
+      if(!b) return;
+      const p = PRESETS.find(x => x.id === b.dataset.p);
+      if(!p) return;
+      boardStyle.gridIntensity = p.g;
+      boardStyle.checkerAlpha  = p.a;
+      boardStyle.checkerMode   = p.mode;
+      saveBoardStyle();
+      spriteCache.gridKey = '';
+      scheduleTerrainRebuild();
+      sfx('side-pick');
+      refresh();
+    };
+
+    m.querySelector('#bsReset').onclick = () => {
+      boardStyle.gridIntensity = 1.0;
+      boardStyle.checkerAlpha  = 0.0;
+      boardStyle.checkerMode   = 'contrast';
+      boardStyle.hlMove        = true;
+			boardStyle.hlPower       = true;
+      boardStyle.decals        = true;
+      saveBoardStyle();
+      spriteCache.gridKey = '';
+      scheduleTerrainRebuild();
+      applyBoardVisualFlags();
+      refresh();
+      toast('🖼️ Tablero restaurado', '#8ad0ff');
+    };
+
+    m.querySelector('#bsClose').onclick = () => {
+      ov.remove();
+      resolve();
+    };
+
+    refresh();
+  });
+}
+
+async function openAudioSettings() {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    const m = document.createElement('div');
+    m.className = 'modal wide';
+
+    const SLIDERS = [
+      { key:'master',   label:'Master',   icon:'🔊', hint:'Volumen general del juego' },
+      { key:'ambience', label:'Ambiente', icon:'🌧️', hint:'Lluvia, viento, fauna, drone' },
+      { key:'sfx',      label:'Efectos',  icon:'⚔️', hint:'Movimientos, capturas, poderes' },
+      { key:'ui',       label:'Interfaz', icon:'🖱️', hint:'Clicks, modales, toasts' },
+    ];
+
+    m.innerHTML = `
+      <h3>🔊 Ajustes de audio</h3>
+      <p style="margin-bottom:12px">Bajá un canal a 0 para desactivarlo y liberar CPU.</p>
+      <div id="audioSliders"></div>
+      <div class="modal-btns" style="margin-top:14px;flex-wrap:wrap">
+        <button class="mbtn" id="audioReset">↺ Restaurar</button>
+        <button class="mbtn yes" id="audioClose">Listo</button>
+      </div>
+    `;
+    ov.appendChild(m);
+    document.body.appendChild(ov);
+
+    const container = m.querySelector('#audioSliders');
+
+    function refreshAll(){
+      for(const s of SLIDERS){
+        const pct = Math.round(audioVolumes[s.key] * 100);
+        const row = container.querySelector(`[data-row="${s.key}"]`);
+        if(!row) continue;
+        row.querySelector('input').value = pct;
+        const valEl = row.querySelector('.vol-val');
+        valEl.textContent = pct + '%';
+        const muted = audioVolumes[s.key] < 0.001;
+        row.classList.toggle('muted', muted);
+        valEl.textContent = muted ? '🔇 Mudo' : pct + '%';
+      }
+    }
+
+    for(const s of SLIDERS){
+      const row = document.createElement('div');
+      row.dataset.row = s.key;
+      row.className = 'volRow';
+      row.innerHTML = `
+        <div class="volHead">
+          <span class="volIcon">${s.icon}</span>
+          <span class="volName">${s.label}</span>
+          <span class="vol-val"></span>
+        </div>
+        <input type="range" min="0" max="100" step="1" class="volSlider" data-v="${s.key}">
+        <div class="volHint">${s.hint}</div>
+      `;
+      container.appendChild(row);
+
+      const slider = row.querySelector('input');
+      slider.addEventListener('input', (e) => {
+        const v = parseInt(e.target.value, 10) / 100;
+        saveAudioVolume(s.key, v);
+        refreshAll();
+      });
+    }
+
+    refreshAll();
+
+    m.querySelector('#audioReset').onclick = () => {
+      audioVolumes.master   = 1.00;
+      audioVolumes.ambience = 1.00;
+      audioVolumes.sfx      = 1.00;
+      audioVolumes.ui       = 0.85;
+      for(const k of ['master','ambience','sfx','ui']){
+        localStorage.setItem('ajedrez_vol_' + k, String(audioVolumes[k]));
+      }
+      updateAudioBuses();
+      refreshAll();
+      toast('🔊 Volúmenes restaurados', '#8ad0ff');
+    };
+
+    m.querySelector('#audioClose').onclick = () => {
+      ov.remove();
+      resolve();
+    };
+  });
+}
+
+
 /* =========================================================
    PANEL DE AJUSTES GRAFICOS
    ========================================================= */
@@ -17962,6 +18584,7 @@ async function openQualitySettings() {
 		const wave = quality.waveStyle;
 		const particlesOn = quality.particlesEnabled;
 		const rainOn = quality.rainEnabled;
+		const ambientOn = quality.ambientEnabled;
 
 		m.innerHTML = `
 <h3>🎨 Calidad visual</h3>
@@ -17991,6 +18614,8 @@ async function openQualitySettings() {
 <div class="cfgGrid" id="qsFx">
   <button class="cfgOpt ${particlesOn?'picked':''}" data-v="particles"><span class="ic">✨</span>Partículas</button>
   <button class="cfgOpt ${rainOn?'picked':''}" data-v="rain"><span class="ic">🌧️</span>Lluvia y clima</button>
+	<button class="cfgOpt ${ambientOn?'picked':''}" data-v="ambient"><span class="ic">🦋</span>Ambientación</button>
+	<button class="cfgOpt ${quality.cinematicsEnabled?'picked':''}" data-v="cine"><span class="ic">🎬</span>Cinematográficas</button>
 </div>
 </div>
 <div class="section">
@@ -18061,6 +18686,14 @@ async function openQualitySettings() {
 				quality.rainEnabled = !quality.rainEnabled;
 				localStorage.setItem('ajedrez_rain', quality.rainEnabled ? 'on' : 'off');
 				b.classList.toggle('picked', quality.rainEnabled);
+			} else if(b.dataset.v === 'cine'){
+				quality.cinematicsEnabled = !quality.cinematicsEnabled;
+				localStorage.setItem('ajedrez_cine', quality.cinematicsEnabled ? 'on' : 'off');
+				b.classList.toggle('picked', quality.cinematicsEnabled);
+			} else if (b.dataset.v === 'ambient') {
+					quality.ambientEnabled = !quality.ambientEnabled;
+					localStorage.setItem('ajedrez_ambient', quality.ambientEnabled ? 'on' : 'off');
+					b.classList.toggle('picked', quality.ambientEnabled);
 			}
 		};
 		m.querySelector('#qsDiag').onclick = (e) => {
@@ -18731,7 +19364,7 @@ function drawGridStrips(W, H, phase) {
 	// ---- Cuadrícula estática (sin gradientes) ----
 	ctx.save();
 	ctx.lineWidth = lw;
-	ctx.strokeStyle = 'rgba(255,240,205,0.05)';
+	ctx.strokeStyle = `rgba(255,240,205,${0.05 * boardStyle.gridIntensity})`;
 	ctx.beginPath();
 	for (let i = 0; i <= 8; i++) {
 		ctx.moveTo(i * step + lw * 0.5, 0);
@@ -19376,7 +20009,7 @@ function drawBoardGrid(W, H) {
 		const lw = Math.max(1, W / 480);
 		ctx.save();
 		ctx.lineWidth = lw;
-		ctx.strokeStyle = 'rgba(255,240,205,0.05)';
+		ctx.strokeStyle = `rgba(255,240,205,${0.05 * boardStyle.gridIntensity})`;
 		ctx.beginPath();
 		for (let i = 0; i <= 8; i++) {
 			ctx.moveTo(i * step + lw * 0.5, 0);
@@ -19421,7 +20054,10 @@ function loop(now) {
 
 	// Cuando está pausado, congelar TODO el avance de simulación.
 	// El render sigue corriendo para no dejar la pantalla en negro.
-	const dt = state.paused ? 0 : rawDt;
+	// El mundo se congela SOLO si está pausado de verdad.
+  // Durante una cinemática, el juego está pausado pero el mundo respira.
+  const worldFrozen = state.paused && !cineState.active;
+  const dt = worldFrozen ? 0 : rawDt;
 
 	worldTime += dt;
 	gameTime += dt;
@@ -19436,7 +20072,8 @@ function loop(now) {
 		if (now_ms - lightning.lastCheck > 500) {
 			lightning.lastCheck = now_ms;
 			// No generar rayos nuevos mientras está pausado
-			if (!state.paused && !state.gameOver) {
+			// (pero SÍ durante cine, así no se congela el cielo)
+			if ((!state.paused || cineState.active) && !state.gameOver) {
 				const r = ambience.rainLevel;
 				if (r > 0.16) {
 					const norm = (r - 0.16) / 0.84;
@@ -19965,25 +20602,23 @@ gridEl.addEventListener('contextmenu', (e) => {
 	if (replay.active || state.paused || state.aiBusy) return;
 	if (state.targeting && state.targeting.key !== 'ira') cancelTargeting();
 });
+
 $('#cancelBtn').onclick = () => cancelTargeting();
+
 $('#undoBtn').onclick = () => {
 	initAudio();
 	performUndo();
 };
+
 $('#btnSound').onclick = () => {
-	initAudio();
-	soundEnabled = !soundEnabled;
-	localStorage.setItem('ajedrez_sound', soundEnabled ? 'on' : 'off');
-	updateSoundButton();
-	if (masterGain) {
-		const target = (soundEnabled && !state.paused) ? 1 : 0;
-		masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.08);
-	}
-	if (uiGain) {
-		uiGain.gain.setTargetAtTime(soundEnabled ? 1 : 0, actx.currentTime, 0.08);
-	}
-	if (soundEnabled && !state.paused) tone(660, .12, 'sine', .05, 200);
+  initAudio();
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('ajedrez_sound', soundEnabled ? 'on' : 'off');
+  updateSoundButton();
+  updateAudioBuses();
+  if (soundEnabled && !state.paused) _tone(660, .12, 'sine', .05, 200, busGains.ui);
 };
+
 $('#btnConfig').onclick = () => {
 	// Si ya está pausado, no volver a togglear; solo abrir el modal
 	if (!state.paused) togglePause();
@@ -20002,10 +20637,20 @@ async function openQuickConfig() {
 			cls: 'yes'
 		},
 		{
-			label: '🎨 Calidad visual',
+			label: '🖼️ Tablero',
+			value: 'board',
+			cls: ''
+		},
+		{
+			label: '🎨 Graficos',
 			value: 'quality',
 			cls: ''
 		},
+		{
+			label: '🔊 Audio',
+			value: 'audio',
+			cls: ''
+    },
 		{
 			label: '🔄 Reiniciar',
 			value: 'restart',
@@ -20024,9 +20669,17 @@ async function openQuickConfig() {
 		if (state.paused) togglePause();
 		return;
 	}
+	if (res === 'board') {
+    await openBoardSettings();
+    return openQuickConfig();
+	}
 	if (res === 'quality') {
 		await openQualitySettings();
 		return openQuickConfig();
+	}
+	if (res === 'audio') {
+    await openAudioSettings();
+    return openQuickConfig();
 	}
 	if (res === 'restart') {
 		restartGame();
@@ -20055,10 +20708,7 @@ window.addEventListener('orientationchange', () => setTimeout(layout, 250));
 
 document.addEventListener('visibilitychange', () => {
 	if (!actx || !ambience.started) return;
-	const target = (document.hidden || !soundEnabled || state.paused) ? 0 : 1;
-	try {
-		masterGain.gain.setTargetAtTime(target, actx.currentTime, 0.3);
-	} catch (e) {}
+	updateAudioBuses();
 });
 
 document.addEventListener('keydown', (e) => {
@@ -20164,6 +20814,7 @@ function boot() {
 
 	buildGrid();
 	buildSprites();
+	applyBoardVisualFlags();
 	generateTerrain();
 	initAtmosphere();
 
