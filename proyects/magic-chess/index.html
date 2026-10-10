@@ -12473,6 +12473,7 @@ function showDraftModal(color) {
 					sfx('draft-done');
 					// ⬇️ Cerrar el tooltip YA, sin esperar el setTimeout
 					hidePowerTooltip();
+					lockTooltips(900);  // ⬅️ 900ms de paz después del draft
 
 					// ⬇️ Forzar blur para que Android suelte el touch target
 					try {
@@ -12484,7 +12485,7 @@ function showDraftModal(color) {
 
 
 					setTimeout(() => {
-						hidePowerTooltip(); // ⬅️ NUEVO: evitar tooltip huérfano
+						destroyPowerTooltip();   // ⬅️ destruye el nodo entero
 						ov.remove();
 						resolve([...picks]);
 					}, 280);
@@ -13006,7 +13007,19 @@ function ensurePowerTooltip() {
 	return el;
 }
 
+let tooltipLockedUntil = 0;
+
+function lockTooltips(ms){
+  tooltipLockedUntil = performance.now() + ms;
+  destroyPowerTooltip();
+}
+
+function tooltipsAreLocked(){
+  return performance.now() < tooltipLockedUntil;
+}
+
 function showPowerTooltip(btn, key) {
+	if(tooltipsAreLocked()) return;     // ⬅️ NUEVO
 	const p = POWERS[key];
 	if (!p) return;
 	const el = ensurePowerTooltip();
@@ -13057,10 +13070,40 @@ function showPowerTooltip(btn, key) {
 	requestAnimationFrame(() => el.classList.add('show'));
 }
 
-function hidePowerTooltip() {
-	tooltipOwner = null;
-	if (!powerTooltipEl) return;
-	powerTooltipEl.classList.remove('show');
+function hidePowerTooltip(){
+  tooltipOwner = null;
+  if(!powerTooltipEl) return;
+  powerTooltipEl.classList.remove('show');
+}
+
+function destroyPowerTooltip(){
+  // Cancela timers pendientes de todos los dueños activos
+  tooltipOwner = null;
+  if(powerTooltipEl){
+    powerTooltipEl.remove();
+    powerTooltipEl = null;
+  }
+  // El próximo attachPowerTooltip vuelve a crearlo limpio con ensurePowerTooltip()
+}
+
+/* =========================================================
+   DETECCIÓN DE GHOST HOVER — Android
+   Chrome dispara mouseenter sintético ~300ms después de un touch.
+   Ignoramos cualquier mouseenter si hubo un touch reciente.
+   ========================================================= */
+let _lastTouchTime = 0;
+const GHOST_HOVER_WINDOW_MS = 700;
+
+document.addEventListener('touchstart', () => {
+  _lastTouchTime = performance.now();
+}, { passive: true, capture: true });
+
+document.addEventListener('touchend', () => {
+  _lastTouchTime = performance.now();
+}, { passive: true, capture: true });
+
+function isGhostHover(){
+  return (performance.now() - _lastTouchTime) < GHOST_HOVER_WINDOW_MS;
 }
 
 function attachPowerTooltip(btn, key) {
@@ -13070,13 +13113,15 @@ function attachPowerTooltip(btn, key) {
 	let touchHideTimer = null;
 
 	const show = () => {
-		if (!document.body.contains(btn)) return;
-		// Si ya hay otro tooltip abierto para otro botón, no relanzar animación
-		if (tooltipOwner === btn && powerTooltipEl && powerTooltipEl.classList.contains('show')) return;
+		if(tooltipsAreLocked()) return;
+		if(!document.body.contains(btn)) return;
+		if(tooltipOwner === btn && powerTooltipEl && powerTooltipEl.classList.contains('show')) return;
+		if(!document.body.contains(document.querySelector('#powerGrid, #oppCards, #draftGrid'))) {
+			// estamos fuera de contexto de juego (menú, modal, etc.)
+			return;
+		}
 		showPowerTooltip(btn, key);
-		if (navigator.vibrate) try {
-			navigator.vibrate(12);
-		} catch (e) {}
+		if (navigator.vibrate) try { navigator.vibrate(12); } catch (e) {}
 	};
 
 	const hide = () => {
@@ -13086,12 +13131,16 @@ function attachPowerTooltip(btn, key) {
 		if (tooltipOwner === btn) hidePowerTooltip();
 	};
 
-	// --- Desktop: hover con delay ---
+	// --- Desktop: hover con delay (ignora ghost hover de Android) ---
 	btn.addEventListener('mouseenter', () => {
+		if(isGhostHover()) return;         // ⬅️ filtra el sintético
 		clearTimeout(hoverTimer);
 		hoverTimer = setTimeout(show, 280);
 	});
-	btn.addEventListener('mouseleave', hide);
+	btn.addEventListener('mouseleave', () => {
+		if(isGhostHover()) return;         // ⬅️ filtra el sintético
+		hide();
+	});
 
 	// --- Táctil: long-press ---
 	btn.addEventListener('pointerdown', (e) => {
