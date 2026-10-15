@@ -2097,6 +2097,132 @@ MODO DEBUG
 	text-transform: uppercase;
 }
 
+/* =========================================================
+   PANEL DEBUG — IA POR COLOR
+   ========================================================= */
+.dbgAiRow{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(20,15,25,.45);
+  border: 1px solid #3a2a4a;
+  border-radius: 9px;
+  margin: 5px 0;
+  transition: border-color .18s, background .18s;
+}
+.dbgAiRow.active{
+  border-color: #c080ff;
+  background: rgba(40,20,60,.55);
+  box-shadow: inset 0 0 12px rgba(200,80,255,.12);
+}
+
+.dbgAiCheck{
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 2px solid #4a3a5a;
+  background: linear-gradient(#1a1018, #0e0a12);
+  color: transparent;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: inherit;
+  transition: all .15s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.dbgAiRow.active .dbgAiCheck{
+  border-color: #c080ff;
+  background: linear-gradient(#4a2a6a, #2a1040);
+  color: #ffd070;
+  box-shadow: 0 0 12px rgba(200,80,255,.55), inset 0 0 8px rgba(255,220,120,.2);
+}
+.dbgAiCheck:active{ transform: scale(.9); }
+
+.dbgAiLabel{
+  min-width: 62px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #d8ccb0;
+  letter-spacing: .3px;
+  flex-shrink: 0;
+}
+.dbgAiRow.active .dbgAiLabel{
+  color: #fff;
+  text-shadow: 0 0 8px rgba(200,80,255,.4);
+}
+
+.dbgAiSlider{
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #2a4a7a 0%, #5a4a9a 33%, #7a5ac0 66%, #c080ff 100%);
+  outline: none;
+  cursor: pointer;
+  min-width: 60px;
+}
+.dbgAiSlider::-webkit-slider-thumb{
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(#3a2e1a, #20180e);
+  border: 2px solid #c080ff;
+  box-shadow: 0 0 8px rgba(200,80,255,.6);
+  cursor: grab;
+  transition: transform .1s;
+}
+.dbgAiSlider::-webkit-slider-thumb:active{ transform: scale(1.15); }
+.dbgAiSlider::-moz-range-thumb{
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(#3a2e1a, #20180e);
+  border: 2px solid #c080ff;
+  box-shadow: 0 0 8px rgba(200,80,255,.6);
+  cursor: grab;
+}
+
+.dbgAiDiffLabel{
+  min-width: 96px;
+  text-align: right;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #c8a0e0;
+  font-family: ui-monospace, monospace;
+  letter-spacing: .2px;
+  flex-shrink: 0;
+  transition: color .15s, text-shadow .15s;
+}
+.dbgAiDiffLabel.ruby{
+  color: #ffb0d0;
+  text-shadow: 0 0 8px rgba(255,80,140,.55);
+}
+
+/* Todo el cuerpo de la fila se ve atenuado si la IA está off */
+.dbgAiRow:not(.active) .dbgAiSlider,
+.dbgAiRow:not(.active) .dbgAiDiffLabel{
+  opacity: .35;
+  pointer-events: none;
+}
+
+.dbgAiActions{
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.dbgAiActions .debugBtn{
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
 .debugSection h4{
 	display: flex;
 	align-items: center;
@@ -2995,6 +3121,7 @@ function saveAudioVolume(name, value){
 const debugState = {
 	enabled: false,
 	aiColors: { w: false, b: false },
+	aiDifficulties: { w: 'hard', b: 'hard' },
 	editingPiece: null,
 	tab: 'world',
 	wasPausedBeforeOpen: false,
@@ -3003,6 +3130,16 @@ const debugState = {
 	timeLocked: false,
 	windLocked: false,
 };
+
+/* Devuelve la dificultad efectiva del color que va a jugar.
+   En debug: la que eligió el usuario en el panel (easy/normal/hard/ruby).
+   En juego normal: la global (aiDifficulty o ruby). */
+function getAIDifficultyFor(color){
+	if(debugState.enabled){
+		return debugState.aiDifficulties[color] || 'hard';
+	}
+	return rubyMode ? 'ruby' : aiDifficulty;
+}
 
 function isAIPlayer(color) {
 	if (debugState.enabled) {
@@ -13867,12 +14004,12 @@ async function doPlayerMove(mv) {
 
 	let promotion;
 	if (mv.flags.includes('p')) {
-		const isAIMove = aiEnabled && chess.turn() === aiColor;
-		if (isAIMove) {
-			promotion = aiChoosePromotion(mv);
-		} else {
-			promotion = await askPromotion();
-		}
+    const isAIMove = isAIPlayer(chess.turn());
+    if (isAIMove) {
+        promotion = aiChoosePromotion(mv);
+    } else {
+        promotion = await askPromotion();
+    }
 	}
 
 	let moveResult;
@@ -15867,7 +16004,9 @@ async function findBestMove(depth, rootColor) {
 		bestScore = -Infinity;
 	let alpha = -Infinity,
 		beta = Infinity;
-	const threatWeight = rubyMode ? 1.15 : (aiDifficulty === 'hard' ? 1.0 : (aiDifficulty === 'normal' ? 0.75 : 0.5));
+	const diffForRoot = getAIDifficultyFor(rootColor);
+	const isRubyForRoot = diffForRoot === 'ruby';
+	const threatWeight = isRubyForRoot ? 1.15 : (diffForRoot === 'hard' ? 1.0 : (diffForRoot === 'normal' ? 0.75 : 0.5));
 	for (const mv of moves) {
 		if (aiSearchAbort) return null;
 		const moveObj = mv.promotion ? mv : (mv.piece === 'p' && (mv.to[1] === '8' || mv.to[1] === '1') ?
@@ -15880,7 +16019,7 @@ async function findBestMove(depth, rootColor) {
 		const threat = computeCardThreatPenalty(searchChess, rootColor) * threatWeight;
 		searchChess.undo();
 		if (aiSearchAbort) return null;
-		const noise = (depth === 2 && !rubyMode) ? rnd(-15, 15) : 0;
+		const noise = (depth === 2 && !isRubyForRoot) ? rnd(-15, 15) : 0;
 		const finalScore = score - threat + noise;
 		if (finalScore > bestScore) {
 			bestScore = finalScore;
@@ -16851,6 +16990,7 @@ async function aiFindBestPower(color) {
 	candidates.sort((a, b) => b.score - a.score);
 	return candidates[0] || null;
 }
+
 async function aiExecutePower(opt) {
 	switch (opt.key) {
 		case 'ray':
@@ -16863,8 +17003,9 @@ async function aiExecutePower(opt) {
 			await execShield(opt.sq);
 			break;
 		case 'heal': {
-			const targetSq = opt.sq || (getAdjacentEmptySquares(aiColor)[0] || null);
-			if (targetSq) await execHeal(targetSq, opt.type, aiColor, opt.cost);
+			const healColor = chess.turn();
+			const targetSq = opt.sq || (getAdjacentEmptySquares(healColor)[0] || null);
+			if (targetSq) await execHeal(targetSq, opt.type, healColor, opt.cost);
 			else endTurn();
 			break;
 		}
@@ -16903,12 +17044,18 @@ async function _aiTurnInner() {
 	updateUI();
 	await sleep(180);
 
-	if (state.gameOver || replay.active || state.paused || aiSearchAbort || chess.turn() !== aiColor) {
+	// Quién está jugando AHORA — no quién era "aiTurnColor" al inicio
+	const aiTurnColor = chess.turn();
+	if (state.gameOver || replay.active || state.paused || aiSearchAbort || !isAIPlayer(aiTurnColor)) {
 		return;
 	}
 
+	// Dificultad EFECTIVA del color que va a jugar (considera debug por color)
+	const aiDiff   = getAIDifficultyFor(aiTurnColor);
+	const aiIsRuby = aiDiff === 'ruby';
+
 	// *** RUBY unificado solo si NO hay timer activo ***
-	const useUnified = rubyMode && !gameTimer.enabled;
+	const useUnified = aiIsRuby && !gameTimer.enabled;
 
 	if (useUnified) {
 		// *** Watchdog antes de arrancar ***
@@ -16917,7 +17064,7 @@ async function _aiTurnInner() {
 
 		let action = null;
 		try {
-			action = await aiFindBestActionUnified(aiColor, 3);
+			action = await aiFindBestActionUnified(aiTurnColor, 3);
 		} catch (e) {
 			console.warn('RUBY unified error:', e);
 		}
@@ -16938,7 +17085,7 @@ async function _aiTurnInner() {
 
 			let fallbackMove = null;
 			try {
-				fallbackMove = await findBestMove(2, aiColor);
+				fallbackMove = await findBestMove(2, aiTurnColor);
 			} catch (e) {
 				console.warn('RUBY fallback error:', e);
 			}
@@ -16960,14 +17107,14 @@ async function _aiTurnInner() {
 		return;
 	}
 
-	// ===== Camino legacy (Easy / Normal / Hard / Ruby con timer) =====
-	const depth = rubyMode ? 3 :
-		(aiDifficulty === 'easy' ? 1 :
-			(aiDifficulty === 'normal' ? 2 :
+		// ===== Camino legacy (Easy / Normal / Hard / Ruby con timer) =====
+	const depth = aiIsRuby ? 3 :
+		(aiDiff === 'easy' ? 1 :
+			(aiDiff === 'normal' ? 2 :
 				3));
 	let bestMove = null;
 	try {
-		bestMove = await findBestMove(depth, aiColor);
+		bestMove = await findBestMove(depth, aiTurnColor);
 	} catch (e) {
 		console.warn('AI error:', e);
 	}
@@ -16978,7 +17125,7 @@ async function _aiTurnInner() {
 
 	let powerOption = null;
 	try {
-		powerOption = await aiFindBestPower(aiColor);
+		powerOption = await aiFindBestPower(aiTurnColor);
 	} catch (e) {
 		console.warn('AI power error:', e);
 	}
@@ -16990,13 +17137,13 @@ async function _aiTurnInner() {
 	let usePower = false;
 	if (powerOption) {
 		let threshold;
-		if (rubyMode) threshold = 0;
-		else if (aiDifficulty === 'hard') threshold = 80;
-		else if (aiDifficulty === 'normal') threshold = 150;
+		if (aiIsRuby) threshold = 0;
+		else if (aiDiff === 'hard') threshold = 80;
+		else if (aiDiff === 'normal') threshold = 150;
 		else threshold = 500;
 		usePower = powerOption.score >= threshold;
-		if (rubyMode && state.mana[aiColor] >= 6 && powerOption.score > 0) usePower = true;
-		if (rubyMode && powerOption.score > PIECE_VALUE.r * 0.5) usePower = true;
+		if (aiIsRuby && state.mana[aiTurnColor] >= 6 && powerOption.score > 0) usePower = true;
+		if (aiIsRuby && powerOption.score > PIECE_VALUE.r * 0.5) usePower = true;
 	}
 
 	if (usePower) await aiExecutePower(powerOption);
@@ -18416,8 +18563,25 @@ function wireDebugBoard() {
 function renderDebugGame() {
 	const aiW = debugState.aiColors.w;
 	const aiB = debugState.aiColors.b;
+	const diffW = debugState.aiDifficulties.w;
+	const diffB = debugState.aiDifficulties.b;
 	const manaW = state.mana.w,
 		manaB = state.mana.b;
+
+	const DIFF_STEPS  = ['easy', 'normal', 'hard', 'ruby'];
+	const DIFF_LABELS = ['fácil', 'normal', 'difícil', 'experta (ruby)'];
+
+	const rowHtml = (color, label, active, diff) => {
+		const idx = Math.max(0, DIFF_STEPS.indexOf(diff));
+		const isRuby = diff === 'ruby';
+		return `
+			<div class="dbgAiRow ${active?'active':''}">
+				<button class="dbgAiCheck" data-color="${color}" title="${active?'Desactivar IA':'Activar IA'}">${active?'✓':''}</button>
+				<span class="dbgAiLabel">${label}</span>
+				<input type="range" class="dbgAiSlider" data-color="${color}" min="0" max="3" step="1" value="${idx}">
+				<span class="dbgAiDiffLabel ${isRuby?'ruby':''}" data-color="${color}">${DIFF_LABELS[idx]}</span>
+			</div>`;
+	};
 
 	const cardBtns = (color) => ALL_CARD_KEYS.map(key => {
 		const p = POWERS[key];
@@ -18432,13 +18596,13 @@ function renderDebugGame() {
 	return `
 <div class="debugSection">
 <h4>IA controla</h4>
-<div style="display:flex;gap:6px;flex-wrap:wrap;">
-<button class="debugBtn ${aiW?'on':''}" id="dbgAIW">♔ Blancas</button>
-<button class="debugBtn ${aiB?'on':''}" id="dbgAIB">♚ Negras</button>
-<button class="debugBtn" id="dbgAINone">🚫 Ninguna</button>
+${rowHtml('w', '♔ Blancas', aiW, diffW)}
+${rowHtml('b', '♚ Negras',  aiB, diffB)}
+<div class="dbgAiActions">
+  <button class="debugBtn" id="dbgForceAIMove">🤖 Forzar movimiento IA</button>
 </div>
 <div style="font-size:10px;color:#8a8070;text-align:center;margin-top:6px">
-IA en debug usa dificultad fija "Difícil"
+  El slider cambia la dificultad. <b style="color:#ffb0d0">experta</b> = RUBY.
 </div>
 </div>
 
@@ -18477,37 +18641,87 @@ IA en debug usa dificultad fija "Difícil"
 <button class="debugBtn ${state.iraCharge.b?'on':''}" id="dbgIraB">⚔️ Ira ♚ ${state.iraCharge.b?'· ON':'· OFF'}</button>
 <button class="debugBtn" id="dbgClearShields">🛡️ Quitar escudos</button>
 <button class="debugBtn" id="dbgReplayIntro">🎬 Repetir intro</button>
+<button class="debugBtn" id="dbgForceAIMove">🤖 Forzar movimiento IA</button>
 </div>
 </div>
 `;
 }
 
 function wireDebugGame() {
-	$('#dbgReplayIntro').onclick = () => {
-		_introSeenThisSession = false;
-		sessionStorage.removeItem('ajedrez_intro_seen');
-		playCinematicIntro();
+
+		// ─── Checkbox de IA por color ───
+	document.querySelectorAll('.dbgAiCheck').forEach(btn => {
+		btn.onclick = () => {
+			const color = btn.dataset.color;
+			debugState.aiColors[color] = !debugState.aiColors[color];
+			sfx('side-pick');
+			renderDebugTab('game');
+			// Si activás y es el turno de ese color, disparar
+			if(debugState.aiColors[color] && chess.turn() === color && !state.gameOver && !state.paused){
+				setTimeout(aiTurn, 300);
+			}
+			// Si desactivás y era el turno del color que ahora juega un humano,
+			// no hacemos nada especial — el jugador mueve con click normal.
+		};
+	});
+
+	// ─── Slider de dificultad por color ───
+	const DIFF_STEPS  = ['easy', 'normal', 'hard', 'ruby'];
+	const DIFF_LABELS = ['fácil', 'normal', 'difícil', 'experta (ruby)'];
+	document.querySelectorAll('.dbgAiSlider').forEach(slider => {
+		slider.oninput = (e) => {
+			const color = slider.dataset.color;
+			const idx = parseInt(e.target.value, 10);
+			debugState.aiDifficulties[color] = DIFF_STEPS[idx];
+			const label = document.querySelector(`.dbgAiDiffLabel[data-color="${color}"]`);
+			if(label){
+				label.textContent = DIFF_LABELS[idx];
+				label.classList.toggle('ruby', DIFF_STEPS[idx] === 'ruby');
+			}
+			sfx('slider-tick');
+		};
+	});
+
+	// ─── Forzar movimiento IA (destrabar) ───
+	$('#dbgForceAIMove').onclick = () => {
+		const turn = chess.turn();
+		if(!isAIPlayer(turn)){
+			toast(`El turno es de ${turn === 'w' ? 'Blancas' : 'Negras'} — no está la IA activa`, '#ff8080');
+			return;
+		}
+		if(state.gameOver || replay.active || state.paused){
+			toast('No se puede forzar en este estado', '#ff8080');
+			return;
+		}
+		// Limpiar posibles locks internos y disparar
+		aiThinking = false;
+		state.aiBusy = false;
+		aiSearchAbort = false;
+		aiTurn();
+		toast('🤖 IA re-disparada', '#c080ff');
 	};
 	
-	$('#dbgAIW').onclick = () => {
-		debugState.aiColors.w = !debugState.aiColors.w;
-		renderDebugTab('game');
-		if (debugState.aiColors.w && chess.turn() === 'w' && !state.gameOver) {
-			setTimeout(aiTurn, 300);
-		}
-	};
-	$('#dbgAIB').onclick = () => {
-		debugState.aiColors.b = !debugState.aiColors.b;
-		renderDebugTab('game');
-		if (debugState.aiColors.b && chess.turn() === 'b' && !state.gameOver) {
-			setTimeout(aiTurn, 300);
-		}
-	};
 	$('#dbgAINone').onclick = () => {
 		debugState.aiColors.w = false;
 		debugState.aiColors.b = false;
 		renderDebugTab('game');
 	};
+	
+	$('#dbgForceAIMove').onclick = () => {
+    if(!isAIPlayer(chess.turn())){
+        toast('El turno actual no es de la IA', '#ff8080');
+        return;
+    }
+    if(aiThinking){
+        toast('La IA ya está pensando…', '#c080ff');
+        return;
+    }
+    aiThinking = false;   // por si quedó trabado
+    state.aiBusy = false;
+    aiTurn();
+    toast('🤖 IA re-disparada', '#c080ff');
+	};
+	
 	// Mana
 	const mw = $('#dbgManaW'),
 		mb = $('#dbgManaB');
@@ -19415,8 +19629,9 @@ async function startGame() {
 	newGame();
 	renderPlayerHand();
 	renderOppHand();
-	if (isAIPlayer(aiColor)) {
-		setTimeout(aiTurn, 900);
+	// Blancas mueve primero, así que solo dispara si blancas es IA
+	if (isAIPlayer('w')) {
+			setTimeout(aiTurn, 900);
 	}
 }
 
