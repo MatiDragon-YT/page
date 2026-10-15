@@ -8049,12 +8049,6 @@ function drawAmbientLife(W, H){
 }
 
 /* =========================================================
-   DECALS — huellas persistentes de poderes
-   ========================================================= */
-const decals = [];
-const _decalSprites = {};
-
-/* =========================================================
    CONFIG DE DECALS — duración, curva y opacidad por tipo
    =========================================================
    life:         segundos totales que dura la huella
@@ -8065,559 +8059,647 @@ const _decalSprites = {};
 				 'linear'→ el viejo comportamiento
    peak:         multiplicador de opacidad durante la fase visible
    ========================================================= */
+	 
+/* =========================================================
+   DECALS — huellas persistentes de poderes (v2)
+   Variantes múltiples, rotación, escala y conciencia del agua.
+   ========================================================= */
+/* =========================================================
+   DECALS — huellas persistentes de poderes (v2)
+   Variantes múltiples, rotación, escala y conciencia del agua.
+   ========================================================= */
+const decals = [];
+const DECAL_VARIANTS = 3;
+const DECAL_MAX = 60;
+
+const _decalSprites      = {};   // key: kind|variant
+const _tintedDecalCache  = {};   // key: kind|variant|biome
+const _waterDecalSprites = {};   // key: biomeId
+
+/* PRNG determinista — cada variante genera SIEMPRE la misma forma */
+function _mulberry32(seed){
+  let s = seed >>> 0;
+  return function(){
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function _withSeed(seed, fn){
+  const old = Math.random;
+  Math.random = _mulberry32(seed);
+  try { return fn(); }
+  finally { Math.random = old; }
+}
+
+/* ¿La casilla cae sobre agua/lava/hielo del terreno? */
+function isSquareOnWater(sq){
+  if(!terr.water) return false;
+  const { r, c } = sqToRC(sq);
+  const N = TERR_N;
+  const tx = Math.floor((c + 0.5) / 8 * N);
+  const ty = Math.floor((r + 0.5) / 8 * N);
+  if(tx < 0 || ty < 0 || tx >= N || ty >= N) return false;
+  return terr.water[ty * N + tx] === 1;
+}
+
+/* Anillo acuático — efecto "cayó sobre agua" */
+function getWaterDecalSprite(biomeId){
+  if(_waterDecalSprites[biomeId]) return _waterDecalSprites[biomeId];
+  const SIZE = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = SIZE;
+  const cx = c.getContext('2d');
+  const h = SIZE / 2;
+
+  const waterMode = BIOMES[biomeId]?.water?.mode || 'water';
+  let ringCol, innerCol, outerCol;
+  if(waterMode === 'lava'){
+    ringCol  = 'rgba(255,180,80,0.90)';
+    innerCol = 'rgba(255,100,30,0.55)';
+    outerCol = 'rgba(180,40,10,0.0)';
+  } else if(waterMode === 'ice'){
+    ringCol  = 'rgba(200,240,255,0.90)';
+    innerCol = 'rgba(160,210,240,0.55)';
+    outerCol = 'rgba(120,180,220,0.0)';
+  } else {
+    ringCol  = 'rgba(200,235,255,0.85)';
+    innerCol = 'rgba(120,200,240,0.50)';
+    outerCol = 'rgba(80,160,220,0.0)';
+  }
+
+  const grad = cx.createRadialGradient(h, h, 0, h, h, h);
+  grad.addColorStop(0.00, innerCol);
+  grad.addColorStop(0.55, innerCol.replace(/[\d.]+\)$/, '0.15)'));
+  grad.addColorStop(1.00, outerCol);
+  cx.fillStyle = grad;
+  cx.fillRect(0, 0, SIZE, SIZE);
+
+  const rings = 3;
+  for(let i = 0; i < rings; i++){
+    const t = i / rings;
+    const r = h * (0.35 + t * 0.55);
+    cx.strokeStyle = ringCol.replace(/[\d.]+\)$/, (0.85 - t * 0.6).toFixed(2) + ')');
+    cx.lineWidth = 2.2 - t * 1.0;
+    cx.beginPath();
+    cx.arc(h, h, r, 0, 6.2832);
+    cx.stroke();
+  }
+  for(let i = 0; i < 14; i++){
+    const a = Math.random() * 6.2832;
+    const r = h * (0.30 + Math.random() * 0.55);
+    cx.fillStyle = ringCol.replace(/[\d.]+\)$/, (0.35 + Math.random() * 0.5).toFixed(2) + ')');
+    cx.beginPath();
+    cx.arc(h + Math.cos(a) * r, h + Math.sin(a) * r, 1.2 + Math.random() * 2.2, 0, 6.2832);
+    cx.fill();
+  }
+
+  _waterDecalSprites[biomeId] = c;
+  return c;
+}
+
+/* =========================================================
+   CONFIG DE DECALS — duración, curva y opacidad por tipo
+   ========================================================= */
 const DECAL_CONFIG = {
-	ray: {
-		life: 240,
-		fadeStart: 180,
-		fadeCurve: 'ease',
-		peak: 1.00
-	},
-	quake: {
-		life: 300,
-		fadeStart: 220,
-		fadeCurve: 'ease',
-		peak: 0.85
-	},
-	zombie: {
-		life: 200,
-		fadeStart: 140,
-		fadeCurve: 'hold',
-		peak: 1.00
-	},
-	heal: {
-		life: 120,
-		fadeStart: 70,
-		fadeCurve: 'smooth',
-		peak: 0.95
-	},
-	teleport: {
-		life: 150,
-		fadeStart: 90,
-		fadeCurve: 'ease',
-		peak: 0.80
-	},
-	ira: {
-		life: 180,
-		fadeStart: 120,
-		fadeCurve: 'ease',
-		peak: 0.90
-	},
+  ray:      { life: 240, fadeStart: 180, fadeCurve: 'ease',   peak: 1.00 },
+  quake:    { life: 300, fadeStart: 220, fadeCurve: 'ease',   peak: 0.85 },
+  zombie:   { life: 200, fadeStart: 140, fadeCurve: 'hold',   peak: 1.00 },
+  heal:     { life: 120, fadeStart:  70, fadeCurve: 'smooth', peak: 0.95 },
+  teleport: { life: 150, fadeStart:  90, fadeCurve: 'ease',   peak: 0.80 },
+  ira:      { life: 180, fadeStart: 120, fadeCurve: 'ease',   peak: 0.90 },
 };
 
 function getDecalConfig(kind) {
-	return DECAL_CONFIG[kind] || {
-		life: 180,
-		fadeStart: 120,
-		fadeCurve: 'ease',
-		peak: 1
-	};
+  return DECAL_CONFIG[kind] || { life: 180, fadeStart: 120, fadeCurve: 'ease', peak: 1 };
 }
-
-const DECAL_MAX = 60; // ⬅️ subido porque ahora duran más
 
 /* =========================================================
    DECAL TINTING — cada bioma deja huellas con su color
    ========================================================= */
-const _tintedDecalCache = {};
-
 const _decalBiomeTint = {
-	forest: {
-		r: 100,
-		g: 180,
-		b: 80,
-		a: 0.18
-	},
-	desert: {
-		r: 255,
-		g: 200,
-		b: 120,
-		a: 0.22
-	},
-	snow: {
-		r: 180,
-		g: 220,
-		b: 255,
-		a: 0.28
-	},
-	volcano: {
-		r: 255,
-		g: 120,
-		b: 60,
-		a: 0.22
-	},
-	cute: {
-		r: 255,
-		g: 180,
-		b: 220,
-		a: 0.20
-	},
+  forest:  { r: 100, g: 180, b:  80, a: 0.18 },
+  desert:  { r: 255, g: 200, b: 120, a: 0.22 },
+  snow:    { r: 180, g: 220, b: 255, a: 0.28 },
+  volcano: { r: 255, g: 120, b:  60, a: 0.22 },
+  cute:    { r: 255, g: 180, b: 220, a: 0.20 },
 };
 
-function getTintedDecalSprite(kind, biomeId) {
-	const key = kind + '|' + (biomeId || 'forest');
-	if (_tintedDecalCache[key]) return _tintedDecalCache[key];
+/* Sprite base — recibe kind + variante. Cada variante es una forma distinta */
+function getDecalSprite(kind, variant = 0){
+  const key = kind + '|' + variant;
+  if(_decalSprites[key]) return _decalSprites[key];
 
-	const base = getDecalSprite(kind);
-	if (!base) {
-		_tintedDecalCache[key] = null;
-		return null;
-	}
+  const seed = (kind.split('').reduce((a,c)=>a+c.charCodeAt(0),0) * 31 + variant * 7919) >>> 0;
+  const SIZE = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = SIZE;
+  const cx = c.getContext('2d');
+  const h = SIZE / 2;
 
-	const t = _decalBiomeTint[biomeId];
-	if (!t) {
-		_tintedDecalCache[key] = base;
-		return base;
-	}
+  _withSeed(seed, () => {
 
-	// Re-tint sobre copia (source-atop respeta solo píxeles opacos del sprite)
-	const c = document.createElement('canvas');
-	c.width = base.width;
-	c.height = base.height;
-	const cx = c.getContext('2d');
-	cx.drawImage(base, 0, 0);
-	cx.globalCompositeOperation = 'source-atop';
-	cx.fillStyle = `rgba(${t.r},${t.g},${t.b},${t.a})`;
-	cx.fillRect(0, 0, c.width, c.height);
+    if(kind === 'ray'){
+      const cx0 = h + (variant - 1) * 8;
+      const cy0 = h + (variant - 1) * 5;
+      const rotBase = variant * 0.7;
 
-	_tintedDecalCache[key] = c;
-	return c;
+      const grad = cx.createRadialGradient(cx0, cy0, 0, cx0, cy0, h);
+      grad.addColorStop(0.00, 'rgba(20,10,5,0.85)');
+      grad.addColorStop(0.35, 'rgba(35,18,8,0.70)');
+      grad.addColorStop(0.70, 'rgba(60,35,15,0.35)');
+      grad.addColorStop(1.00, 'rgba(60,35,15,0)');
+      cx.fillStyle = grad;
+      cx.fillRect(0, 0, SIZE, SIZE);
+
+      const crackCount = 5 + variant * 2;
+      cx.strokeStyle = 'rgba(255,160,60,0.55)';
+      cx.lineCap = 'round';
+      for(let i = 0; i < crackCount; i++){
+        const a = (i / crackCount) * 6.2832 + rotBase + (Math.random() - 0.5) * 0.6;
+        const len = h * (0.55 + Math.random() * 0.37);
+        cx.lineWidth = 0.7 + Math.random() * 1.0;
+        cx.beginPath();
+        cx.moveTo(cx0, cy0);
+        const segs = 4 + variant;
+        for(let s = 1; s <= segs; s++){
+          const t = s / segs;
+          const jitter = (1 - t) * (Math.random() - 0.5) * 18;
+          cx.lineTo(
+            cx0 + Math.cos(a) * len * t + Math.cos(a + 1.57) * jitter,
+            cy0 + Math.sin(a) * len * t + Math.sin(a + 1.57) * jitter
+          );
+        }
+        cx.stroke();
+      }
+      const emberCount = 8 + variant * 5;
+      for(let i = 0; i < emberCount; i++){
+        const a = Math.random() * 6.2832;
+        const r = Math.random() * h * 0.78;
+        cx.fillStyle = `rgba(255,${120 + Math.floor(Math.random()*80)},40,${(0.4 + Math.random() * 0.5).toFixed(2)})`;
+        cx.beginPath();
+        cx.arc(cx0 + Math.cos(a) * r, cy0 + Math.sin(a) * r, 1 + Math.random() * 1.6, 0, 6.2832);
+        cx.fill();
+      }
+    }
+
+    else if(kind === 'quake'){
+      cx.fillStyle = 'rgba(40,28,18,0.30)';
+      cx.fillRect(0, 0, SIZE, SIZE);
+      cx.strokeStyle = 'rgba(20,12,6,0.75)';
+      cx.lineCap = 'round';
+
+      if(variant === 0){
+        for(let i = 0; i < 4; i++){
+          const x0 = 10 + Math.random() * (SIZE - 20), y0 = 10 + Math.random() * (SIZE - 20);
+          cx.lineWidth = 2 + Math.random() * 2;
+          cx.beginPath(); cx.moveTo(x0, y0);
+          let x = x0, y = y0;
+          const steps = 5 + Math.floor(Math.random() * 4);
+          for(let s = 0; s < steps; s++){
+            x += (Math.random() - 0.5) * 60; y += (Math.random() - 0.5) * 60;
+            x = clamp(x, 4, SIZE - 4); y = clamp(y, 4, SIZE - 4);
+            cx.lineTo(x, y);
+          }
+          cx.stroke();
+        }
+      } else if(variant === 1){
+        const fx = h + (Math.random() - 0.5) * 30, fy = h + (Math.random() - 0.5) * 30;
+        const n = 5 + Math.floor(Math.random() * 4);
+        for(let i = 0; i < n; i++){
+          const a = (i / n) * 6.2832 + (Math.random() - 0.5) * 0.6;
+          cx.lineWidth = 1.5 + Math.random() * 2;
+          cx.beginPath(); cx.moveTo(fx, fy);
+          const segs = 3 + Math.floor(Math.random() * 3);
+          let px = fx, py = fy;
+          for(let s = 0; s < segs; s++){
+            const d = 15 + Math.random() * 17;
+            px += Math.cos(a) * d + (Math.random() - 0.5) * 12;
+            py += Math.sin(a) * d + (Math.random() - 0.5) * 12;
+            px = clamp(px, 4, SIZE - 4); py = clamp(py, 4, SIZE - 4);
+            cx.lineTo(px, py);
+          }
+          cx.stroke();
+        }
+      } else {
+        cx.save();
+        cx.translate(h, h);
+        cx.rotate(Math.random() * 1.57);
+        for(let i = 0; i < 3; i++){
+          const x0 = (Math.random() - 0.5) * 80, y0 = (Math.random() - 0.5) * 80;
+          cx.lineWidth = 1.5 + Math.random() * 1.5;
+          cx.beginPath(); cx.moveTo(x0, y0);
+          let x = x0, y = y0;
+          for(let s = 0; s < 5; s++){
+            x += (Math.random() - 0.5) * 50; y += (Math.random() - 0.5) * 50;
+            cx.lineTo(x, y);
+          }
+          cx.stroke();
+        }
+        cx.restore();
+      }
+
+      const debris = 14 + variant * 8;
+      for(let i = 0; i < debris; i++){
+        const px = 6 + Math.random() * (SIZE - 12), py = 6 + Math.random() * (SIZE - 12);
+        cx.fillStyle = `rgba(${70+Math.floor(Math.random()*40)},${60+Math.floor(Math.random()*30)},${40+Math.floor(Math.random()*20)},0.85)`;
+        cx.beginPath();
+        cx.ellipse(px, py, 2 + Math.random() * 3, 1.5 + Math.random() * 2, Math.random() * 6.28, 0, 6.2832);
+        cx.fill();
+      }
+    }
+
+    else if(kind === 'zombie'){
+      const grad = cx.createRadialGradient(h, h, 0, h, h, h);
+      grad.addColorStop(0.00, 'rgba(40,25,60,0.80)');
+      grad.addColorStop(0.50, 'rgba(60,35,90,0.55)');
+      grad.addColorStop(1.00, 'rgba(80,50,120,0)');
+      cx.fillStyle = grad;
+      cx.fillRect(0, 0, SIZE, SIZE);
+
+      const mushroomCount = 6 + variant * 4;
+      for(let i = 0; i < mushroomCount; i++){
+        const a = Math.random() * 6.2832;
+        const r = h * (0.30 + Math.random() * 0.60);
+        const mx = h + Math.cos(a) * r, my = h + Math.sin(a) * r;
+        const size = 2.5 + Math.random() * (4.5 - variant * 0.5);
+        cx.strokeStyle = 'rgba(200,180,220,0.75)';
+        cx.lineWidth = 1.2;
+        cx.beginPath(); cx.moveTo(mx, my + size); cx.lineTo(mx, my); cx.stroke();
+        cx.fillStyle = i % 2 ? 'rgba(180,120,220,0.85)' : 'rgba(140,90,180,0.85)';
+        cx.beginPath(); cx.ellipse(mx, my, size, size * 0.55, 0, 0, 6.2832); cx.fill();
+        cx.fillStyle = 'rgba(230,200,255,0.85)';
+        cx.beginPath(); cx.arc(mx - size * 0.25, my - size * 0.10, 0.9, 0, 6.2832); cx.fill();
+        cx.beginPath(); cx.arc(mx + size * 0.20, my + size * 0.05, 0.7, 0, 6.2832); cx.fill();
+      }
+      const spores = 10 + variant * 6;
+      for(let i = 0; i < spores; i++){
+        const a = Math.random() * 6.2832;
+        const r = Math.random() * h * 0.9;
+        cx.fillStyle = `rgba(200,160,255,${(0.3 + Math.random() * 0.5).toFixed(2)})`;
+        cx.beginPath();
+        cx.arc(h + Math.cos(a) * r, h + Math.sin(a) * r, 0.8 + Math.random() * 1.0, 0, 6.2832);
+        cx.fill();
+      }
+    }
+
+    else if(kind === 'heal'){
+      const grad = cx.createRadialGradient(h, h, 0, h, h, h);
+      grad.addColorStop(0.00, 'rgba(140,255,180,0.55)');
+      grad.addColorStop(0.55, 'rgba(90,220,140,0.35)');
+      grad.addColorStop(1.00, 'rgba(60,180,100,0)');
+      cx.fillStyle = grad;
+      cx.fillRect(0, 0, SIZE, SIZE);
+
+      cx.strokeStyle = 'rgba(140,230,160,0.85)';
+      cx.lineWidth = 1.4;
+      cx.lineCap = 'round';
+      const blades = 12 + variant * 6;
+      for(let i = 0; i < blades; i++){
+        const a = Math.random() * 6.2832;
+        const r = h * (0.20 + Math.random() * 0.65);
+        const gx = h + Math.cos(a) * r, gy = h + Math.sin(a) * r;
+        const len = 5 + Math.random() * 8;
+        cx.beginPath();
+        cx.moveTo(gx, gy);
+        cx.quadraticCurveTo(gx + (Math.random() - 0.5) * 6, gy - len * 0.6, gx + (Math.random() - 0.5) * 8, gy - len);
+        cx.stroke();
+      }
+      const flowers = 3 + variant * 2;
+      for(let i = 0; i < flowers; i++){
+        const a = Math.random() * 6.2832;
+        const r = h * (0.25 + Math.random() * 0.50);
+        const fx = h + Math.cos(a) * r, fy = h + Math.sin(a) * r;
+        cx.fillStyle = i % 2 ? 'rgba(255,220,240,0.95)' : 'rgba(255,250,200,0.95)';
+        for(let p = 0; p < 5; p++){
+          const pa = (p / 5) * 6.2832;
+          cx.beginPath();
+          cx.ellipse(fx + Math.cos(pa) * 2.2, fy + Math.sin(pa) * 2.2, 1.8, 1.2, pa, 0, 6.2832);
+          cx.fill();
+        }
+        cx.fillStyle = 'rgba(255,200,80,0.95)';
+        cx.beginPath(); cx.arc(fx, fy, 1.2, 0, 6.2832); cx.fill();
+      }
+    }
+
+    else if(kind === 'teleport'){
+      cx.strokeStyle = 'rgba(200,140,255,0.65)';
+      cx.lineWidth = 1.6;
+      cx.beginPath(); cx.arc(h, h, h * 0.75, 0, 6.2832); cx.stroke();
+      cx.strokeStyle = 'rgba(180,120,255,0.45)';
+      cx.lineWidth = 1.0;
+      cx.beginPath(); cx.arc(h, h, h * 0.55, 0, 6.2832); cx.stroke();
+      cx.beginPath(); cx.arc(h, h, h * 0.35, 0, 6.2832); cx.stroke();
+
+      const stars = 5 + variant;
+      cx.strokeStyle = 'rgba(220,180,255,0.55)';
+      cx.lineWidth = 1.0;
+      cx.beginPath();
+      for(let i = 0; i <= stars; i++){
+        const a = (i * 4 / stars) * 6.2832 - 1.5708 + variant * 0.4;
+        const px = h + Math.cos(a) * h * 0.65;
+        const py = h + Math.sin(a) * h * 0.65;
+        if(i === 0) cx.moveTo(px, py); else cx.lineTo(px, py);
+      }
+      cx.closePath(); cx.stroke();
+
+      const dots = 4 + variant * 2;
+      for(let i = 0; i < dots; i++){
+        const a = (i / dots) * 6.2832 + variant * 0.3;
+        const px = h + Math.cos(a) * h * 0.90;
+        const py = h + Math.sin(a) * h * 0.90;
+        cx.fillStyle = 'rgba(220,180,255,0.75)';
+        cx.beginPath(); cx.arc(px, py, 1.6 + variant * 0.3, 0, 6.2832); cx.fill();
+      }
+    }
+
+    else if(kind === 'ira'){
+      const blobs = 4 + variant * 2;
+      for(let i = 0; i < blobs; i++){
+        const ox = (Math.random() - 0.5) * h;
+        const oy = (Math.random() - 0.5) * h;
+        const r = 5 + Math.random() * (10 + variant * 2);
+        const grad = cx.createRadialGradient(h + ox, h + oy, 0, h + ox, h + oy, r);
+        grad.addColorStop(0, 'rgba(160,30,20,0.65)');
+        grad.addColorStop(1, 'rgba(120,20,15,0)');
+        cx.fillStyle = grad;
+        cx.beginPath(); cx.arc(h + ox, h + oy, r, 0, 6.2832); cx.fill();
+      }
+      cx.strokeStyle = 'rgba(90,15,10,0.85)';
+      cx.lineWidth = 1.8 + variant * 0.4;
+      cx.lineCap = 'round';
+      const claws = 2 + variant;
+      const baseRot = (variant - 1) * 0.35;
+      for(let i = 0; i < claws; i++){
+        const sx = h - 16 + i * (11 - variant);
+        const sy = h - 14;
+        cx.save();
+        cx.translate(h, h);
+        cx.rotate(baseRot);
+        cx.beginPath();
+        cx.moveTo(sx - h, sy - h);
+        cx.quadraticCurveTo(sx - h + 6, 0, sx - h + 3, 16);
+        cx.stroke();
+        cx.restore();
+      }
+    }
+
+  });
+
+  _decalSprites[key] = c;
+  return c;
 }
 
-// Invalida cache cuando cambia el bioma en debug
-function clearTintedDecalCache() {
-	for (const k in _tintedDecalCache) delete _tintedDecalCache[k];
+function getTintedDecalSprite(kind, variant, biomeId){
+  const key = kind + '|' + variant + '|' + (biomeId || 'forest');
+  if(_tintedDecalCache[key]) return _tintedDecalCache[key];
+
+  const base = getDecalSprite(kind, variant);
+  if(!base){ _tintedDecalCache[key] = null; return null; }
+
+  const t = _decalBiomeTint[biomeId];
+  if(!t){ _tintedDecalCache[key] = base; return base; }
+
+  const c = document.createElement('canvas');
+  c.width = base.width; c.height = base.height;
+  const cx = c.getContext('2d');
+  cx.drawImage(base, 0, 0);
+  cx.globalCompositeOperation = 'source-atop';
+  cx.fillStyle = `rgba(${t.r},${t.g},${t.b},${t.a})`;
+  cx.fillRect(0, 0, c.width, c.height);
+
+  _tintedDecalCache[key] = c;
+  return c;
 }
 
-function getDecalSprite(kind) {
-	if (_decalSprites[kind]) return _decalSprites[kind];
-	const SIZE = 128;
-	const c = document.createElement('canvas');
-	c.width = c.height = SIZE;
-	const cx = c.getContext('2d');
-	const h = SIZE / 2;
-
-	if (kind === 'ray') {
-		// Tierra quemada
-		const grad = cx.createRadialGradient(h, h, 0, h, h, h);
-		grad.addColorStop(0.00, 'rgba(20,10,5,0.85)');
-		grad.addColorStop(0.35, 'rgba(35,18,8,0.70)');
-		grad.addColorStop(0.70, 'rgba(60,35,15,0.35)');
-		grad.addColorStop(1.00, 'rgba(60,35,15,0)');
-		cx.fillStyle = grad;
-		cx.fillRect(0, 0, SIZE, SIZE);
-		// Grietas radiales
-		cx.strokeStyle = 'rgba(255,160,60,0.55)';
-		cx.lineCap = 'round';
-		for (let i = 0; i < 7; i++) {
-			const a = (i / 7) * Math.PI * 2 + rnd(-0.3, 0.3);
-			const len = rnd(h * 0.55, h * 0.92);
-			cx.lineWidth = rnd(0.8, 1.6);
-			cx.beginPath();
-			cx.moveTo(h, h);
-			const segs = 4;
-			for (let s = 1; s <= segs; s++) {
-				const t = s / segs;
-				const jitter = (1 - t) * rnd(-8, 8);
-				cx.lineTo(h + Math.cos(a) * len * t + Math.cos(a + 1.57) * jitter,
-					h + Math.sin(a) * len * t + Math.sin(a + 1.57) * jitter);
-			}
-			cx.stroke();
-		}
-		// Brasas
-		for (let i = 0; i < 12; i++) {
-			const a = Math.random() * Math.PI * 2;
-			const r = Math.random() * h * 0.75;
-			cx.fillStyle = `rgba(255,${120 + Math.floor(Math.random()*80)},40,${rnd(0.4,0.9)})`;
-			cx.beginPath();
-			cx.arc(h + Math.cos(a) * r, h + Math.sin(a) * r, rnd(1, 2.5), 0, 6.2832);
-			cx.fill();
-		}
-	} else if (kind === 'quake') {
-		// Grietas grandes sobre el área
-		cx.fillStyle = 'rgba(40,28,18,0.30)';
-		cx.fillRect(0, 0, SIZE, SIZE);
-		cx.strokeStyle = 'rgba(20,12,6,0.75)';
-		cx.lineCap = 'round';
-		for (let i = 0; i < 4; i++) {
-			const x0 = rnd(10, SIZE - 10);
-			const y0 = rnd(10, SIZE - 10);
-			cx.lineWidth = rnd(2, 4);
-			cx.beginPath();
-			cx.moveTo(x0, y0);
-			let x = x0,
-				y = y0;
-			const steps = 5 + Math.floor(Math.random() * 4);
-			for (let s = 0; s < steps; s++) {
-				x += rnd(-30, 30);
-				y += rnd(-30, 30);
-				x = clamp(x, 4, SIZE - 4);
-				y = clamp(y, 4, SIZE - 4);
-				cx.lineTo(x, y);
-			}
-			cx.stroke();
-		}
-		// Escombros
-		for (let i = 0; i < 22; i++) {
-			const px = rnd(6, SIZE - 6);
-			const py = rnd(6, SIZE - 6);
-			cx.fillStyle = `rgba(${70+Math.floor(Math.random()*40)},${60+Math.floor(Math.random()*30)},${40+Math.floor(Math.random()*20)},0.85)`;
-			cx.beginPath();
-			cx.ellipse(px, py, rnd(2, 5), rnd(1.5, 3.5), Math.random() * 6.28, 0, 6.2832);
-			cx.fill();
-		}
-	} else if (kind === 'zombie') {
-		// Mancha violácea
-		const grad = cx.createRadialGradient(h, h, 0, h, h, h);
-		grad.addColorStop(0.00, 'rgba(40,25,60,0.80)');
-		grad.addColorStop(0.50, 'rgba(60,35,90,0.55)');
-		grad.addColorStop(1.00, 'rgba(80,50,120,0)');
-		cx.fillStyle = grad;
-		cx.fillRect(0, 0, SIZE, SIZE);
-		// Hongos
-		for (let i = 0; i < 9; i++) {
-			const a = Math.random() * Math.PI * 2;
-			const r = h * (0.35 + Math.random() * 0.55);
-			const mx = h + Math.cos(a) * r;
-			const my = h + Math.sin(a) * r;
-			const size = rnd(3, 7);
-			// Tallo
-			cx.strokeStyle = 'rgba(200,180,220,0.75)';
-			cx.lineWidth = 1.2;
-			cx.beginPath();
-			cx.moveTo(mx, my + size);
-			cx.lineTo(mx, my);
-			cx.stroke();
-			// Sombrero
-			cx.fillStyle = i % 2 ? 'rgba(180,120,220,0.85)' : 'rgba(140,90,180,0.85)';
-			cx.beginPath();
-			cx.ellipse(mx, my, size, size * 0.55, 0, 0, 6.2832);
-			cx.fill();
-			// Puntos brillantes
-			cx.fillStyle = 'rgba(230,200,255,0.85)';
-			cx.beginPath();
-			cx.arc(mx - size * 0.25, my - size * 0.10, 0.9, 0, 6.2832);
-			cx.fill();
-			cx.beginPath();
-			cx.arc(mx + size * 0.20, my + size * 0.05, 0.7, 0, 6.2832);
-			cx.fill();
-		}
-		// Esporas sueltas
-		for (let i = 0; i < 14; i++) {
-			const a = Math.random() * Math.PI * 2;
-			const r = Math.random() * h * 0.85;
-			cx.fillStyle = `rgba(200,160,255,${rnd(0.3,0.8)})`;
-			cx.beginPath();
-			cx.arc(h + Math.cos(a) * r, h + Math.sin(a) * r, rnd(0.8, 1.8), 0, 6.2832);
-			cx.fill();
-		}
-	} else if (kind === 'heal') {
-		// Círculo verde claro con brotes
-		const grad = cx.createRadialGradient(h, h, 0, h, h, h);
-		grad.addColorStop(0.00, 'rgba(140,255,180,0.55)');
-		grad.addColorStop(0.55, 'rgba(90,220,140,0.35)');
-		grad.addColorStop(1.00, 'rgba(60,180,100,0)');
-		cx.fillStyle = grad;
-		cx.fillRect(0, 0, SIZE, SIZE);
-		// Briznas de hierba
-		cx.strokeStyle = 'rgba(140,230,160,0.85)';
-		cx.lineWidth = 1.4;
-		cx.lineCap = 'round';
-		for (let i = 0; i < 16; i++) {
-			const a = Math.random() * Math.PI * 2;
-			const r = h * (0.25 + Math.random() * 0.60);
-			const gx = h + Math.cos(a) * r;
-			const gy = h + Math.sin(a) * r;
-			const len = rnd(5, 12);
-			cx.beginPath();
-			cx.moveTo(gx, gy);
-			cx.quadraticCurveTo(gx + rnd(-3, 3), gy - len * 0.6, gx + rnd(-4, 4), gy - len);
-			cx.stroke();
-		}
-		// Florecitas
-		for (let i = 0; i < 5; i++) {
-			const a = Math.random() * Math.PI * 2;
-			const r = h * (0.30 + Math.random() * 0.45);
-			const fx = h + Math.cos(a) * r;
-			const fy = h + Math.sin(a) * r;
-			cx.fillStyle = i % 2 ? 'rgba(255,220,240,0.95)' : 'rgba(255,250,200,0.95)';
-			for (let p = 0; p < 5; p++) {
-				const pa = (p / 5) * Math.PI * 2;
-				cx.beginPath();
-				cx.ellipse(fx + Math.cos(pa) * 2.2, fy + Math.sin(pa) * 2.2, 1.8, 1.2, pa, 0, 6.2832);
-				cx.fill();
-			}
-			cx.fillStyle = 'rgba(255,200,80,0.95)';
-			cx.beginPath();
-			cx.arc(fx, fy, 1.2, 0, 6.2832);
-			cx.fill();
-		}
-	} else if (kind === 'teleport') {
-		// Círculo rúnico
-		cx.strokeStyle = 'rgba(200,140,255,0.65)';
-		cx.lineWidth = 1.6;
-		cx.beginPath();
-		cx.arc(h, h, h * 0.75, 0, 6.2832);
-		cx.stroke();
-		cx.strokeStyle = 'rgba(180,120,255,0.45)';
-		cx.lineWidth = 1.0;
-		cx.beginPath();
-		cx.arc(h, h, h * 0.55, 0, 6.2832);
-		cx.stroke();
-		cx.beginPath();
-		cx.arc(h, h, h * 0.35, 0, 6.2832);
-		cx.stroke();
-		// Estrella interior
-		cx.strokeStyle = 'rgba(220,180,255,0.55)';
-		cx.lineWidth = 1.0;
-		cx.beginPath();
-		for (let i = 0; i <= 5; i++) {
-			const a = (i * 4 / 5) * Math.PI * 2 - Math.PI / 2;
-			const px = h + Math.cos(a) * h * 0.65;
-			const py = h + Math.sin(a) * h * 0.65;
-			if (i === 0) cx.moveTo(px, py);
-			else cx.lineTo(px, py);
-		}
-		cx.closePath();
-		cx.stroke();
-		// Símbolos
-		for (let i = 0; i < 6; i++) {
-			const a = (i / 6) * Math.PI * 2;
-			const px = h + Math.cos(a) * h * 0.90;
-			const py = h + Math.sin(a) * h * 0.90;
-			cx.fillStyle = 'rgba(220,180,255,0.75)';
-			cx.beginPath();
-			cx.arc(px, py, 2, 0, 6.2832);
-			cx.fill();
-		}
-	} else if (kind === 'ira') {
-		// Manchas rojizas irregulares
-		for (let i = 0; i < 6; i++) {
-			const ox = rnd(-h * 0.4, h * 0.4);
-			const oy = rnd(-h * 0.4, h * 0.4);
-			const r = rnd(6, 16);
-			const grad = cx.createRadialGradient(h + ox, h + oy, 0, h + ox, h + oy, r);
-			grad.addColorStop(0, 'rgba(160,30,20,0.65)');
-			grad.addColorStop(1, 'rgba(120,20,15,0)');
-			cx.fillStyle = grad;
-			cx.beginPath();
-			cx.arc(h + ox, h + oy, r, 0, 6.2832);
-			cx.fill();
-		}
-		// Marcas de garras
-		cx.strokeStyle = 'rgba(90,15,10,0.85)';
-		cx.lineWidth = 2.2;
-		cx.lineCap = 'round';
-		for (let i = 0; i < 3; i++) {
-			const sx = h - 18 + i * 12;
-			const sy = h - 14;
-			cx.beginPath();
-			cx.moveTo(sx, sy);
-			cx.quadraticCurveTo(sx + 6, h, sx + 3, h + 16);
-			cx.stroke();
-		}
-	}
-
-	_decalSprites[kind] = c;
-	return c;
+function clearTintedDecalCache(){
+  for(const k in _tintedDecalCache) delete _tintedDecalCache[k];
 }
 
 /* Devuelve un multiplicador 0..1 para la opacidad del decal según su vida */
-function decalFadeFactor(d) {
-	const cfg = getDecalConfig(d.kind);
-
-	// Proporción del fade dentro de la vida total de ESTE decal
-	const fadeRatio = cfg.fadeStart / cfg.life; // ej: 180/240 = 0.75
-	const fadeStartLife = d.maxLife * (1 - fadeRatio);
-
-	// Todavía en la fase visible
-	if (d.life >= fadeStartLife) return 1;
-
-	// Progreso del fade para este decal
-	const fadeDur = fadeStartLife;
-	const fadeElapsed = fadeStartLife - d.life;
-	const t = clamp(fadeElapsed / fadeDur, 0, 1);
-
-	switch (cfg.fadeCurve) {
-		case 'linear':
-			return 1 - t;
-		case 'ease':
-			return Math.pow(1 - t, 3);
-		case 'hold':
-			return t < 0.85 ? 1 : 1 - (t - 0.85) / 0.15;
-		case 'smooth':
-			return 1 - (3 * t * t - 2 * t * t * t);
-		default:
-			return 1 - t;
-	}
+function decalFadeFactor(d){
+  const cfg = getDecalConfig(d.kind);
+  const fadeRatio = cfg.fadeStart / cfg.life;
+  const fadeStartLife = d.maxLife * (1 - fadeRatio);
+  if(d.life >= fadeStartLife) return 1;
+  const fadeDur = fadeStartLife;
+  const fadeElapsed = fadeStartLife - d.life;
+  const t = clamp(fadeElapsed / fadeDur, 0, 1);
+  switch(cfg.fadeCurve){
+    case 'linear': return 1 - t;
+    case 'ease':   return Math.pow(1 - t, 3);
+    case 'hold':   return t < 0.85 ? 1 : 1 - (t - 0.85) / 0.15;
+    case 'smooth': return 1 - (3*t*t - 2*t*t*t);
+    default:       return 1 - t;
+  }
 }
 
-function addDecal(sq, kind, opts = {}) {
-	if (!sq || !kind) return;
-	if (!boardStyle.decals) return;
-	if (!quality.particlesEnabled) return;
-	if (currentQuality().level === 'emergency') return;
+function addDecal(sq, kind, opts = {}){
+  if(!sq || !kind) return;
+  if(!boardStyle.decals) return;
+  if(!quality.particlesEnabled) return;
+  if(currentQuality().level === 'emergency') return;
 
-	while (decals.length >= DECAL_MAX) decals.shift();
+  while(decals.length >= DECAL_MAX) decals.shift();
 
-	const cfg = getDecalConfig(kind);
-	const life = opts.life !== undefined ? opts.life : cfg.life;
+  const cfg = getDecalConfig(kind);
+  const life = opts.life !== undefined ? opts.life : cfg.life;
 
-	decals.push({
-		sq,
-		kind,
-		biome: currentBiome.id,
-		life: life,
-		maxLife: life,
-		alpha: opts.alpha !== undefined ? opts.alpha : 1.0,
-		scale: opts.scale !== undefined ? opts.scale : 1.0,
-	});
+  const variant = opts.variant !== undefined
+    ? opts.variant
+    : Math.floor(Math.random() * DECAL_VARIANTS);
+
+  let rotation = 0;
+  if(opts.rotation !== undefined){
+    rotation = opts.rotation;
+  } else {
+    const noRotate = (kind === 'quake' || kind === 'heal');
+    rotation = noRotate ? rnd(-0.15, 0.15) : rnd(0, Math.PI * 2);
+  }
+
+  const scaleVariation = opts.scaleVariation !== undefined
+    ? opts.scaleVariation
+    : rnd(0.90, 1.10);
+
+  const onWater = opts.onWater !== undefined ? opts.onWater : isSquareOnWater(sq);
+
+  decals.push({
+    sq, kind, variant, rotation, scaleVariation, onWater,
+    biome: currentBiome.id,
+    life: life,
+    maxLife: life,
+    alpha: opts.alpha !== undefined ? opts.alpha : 1.0,
+    scale: opts.scale !== undefined ? opts.scale : 1.0,
+  });
+
+  // Splash si nace sobre agua
+  if(onWater){
+    const C = squareCenter(sq);
+    const mode = currentBiome.water.mode;
+    let splashColor = '#d0e8ff';
+    if(mode === 'lava')      splashColor = '#ff9040';
+    else if(mode === 'ice')  splashColor = '#c0e8ff';
+
+    ripples.push({
+      x: C.x, y: C.y, r: 3,
+      maxR: cellSize * 1.5,
+      life: .55, maxLife: .55,
+      color: mode === 'lava' ? '255,140,60' : '200,230,255'
+    });
+    burst(C.x, C.y, 14, {
+      color: splashColor,
+      spMin: 40, spMax: 140,
+      lifeMin: .35, lifeMax: .8,
+      sizeMin: 1.2, sizeMax: 2.8,
+      shape: 'tri'
+    });
+  }
 }
 
-function updateDecals(dt) {
-	if (replay.active) return;
-
-	for (let i = decals.length - 1; i >= 0; i--) {
-		const d = decals[i];
-		d.life -= dt;
-		if (d.life <= 0) decals.splice(i, 1);
-	}
+function updateDecals(dt){
+  if(replay.active) return;
+  for(let i = decals.length - 1; i >= 0; i--){
+    const d = decals[i];
+    d.life -= dt;
+    if(d.life <= 0) decals.splice(i, 1);
+  }
 }
 
-function drawDecals(W, H) {
-	if (!boardStyle.decals) return;
-	if (!decals.length) return;
-	const q = currentQuality();
-	if (q.level === 'emergency') return;
+function drawDecals(W, H){
+  if(!boardStyle.decals) return;
+  if(!decals.length) return;
+  const q = currentQuality();
+  if(q.level === 'emergency') return;
 
-	const inReplay = replay.active;
-	ctx.save();
-	for (const d of decals) {
-		const sprite = getTintedDecalSprite(d.kind, d.biome);
-		if (!sprite) continue;
-		const C = squareCenter(d.sq);
-		const base = cellSize * (d.kind === 'quake' ? 3.0 : 1.35);
-		const size = base * d.scale;
+  const inReplay = replay.active;
+  ctx.save();
 
-		let alpha;
-		if (inReplay && d._replayAlpha !== undefined) {
-			// En replay: opacidad calculada por índice de acción
-			alpha = d._replayAlpha;
-		} else {
-			// En partida: la curva de siempre por tiempo
-			const cfg = getDecalConfig(d.kind);
-			const fadeFactor = decalFadeFactor(d);
-			alpha = d.alpha * cfg.peak * fadeFactor;
-		}
-		if (alpha < 0.015) continue;
+  for(const d of decals){
+    const C = squareCenter(d.sq);
+    const base = cellSize * (d.kind === 'quake' ? 3.0 : 1.35);
+    const size = base * d.scale * d.scaleVariation;
 
-		ctx.globalAlpha = alpha;
-		ctx.drawImage(sprite, C.x - size / 2, C.y - size / 2, size, size);
-	}
-	ctx.restore();
+    let alpha;
+    if(inReplay && d._replayAlpha !== undefined){
+      alpha = d._replayAlpha;
+    } else {
+      const cfg = getDecalConfig(d.kind);
+      const fadeFactor = decalFadeFactor(d);
+      alpha = d.alpha * cfg.peak * fadeFactor;
+    }
+    if(alpha < 0.015) continue;
+
+    ctx.globalAlpha = alpha;
+
+    // Decal principal con rotación
+    ctx.save();
+    ctx.translate(C.x, C.y);
+    ctx.rotate(d.rotation);
+    const sprite = getTintedDecalSprite(d.kind, d.variant, d.biome);
+    if(sprite){
+      ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+    }
+    ctx.restore();
+
+    // Overlay acuático si cayó sobre agua
+    if(d.onWater){
+      const waterSprite = getWaterDecalSprite(d.biome);
+      if(waterSprite){
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha * 0.72;
+        const wSize = size * 1.06;
+        ctx.drawImage(waterSprite, C.x - wSize / 2, C.y - wSize / 2, wSize, wSize);
+        ctx.restore();
+      }
+    }
+  }
+
+  ctx.restore();
 }
 
 /* Reconstruye los decals activos hasta la acción `i`, usando el historial */
-function rebuildReplayDecals(i) {
-	decals.length = 0;
-	if (!replay.active || !historyLog.length) return;
+function rebuildReplayDecals(i){
+  decals.length = 0;
+  if(!replay.active || !historyLog.length) return;
 
-	// Recorremos desde el principio hasta la acción actual
-	for (let j = 0; j <= i; j++) {
-		const entry = historyLog[j];
-		if (!entry) continue;
+  for(let j = 0; j <= i; j++){
+    const entry = historyLog[j];
+    if(!entry) continue;
+    const ages = i - j;
 
-		const ages = i - j; // cuántas acciones pasaron desde que nació
+    let kind = null, sq = null;
 
-		let kind = null,
-			sq = null;
+    if(entry.type === 'spell'){
+      const name = entry.powerName;
+      if(name === 'Rayo' && entry.to){ kind = 'ray'; sq = entry.to; }
+      else if(name === 'Zombosis' && entry.to){ kind = 'zombie'; sq = entry.to; }
+      else if(name === 'Toque Curativo' && entry.to){ kind = 'heal'; sq = entry.to; }
+      else if(name === 'Teletransporte' && entry.from && entry.to){
+        addReplayDecal(entry.from, 'teleport', ages);
+        addReplayDecal(entry.to, 'teleport', ages);
+        continue;
+      }
+      else if(name === 'Terremoto' && entry.to){
+        const { r: cr, c: cc } = sqToRC(entry.to);
+        for(let dr = -1; dr <= 1; dr++)
+          for(let dc = -1; dc <= 1; dc++){
+            const r2 = cr + dr, c2 = cc + dc;
+            if(r2 < 0 || c2 < 0 || r2 >= 8 || c2 >= 8) continue;
+            addReplayDecal(rcToSquare(r2, c2), 'quake', ages);
+          }
+        continue;
+      }
+    } else if(entry.type === 'ira' && entry.to){ kind = 'ira'; sq = entry.to; }
+    else if(entry.type === 'ira-blocked' && entry.to){ kind = 'ira'; sq = entry.to; }
 
-		if (entry.type === 'spell') {
-			const name = entry.powerName;
-			if (name === 'Rayo' && entry.to) {
-				kind = 'ray';
-				sq = entry.to;
-			} else if (name === 'Zombosis' && entry.to) {
-				kind = 'zombie';
-				sq = entry.to;
-			} else if (name === 'Toque Curativo' && entry.to) {
-				kind = 'heal';
-				sq = entry.to;
-			} else if (name === 'Teletransporte' && entry.from && entry.to) {
-				// Teleport deja dos decals
-				addReplayDecal(entry.from, 'teleport', ages);
-				addReplayDecal(entry.to, 'teleport', ages);
-				continue;
-			} else if (name === 'Terremoto' && entry.to) {
-				// Quake deja 9 decals en el área 3x3
-				const {
-					r: cr,
-					c: cc
-				} = sqToRC(entry.to);
-				for (let dr = -1; dr <= 1; dr++)
-					for (let dc = -1; dc <= 1; dc++) {
-						const r2 = cr + dr,
-							c2 = cc + dc;
-						if (r2 < 0 || c2 < 0 || r2 >= 8 || c2 >= 8) continue;
-						addReplayDecal(rcToSquare(r2, c2), 'quake', ages);
-					}
-				continue;
-			}
-		} else if (entry.type === 'ira' && entry.to) {
-			kind = 'ira';
-			sq = entry.to;
-		} else if (entry.type === 'ira-blocked' && entry.to) {
-			kind = 'ira';
-			sq = entry.to;
-		}
-
-		if (kind && sq) addReplayDecal(sq, kind, ages);
-	}
+    if(kind && sq) addReplayDecal(sq, kind, ages);
+  }
 }
 
-function addReplayDecal(sq, kind, ages) {
-	const life = getReplayDecalLife(kind);
+function addReplayDecal(sq, kind, ages){
+  const life = getReplayDecalLife(kind);
+  if(ages >= life) return;
 
-	// Ya murió
-	if (ages >= life) return;
+  const fadeStart = life * (1 - REPLAY_FADE_RATIO);
+  let alpha = 1;
+  if(ages > fadeStart){
+    const t = (ages - fadeStart) / (life - fadeStart);
+    alpha = Math.pow(1 - t, 3);
+  }
+  if(alpha < 0.02) return;
 
-	// Curva de fade: hold hasta el último fadeRatio de la vida
-	const fadeStart = life * (1 - REPLAY_FADE_RATIO);
-	let alpha = 1;
-	if (ages > fadeStart) {
-		const t = (ages - fadeStart) / (life - fadeStart);
-		// Ease-out cúbico, igual que en partida
-		alpha = Math.pow(1 - t, 3);
-	}
-	if (alpha < 0.02) return;
+  // Usamos un seed determinista por (sq, kind, ages) para que la variante
+  // y rotación sean SIEMPRE las mismas en cada replay, sin random
+  const seed = (sq.charCodeAt(0) * 31 + sq.charCodeAt(1) * 7 + ages * 13 +
+                kind.split('').reduce((a,c)=>a+c.charCodeAt(0),0)) >>> 0;
+  const rng = _mulberry32(seed);
+  const variant = Math.floor(rng() * DECAL_VARIANTS);
+  const noRotate = (kind === 'quake' || kind === 'heal');
+  const rotation = noRotate ? (rng() - 0.5) * 0.3 : rng() * Math.PI * 2;
+  const scaleVariation = 0.90 + rng() * 0.20;
+  const onWater = isSquareOnWater(sq);
 
-	decals.push({
-		sq,
-		kind,
-		biome: currentBiome.id,
-		life: 1,
-		maxLife: 1, // no se usan en modo replay
-		alpha: 1,
-		scale: 1,
-		_replayAlpha: alpha, // ⬅️ marca de que es un decal de replay
-	});
+  decals.push({
+    sq, kind, variant, rotation, scaleVariation, onWater,
+    biome: currentBiome.id,
+    life: 1, maxLife: 1,
+    alpha: 1, scale: 1,
+    _replayAlpha: alpha,
+  });
 }
 
 /* =========================================================
    DECALS EN REPLAY
-   En replay no hay tiempo real, hay acciones. Cada decal
-   "envejece" según cuántas entradas del historial pasaron.
    ========================================================= */
 const REPLAY_DECAL_LIFE = {
-	ray: 50, // 50 acciones hasta desaparecer
-	quake: 56,
-	zombie: 36,
-	heal: 38,
-	teleport: 25,
-	ira: 25,
+  ray: 50, quake: 56, zombie: 36, heal: 38, teleport: 25, ira: 25,
 };
-
-function getReplayDecalLife(kind) {
-	return REPLAY_DECAL_LIFE[kind] || 24;
+function getReplayDecalLife(kind){
+  return REPLAY_DECAL_LIFE[kind] || 24;
 }
 const REPLAY_FADE_RATIO = 0.40; // últimos 40% de la vida = fade
 
@@ -10239,6 +10321,7 @@ let currentBiome = BIOMES.forest;
    TERRENO
    ========================================================= */
 const TERR_N = 96;
+
 const terr = {
 	h: null,
 	water: null,
@@ -10249,12 +10332,16 @@ const terr = {
 	seed: 0,
 	flowers: []
 };
+
 let terrainOffscreen = null;
 let waterMaskOffscreen = null; // máscara del agua
 let waterLayerOffscreen = null; // capa compuesta por frame
 let waterLayerCtx = null;
 let waterPatternCanvas = null; // 256×256 tileable
 let waterPattern = null; // createPattern result
+let waterScrollTime = 0;     // acumulador — reemplaza a gameTime en el offset
+let waterScrollRate = 1.0;   // multiplicador suavizado (1 = calma)
+
 let waterBounds = {
 	x: 0,
 	y: 0,
@@ -10777,6 +10864,46 @@ function generateTerrain(seedOverride){
   } finally {
     Math.random = oldRandom;             // ← SIEMPRE restaurar
   }
+}
+
+/* =========================================================
+   SCROLL DEL AGUA — velocidad variable + dirección por viento
+   ========================================================= */
+function updateWaterScroll(dt){
+  const rain = rainAmt;
+
+  // --- 1. Componente lluvia (siempre positivo → fluye "hacia adelante") ---
+  const mode = currentBiome?.water?.mode || 'water';
+  const response = mode === 'lava' ? 0.4 : mode === 'ice' ? 0.7 : 1.0;
+  const rainSpeed = 1 + (rain * 2 + rain * rain * 5) * response;
+
+  // --- 2. Componente viento (signed) ---
+  // direction ∈ [-1, 1], strength ∈ [0, 1] → producto ∈ [-1, 1]
+  // Factor 1.4 deja que con viento fuerte en calma el agua pueda retroceder
+  const BIOME_WIND_SENSITIVITY = {
+		forest:  1.0,
+		desert:  0.6,
+		snow:    0.8,
+		volcano: 0.4,
+		cute:    1.3,   // jardín reacciona fuerte al viento
+	};
+	const biomeWindMul = BIOME_WIND_SENSITIVITY[currentBiome?.id] || 1.0;
+	const windSpeed = windSigned * 1.4 * biomeWindMul;
+
+  // --- 3. Velocidad objetivo ---
+  // Puede ser negativa si el viento es fuerte y la lluvia es poca
+  const target = rainSpeed + windSpeed;
+
+  // --- 4. Suavizado asimétrico ---
+  // Aceleramos en módulo (2.5×) cuando vamos hacia un target más "extremo",
+  // desaceleramos (1.0×) cuando volvemos hacia el reposo.
+  const gustStrength = Math.abs(windState.targetStr - windState.strength);
+	const gustReaction = 1 + gustStrength * 2;    // hasta 3× más reactivo durante ráfagas
+	const smoothSpeed = (growing ? 2.5 : 1.0) * gustReaction;
+  waterScrollRate += (target - waterScrollRate) * Math.min(1, smoothSpeed * dt);
+
+  // --- 5. Integrar el acumulador (puede ser positivo o negativo) ---
+  waterScrollTime += dt * waterScrollRate;
 }
 
 function buildWaterLayers(W, H) {
@@ -20142,6 +20269,7 @@ function loop(now) {
 		updateParticles(dt);
 		updateAtmosphere(dt, W, H);
 		updateDecals(dt);
+		updateWaterScroll(dt);
 	}
 	// (eliminá el bloque viejo "if(dt > 0){ updateWeather/updateParticles }"
 	//  que estaba más arriba en el loop, para no duplicar)
@@ -20153,7 +20281,7 @@ function loop(now) {
 		ctx.fillRect(0, 0, W, H);
 	}
 
-	drawWaterLayer(W, H, gameTime);
+	drawWaterLayer(W, H, waterScrollTime);
 	drawDecals(W, H);
 	drawCloudShadows(W, H);
 	drawBoardGrid(W, H);
