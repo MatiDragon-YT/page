@@ -2205,11 +2205,12 @@ MODO DEBUG
   text-shadow: 0 0 8px rgba(255,80,140,.55);
 }
 
-/* Todo el cuerpo de la fila se ve atenuado si la IA está off */
+/* Slider y label se atenúan si la IA está off, pero siguen operables.
+   El usuario debe poder elegir la dificultad ANTES de activar la IA,
+   si no queda atrapado con el default. */
 .dbgAiRow:not(.active) .dbgAiSlider,
 .dbgAiRow:not(.active) .dbgAiDiffLabel{
-  opacity: .35;
-  pointer-events: none;
+  opacity: .55;
 }
 
 .dbgAiActions{
@@ -3121,7 +3122,7 @@ function saveAudioVolume(name, value){
 const debugState = {
 	enabled: false,
 	aiColors: { w: false, b: false },
-	aiDifficulties: { w: 'hard', b: 'hard' },
+	aiDifficulties: { w: 'ruby', b: 'ruby' },
 	editingPiece: null,
 	tab: 'world',
 	wasPausedBeforeOpen: false,
