@@ -2886,7 +2886,7 @@ body.hl-move-off.hl-power-off .cell .costTag{
 		<div id="topBar">
 			<div class="tbTitle">♚ Ajedrez Mágico</div>
 			<div class="tbBtns">
-				<button class="topBtn" id="btnConfig" title="Opciones / Pausa">⚙</button>
+				<button class="topBtn" id="btnConfig" title="Pausa">⏸️</button>
 				<button class="topBtn" id="btnSound" title="Sonido">🔊</button>
 				<button class="topBtn warn" id="btnRestart" title="Reiniciar">↻</button>
 				<button class="topBtn warn" id="btnExit" title="Salir al menú">✖</button>
@@ -5123,21 +5123,21 @@ const QUALITY_PRESETS = {
 		fireflies: true
 	},
 	low: {
-		wave: 'radial',
-		crossings: 5, // 5×5 = 25 cruces
-		cellGlow: false,
-		gridStops: 5,
-		particles: 0.50,
-		rain: 0.60,
-		fireflies: true
-	},
-	emergency: {
 		wave: 'strips', // solo acá se cambia el estilo
 		strips: 12, // 12 barras diagonales pegadas
 		gridStops: 3,
 		particles: 0.20,
 		rain: 0.25,
 		fireflies: false
+	},
+	minimal: {
+    wave: 'off',
+    crossings: 0,
+    cellGlow: false,
+    gridStops: 3,
+    particles: 0.10,
+    rain: 0.15,
+    fireflies: false
 	}
 };
 
@@ -5301,12 +5301,12 @@ function updateQualityFromFPS(dt) {
 	// Si p50 es bueno y p25 aceptable, no bajamos por un solo pico
 	const ref = Math.min(p50 * 1.05, p25 * 1.4);
 
-	const order = ['emergency', 'low', 'medium', 'high'];
+	const order = ['minimal', 'low', 'medium', 'high'];
 	const idx = order.indexOf(quality.effective);
 
 	let target = quality.effective;
 	// ⬇️ UMBRALES MUY RELAJADOS ⬇️
-	if (ref < 8) target = 'emergency';
+	if (ref < 8) target = 'minimal';
 	else if (ref < 20) target = 'low';
 	else if (ref < 30) target = 'medium';
 	else target = 'high';
@@ -5340,13 +5340,13 @@ function updateQualityFromFPS(dt) {
 			high: '✨',
 			medium: '⚖️',
 			low: '🍃',
-			emergency: '⚡'
+			minimal: '⚡'
 		} [target];
 		const label = {
 			high: 'Alta',
 			medium: 'Media',
 			low: 'Baja',
-			emergency: 'Emergencia'
+			minimal: 'Minima'
 		} [target];
 		toast(`${icon} Calidad ${label}`, '#8ad0ff');
 	}
@@ -8688,7 +8688,7 @@ function addDecal(sq, kind, opts = {}){
   if(!sq || !kind) return;
   if(!boardStyle.decals) return;
   if(!quality.particlesEnabled) return;
-  if(currentQuality().level === 'emergency') return;
+  if(currentQuality().level === 'minimal') return;
 
   while(decals.length >= DECAL_MAX) decals.shift();
 
@@ -8759,7 +8759,7 @@ function drawDecals(W, H){
   if(!boardStyle.decals) return;
   if(!decals.length) return;
   const q = currentQuality();
-  if(q.level === 'emergency') return;
+  if(q.level === 'minimal') return;
 
   const inReplay = replay.active;
   ctx.save();
@@ -9056,7 +9056,7 @@ function maybeSpawnRainRipple(xNorm, yNorm, W, H) {
 
 function drawCloudShadows(W, H) {
 	const q = currentQuality();
-	if (q.level === 'emergency') return;
+	if (q.level === 'minimal') return;
 	const sprite = getCloudShadowSprite(currentBiome.id);
 	if (!sprite) return;
 	const fade = 1 - rainAmt * 0.40;
@@ -9076,7 +9076,7 @@ function drawMotes(W, H) {
 	const cfg = getBiomeAtmosphere().motes;
 	if (cfg.mode === 'none' || !atmosphere.motes.length) return;
 	const q = currentQuality();
-	if (q.level === 'emergency') return;
+	if (q.level === 'minimal') return;
 	if (!quality.particlesEnabled) return;
 
 	const sprite = getMoteSprite(currentBiome.id);
@@ -9221,7 +9221,7 @@ function shouldPlayIntro(){
   if(replay.active) return false;
   if(debugState.enabled) return false;
   if(prefersReducedMotion()) return false;
-  if(quality.effective === 'emergency' || quality.effective === 'low') return false;
+  if(quality.effective === 'minimal' || quality.effective === 'low') return false;
   return true;
 }
 
@@ -9340,7 +9340,7 @@ async function playCinematicOutro(winner, reason){
   if(replay.active) return;
   if(debugState.enabled) return;
   if(prefersReducedMotion()) return;
-  if(quality.effective === 'emergency') return;
+  if(quality.effective === 'minimal') return;
 
   const myToken = ++cineState.token;
   cineState.active = true;
@@ -19207,11 +19207,15 @@ async function openQualitySettings() {
 		const m = document.createElement('div');
 		m.className = 'modal wide';
 
-		const mode = quality.mode;
-		const wave = quality.waveStyle;
-		const particlesOn = quality.particlesEnabled;
-		const rainOn = quality.rainEnabled;
-		const ambientOn = quality.ambientEnabled;
+		// Preset → set de toggles coherente.
+		// 'auto' no está en la tabla → no toca toggles.
+		const PRESET_CONFIG = {
+			high:    { particles: true,  rain: true,  ambient: true,  cine: true,  wave: 'radial' },
+			medium:  { particles: true,  rain: true,  ambient: false,  cine: true,  wave: 'radial' },
+			low:     { particles: true,  rain: false,  ambient: false, cine: true,  wave: 'strips' },
+			minimal: { particles: false, rain: false, ambient: false, cine: false, wave: 'off'    },
+		};
+		const PRESET_ORDER = ['high', 'medium', 'low', 'minimal'];
 
 		m.innerHTML = `
 <h3>🎨 Calidad visual</h3>
@@ -19219,36 +19223,36 @@ async function openQualitySettings() {
 <div class="section">
 <div class="section-title">Preset</div>
 <div class="cfgGrid c3" id="qsMode">
-  <button class="cfgOpt ${mode==='auto'?'picked':''}" data-v="auto"><span class="ic">🔄</span>Auto</button>
-  <button class="cfgOpt ${mode==='high'?'picked':''}" data-v="high"><span class="ic">✨</span>Alta</button>
-  <button class="cfgOpt ${mode==='medium'?'picked':''}" data-v="medium"><span class="ic">⚖️</span>Media</button>
-  <button class="cfgOpt ${mode==='low'?'picked':''}" data-v="low"><span class="ic">🍃</span>Baja</button>
-  <button class="cfgOpt ${mode==='minimal'?'picked':''}" data-v="minimal"><span class="ic">⚡</span>Mínima</button>
+  <button class="cfgOpt" data-v="auto"><span class="ic">🔄</span>Auto</button>
+  <button class="cfgOpt" data-v="high"><span class="ic">✨</span>Alta</button>
+  <button class="cfgOpt" data-v="medium"><span class="ic">⚖️</span>Media</button>
+  <button class="cfgOpt" data-v="low"><span class="ic">🍃</span>Baja</button>
+  <button class="cfgOpt" data-v="minimal"><span class="ic">⚡</span>Mínima</button>
+  <button class="cfgOpt" data-v="custom"><span class="ic">🎛️</span>Personalizada</button>
 </div>
 <div style="font-size:10.5px;color:#8a8070;margin-top:6px;text-align:center" id="qsInfo"></div>
 </div>
 <div class="section">
 <div class="section-title">Ola de la cuadrícula</div>
-<div class="cfgGrid" id="qsWave">
-  <button class="cfgOpt ${wave==='auto'?'picked':''}" data-v="auto"><span class="ic">🎛️</span>Auto</button>
-  <button class="cfgOpt ${wave==='radial'?'picked':''}" data-v="radial"><span class="ic">🌊</span>Radial</button>
-  <button class="cfgOpt ${wave==='strips'?'picked':''}" data-v="strips"><span class="ic">📊</span>Barras</button>
-  <button class="cfgOpt ${wave==='off'?'picked':''}" data-v="off"><span class="ic">🚫</span>Sin ola</button>
+<div class="cfgGrid c3" id="qsWave">
+  <button class="cfgOpt" data-v="radial"><span class="ic">🌊</span>Radial</button>
+  <button class="cfgOpt" data-v="strips"><span class="ic">📊</span>Barras</button>
+  <button class="cfgOpt" data-v="off"><span class="ic">🚫</span>Sin ola</button>
 </div>
 </div>
-	<div class="section">
+<div class="section">
 <div class="section-title">Efectos</div>
 <div class="cfgGrid" id="qsFx">
-  <button class="cfgOpt ${particlesOn?'picked':''}" data-v="particles"><span class="ic">✨</span>Partículas</button>
-  <button class="cfgOpt ${rainOn?'picked':''}" data-v="rain"><span class="ic">🌧️</span>Lluvia y clima</button>
-	<button class="cfgOpt ${ambientOn?'picked':''}" data-v="ambient"><span class="ic">🦋</span>Ambientación</button>
-	<button class="cfgOpt ${quality.cinematicsEnabled?'picked':''}" data-v="cine"><span class="ic">🎬</span>Cinematográficas</button>
+  <button class="cfgOpt" data-v="particles"><span class="ic">✨</span>Partículas</button>
+  <button class="cfgOpt" data-v="rain"><span class="ic">🌧️</span>Lluvia y clima</button>
+  <button class="cfgOpt" data-v="ambient"><span class="ic">🦋</span>Ambientación</button>
+  <button class="cfgOpt" data-v="cine"><span class="ic">🎬</span>Cinematográficas</button>
 </div>
 </div>
 <div class="section">
 <div class="section-title">Diagnóstico</div>
 <div class="cfgGrid" id="qsDiag">
-  <button class="cfgOpt ${quality.showFps?'picked':''}" data-v="fps"><span class="ic">📊</span>Mostrar FPS <small style="font-size:9px;color:#7ac0ff;font-weight:800">tecla F</small></button>
+  <button class="cfgOpt" data-v="fps"><span class="ic">📊</span>Mostrar FPS <small style="font-size:9px;color:#7ac0ff;font-weight:800">tecla F</small></button>
   <button class="cfgOpt" data-v="reset"><span class="ic">🎯</span>Calibrar ahora</button>
 </div>
 </div>
@@ -19266,109 +19270,257 @@ async function openQualitySettings() {
 		ov.appendChild(m);
 		document.body.appendChild(ov);
 
-		const info = m.querySelector('#qsInfo');
+		const FPS_STEPS = [12, 20, 30, 40, 50, 60, 90, 120, 144];
 
-		function refreshInfo() {
-			const txt = {
-				auto: 'Ajusta automáticamente según los FPS. Empieza en Alta.',
-				high: 'Todas las partículas, ola radial completa, cruces y glow.',
-				medium: 'Ola por barras, partículas reducidas, sin cruces ni glow.',
-				low: 'Solo ola por barras, partículas mínimas.',
-				minimal: 'Sin ola, sin cruces, partículas casi nulas.'
-			} [quality.mode] || '';
-			info.textContent = txt;
-		}
-		refreshInfo();
-
-		m.querySelector('#qsMode').onclick = (e) => {
-			const b = e.target.closest('.cfgOpt');
-			if (!b) return;
-			quality.mode = b.dataset.v;
-			localStorage.setItem('ajedrez_quality', quality.mode);
-			if (quality.mode !== 'auto') {
-				quality.effective = quality.mode;
-				quality.warmupUntil = 0;
-			} else {
-				quality.fpsSamples.length = 0;
-				quality.warmupUntil = performance.now() + 1500;
+		/* -------------------------------------------------
+		   Detectar qué preset está activo según estado real.
+		   Devuelve 'auto', un preset concreto, o 'custom'.
+		   ------------------------------------------------- */
+		function detectPreset() {
+			if (quality.mode === 'auto') return 'auto';
+			for (const p of PRESET_ORDER) {
+				const cfg = PRESET_CONFIG[p];
+				if (quality.mode === p &&
+					quality.particlesEnabled === cfg.particles &&
+					quality.rainEnabled === cfg.rain &&
+					quality.ambientEnabled === cfg.ambient &&
+					quality.cinematicsEnabled === cfg.cine &&
+					quality.waveStyle === cfg.wave) {
+					return p;
+				}
 			}
-			m.querySelectorAll('#qsMode .cfgOpt').forEach(x => x.classList.toggle('picked', x.dataset.v === quality.mode));
-			refreshInfo();
-		};
-		m.querySelector('#qsWave').onclick = (e) => {
-			const b = e.target.closest('.cfgOpt');
-			if (!b) return;
-			quality.waveStyle = b.dataset.v;
-			localStorage.setItem('ajedrez_wavestyle', quality.waveStyle);
-			m.querySelectorAll('#qsWave .cfgOpt').forEach(x => x.classList.toggle('picked', x.dataset.v === quality.waveStyle));
-		};
-		m.querySelector('#qsFx').onclick = (e) => {
-			const b = e.target.closest('.cfgOpt');
-			if (!b) return;
-			if (b.dataset.v === 'particles') {
-				quality.particlesEnabled = !quality.particlesEnabled;
-				localStorage.setItem('ajedrez_particles', quality.particlesEnabled ? 'on' : 'off');
-				b.classList.toggle('picked', quality.particlesEnabled);
-			} else if (b.dataset.v === 'rain') {
-				quality.rainEnabled = !quality.rainEnabled;
-				localStorage.setItem('ajedrez_rain', quality.rainEnabled ? 'on' : 'off');
-				b.classList.toggle('picked', quality.rainEnabled);
-			} else if(b.dataset.v === 'cine'){
-				quality.cinematicsEnabled = !quality.cinematicsEnabled;
-				localStorage.setItem('ajedrez_cine', quality.cinematicsEnabled ? 'on' : 'off');
-				b.classList.toggle('picked', quality.cinematicsEnabled);
-			} else if (b.dataset.v === 'ambient') {
+			return 'custom';
+		}
+
+		/* -------------------------------------------------
+		   SYNC UI ← estado (única fuente de verdad)
+		   ------------------------------------------------- */
+		function refresh() {
+			const active = detectPreset();
+			const isAuto = (active === 'auto');
+
+			// Presets: siempre brilla uno solo. En AUTO, brilla AUTO.
+			m.querySelectorAll('#qsMode .cfgOpt').forEach(b => {
+				b.classList.toggle('picked', b.dataset.v === active);
+			});
+
+			// La ola no tiene opción 'auto' en el UI. Si el estado interno
+			// es 'auto' (default viejo), iluminamos el que toque por preset.
+			let shownWave = quality.waveStyle;
+			if (shownWave === 'auto') {
+				const presetWave = (QUALITY_PRESETS[quality.effective] || QUALITY_PRESETS.high).wave;
+				shownWave = (presetWave === 'radial' || presetWave === 'strips' || presetWave === 'off')
+					? presetWave
+					: 'radial';
+			}
+			m.querySelectorAll('#qsWave .cfgOpt').forEach(b => {
+				b.classList.toggle('picked', b.dataset.v === shownWave);
+			});
+
+			m.querySelectorAll('#qsFx .cfgOpt').forEach(b => {
+				if (isAuto) {
+					// En AUTO: los 4 toggles brillan. Conceptual: el sistema
+					// los gestiona, el usuario los ve todos "activos".
+					b.classList.add('picked');
+					return;
+				}
+				const v = b.dataset.v;
+				let on = false;
+				if (v === 'particles')      on = quality.particlesEnabled;
+				else if (v === 'rain')      on = quality.rainEnabled;
+				else if (v === 'ambient')   on = quality.ambientEnabled;
+				else if (v === 'cine')      on = quality.cinematicsEnabled;
+				b.classList.toggle('picked', on);
+			});
+
+			m.querySelectorAll('#qsDiag .cfgOpt').forEach(b => {
+				if (b.dataset.v === 'fps') b.classList.toggle('picked', quality.showFps);
+			});
+
+			const info = m.querySelector('#qsInfo');
+			if (info) {
+				const txt = {
+					auto:    'Ajusta el nivel visual según los FPS.',
+					high:    'Todo al máximo: partículas, ola radial, ambientación, cine.',
+					medium:  'Partículas al 80%, ola radial, cruces reducidos.',
+					low:     'Ola por barras, sin ambientación, partículas al 20%.',
+					minimal: 'Solo lo esencial: sin ola, sin partículas, sin clima, sin cine.',
+					custom:  'Configuración manual. Tocá un preset para volver a uno conocido.'
+				} [active] || '';
+				info.textContent = txt;
+			}
+
+			const slider = m.querySelector('#fpsCapSlider');
+			const valEl  = m.querySelector('#fpsCapValue');
+			if (slider && valEl) {
+				const idx = FPS_STEPS.indexOf(quality.fpsCap);
+				slider.value = idx >= 0 ? idx : (FPS_STEPS.length - 1);
+				valEl.textContent = quality.fpsCap + ' FPS';
+			}
+		}
+
+		/* -------------------------------------------------
+		   HANDLERS (con try/catch para diagnóstico)
+		   ------------------------------------------------- */
+
+		m.querySelector('#qsMode').addEventListener('click', (e) => {
+			try {
+				const b = e.target.closest('.cfgOpt');
+				if (!b || !b.dataset.v) return;
+				const newMode = b.dataset.v;
+
+				// "Personalizada" es un badge informativo, no un modo real.
+				if (newMode === 'custom') {
+					toast('🎛️ Ya estás en configuración personalizada', '#8ad0ff');
+					return;
+				}
+
+				quality.mode = newMode;
+				localStorage.setItem('ajedrez_quality', quality.mode);
+
+				if (quality.mode === 'auto') {
+					quality.particlesEnabled  = true;
+					quality.rainEnabled       = true;
+					quality.ambientEnabled    = true;
+					quality.cinematicsEnabled = true;
+					localStorage.setItem('ajedrez_particles', 'on');
+					localStorage.setItem('ajedrez_rain',      'on');
+					localStorage.setItem('ajedrez_ambient',   'on');
+					localStorage.setItem('ajedrez_cine',      'on');
+
+					// La ola vuelve a "auto": en AUTO, el sistema decide.
+					quality.waveStyle = 'auto';
+					localStorage.setItem('ajedrez_wavestyle', 'auto');
+
+					quality.fpsSamples.length = 0;
+					quality.fpsGraph.length = 0;
+					quality.warmupUntil = performance.now() + 1500;
+					quality.lastChange = 0;
+					if (!QUALITY_PRESETS[quality.effective]) {
+						quality.effective = 'high';
+					}
+				} else {
+					quality.effective = quality.mode;
+					quality.warmupUntil = 0;
+
+					// Aplicar los toggles del preset
+					const preset = PRESET_CONFIG[newMode];
+					if (preset) {
+						quality.particlesEnabled  = preset.particles;
+						quality.rainEnabled       = preset.rain;
+						quality.ambientEnabled    = preset.ambient;
+						quality.cinematicsEnabled = preset.cine;
+						localStorage.setItem('ajedrez_particles', preset.particles ? 'on' : 'off');
+						localStorage.setItem('ajedrez_rain',      preset.rain      ? 'on' : 'off');
+						localStorage.setItem('ajedrez_ambient',   preset.ambient   ? 'on' : 'off');
+						localStorage.setItem('ajedrez_cine',      preset.cine      ? 'on' : 'off');
+
+						quality.waveStyle = preset.wave;
+						localStorage.setItem('ajedrez_wavestyle', preset.wave);
+					}
+				}
+
+				sfx('side-pick');
+				refresh();
+			} catch (err) {
+				console.error('[qsMode click]', err);
+				toast('Error al cambiar preset: ' + err.message, '#ff8080');
+			}
+		});
+
+		m.querySelector('#qsWave').addEventListener('click', (e) => {
+			try {
+				const b = e.target.closest('.cfgOpt');
+				if (!b || !b.dataset.v) return;
+
+				// Si veníamos de AUTO, tocar la ola rompe el pacto.
+				if (quality.mode === 'auto') {
+					quality.mode = 'custom';
+					localStorage.setItem('ajedrez_quality', 'custom');
+				}
+
+				quality.waveStyle = b.dataset.v;
+				localStorage.setItem('ajedrez_wavestyle', quality.waveStyle);
+				sfx('side-pick');
+				refresh();
+			} catch (err) {
+				console.error('[qsWave click]', err);
+			}
+		});
+
+		m.querySelector('#qsFx').addEventListener('click', (e) => {
+			try {
+				const b = e.target.closest('.cfgOpt');
+				if (!b || !b.dataset.v) return;
+				const v = b.dataset.v;
+
+				// Si veníamos de AUTO: cualquier click en un toggle
+				// rompe el pacto → pasa a Personalizada. El toggle en
+				// sí se invierte más abajo con la lógica normal.
+				if (quality.mode === 'auto') {
+					quality.mode = 'custom';
+					localStorage.setItem('ajedrez_quality', 'custom');
+				}
+
+				if (v === 'particles') {
+					quality.particlesEnabled = !quality.particlesEnabled;
+					localStorage.setItem('ajedrez_particles', quality.particlesEnabled ? 'on' : 'off');
+				} else if (v === 'rain') {
+					quality.rainEnabled = !quality.rainEnabled;
+					localStorage.setItem('ajedrez_rain', quality.rainEnabled ? 'on' : 'off');
+				} else if (v === 'ambient') {
 					quality.ambientEnabled = !quality.ambientEnabled;
 					localStorage.setItem('ajedrez_ambient', quality.ambientEnabled ? 'on' : 'off');
-					b.classList.toggle('picked', quality.ambientEnabled);
+				} else if (v === 'cine') {
+					quality.cinematicsEnabled = !quality.cinematicsEnabled;
+					localStorage.setItem('ajedrez_cine', quality.cinematicsEnabled ? 'on' : 'off');
+				}
+				sfx('side-pick');
+				refresh();   // ⬅️ clave: refresca TODO, no solo el botón tocado
+			} catch (err) {
+				console.error('[qsFx click]', err);
 			}
-		};
-		m.querySelector('#qsDiag').onclick = (e) => {
-			const b = e.target.closest('.cfgOpt');
-			if (!b) return;
-			if (b.dataset.v === 'fps') {
-				setShowFps(!quality.showFps);
-				b.classList.toggle('picked', quality.showFps);
-			} else if (b.dataset.v === 'reset') {
-				// Fuerza recalibración: limpia muestras y vuelve a arrancar el warmup
+		});
+
+		m.querySelector('#qsDiag').addEventListener('click', (e) => {
+			try {
+				const b = e.target.closest('.cfgOpt');
+				if (!b || !b.dataset.v) return;
+				if (b.dataset.v === 'fps') {
+					setShowFps(!quality.showFps);
+					sfx('side-pick');
+					refresh();
+				} else if (b.dataset.v === 'reset') {
+					quality.fpsSamples.length = 0;
+					quality.fpsGraph.length = 0;
+					quality.warmupUntil = performance.now() + 1500;
+					quality.lastChange = 0;
+					quality.mode = 'auto';
+					localStorage.setItem('ajedrez_quality', 'auto');
+					refresh();
+					toast('🎯 Recalibrando calidad…', '#8ad0ff');
+				}
+			} catch (err) {
+				console.error('[qsDiag click]', err);
+			}
+		});
+
+		m.querySelector('#fpsCapSlider').addEventListener('input', (e) => {
+			try {
+				const idx = parseInt(e.target.value, 10);
+				quality.fpsCap = FPS_STEPS[idx];
+				localStorage.setItem('ajedrez_fpscap', String(quality.fpsCap));
 				quality.fpsSamples.length = 0;
 				quality.fpsGraph.length = 0;
-				quality.warmupUntil = performance.now() + 1500;
-				quality.lastChange = 0;
-				quality.mode = 'auto';
-				localStorage.setItem('ajedrez_quality', 'auto');
-				m.querySelectorAll('#qsMode .cfgOpt').forEach(x => x.classList.toggle('picked', x.dataset.v === 'auto'));
-				refreshInfo();
-				toast('🎯 Recalibrando calidad…', '#8ad0ff');
+				if (navigator.vibrate) try { navigator.vibrate(8); } catch (err) {}
+				refresh();
+			} catch (err) {
+				console.error('[fpsCap input]', err);
 			}
-		};
+		});
 
-		// ⬇️ slider de FPS máximos
-		const FPS_STEPS = [12, 20, 30, 40, 50, 60, 90, 120, 144];
-		const fpsCapSlider = m.querySelector('#fpsCapSlider');
-		const fpsCapValue = m.querySelector('#fpsCapValue');
-
-		function refreshFpsCap() {
-			const idx = FPS_STEPS.indexOf(quality.fpsCap);
-			fpsCapSlider.value = idx >= 0 ? idx : (FPS_STEPS.length - 1);
-			fpsCapValue.textContent = quality.fpsCap + ' FPS';
-		}
-		refreshFpsCap();
-
-		fpsCapSlider.oninput = (e) => {
-			const idx = parseInt(e.target.value, 10);
-			quality.fpsCap = FPS_STEPS[idx];
-			fpsCapValue.textContent = quality.fpsCap + ' FPS';
-			localStorage.setItem('ajedrez_fpscap', String(quality.fpsCap));
-
-			// ⬇️ limpiar muestras para que el visualizador refleje el nuevo cap al toque
-			quality.fpsSamples.length = 0;
-			quality.fpsGraph.length = 0;
-
-			if (navigator.vibrate) try {
-				navigator.vibrate(8);
-			} catch (err) {}
-		};
+		// Primera pasada: acá se iluminan los botones que corresponden
+		refresh();
 
 		const bw = document.createElement('div');
 		bw.className = 'modal-btns';
@@ -21261,7 +21413,7 @@ $('#btnRestart').onclick = () => restartGame();
 $('#btnExit').onclick = () => exitToMenu();
 
 async function openQuickConfig() {
-	const res = await showModal('Opciones', '¿Qué deseas hacer?', [{
+	const res = await showModal('Pausa', '¿Qué deseas hacer?', [{
 			label: '▶ Continuar',
 			value: 'continue',
 			cls: 'yes'
@@ -21440,6 +21592,10 @@ function boot() {
 	} else {
 		currentBiome = BIOMES[biomePreference];
 		pendingBiome = biomePreference;
+	}
+	
+	if (quality.mode !== 'auto' && QUALITY_PRESETS[quality.mode]) {
+    quality.effective = quality.mode;
 	}
 
 	buildGrid();
