@@ -20693,10 +20693,7 @@ function loop(now) {
 
 	if(!(debugState.enabled && debugState.timeLocked)) worldTime += dt;
 	gameTime += dt;
-	if (dt > 0) {
-		updateWeather(dt);
-		updateParticles(dt);
-	}
+
 	updateAmbience(); // siempre corre, usa pauseFactor para hacer fade a 0
 	// --- Scheduler de rayos (cada 500ms revisa si toca) ---
 	{
