@@ -11477,7 +11477,11 @@ const PHASES = [{
 		dark: 0.05
 	}
 ];
-const CYCLE_SECONDS = 150; // segundos de duracion de un ciclo de dia
+
+// segundos de duracion de un ciclo de dia
+// 180 equivale a 3 minutos
+const CYCLE_SECONDS = 180; 
+
 let worldTime = Math.random() * CYCLE_SECONDS;
 let gameTime = 0;
 
@@ -11502,8 +11506,8 @@ let rainAmt = 0,
 	rainTimer = 0;
 
 const rainDrops = [];
-
-for (let i = 0; i < 600; i++) rainDrops.push({
+const NUMERO_DE_GOTAS = 600
+for (let i = 0; i < NUMERO_DE_GOTAS; i++) rainDrops.push({
 	x: Math.random(),
 	y: Math.random(),
 	len: rnd(0.010, 0.042),
@@ -16370,6 +16374,140 @@ function aiFindEmergencyPower(color) {
 	return opts[0];
 }
 
+/* =========================================================
+   LIBRO DE APERTURAS DE RUBY
+   ---------------------------------------------------------
+   RUBY consulta este libro en las primeras jugadas para
+   variar su repertorio y no arrancar siempre igual.
+   Solo se usa en modo RUBY. Elegido al azar entre todas las
+   líneas compatibles con el historial actual.
+   ========================================================= */
+
+const RUBY_BOOK_MAX_PLIES = 12;   // 6 jugadas de cada lado
+
+/* --- 30+ aperturas cuando RUBY juega con BLANCAS --- */
+const RUBY_BOOK_WHITE = [
+	{ name: 'Ruy López',             line: ['e4','e5','Nf3','Nc6','Bb5'] },
+	{ name: 'Italiana',              line: ['e4','e5','Nf3','Nc6','Bc4'] },
+	{ name: 'Escocesa',              line: ['e4','e5','Nf3','Nc6','d4'] },
+	{ name: 'Petrov',                line: ['e4','e5','Nf3','Nf6','Nxe5'] },
+	{ name: 'Gambito de Rey',        line: ['e4','e5','f4','exf4','Nf3'] },
+	{ name: 'Vienna',                line: ['e4','e5','Nc3','Nf6','f4'] },
+	{ name: 'Apertura de Alfil',     line: ['e4','e5','Bc4','Nf6','d3'] },
+	{ name: 'Mate del Pastor',       line: ['e4','e5','Bc4','Nc6','Qh5'] },
+	{ name: 'Mate del Pastor (Bc5)', line: ['e4','e5','Bc4','Bc5','Qh5'] },
+	{ name: 'Ataque Napoleón',       line: ['e4','e5','Bc4','Nc6','Qh5','Nf6'] },
+	{ name: 'Siciliana Najdorf',     line: ['e4','c5','Nf3','d6','d4','cxd4','Nxd4','Nf6','Nc3','a6'] },
+	{ name: 'Siciliana Abierta',     line: ['e4','c5','Nf3','Nc6','d4','cxd4','Nxd4'] },
+	{ name: 'Siciliana Dragón',      line: ['e4','c5','Nf3','d6','d4','cxd4','Nxd4','g6','Nc3','Bg7'] },
+	{ name: 'Siciliana Cerrada',     line: ['e4','c5','Nc3','Nc6','g3'] },
+	{ name: 'Siciliana Rossolimo',   line: ['e4','c5','Nf3','Nc6','Bb5'] },
+	{ name: 'Siciliana Alapin',      line: ['e4','c5','c3','d5','exd5'] },
+	{ name: 'Francesa',              line: ['e4','e6','d4','d5','Nc3'] },
+	{ name: 'Francesa Winawer',      line: ['e4','e6','d4','d5','Nc3','Bb4'] },
+	{ name: 'Francesa Tarrasch',     line: ['e4','e6','d4','d5','Nd2'] },
+	{ name: 'Caro-Kann',             line: ['e4','c6','d4','d5','Nc3'] },
+	{ name: 'Caro-Kann Advance',     line: ['e4','c6','d4','d5','e5'] },
+	{ name: 'Caro-Kann Panov',       line: ['e4','c6','d4','d5','exd5','cxd5','c4'] },
+	{ name: 'Escandinava',           line: ['e4','d5','exd5','Qxd5','Nc3'] },
+	{ name: 'Alekhine',              line: ['e4','Nf6','e5','Nd5','d4'] },
+	{ name: 'Pirc',                  line: ['e4','d6','d4','Nf6','Nc3'] },
+	{ name: 'Moderna',               line: ['e4','g6','d4','Bg7','Nc3'] },
+	{ name: 'Gambito de Dama',       line: ['d4','d5','c4','e6','Nc3'] },
+	{ name: 'GDA Aceptado',          line: ['d4','d5','c4','dxc4','Nf3'] },
+	{ name: 'Eslava',                line: ['d4','d5','c4','c6','Nf3'] },
+	{ name: 'India del Rey',         line: ['d4','Nf6','c4','g6','Nc3','Bg7'] },
+	{ name: 'Nimzo-India',           line: ['d4','Nf6','c4','e6','Nc3','Bb4'] },
+	{ name: 'India de Dama',         line: ['d4','Nf6','c4','e6','Nf3'] },
+	{ name: 'Catalana',              line: ['d4','Nf6','c4','e6','g3'] },
+	{ name: 'Inglesa',               line: ['c4','e5','Nc3','Nf6','Nf3'] },
+	{ name: 'Inglesa Simétrica',     line: ['c4','c5','Nc3','Nc6','g3'] },
+	{ name: 'Reti',                  line: ['Nf3','d5','d4','Nf6','c4'] },
+	{ name: 'Larsen',                line: ['b3','e5','Bb2','Nc6','e3'] },
+];
+
+/* --- 30+ defensas cuando RUBY juega con NEGRAS --- */
+const RUBY_BOOK_BLACK = [
+	{ name: 'Simétrica',             line: ['e4','e5','Nf3','Nc6','Bb5','a6'] },
+	{ name: 'Ruy López Morphy',      line: ['e4','e5','Nf3','Nc6','Bb5','a6','Ba4','Nf6'] },
+	{ name: 'Giuoco Piano',          line: ['e4','e5','Nf3','Nc6','Bc4','Bc5'] },
+	{ name: 'Giuoco Pianissimo',     line: ['e4','e5','Nf3','Nc6','Bc4','Bc5','d3','Nf6'] },
+	{ name: 'Dos Caballos',          line: ['e4','e5','Nf3','Nc6','Bc4','Nf6'] },
+	{ name: 'Defensa Pastor (Nf6)',  line: ['e4','e5','Bc4','Nf6'] },
+	{ name: 'Defensa Pastor (Qe7)',  line: ['e4','e5','Bc4','Nc6','Qh5','Qe7'] },
+	{ name: 'Defensa Pastor (g6)',   line: ['e4','e5','Bc4','Nc6','Qh5','g6'] },
+	{ name: 'Defensa Pastor (Qf6)',  line: ['e4','e5','Bc4','Nc6','Qh5','Qf6'] },
+	{ name: 'Escocesa como negras',  line: ['e4','e5','Nf3','Nc6','d4','exd4'] },
+	{ name: 'Petrov como negras',    line: ['e4','e5','Nf3','Nf6','Nxe5','d6'] },
+	{ name: 'Vienna como negras',    line: ['e4','e5','Nc3','Nf6','f4','d5'] },
+	{ name: 'Gambito Rey Rechazado', line: ['e4','e5','f4','d5'] },
+	{ name: 'Siciliana',             line: ['e4','c5','Nf3','d6'] },
+	{ name: 'Siciliana Abierta',     line: ['e4','c5','Nf3','Nc6'] },
+	{ name: 'Siciliana Kan',         line: ['e4','c5','Nf3','e6'] },
+	{ name: 'Siciliana Cerrada',     line: ['e4','c5','Nc3','Nc6','g3','g6'] },
+	{ name: 'Siciliana Rossolimo',   line: ['e4','c5','Nf3','Nc6','Bb5','g6'] },
+	{ name: 'Siciliana Alapin',      line: ['e4','c5','c3','d5'] },
+	{ name: 'Francesa',              line: ['e4','e6','d4','d5'] },
+	{ name: 'Winawer',               line: ['e4','e6','d4','d5','Nc3','Bb4'] },
+	{ name: 'Tarrasch como negras',  line: ['e4','e6','d4','d5','Nd2','c5'] },
+	{ name: 'Caro-Kann',             line: ['e4','c6','d4','d5','Nc3','dxe4'] },
+	{ name: 'Caro-Kann Advance',     line: ['e4','c6','d4','d5','e5','Bf5'] },
+	{ name: 'Caro-Kann Panov',       line: ['e4','c6','d4','d5','exd5','cxd5'] },
+	{ name: 'Escandinava',           line: ['e4','d5','exd5','Qxd5'] },
+	{ name: 'Alekhine',              line: ['e4','Nf6','e5','Nd5','d4','d6'] },
+	{ name: 'Pirc',                  line: ['e4','d6','d4','Nf6','Nc3','g6'] },
+	{ name: 'Moderna',               line: ['e4','g6','d4','Bg7','Nc3','d6'] },
+	{ name: 'Nimzowitsch',           line: ['e4','Nc6','d4','d5'] },
+	{ name: 'India',                 line: ['d4','Nf6','c4','e6','Nc3','Bb4'] },
+	{ name: 'Eslava',                line: ['d4','d5','c4','c6','Nf3','Nf6'] },
+	{ name: 'Holandesa',             line: ['d4','f5','g3','Nf6','Bg2','e6'] },
+	{ name: 'Inglesa Simétrica',     line: ['c4','c5','Nc3','Nc6','g3','g6'] },
+	{ name: 'Reti como negras',      line: ['Nf3','d5','d4','Nf6','c4','e6'] },
+];
+
+/* Devuelve { move, lineName } si hay una línea aplicable, o null. */
+function rubyConsultBook(color) {
+	if (!chess) return null;
+
+	// 1. Recolectar las jugadas ya hechas, en SAN
+	const played = [];
+	for (const e of historyLog) {
+		if (e.type === 'move' && e.san) played.push(e.san);
+	}
+	if (played.length > RUBY_BOOK_MAX_PLIES) return null;
+
+	// 2. Si estamos en jaque, no arriesgamos con teoría — a sobrevivir
+	if (chess.in_check()) return null;
+
+	const book = color === 'w' ? RUBY_BOOK_WHITE : RUBY_BOOK_BLACK;
+
+	// 3. Buscar líneas cuyo prefijo coincida con lo jugado
+	const candidates = [];
+	for (const entry of book) {
+		if (entry.line.length <= played.length) continue;
+		let ok = true;
+		for (let i = 0; i < played.length; i++) {
+			if (entry.line[i] !== played[i]) { ok = false; break; }
+		}
+		if (ok) candidates.push(entry);
+	}
+	if (!candidates.length) return null;
+
+	// 4. Preferir las líneas más profundas (que quede teoría por delante)
+	const deepest = Math.max(...candidates.map(c => c.line.length));
+	const best = candidates.filter(c => c.line.length === deepest);
+
+	// 5. Elegir una al azar
+	const pick = best[Math.floor(Math.random() * best.length)];
+	const nextSan = pick.line[played.length];
+
+	// 6. Verificar que sea legal en la posición actual
+	const legal = chess.moves({ verbose: true });
+	const match = legal.find(m => m.san === nextSan);
+	if (!match) return null;
+
+	return { move: match, lineName: pick.name };
+}
 
 /* =========================================================
    RUBY — BÚSQUEDA UNIFICADA MOVIMIENTOS + PODERES
@@ -17091,6 +17229,76 @@ async function _aiTurnBody(aiTurnColor) {
 	// Dificultad EFECTIVA del color que va a jugar (considera debug por color)
 	const aiDiff   = getAIDifficultyFor(aiTurnColor);
 	const aiIsRuby = aiDiff === 'ruby';
+
+	// *** LIBRO DE APERTURAS ***
+	// En RUBY, las primeras jugadas salen del libro. Esto le da
+	// variedad al arranque y evita que siempre juegue lo mismo.
+	// Si no hay match, cae al minimax normal abajo.
+	//
+	// PERO: si el humano regaló algo, RUBY rompe el libro y cobra.
+	// Solo evaluamos Rayo y Zombosis — los únicos poderes que tienen
+	// sentido antes de que el tablero se abra.
+	if (aiIsRuby) {
+		const bookMove = rubyConsultBook(aiTurnColor);
+		if (bookMove) {
+
+			// ── Capa 1: ¿hay mate en 1 disponible? ──
+			// Si sí, NO usamos el libro (perderíamos el mate).
+			// Dejamos caer a minimax abajo — con depth 3 lo ve al instante.
+			let hasMateIn1 = false;
+			try {
+				const testMoves = chess.moves({ verbose: true });
+				for (const m of testMoves) {
+					chess.move(m);
+					const mate = chess.in_checkmate();
+					chess.undo();
+					if (mate) { hasMateIn1 = true; break; }
+				}
+			} catch (e) {
+				hasMateIn1 = false;
+			}
+
+			if (!hasMateIn1) {
+
+				// ── Capa 2: ¿algún poder cobra un error grave? ──
+				const mana = state.mana[aiTurnColor];
+				const hand = playerDecks[aiTurnColor].hand;
+				let bestPower = null;
+				if (hand.length && mana >= 3) {
+					const rayOpt    = aiFindRayOption(aiTurnColor, mana, hand);
+					const zombieOpt = aiFindZombieOption(aiTurnColor, mana, hand);
+					if (rayOpt && zombieOpt) {
+						bestPower = rayOpt.score >= zombieOpt.score ? rayOpt : zombieOpt;
+					} else {
+						bestPower = rayOpt || zombieOpt;
+					}
+				}
+
+				// Umbral: solo rompemos el libro por algo gordo.
+				// (Ver tabla en los comentarios del chat — 300 = torre mínimo.)
+				const BREAK_BOOK_THRESHOLD = 300;
+				if (bestPower && bestPower.score >= BREAK_BOOK_THRESHOLD) {
+					if (debugState.enabled) {
+						console.log(`[RUBY book] Rompe libro por ${bestPower.key} (score ${bestPower.score})`);
+						toast(`📖→⚡ Cobra el error`, '#c080ff');
+					}
+					await sleep(rnd(200, 500));
+					await aiExecutePower(bestPower);
+					return;
+				}
+			}
+
+			// ── Capa 3: camino normal — jugar del libro ──
+			if (debugState.enabled) {
+				console.log(`[RUBY book] ${bookMove.lineName} → ${bookMove.move.san}`);
+				toast(`📖 ${bookMove.lineName}`, '#c080ff');
+			}
+			// Delay variable: se siente "pensado" pero no siempre igual
+			await sleep(rnd(250, 750));
+			await doPlayerMove(bookMove.move);
+			return;
+		}
+	}
 
 	// *** RUBY unificado solo si NO hay timer activo ***
 	const useUnified = aiIsRuby && !gameTimer.enabled;
