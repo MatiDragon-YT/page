@@ -5880,6 +5880,10 @@ function cycleCard(color, key) {
 	const deck = playerDecks[color];
 	const idx = deck.hand.indexOf(key);
 	if (idx < 0) return;
+
+	// Sin cola no hay rotación posible → la carta se queda en la mano
+	if (!deck.queue.length) return;
+
 	deck.hand.splice(idx, 1);
 	const drawn = deck.queue.shift();
 	deck.queue.push(key);
@@ -9152,7 +9156,6 @@ const cineState = {
 
 let _cineOverlay = null;
 let _cineTitleCard = null;
-let _introSeenThisSession = false;
 
 function prefersReducedMotion(){
   try {
@@ -9225,16 +9228,15 @@ function shouldPlayIntro(){
 /* =========================================================
    INTRO — la partida se abre
    ========================================================= */
-async function playCinematicIntro(){
-  if(!shouldPlayIntro()) return;
-  if(!boardW || boardW < 100) return;      // layout todavía no corrió
+async function playCinematicIntro(force = false){
+  if(!force && !shouldPlayIntro()) return;
+  if(!boardW || boardW < 100) return;
   if(!pieceEls.size) return;
 
   const myToken = ++cineState.token;
   cineState.active = true;
   cineState.kind = 'intro';
   cineState.skip = false;
-  _introSeenThisSession = true;
 
   const prevPaused = state.paused;
   state.paused = true;
@@ -9420,7 +9422,7 @@ async function playCinematicOutro(winner, reason){
     setTimeout(() => {
       try {
         [392, 494, 587, 784].forEach((f, i) =>
-          setTimeout(() => tone(f, 2.0, 'triangle', 0.035, 0), i * 60)
+          setTimeout(() => _tone(f, 2.0, 'triangle', 0.035, 0), i * 60)
         );
       } catch(e){}
     }, 400);
@@ -12869,7 +12871,7 @@ function showHoverPreview(sq) {
 	if (state.selected) return; // ya hay selección real
 	if (state.targeting) return; // modo targeting, no interferir
 	if (state.busy || state.gameOver || replay.active || state.paused || state.aiBusy) return;
-	if (aiEnabled && chess.turn() === aiColor) return;
+	if (isAIPlayer(chess.turn())) return;
 
 	const piece = chess.get(sq);
 	if (!piece || piece.color !== chess.turn()) {
@@ -13228,12 +13230,12 @@ function handleTimeout(loser) {
    PAUSA
    ========================================================= */
 function updatePauseState() {
-	// ¿Hay algún modal visible que no sea el panel de debug?
 	const anyModal = !!document.querySelector('.modal-overlay:not(.hidden):not(#debugPanel)');
 	const newPaused = state.userPaused || anyModal;
 
-	if (newPaused === state.paused) return; // nada cambió
+	if (newPaused === state.paused) return;
 
+	const wasPaused = state.paused;
 	state.paused = newPaused;
 
 	// El overlay de PAUSA solo se muestra si el usuario pausó manualmente
@@ -13260,6 +13262,15 @@ function updatePauseState() {
 		}
 		endDrag(d);
 		clearHighlights();
+	}
+		// Al despausar, si le toca a una IA, reprogramar su turno
+	if (wasPaused && !state.paused && chess && !state.gameOver && !replay.active) {
+		const turnNow = chess.turn();
+		if (isAIPlayer(turnNow)) {
+			aiThinking = false;     // destrabar por las dudas
+			state.aiBusy = false;
+			setTimeout(aiTurn, 500);
+		}
 	}
 }
 
@@ -13289,6 +13300,7 @@ function renderPlayerHand() {
 	pg.innerHTML = '';
 	for (const key of hand) {
 		const p = POWERS[key];
+		if (!p) continue; // ignorar keys invalidas
 		const b = document.createElement('button');
 		b.className = 'pbtn';
 		b.dataset.key = key;
@@ -13523,6 +13535,7 @@ function renderOppHand() {
 	opp.innerHTML = '';
 	for (const key of hand) {
 		const p = POWERS[key];
+		if (!p) continue; // ignora keys invalidas
 		const c = document.createElement('div');
 		c.className = 'oppCard';
 		c.innerHTML = `<span>${p.icon}</span><span class="nm">${p.name}</span>`;
@@ -14004,12 +14017,12 @@ async function doPlayerMove(mv) {
 
 	let promotion;
 	if (mv.flags.includes('p')) {
-    const isAIMove = isAIPlayer(chess.turn());
-    if (isAIMove) {
-        promotion = aiChoosePromotion(mv);
-    } else {
-        promotion = await askPromotion();
-    }
+		const isAIMove = isAIPlayer(chess.turn());
+		if (isAIMove) {
+			promotion = aiChoosePromotion(mv);
+		} else {
+			promotion = await askPromotion();
+		}
 	}
 
 	let moveResult;
@@ -14385,7 +14398,7 @@ async function iraTargeting(fromSq, color) {
 	};
 
 	// ===== RAMA IA =====
-	if (aiEnabled && color === aiColor) {
+	if (isAIPlayer(color)) {
 		const unshieldedMoves = moves.filter(m => !moveTargetShieldSq(m));
 		const candidates = unshieldedMoves.length ? unshieldedMoves : moves;
 		let best = candidates[0],
@@ -14473,7 +14486,7 @@ async function iraTargeting(fromSq, color) {
 function startPower(key) {
 	if (state.busy || state.gameOver || replay.active || state.paused) return;
 	if (state.aiBusy) return;
-	if (aiEnabled && chess.turn() === aiColor) return;
+	if (isAIPlayer(chess.turn())) return;
 	initAudio();
 	if (state.targeting && state.targeting.key === key) {
 		cancelTargeting();
@@ -15203,6 +15216,7 @@ async function execZombie(sq) {
 	const victim = chess.get(sq);
 	if (!victim) {
 		state.busy = false;
+		finishPower(null);
 		return;
 	}
 	sfx('zombie');
@@ -17044,11 +17058,35 @@ async function _aiTurnInner() {
 	updateUI();
 	await sleep(180);
 
-	// Quién está jugando AHORA — no quién era "aiTurnColor" al inicio
 	const aiTurnColor = chess.turn();
-	if (state.gameOver || replay.active || state.paused || aiSearchAbort || !isAIPlayer(aiTurnColor)) {
+
+	// Guard 1: no es turno de IA o el juego terminó → no tocar nada
+	if (state.gameOver || replay.active || !isAIPlayer(aiTurnColor)) {
 		return;
 	}
+
+	// Guard 2: pausa o abort → salir; se reprograma solo al despausar
+	if (state.paused || aiSearchAbort) {
+		return;
+	}
+
+	const turnBefore = aiTurnColor;
+
+	try {
+		await _aiTurnBody(aiTurnColor);
+	} finally {
+		// Watchdog: si el turno no cambió, la IA no hizo nada.
+		// Forzamos endTurn() para no dejar el juego colgado.
+		if (!state.gameOver && !replay.active && !state.paused) {
+			if (chess.turn() === turnBefore) {
+				console.warn('[AI watchdog] El turno no cambió — forzando endTurn()');
+				endTurn();
+			}
+		}
+	}
+}
+
+async function _aiTurnBody(aiTurnColor) {
 
 	// Dificultad EFECTIVA del color que va a jugar (considera debug por color)
 	const aiDiff   = getAIDifficultyFor(aiTurnColor);
@@ -17107,11 +17145,12 @@ async function _aiTurnInner() {
 		return;
 	}
 
-		// ===== Camino legacy (Easy / Normal / Hard / Ruby con timer) =====
+	// ===== Camino legacy (Easy / Normal / Hard / Ruby con timer) =====
 	const depth = aiIsRuby ? 3 :
 		(aiDiff === 'easy' ? 1 :
 			(aiDiff === 'normal' ? 2 :
 				3));
+
 	let bestMove = null;
 	try {
 		bestMove = await findBestMove(depth, aiTurnColor);
@@ -18641,7 +18680,6 @@ ${rowHtml('b', '♚ Negras',  aiB, diffB)}
 <button class="debugBtn ${state.iraCharge.b?'on':''}" id="dbgIraB">⚔️ Ira ♚ ${state.iraCharge.b?'· ON':'· OFF'}</button>
 <button class="debugBtn" id="dbgClearShields">🛡️ Quitar escudos</button>
 <button class="debugBtn" id="dbgReplayIntro">🎬 Repetir intro</button>
-<button class="debugBtn" id="dbgForceAIMove">🤖 Forzar movimiento IA</button>
 </div>
 </div>
 `;
@@ -18649,7 +18687,17 @@ ${rowHtml('b', '♚ Negras',  aiB, diffB)}
 
 function wireDebugGame() {
 
-		// ─── Checkbox de IA por color ───
+	$('#dbgReplayIntro').onclick = () => {
+		if(cineState.active) return;
+		if(state.aiBusy){
+			toast('Esperá a que la IA termine de pensar', '#ff8080');
+			return;
+		}
+		sfx('side-pick');
+		playCinematicIntro(true);   // ⬅️ ignora shouldPlayIntro
+	};
+
+	// ─── Checkbox de IA por color ───	
 	document.querySelectorAll('.dbgAiCheck').forEach(btn => {
 		btn.onclick = () => {
 			const color = btn.dataset.color;
@@ -18699,12 +18747,6 @@ function wireDebugGame() {
 		aiSearchAbort = false;
 		aiTurn();
 		toast('🤖 IA re-disparada', '#c080ff');
-	};
-	
-	$('#dbgAINone').onclick = () => {
-		debugState.aiColors.w = false;
-		debugState.aiColors.b = false;
-		renderDebugTab('game');
 	};
 	
 	$('#dbgForceAIMove').onclick = () => {
@@ -19614,7 +19656,9 @@ async function doDraft() {
 }
 
 async function startGame() {
-	initAudio();
+	// No forzamos initAudio acá — se inicializa en el primer gesto (pointerdown)
+	// si no hay gesto previo, evitamos el warning del navegador
+	if(actx) initAudio();
 	const mode = await showStartMenu();
 	if (mode !== 'start') return;
 	if (debugState.enabled) {
