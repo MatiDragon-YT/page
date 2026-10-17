@@ -13866,52 +13866,61 @@ const PIECE_VALUE = {
 };
 
 function aiChoosePromotion(mv) {
-	const turn = chess.turn();
-	const opp = turn === 'w' ? 'b' : 'w';
-	const candidates = ['q', 'n', 'r', 'b'];
-	let bestPick = 'q';
-	let bestScore = -Infinity;
-	for (const piece of candidates) {
-		let sim;
-		try {
-			sim = chess.move({
-				from: mv.from,
-				to: mv.to,
-				promotion: piece
-			});
-		} catch (e) {
-			continue;
+	// Blindada: si el FEN base viene corrupto o `new Chess()` falla por
+	// alguna razón, retorna 'q' como default seguro. El `chess` global
+	// NUNCA se toca.
+
+	try {
+		const baseFen = chess.fen();
+		const turn = chess.turn();
+		const opp = turn === 'w' ? 'b' : 'w';
+		const candidates = ['q', 'n', 'r', 'b'];
+		let bestPick = 'q';
+		let bestScore = -Infinity;
+
+		for (const piece of candidates) {
+			let sim;
+			try {
+				sim = new Chess(baseFen);
+			} catch (e) {
+				continue;
+			}
+
+			let moveResult;
+			try {
+				moveResult = sim.move({ from: mv.from, to: mv.to, promotion: piece });
+			} catch (e) {
+				continue;
+			}
+			if (!moveResult) continue;
+
+			let score = PIECE_VALUE[piece];
+			if (sim.in_checkmate()) score += 100000;
+			else if (sim.in_check()) score += 500;
+			if (moveResult.captured) score += PIECE_VALUE[moveResult.captured] * 0.5;
+
+			try {
+				const parts = sim.fen().split(' ');
+				parts[1] = opp;
+				parts[3] = '-';
+				parts[4] = '0';
+				sim.load(parts.join(' '), { skipValidation: true });
+				const enemyMoves = sim.moves({ verbose: true });
+				const attacked = enemyMoves.some(m => m.to === mv.to);
+				if (attacked) score -= PIECE_VALUE[piece] * 0.6;
+			} catch (e) {}
+
+			if (score > bestScore) {
+				bestScore = score;
+				bestPick = piece;
+			}
 		}
-		if (!sim) {
-			continue;
-		}
-		let score = PIECE_VALUE[piece];
-		if (chess.in_checkmate()) score += 100000;
-		else if (chess.in_check()) score += 500;
-		if (sim.captured) score += PIECE_VALUE[sim.captured] * 0.5;
-		try {
-			const savedFen = chess.fen();
-			const parts = savedFen.split(' ');
-			parts[1] = opp;
-			chess.load(parts.join(' '), {
-				skipValidation: true
-			});
-			const enemyMoves = chess.moves({
-				verbose: true
-			});
-			const attacked = enemyMoves.some(m => m.to === mv.to);
-			if (attacked) score -= PIECE_VALUE[piece] * 0.6;
-			chess.load(savedFen, {
-				skipValidation: true
-			});
-		} catch (e) {}
-		chess.undo();
-		if (score > bestScore) {
-			bestScore = score;
-			bestPick = piece;
-		}
+
+		return bestPick;
+	} catch (err) {
+		console.error('[aiChoosePromotion] excepción, fallback a \'q\':', err, { mv });
+		return 'q';
 	}
-	return bestPick;
 }
 
 function sfxCapture(type) {
@@ -13926,321 +13935,262 @@ function sfxCapture(type) {
    ========================================================= */
 async function doPlayerMove(mv) {
 	state.busy = true;
-	const turn = chess.turn();
-	const opp = turn === 'w' ? 'b' : 'w';
-	const movingPiece = chess.get(mv.from);
+	let endTurnCalled = false;
 
-	let capturedSquare = null;
-	if (mv.flags.includes('e')) capturedSquare = mv.to[0] + mv.from[1];
-	else if (mv.flags.includes('c')) capturedSquare = mv.to;
+	try {
+		const turn = chess.turn();
+		const opp = turn === 'w' ? 'b' : 'w';
+		const movingPiece = chess.get(mv.from);
 
-	if (capturedSquare) {
-		const targetPiece = chess.get(capturedSquare);
-		if (targetPiece && state.shields[targetPiece.color].includes(capturedSquare)) {
-			const defenderColor = targetPiece.color;
-			const hitsLeft = state.shieldHits[defenderColor][capturedSquare] || 2;
+		let capturedSquare = null;
+		if (mv.flags.includes('e')) capturedSquare = mv.to[0] + mv.from[1];
+		else if (mv.flags.includes('c')) capturedSquare = mv.to;
 
-			if (hitsLeft <= 1) {
-				// ─── SEGUNDO ATAQUE → el escudo se rompe, el ataque pasa ───
-				removeShield(defenderColor, capturedSquare);
-				const c = squareCenter(capturedSquare);
-				ripples.push({
-					x: c.x,
-					y: c.y,
-					r: 2,
-					maxR: cellSize * 1.7,
-					life: .65,
-					maxLife: .65,
-					color: '180,220,255'
-				});
-				burst(c.x, c.y, 34, {
-					color: '#c8e0ff',
-					spMin: 60,
-					spMax: 220,
-					lifeMin: .25,
-					lifeMax: .6,
-					sizeMin: 1,
-					sizeMax: 3,
-					shape: 'tri'
-				});
-				sfx('shield-break');
-				toast('💥 ¡El escudo se rompe! El ataque pasa.', '#ff8080');
-				// ⬅️ NO return: el movimiento sigue normal y captura
-			} else {
-				// ─── PRIMER ATAQUE → bloquea y debilita ───
-				state.shieldHits[defenderColor][capturedSquare] = hitsLeft - 1;
-				state.shieldTurns[defenderColor][capturedSquare]--;
+		if (capturedSquare) {
+			const targetPiece = chess.get(capturedSquare);
+			if (targetPiece && state.shields[targetPiece.color].includes(capturedSquare)) {
+				const defenderColor = targetPiece.color;
+				const hitsLeft = state.shieldHits[defenderColor][capturedSquare] || 2;
 
-				// Si la duración también llegó a 0 con este golpe, se rompe
-				if (state.shieldTurns[defenderColor][capturedSquare] <= 0) {
+				if (hitsLeft <= 1) {
 					removeShield(defenderColor, capturedSquare);
-				}
-
-				const c = squareCenter(capturedSquare);
-				ripples.push({
-					x: c.x,
-					y: c.y,
-					r: 2,
-					maxR: cellSize * 1.5,
-					life: .6,
-					maxLife: .6,
-					color: '120,190,255'
-				});
-				burst(c.x, c.y, 30, {
-					color: '#8ecbff',
-					spMin: 40,
-					spMax: 180,
-					lifeMin: .3,
-					lifeMax: .7,
-					sizeMin: 1.5,
-					sizeMax: 3.5
-				});
-				sfx('shield');
-				toast('🛡️ Escudo absorbe el ataque · 1 golpe restante', '#8ecbff');
-				unlockAch(defenderColor, 'escudoSalvador');
-
-				switchTurnInFen();
-				achState[turn].streak = 0;
-				recordHistory({
-					type: 'shield-absorb',
-					color: turn,
-					powerIcon: '🛡️',
-					piece: movingPiece ? {
-						type: movingPiece.type,
-						color: turn
-					} : null,
-					from: mv.from,
-					to: capturedSquare,
-					targetPiece: {
-						type: targetPiece.type,
-						color: targetPiece.color
+					const c = squareCenter(capturedSquare);
+					ripples.push({
+						x: c.x, y: c.y, r: 2, maxR: cellSize * 1.7,
+						life: .65, maxLife: .65, color: '180,220,255'
+					});
+					burst(c.x, c.y, 34, {
+						color: '#c8e0ff', spMin: 60, spMax: 220,
+						lifeMin: .25, lifeMax: .6, sizeMin: 1, sizeMax: 3, shape: 'tri'
+					});
+					sfx('shield-break');
+					toast('💥 ¡El escudo se rompe! El ataque pasa.', '#ff8080');
+				} else {
+					state.shieldHits[defenderColor][capturedSquare] = hitsLeft - 1;
+					state.shieldTurns[defenderColor][capturedSquare]--;
+					if (state.shieldTurns[defenderColor][capturedSquare] <= 0) {
+						removeShield(defenderColor, capturedSquare);
 					}
-				});
+					const c = squareCenter(capturedSquare);
+					ripples.push({
+						x: c.x, y: c.y, r: 2, maxR: cellSize * 1.5,
+						life: .6, maxLife: .6, color: '120,190,255'
+					});
+					burst(c.x, c.y, 30, {
+						color: '#8ecbff', spMin: 40, spMax: 180,
+						lifeMin: .3, lifeMax: .7, sizeMin: 1.5, sizeMax: 3.5
+					});
+					sfx('shield');
+					toast('🛡️ Escudo absorbe el ataque · 1 golpe restante', '#8ecbff');
+					unlockAch(defenderColor, 'escudoSalvador');
 
-				state.selected = null;
-				state.legalMoves = [];
-				clearHighlights();
-				await sleep(650);
-				state.busy = false;
-				endTurn();
-				return;
-			}
-		}
-	}
+					switchTurnInFen();
+					achState[turn].streak = 0;
+					recordHistory({
+						type: 'shield-absorb', color: turn, powerIcon: '🛡️',
+						piece: movingPiece ? { type: movingPiece.type, color: turn } : null,
+						from: mv.from, to: capturedSquare,
+						targetPiece: { type: targetPiece.type, color: targetPiece.color }
+					});
 
-	let promotion;
-	if (mv.flags.includes('p')) {
-		const isAIMove = isAIPlayer(chess.turn());
-		if (isAIMove) {
-			promotion = aiChoosePromotion(mv);
-		} else {
-			promotion = await askPromotion();
-		}
-	}
-
-	let moveResult;
-	const kingShielded = kingHasShield(turn);
-	const isKingMoving = (mv.from === findKing(turn));
-
-	if (kingShielded && !isKingMoving) {
-		// Otra pieza se mueve, el rey está escudado → ignoramos el jaque
-		const savedFen = chess.fen();
-		const kingSq = findKing(turn);
-		const king = chess.get(kingSq);
-		chess.remove(kingSq);
-		try {
-			moveResult = chess.move({
-				from: mv.from,
-				to: mv.to,
-				promotion: promotion || 'q'
-			});
-		} catch (e) {
-			moveResult = null;
-		}
-		if (moveResult) {
-			// Reponer el rey en su casilla original
-			try {
-				chess.put(king, kingSq);
-			} catch (e) {}
-		} else {
-			try {
-				chess.put(king, kingSq);
-			} catch (e) {}
-			try {
-				chess.load(savedFen, {
-					skipValidation: true
-				});
-			} catch (e) {}
-		}
-	} else {
-		// Camino normal
-		try {
-			moveResult = chess.move({
-				from: mv.from,
-				to: mv.to,
-				promotion: promotion || 'q'
-			});
-		} catch (e) {
-			moveResult = null;
-		}
-	}
-	if (!moveResult) {
-		state.busy = false;
-		return;
-	}
-
-	if (state.shields[turn].includes(mv.from)) {
-		removeShield(turn, mv.from);
-		sfx('shield-cancel');
-		toast('🛡️ Escudo cancelado al mover la pieza', '#7ac0ff');
-	}
-	if (capturedSquare) {
-		for (const col of ['w', 'b']) {
-			const i = state.shields[col].indexOf(capturedSquare);
-			if (i >= 0) {
-				state.shields[col].splice(i, 1);
-				delete state.shieldTurns[col][capturedSquare];
-				delete state.shieldHits[col][capturedSquare];
-			}
-		}
-	}
-
-	const isCastle = moveResult.flags && (moveResult.flags.includes('k') || moveResult.flags.includes('q'));
-	const isEpCapture = mv.flags.includes('e');
-	if (isCastle) {
-		sfx('enroque');
-	} else if (isEpCapture) {
-		sfx('ep-capture');
-	} else if (moveResult.captured) {
-		sfxCapture(moveResult.captured);
-	} else {
-		sfx('move');
-	}
-
-	await animateMove(mv.from, mv.to, capturedSquare);
-
-	const didCapture = !!(moveResult.captured || mv.flags.includes('e'));
-
-	if (didCapture) vibrate(35);
-	setLastMove(mv.from, mv.to, null);
-
-	if (moveResult.captured) {
-		addToGraveyard(moveResult.captured, opp);
-	} else if (mv.flags.includes('e')) {
-		addToGraveyard('p', opp);
-	}
-
-	if (didCapture) {
-		if (!firstBloodClaimed) {
-			firstBloodClaimed = true;
-			unlockAch(turn, 'primeraSangre');
-		}
-		achState[turn].streak++;
-		checkStreakAch(turn);
-		achState[opp].streak = 0;
-		achState[opp].lostPieces++;
-		if (movingPiece && movingPiece.type === 'k') {
-			achState[turn].kingCaptures++;
-			if (achState[turn].kingCaptures >= 3) unlockAch(turn, 'reyCazador3');
-		}
-	} else {
-		achState[turn].streak = 0;
-	}
-
-	recordHistory({
-		type: 'move',
-		color: turn,
-		piece: {
-			type: moveResult.piece,
-			color: turn
-		},
-		from: moveResult.from,
-		to: moveResult.to,
-		captured: moveResult.captured ? {
-			type: moveResult.captured,
-			color: opp
-		} : null,
-		san: moveResult.san,
-		promotion: moveResult.promotion || null
-	});
-
-	state.mana[turn] = Math.min(state.maxMana, state.mana[turn] + 1);
-	setTimeout(() => sfx('mana'), 60);
-
-	if (movingPiece && movingPiece.type === 'k' && didCapture) {
-		state.mana[turn] = Math.min(state.maxMana, state.mana[turn] + 1);
-		toast('¡Rey cazador! +1 maná extra', '#ffd070');
-		setTimeout(() => sfx('mana'), 140);
-	}
-	if (movingPiece && isSpecial(movingPiece.type)) {
-		if (!state.iraCharge[turn]) {
-			state.specialCount[turn]++;
-			if (state.specialCount[turn] >= 5) {
-				state.specialCount[turn] = 0;
-				state.iraCharge[turn] = true;
-				toast('¡IRA DE BATALLA CARGADA!', '#ffa040');
-				sfx('ira-charge');
-			}
-		}
-	}
-
-	state.busy = false;
-	syncPieces();
-	updateUI();
-
-	if (chess.in_check() && !chess.in_checkmate()) {
-		toast('¡Jaque!', '#ff8080');
-		sfx('check');
-	}
-
-	if (movingPiece && isSpecial(movingPiece.type) && didCapture && state.iraCharge[turn]) {
-		state.busy = true;
-		const iraResult = await iraTargeting(mv.to, turn);
-		state.busy = false;
-		if (iraResult) {
-			if (iraResult.blocked) {
-				// ⬇️ NUEVO: la Ira se rompió contra un escudo.
-				// El charge, el efecto y el registro ya se hicieron dentro de iraTargeting.
-				// Solo avisamos y NO llamamos a unlockAch('dobleFilo') porque no hubo doble captura.
-				toast('🛡️ Tu Ira se rompió contra el escudo', '#ff8080');
-				updateUI();
-			} else {
-				state.iraCharge[turn] = false;
-				unlockAch(turn, 'dobleFilo');
-				recordHistory({
-					type: 'ira',
-					color: turn,
-					powerIcon: '⚔️',
-					powerName: 'Ira de Batalla',
-					piece: {
-						type: movingPiece.type,
-						color: turn
-					},
-					from: iraResult.from,
-					to: iraResult.to,
-					captured: iraResult.captured ? {
-						type: iraResult.captured,
-						color: opp
-					} : null
-				});
-				setLastMove(iraResult.from, iraResult.to, {
-					from: mv.from,
-					to: mv.to
-				});
-				vibrate([20, 40, 55]);
-				if (iraResult.captured) {
-					achState[turn].streak++;
-					checkStreakAch(turn);
-					achState[opp].streak = 0;
-					achState[opp].lostPieces++;
+					state.selected = null;
+					state.legalMoves = [];
+					clearHighlights();
+					await sleep(650);
+					endTurnCalled = true;
+					endTurn();
+					return;
 				}
-				toast('¡Doble captura!', '#ffa040');
-				sfx('ira');
-				updateUI();
 			}
 		}
+
+		let promotion;
+		if (mv.flags.includes('p')) {
+			const isAIMove = isAIPlayer(chess.turn());
+			if (isAIMove) {
+				promotion = aiChoosePromotion(mv);
+			} else {
+				promotion = await askPromotion();
+			}
+		}
+
+		let moveResult;
+		const kingShielded = kingHasShield(turn);
+		const isKingMoving = (mv.from === findKing(turn));
+
+		if (kingShielded && !isKingMoving) {
+			const savedFen = chess.fen();
+			const kingSq = findKing(turn);
+			const king = chess.get(kingSq);
+			chess.remove(kingSq);
+			try {
+				moveResult = chess.move({
+					from: mv.from, to: mv.to, promotion: promotion || 'q'
+				});
+			} catch (e) {
+				moveResult = null;
+			}
+			if (moveResult) {
+				try { chess.put(king, kingSq); } catch (e) {}
+			} else {
+				try { chess.put(king, kingSq); } catch (e) {}
+				try { chess.load(savedFen, { skipValidation: true }); } catch (e) {}
+			}
+		} else {
+			try {
+				moveResult = chess.move({
+					from: mv.from, to: mv.to, promotion: promotion || 'q'
+				});
+			} catch (e) {
+				moveResult = null;
+			}
+		}
+
+		if (!moveResult) {
+			// Si chess.move() falla, NO llamamos endTurn acá:
+			// el finally de _aiTurnInner tiene el watchdog que lo va a forzar.
+			// Solo lo dejamos logueado para diagnóstico.
+			console.warn('[doPlayerMove] chess.move() devolvió null', {
+				mv, promotion, fenBefore: chess.fen()
+			});
+			return;
+		}
+
+		if (state.shields[turn].includes(mv.from)) {
+			removeShield(turn, mv.from);
+			sfx('shield-cancel');
+			toast('🛡️ Escudo cancelado al mover la pieza', '#7ac0ff');
+		}
+		if (capturedSquare) {
+			for (const col of ['w', 'b']) {
+				const i = state.shields[col].indexOf(capturedSquare);
+				if (i >= 0) {
+					state.shields[col].splice(i, 1);
+					delete state.shieldTurns[col][capturedSquare];
+					delete state.shieldHits[col][capturedSquare];
+				}
+			}
+		}
+
+		const isCastle = moveResult.flags && (moveResult.flags.includes('k') || moveResult.flags.includes('q'));
+		const isEpCapture = mv.flags.includes('e');
+		if (isCastle) sfx('enroque');
+		else if (isEpCapture) sfx('ep-capture');
+		else if (moveResult.captured) sfxCapture(moveResult.captured);
+		else sfx('move');
+
+		await animateMove(mv.from, mv.to, capturedSquare);
+
+		const didCapture = !!(moveResult.captured || mv.flags.includes('e'));
+
+		if (didCapture) vibrate(35);
+		setLastMove(mv.from, mv.to, null);
+
+		if (moveResult.captured) addToGraveyard(moveResult.captured, opp);
+		else if (mv.flags.includes('e')) addToGraveyard('p', opp);
+
+		if (didCapture) {
+			if (!firstBloodClaimed) {
+				firstBloodClaimed = true;
+				unlockAch(turn, 'primeraSangre');
+			}
+			achState[turn].streak++;
+			checkStreakAch(turn);
+			achState[opp].streak = 0;
+			achState[opp].lostPieces++;
+			if (movingPiece && movingPiece.type === 'k') {
+				achState[turn].kingCaptures++;
+				if (achState[turn].kingCaptures >= 3) unlockAch(turn, 'reyCazador3');
+			}
+		} else {
+			achState[turn].streak = 0;
+		}
+
+		recordHistory({
+			type: 'move', color: turn,
+			piece: { type: moveResult.piece, color: turn },
+			from: moveResult.from, to: moveResult.to,
+			captured: moveResult.captured ? { type: moveResult.captured, color: opp } : null,
+			san: moveResult.san,
+			promotion: moveResult.promotion || null
+		});
+
+		state.mana[turn] = Math.min(state.maxMana, state.mana[turn] + 1);
+		setTimeout(() => sfx('mana'), 60);
+
+		if (movingPiece && movingPiece.type === 'k' && didCapture) {
+			state.mana[turn] = Math.min(state.maxMana, state.mana[turn] + 1);
+			toast('¡Rey cazador! +1 maná extra', '#ffd070');
+			setTimeout(() => sfx('mana'), 140);
+		}
+		if (movingPiece && isSpecial(movingPiece.type)) {
+			if (!state.iraCharge[turn]) {
+				state.specialCount[turn]++;
+				if (state.specialCount[turn] >= 5) {
+					state.specialCount[turn] = 0;
+					state.iraCharge[turn] = true;
+					toast('¡IRA DE BATALLA CARGADA!', '#ffa040');
+					sfx('ira-charge');
+				}
+			}
+		}
+
+		syncPieces();
+		updateUI();
+
+		if (chess.in_check() && !chess.in_checkmate()) {
+			toast('¡Jaque!', '#ff8080');
+			sfx('check');
+		}
+
+		if (movingPiece && isSpecial(movingPiece.type) && didCapture && state.iraCharge[turn]) {
+			const iraResult = await iraTargeting(mv.to, turn);
+			if (iraResult) {
+				if (iraResult.blocked) {
+					toast('🛡️ Tu Ira se rompió contra el escudo', '#ff8080');
+					updateUI();
+				} else {
+					state.iraCharge[turn] = false;
+					unlockAch(turn, 'dobleFilo');
+					recordHistory({
+						type: 'ira', color: turn, powerIcon: '⚔️',
+						powerName: 'Ira de Batalla',
+						piece: { type: movingPiece.type, color: turn },
+						from: iraResult.from, to: iraResult.to,
+						captured: iraResult.captured ? { type: iraResult.captured, color: opp } : null
+					});
+					setLastMove(iraResult.from, iraResult.to, { from: mv.from, to: mv.to });
+					vibrate([20, 40, 55]);
+					if (iraResult.captured) {
+						achState[turn].streak++;
+						checkStreakAch(turn);
+						achState[opp].streak = 0;
+						achState[opp].lostPieces++;
+					}
+					toast('¡Doble captura!', '#ffa040');
+					sfx('ira');
+					updateUI();
+				}
+			}
+		}
+
+		endTurnCalled = true;
+		endTurn();
+
+	} catch (err) {
+		console.error('[doPlayerMove] excepción capturada:', err, {
+			mv, fen: chess.fen(), turn: chess.turn()
+		});
+	} finally {
+		state.busy = false;
+		// Si por cualquier razón no se llegó a endTurn, lo forzamos acá.
+		// Esto evita el freeze total. Puede ser que la IA "pierda" el turno,
+		// pero al menos el juego sigue y el bug queda logueado.
+		if (!endTurnCalled && !state.gameOver && !replay.active) {
+			console.warn('[doPlayerMove] Fallback: endTurn() forzado');
+			try { endTurn(); } catch (e) { console.error('[doPlayerMove] endTurn fallback falló:', e); }
+		}
 	}
-	endTurn();
 }
 
 /* =========================================================
@@ -17180,6 +17130,9 @@ async function aiExecutePower(opt) {
 			endTurn();
 	}
 }
+
+let aiTurnWatchdogTimer = null;
+
 async function aiTurn() {
 	if (aiThinking) return;
 	if (state.gameOver || replay.active || state.paused) return;
@@ -17188,9 +17141,29 @@ async function aiTurn() {
 
 	aiThinking = true;
 	state.aiBusy = true;
+
+	// Watchdog externo: si en 15s el turno no cambió, forzamos reset.
+	// Es la red final: si _aiTurnInner se cuelga en un await eterno,
+	// este timer lo destraba.
+	const colorAtStart = chess.turn();
+	if (aiTurnWatchdogTimer) clearTimeout(aiTurnWatchdogTimer);
+	aiTurnWatchdogTimer = setTimeout(() => {
+		aiTurnWatchdogTimer = null;
+		if (state.gameOver || replay.active || state.paused) return;
+		if (chess.turn() !== colorAtStart) return;   // ya movió
+		console.warn('[AI watchdog externo] 15s sin movimiento. Reset forzado.');
+		aiThinking = false;
+		state.aiBusy = false;
+		try { endTurn(); } catch (e) { console.error('[watchdog externo] endTurn falló:', e); }
+	}, 15000);
+
 	try {
 		await _aiTurnInner();
 	} finally {
+		if (aiTurnWatchdogTimer) {
+			clearTimeout(aiTurnWatchdogTimer);
+			aiTurnWatchdogTimer = null;
+		}
 		aiThinking = false;
 		state.aiBusy = false;
 		updateUI();
@@ -17221,13 +17194,17 @@ async function _aiTurnInner() {
 
 	try {
 		await _aiTurnBody(aiTurnColor);
+	} catch (err) {
+		console.error('[_aiTurnBody] excepción:', err, {
+			turn: chess.turn(), fen: chess.fen()
+		});
 	} finally {
 		// Watchdog: si el turno no cambió, la IA no hizo nada.
 		// Forzamos endTurn() para no dejar el juego colgado.
 		if (!state.gameOver && !replay.active && !state.paused) {
 			if (chess.turn() === turnBefore) {
 				console.warn('[AI watchdog] El turno no cambió — forzando endTurn()');
-				endTurn();
+				try { endTurn(); } catch (e) { console.error('[AI watchdog] endTurn falló:', e); }
 			}
 		}
 	}
