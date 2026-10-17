@@ -14197,6 +14197,7 @@ async function doPlayerMove(mv) {
    IRA DE BATALLA
    ========================================================= */
 async function iraTargeting(fromSq, color) {
+	const startChess = chess;   // ⬅️ NUEVO: guardar instancia al entrar
 	const savedFen = chess.fen();
 	const parts = savedFen.split(' ');
 	if (parts[1] !== color) {
@@ -14382,7 +14383,9 @@ async function iraTargeting(fromSq, color) {
 	// ===== RAMA JUGADOR =====
 	const result = await new Promise(resolve => {
 		const targets = new Set(moves.map(m => m.to));
+		let resolved = false;   // ⬅️ NUEVO: flag de resolución
 
+		// cleanup: SIEMPRE lo mismo, corre una sola vez
 		const cleanup = () => {
 			gridEl.removeEventListener('click', clickH, true);
 			gridEl.removeEventListener('contextmenu', ctxH, true);
@@ -14390,23 +14393,46 @@ async function iraTargeting(fromSq, color) {
 			iraResolve = null;
 			clearHighlights();
 		};
+
+		// safeResolve: única vía de resolución, idempotente
+		const safeResolve = (value) => {
+			if (resolved) return;
+			resolved = true;
+			cleanup();
+			resolve(value);
+		};
+
 		const ctxH = (e) => {
 			e.preventDefault();
-			cleanup();
-			resolve(null);
+			safeResolve(null);
 		};
 		const clickH = async (e) => {
+			if (state.paused) return;   // ⬅️ NUEVO: no procesar mientras pausado
+			if (resolved) return;       // ⬅️ NUEVO: evitar doble resolución
 			const cell = e.target.closest('.cell');
 			if (!cell) return;
 			const sq = cell.dataset.sq;
 			if (!targets.has(sq)) return;
+			resolved = true;
 			cleanup();
-			resolve(await resolveIraTarget(sq));
+			try {
+				resolve(await resolveIraTarget(sq));
+			} catch (err) {
+				console.error('[iraTargeting clickH] excepción:', err);
+				resolve(null);
+			}
 		};
 		const onDrop = async (toSq) => {
 			if (!toSq || !targets.has(toSq)) return false;
+			if (resolved) return true;  // ⬅️ NUEVO: ya resuelto, no tocar nada
+			resolved = true;
 			cleanup();
-			resolve(await resolveIraTarget(toSq));
+			try {
+				resolve(await resolveIraTarget(toSq));
+			} catch (err) {
+				console.error('[iraTargeting onDrop] excepción:', err);
+				resolve(null);
+			}
 			return true;
 		};
 
@@ -14425,20 +14451,25 @@ async function iraTargeting(fromSq, color) {
 			from: fromSq,
 			color,
 			moves,
-			resolveDrop: onDrop
+			resolveDrop: onDrop,
+			cancel: () => safeResolve(null)   // ⬅️ NUEVO: vía de cancelación
 		};
-		iraResolve = resolve;
+		iraResolve = safeResolve;   // ⬅️ CAMBIO: apuntamos a safeResolve, no a resolve
 		toast('Elige la segunda víctima (clic o arrastrá; azul = escudado)', '#ffa040');
 		updateUI();
 		gridEl.addEventListener('click', clickH, true);
 		gridEl.addEventListener('contextmenu', ctxH, true);
 	});
+
 	if (!result) {
-		try {
-			chess.load(savedFen, {
-				skipValidation: true
-			});
-		} catch (e) {}
+		// ⬅️ NUEVO: solo restaurar si la instancia de chess no cambió
+		if (chess === startChess) {
+			try {
+				chess.load(savedFen, {
+					skipValidation: true
+				});
+			} catch (e) {}
+		}
 	}
 	return result;
 }
@@ -14579,15 +14610,17 @@ async function handleHealStart(turn) {
 function cancelTargeting() {
 	stopTargetingLoop();
 	if (!state.targeting) return;
-	const wasIra = state.targeting.key === 'ira';
-	state.targeting = null;
-	clearHighlights();
-	if (wasIra && iraResolve) {
-		const r = iraResolve;
-		iraResolve = null;
-		r(null);
+
+	// Si es Ira, delegamos al cancel propio del closure.
+	// Ese `cancel` hace safeResolve(null) → cleanup + resolve.
+	if (state.targeting.key === 'ira' && typeof state.targeting.cancel === 'function') {
+		state.targeting.cancel();
+		updateUI();
 		return;
 	}
+
+	state.targeting = null;
+	clearHighlights();
 	updateUI();
 }
 
@@ -20224,6 +20257,17 @@ function newGame() {
 	aiSearchAbort = true;
 	state.aiBusy = false;
 	clearPosCache(); // *** NUEVO ***
+
+	// ⬅️ NUEVO: cancelar cualquier Ira pendiente ANTES de tocar `chess`.
+	// Si no, la promesa huérfana de la partida vieja resolvería
+	// sobre la instancia nueva y corrompería el estado.
+	if (state.targeting && state.targeting.key === 'ira' && typeof state.targeting.cancel === 'function') {
+		try {
+			state.targeting.cancel();
+		} catch (e) {
+			console.warn('[newGame] cancel ira:', e);
+		}
+	}
 
 	// === Bioma ===
 	if (pendingBiome === 'random' || !pendingBiome || !BIOMES[pendingBiome]) {
