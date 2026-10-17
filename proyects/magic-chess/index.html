@@ -3136,6 +3136,9 @@ const debugState = {
    En debug: la que eligió el usuario en el panel (easy/normal/hard/ruby).
    En juego normal: la global (aiDifficulty o ruby). */
 function getAIDifficultyFor(color){
+	if(iaVsIaState.enabled){
+		return iaVsIaState.difficulties[color] || 'normal';
+	}
 	if(debugState.enabled){
 		return debugState.aiDifficulties[color] || 'hard';
 	}
@@ -3143,6 +3146,10 @@ function getAIDifficultyFor(color){
 }
 
 function isAIPlayer(color) {
+	if(iaVsIaState.enabled){
+		// En IA vs IA, ambos colores son controlados por IA.
+		return true;
+	}
 	if (debugState.enabled) {
 		return !!debugState.aiColors[color];
 	}
@@ -5379,6 +5386,14 @@ let humanColor = 'w';
 let aiDifficulty = 'normal';
 let rubyMode = false;
 let aiThinking = false;
+
+/* Modo IA vs IA — espectáculo automático.
+   Ambas IAs juegan solas, cada una con su propia dificultad.
+   No hay jugador humano ni draft interactivo. */
+const iaVsIaState = {
+	enabled: false,
+	difficulties: { w: 'normal', b: 'normal' },
+};
 
 const undoStack = [];
 let undoUsed = 0;
@@ -10485,7 +10500,8 @@ function savePreferences(cfg) {
 			mode: cfg.mode,
 			side: cfg.side,
 			biome: biomePreference,
-			timerMinutes: cfg.timerMinutes
+			timerMinutes: cfg.timerMinutes,
+			iaVsIaDifficulties: cfg.iaVsIaDifficulties || null,
 		}));
 	} catch (e) {}
 }
@@ -12943,6 +12959,7 @@ function undoLimitForMode() {
 }
 
 function canUndo() {
+	if (iaVsIaState.enabled) return false;
 	if (!aiEnabled) return false;
 	if (rubyMode) return false;
 	if (state.gameOver || state.busy || replay.active || state.paused || state.aiBusy) return false;
@@ -19753,10 +19770,15 @@ async function showConfigMenu() {
 		// Los globales ya fueron cargados desde localStorage en boot().
 		// biomePreference guarda la preferencia CRUDA ('random' o un id).
 		const cfg = {
-			mode: aiEnabled ? (rubyMode ? 'ruby' : aiDifficulty) : 'pvp',
+			mode: iaVsIaState.enabled ? 'ia-vs-ia'
+				: (aiEnabled ? (rubyMode ? 'ruby' : aiDifficulty) : 'pvp'),
 			side: humanColor,
 			biome: biomePreference || 'random',
-			timerMinutes: gameTimer.enabled ? gameTimer.initial / 60 : 0
+			timerMinutes: gameTimer.enabled ? gameTimer.initial / 60 : 0,
+			iaVsIaDifficulties: {
+				w: iaVsIaState.difficulties.w,
+				b: iaVsIaState.difficulties.b,
+			},
 		};
 		const ov = document.createElement('div');
 		ov.className = 'modal-overlay';
@@ -19772,6 +19794,7 @@ async function showConfigMenu() {
 <button class="cfgOpt" data-v="hard"><span class="ic">🤖</span>IA Difícil</button>
 <button class="cfgOpt" data-v="debug"><span class="ic">🛠️</span>Debug</button>
 <button class="cfgOpt" data-v="ruby"><span class="ic">💎</span>RUBY</button>
+<button class="cfgOpt" data-v="ia-vs-ia"><span class="ic">⚔️</span>IA vs IA</button>
 <button class="cfgOpt" data-v="history"><span class="ic">📚</span>Historial</button>
 </div>
 </div>
@@ -19782,6 +19805,28 @@ async function showConfigMenu() {
 <button class="cfgOpt" data-v="w"><span class="ic">♔</span>Blancas</button>
 <button class="cfgOpt" data-v="b"><span class="ic">♚</span>Negras</button>
 <button class="cfgOpt" data-v="random"><span class="ic">🎲</span>Cualquiera</button>
+</div>
+</div>
+
+<div class="section" id="cfgIaVsIaSection" style="display:none;">
+<div class="section-title">Dificultad por color</div>
+<div style="font-size:10.5px;color:#8a8070;margin-bottom:6px;text-align:center">
+  ♔ Blancas
+</div>
+<div class="cfgGrid" id="cfgIaVsIaW">
+  <button class="cfgOpt small" data-v="easy"><span class="ic">🤖</span>Fácil</button>
+  <button class="cfgOpt small" data-v="normal"><span class="ic">🤖</span>Normal</button>
+  <button class="cfgOpt small" data-v="hard"><span class="ic">🤖</span>Difícil</button>
+  <button class="cfgOpt small" data-v="ruby"><span class="ic">💎</span>RUBY</button>
+</div>
+<div style="font-size:10.5px;color:#8a8070;margin:10px 0 6px;text-align:center">
+  ♚ Negras
+</div>
+<div class="cfgGrid" id="cfgIaVsIaB">
+  <button class="cfgOpt small" data-v="easy"><span class="ic">🤖</span>Fácil</button>
+  <button class="cfgOpt small" data-v="normal"><span class="ic">🤖</span>Normal</button>
+  <button class="cfgOpt small" data-v="hard"><span class="ic">🤖</span>Difícil</button>
+  <button class="cfgOpt small" data-v="ruby"><span class="ic">💎</span>RUBY</button>
 </div>
 </div>
 
@@ -19825,7 +19870,22 @@ async function showConfigMenu() {
 				else match = cfg.timerMinutes === parseInt(v, 10);
 				b.classList.toggle('picked', match);
 			});
-			m.querySelector('#cfgSideSection').style.display = cfg.mode === 'pvp' ? 'none' : 'block';
+
+			// Side y time solo aplican si hay un humano jugando
+			const isIaVsIa = (cfg.mode === 'ia-vs-ia');
+			m.querySelector('#cfgSideSection').style.display =
+				(cfg.mode === 'pvp' || isIaVsIa) ? 'none' : 'block';
+
+			// Sección de dificultades IA vs IA
+			const iaSection = m.querySelector('#cfgIaVsIaSection');
+			if (iaSection) iaSection.style.display = isIaVsIa ? 'block' : 'none';
+			m.querySelectorAll('#cfgIaVsIaW .cfgOpt').forEach(b => {
+				b.classList.toggle('picked', b.dataset.v === cfg.iaVsIaDifficulties.w);
+			});
+			m.querySelectorAll('#cfgIaVsIaB .cfgOpt').forEach(b => {
+				b.classList.toggle('picked', b.dataset.v === cfg.iaVsIaDifficulties.b);
+			});
+
 			m.querySelectorAll('#cfgBiome .cfgOpt').forEach(b => b.classList.toggle('picked', b.dataset.v === cfg.biome));
 		}
 		m.querySelector('#cfgBiome').onclick = (e) => {
@@ -19866,6 +19926,23 @@ async function showConfigMenu() {
 			cfg.side = b.dataset.v;
 			refreshPicked();
 		};
+		
+		m.querySelector('#cfgIaVsIaW').onclick = (e) => {
+			sfx('side-pick');
+			const b = e.target.closest('.cfgOpt');
+			if (!b) return;
+			cfg.iaVsIaDifficulties.w = b.dataset.v;
+			refreshPicked();
+		};
+		
+		m.querySelector('#cfgIaVsIaB').onclick = (e) => {
+			sfx('side-pick');
+			const b = e.target.closest('.cfgOpt');
+			if (!b) return;
+			cfg.iaVsIaDifficulties.b = b.dataset.v;
+			refreshPicked();
+		};
+		
 		m.querySelector('#cfgTime').onclick = async (e) => {
 			sfx('side-pick');
 			const b = e.target.closest('.cfgOpt');
@@ -19952,12 +20029,29 @@ async function showStartMenu() {
 			const cfg = res.cfg;
 			savePreferences(cfg);
 
+			// Por defecto, cualquier modo que NO sea ia-vs-ia desactiva
+			// el estado de IA vs IA. Si el usuario vuelve a elegir ia-vs-ia
+			// más abajo, se reactiva.
+			iaVsIaState.enabled = false;
+
 			if (cfg.mode === 'pvp') {
 				aiEnabled = false;
 				rubyMode = false;
 				humanColor = 'w';
 				aiColor = 'b';
 				debugState.enabled = false;
+			} else if (cfg.mode === 'ia-vs-ia') {
+				aiEnabled = true;
+				rubyMode = false;
+				humanColor = 'w';   // sentinela, no se usa
+				aiColor = 'b';      // sentinela, no se usa
+				aiDifficulty = 'normal'; // sentinela, `getAIDifficultyFor` lo pisa
+				debugState.enabled = false;
+				iaVsIaState.enabled = true;
+				iaVsIaState.difficulties = {
+					w: cfg.iaVsIaDifficulties.w,
+					b: cfg.iaVsIaDifficulties.b,
+				};
 			} else if (cfg.mode === 'debug') {
 				aiEnabled = true;
 				aiDifficulty = 'hard';
@@ -20003,7 +20097,13 @@ async function showStartMenu() {
 
 async function doDraft() {
 	let wPicks, bPicks;
-	if (!aiEnabled) {
+
+	// IA vs IA: draft aleatorio para ambos, sin intervención humana.
+	if (iaVsIaState.enabled) {
+		wPicks = shuffle([...ALL_CARD_KEYS]).slice(0, 3);
+		bPicks = shuffle([...ALL_CARD_KEYS]).slice(0, 3);
+	}
+	else if (!aiEnabled) {
 		wPicks = await showDraftModal('w');
 		bPicks = await showDraftModal('b');
 	} else if (humanColor === 'w') {
@@ -21775,6 +21875,19 @@ function boot() {
 				rubyMode = false;
 				humanColor = 'w';
 				aiColor = 'b';
+			} else if (saved.mode === 'ia-vs-ia') {
+				aiEnabled = true;
+				rubyMode = false;
+				humanColor = 'w';
+				aiColor = 'b';
+				aiDifficulty = 'normal';
+				iaVsIaState.enabled = true;
+				if (saved.iaVsIaDifficulties) {
+					iaVsIaState.difficulties = {
+						w: saved.iaVsIaDifficulties.w || 'normal',
+						b: saved.iaVsIaDifficulties.b || 'normal',
+					};
+				}
 			} else {
 				aiEnabled = true;
 				aiDifficulty = saved.mode;
