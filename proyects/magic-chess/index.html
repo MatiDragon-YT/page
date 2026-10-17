@@ -10501,6 +10501,7 @@ function savePreferences(cfg) {
 			side: cfg.side,
 			biome: biomePreference,
 			timerMinutes: cfg.timerMinutes,
+			aiDifficulty: cfg.aiDifficulty || 'normal',
 			iaVsIaDifficulties: cfg.iaVsIaDifficulties || null,
 		}));
 	} catch (e) {}
@@ -12775,61 +12776,51 @@ async function askPromotion() {
 	return res;
 }
 
-function showDraftModal(color) {
+
+/* Modal de UNA sola elección sobre el mazo maestro de 6 cartas.
+   El jugador ve el orden completo y elige qué carta empujar al frente.
+   El resto mantiene su orden relativo. */
+function showSinglePickModal(masterDeck, color) {
 	return new Promise(resolve => {
 		const ov = document.createElement('div');
 		ov.className = 'modal-overlay';
 		const m = document.createElement('div');
-		m.className = 'modal';
+		m.className = 'modal wide';   // wide: son 6 cartas
 		const cName = color === 'w' ? 'Blancas' : 'Negras';
-		m.innerHTML = `<h3>🃏 Draft de cartas</h3>` +
-			`<p>${cName}, elige <b>3 cartas de poder</b> para empezar.</p>` +
-			`<div class="draftCounter" id="draftCounter">0 / 3 seleccionadas</div>` +
-			`<div class="draftGrid" id="draftGrid"></div>`;
+		m.innerHTML = `
+			<h3>🃏 ${cName} — Empujá una carta al frente</h3>
+			<p>Este es el <b>mazo maestro</b> de la partida, en el orden en que va a circular.<br>
+			   Elegí una carta para llevarla al inicio de tu mano. Las demás mantienen su posición.</p>
+			<div class="draftCounter">Las 6 cartas de la partida</div>
+			<div class="draftGrid" id="draftGrid"></div>
+		`;
 		ov.appendChild(m);
 		document.body.appendChild(ov);
+
 		const grid = m.querySelector('#draftGrid');
-		const counter = m.querySelector('#draftCounter');
-		const picks = new Set();
-		ALL_CARD_KEYS.forEach(key => {
+		masterDeck.forEach((key, idx) => {
 			const p = POWERS[key];
 			const card = document.createElement('div');
 			card.className = 'draftCard';
+			// Mostramos el índice del orden original como referencia sutil.
 			card.innerHTML = `<span class="cost">${COST_LABEL[key]}</span>` +
 				`<span class="ic">${p.icon}</span><span class="nm">${p.name}</span>`;
-			attachPowerTooltip(card, key); // ⬅️ NUEVO
+			attachPowerTooltip(card, key);
 			card.onclick = () => {
-				if (picks.has(key)) {
-					picks.delete(key);
-					card.classList.remove('picked');
-				} else {
-					if (picks.size >= 3) return;
-					picks.add(key);
-					card.classList.add('picked');
-					sfx('draft-pick');
-				}
-				counter.textContent = `${picks.size} / 3 seleccionadas`;
-				if (picks.size === 3) {
-					sfx('draft-done');
-					// ⬇️ Cerrar el tooltip YA, sin esperar el setTimeout
-					hidePowerTooltip();
-					lockTooltips(900);  // ⬅️ 900ms de paz después del draft
-
-					// ⬇️ Forzar blur para que Android suelte el touch target
-					try {
-						if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-						document.body.setAttribute('tabindex', '-1');
-						document.body.focus();
-						document.body.removeAttribute('tabindex');
-					} catch (e) {}
-
-
-					setTimeout(() => {
-						destroyPowerTooltip();   // ⬅️ destruye el nodo entero
-						ov.remove();
-						resolve([...picks]);
-					}, 280);
-				}
+				sfx('draft-pick');
+				hidePowerTooltip();
+				lockTooltips(900);
+				try {
+					if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+					document.body.setAttribute('tabindex', '-1');
+					document.body.focus();
+					document.body.removeAttribute('tabindex');
+				} catch (e) {}
+				setTimeout(() => {
+					destroyPowerTooltip();
+					ov.remove();
+					resolve(key);
+				}, 280);
 			};
 			grid.appendChild(card);
 		});
@@ -19771,10 +19762,11 @@ async function showConfigMenu() {
 		// biomePreference guarda la preferencia CRUDA ('random' o un id).
 		const cfg = {
 			mode: iaVsIaState.enabled ? 'ia-vs-ia'
-				: (aiEnabled ? (rubyMode ? 'ruby' : aiDifficulty) : 'pvp'),
+				: (aiEnabled ? 'vs-ia' : 'pvp'),
 			side: humanColor,
 			biome: biomePreference || 'random',
 			timerMinutes: gameTimer.enabled ? gameTimer.initial / 60 : 0,
+			aiDifficulty: rubyMode ? 'ruby' : aiDifficulty,
 			iaVsIaDifficulties: {
 				w: iaVsIaState.difficulties.w,
 				b: iaVsIaState.difficulties.b,
@@ -19789,13 +19781,20 @@ async function showConfigMenu() {
 <div class="section">
 <div class="section-title">Modo de juego</div>
 <div class="cfgGrid c3" id="cfgMode">
-<button class="cfgOpt" data-v="pvp"><span class="ic">👥</span>2 Jugadores</button>
-<button class="cfgOpt" data-v="easy"><span class="ic">🤖</span>IA Fácil</button>
-<button class="cfgOpt" data-v="hard"><span class="ic">🤖</span>IA Difícil</button>
+<button class="cfgOpt" data-v="pvp"><span class="ic">👥</span>P vs P</button>
+<button class="cfgOpt" data-v="vs-ia"><span class="ic">🤖</span>vs IA</button>
 <button class="cfgOpt" data-v="debug"><span class="ic">🛠️</span>Debug</button>
-<button class="cfgOpt" data-v="ruby"><span class="ic">💎</span>RUBY</button>
 <button class="cfgOpt" data-v="ia-vs-ia"><span class="ic">⚔️</span>IA vs IA</button>
 <button class="cfgOpt" data-v="history"><span class="ic">📚</span>Historial</button>
+</div>
+</div>
+
+<div class="section" id="cfgDifficultySection" style="display:none;">
+<div class="section-title">Dificultad de la IA</div>
+<div class="dbgAiRow active">
+  <span class="dbgAiLabel">🤖 IA</span>
+  <input type="range" class="dbgAiSlider" id="cfgAiSlider" min="0" max="3" step="1" value="1">
+  <span class="dbgAiDiffLabel" id="cfgAiLabel">normal</span>
 </div>
 </div>
 
@@ -19810,23 +19809,15 @@ async function showConfigMenu() {
 
 <div class="section" id="cfgIaVsIaSection" style="display:none;">
 <div class="section-title">Dificultad por color</div>
-<div style="font-size:10.5px;color:#8a8070;margin-bottom:6px;text-align:center">
-  ♔ Blancas
+<div class="dbgAiRow active">
+  <span class="dbgAiLabel">♔ Blancas</span>
+  <input type="range" class="dbgAiSlider" id="cfgIaWSlider" min="0" max="3" step="1" value="1">
+  <span class="dbgAiDiffLabel" id="cfgIaWLabel">normal</span>
 </div>
-<div class="cfgGrid" id="cfgIaVsIaW">
-  <button class="cfgOpt small" data-v="easy"><span class="ic">🤖</span>Fácil</button>
-  <button class="cfgOpt small" data-v="normal"><span class="ic">🤖</span>Normal</button>
-  <button class="cfgOpt small" data-v="hard"><span class="ic">🤖</span>Difícil</button>
-  <button class="cfgOpt small" data-v="ruby"><span class="ic">💎</span>RUBY</button>
-</div>
-<div style="font-size:10.5px;color:#8a8070;margin:10px 0 6px;text-align:center">
-  ♚ Negras
-</div>
-<div class="cfgGrid" id="cfgIaVsIaB">
-  <button class="cfgOpt small" data-v="easy"><span class="ic">🤖</span>Fácil</button>
-  <button class="cfgOpt small" data-v="normal"><span class="ic">🤖</span>Normal</button>
-  <button class="cfgOpt small" data-v="hard"><span class="ic">🤖</span>Difícil</button>
-  <button class="cfgOpt small" data-v="ruby"><span class="ic">💎</span>RUBY</button>
+<div class="dbgAiRow active">
+  <span class="dbgAiLabel">♚ Negras</span>
+  <input type="range" class="dbgAiSlider" id="cfgIaBSlider" min="0" max="3" step="1" value="1">
+  <span class="dbgAiDiffLabel" id="cfgIaBLabel">normal</span>
 </div>
 </div>
 
@@ -19856,10 +19847,10 @@ async function showConfigMenu() {
 		ov.appendChild(m);
 		document.body.appendChild(ov);
 
-		function refreshPicked() {
-			// Compatibilidad con saves viejos que tenían "normal"
-			if (cfg.mode === 'normal') cfg.mode = 'hard';
+		const DIFF_STEPS  = ['easy', 'normal', 'hard', 'ruby'];
+		const DIFF_LABELS = ['fácil', 'normal', 'difícil', 'ruby'];
 
+		function refreshPicked() {
 			m.querySelectorAll('#cfgMode .cfgOpt').forEach(b => b.classList.toggle('picked', b.dataset.v === cfg.mode));
 			m.querySelectorAll('#cfgSide .cfgOpt').forEach(b => b.classList.toggle('picked', b.dataset.v === cfg.side));
 			m.querySelectorAll('#cfgTime .cfgOpt').forEach(b => {
@@ -19871,23 +19862,47 @@ async function showConfigMenu() {
 				b.classList.toggle('picked', match);
 			});
 
-			// Side y time solo aplican si hay un humano jugando
+			const isPvp    = (cfg.mode === 'pvp');
 			const isIaVsIa = (cfg.mode === 'ia-vs-ia');
-			m.querySelector('#cfgSideSection').style.display =
-				(cfg.mode === 'pvp' || isIaVsIa) ? 'none' : 'block';
+			const isVsIa   = (cfg.mode === 'vs-ia');
 
-			// Sección de dificultades IA vs IA
+			// "Tu color" solo aplica cuando hay un humano vs IA (o debug)
+			m.querySelector('#cfgSideSection').style.display =
+				(isPvp || isIaVsIa) ? 'none' : 'block';
+
+			// Sección de dificultad única (modo vs IA)
+			const diffSection = m.querySelector('#cfgDifficultySection');
+			if (diffSection) diffSection.style.display = isVsIa ? 'block' : 'none';
+			if (isVsIa) {
+				const idx = Math.max(0, DIFF_STEPS.indexOf(cfg.aiDifficulty));
+				const slider = m.querySelector('#cfgAiSlider');
+				const label  = m.querySelector('#cfgAiLabel');
+				if (slider) slider.value = idx;
+				if (label) {
+					label.textContent = DIFF_LABELS[idx];
+					label.classList.toggle('ruby', cfg.aiDifficulty === 'ruby');
+				}
+			}
+
+			// Sección de dificultad IA vs IA (2 sliders)
 			const iaSection = m.querySelector('#cfgIaVsIaSection');
 			if (iaSection) iaSection.style.display = isIaVsIa ? 'block' : 'none';
-			m.querySelectorAll('#cfgIaVsIaW .cfgOpt').forEach(b => {
-				b.classList.toggle('picked', b.dataset.v === cfg.iaVsIaDifficulties.w);
-			});
-			m.querySelectorAll('#cfgIaVsIaB .cfgOpt').forEach(b => {
-				b.classList.toggle('picked', b.dataset.v === cfg.iaVsIaDifficulties.b);
-			});
+			if (isIaVsIa) {
+				const idxW = Math.max(0, DIFF_STEPS.indexOf(cfg.iaVsIaDifficulties.w));
+				const idxB = Math.max(0, DIFF_STEPS.indexOf(cfg.iaVsIaDifficulties.b));
+				const wS = m.querySelector('#cfgIaWSlider');
+				const bS = m.querySelector('#cfgIaBSlider');
+				const wL = m.querySelector('#cfgIaWLabel');
+				const bL = m.querySelector('#cfgIaBLabel');
+				if (wS) wS.value = idxW;
+				if (bS) bS.value = idxB;
+				if (wL) { wL.textContent = DIFF_LABELS[idxW]; wL.classList.toggle('ruby', cfg.iaVsIaDifficulties.w === 'ruby'); }
+				if (bL) { bL.textContent = DIFF_LABELS[idxB]; bL.classList.toggle('ruby', cfg.iaVsIaDifficulties.b === 'ruby'); }
+			}
 
 			m.querySelectorAll('#cfgBiome .cfgOpt').forEach(b => b.classList.toggle('picked', b.dataset.v === cfg.biome));
 		}
+		
 		m.querySelector('#cfgBiome').onclick = (e) => {
 			sfx('side-pick');
 			const b = e.target.closest('.cfgOpt');
@@ -19927,21 +19942,50 @@ async function showConfigMenu() {
 			refreshPicked();
 		};
 		
-		m.querySelector('#cfgIaVsIaW').onclick = (e) => {
-			sfx('side-pick');
-			const b = e.target.closest('.cfgOpt');
-			if (!b) return;
-			cfg.iaVsIaDifficulties.w = b.dataset.v;
-			refreshPicked();
-		};
-		
-		m.querySelector('#cfgIaVsIaB').onclick = (e) => {
-			sfx('side-pick');
-			const b = e.target.closest('.cfgOpt');
-			if (!b) return;
-			cfg.iaVsIaDifficulties.b = b.dataset.v;
-			refreshPicked();
-		};
+		// Slider de dificultad (modo vs IA)
+		const aiSlider = m.querySelector('#cfgAiSlider');
+		if (aiSlider) {
+			aiSlider.addEventListener('input', (e) => {
+				const idx = parseInt(e.target.value, 10);
+				cfg.aiDifficulty = DIFF_STEPS[idx];
+				const label = m.querySelector('#cfgAiLabel');
+				if (label) {
+					label.textContent = DIFF_LABELS[idx];
+					label.classList.toggle('ruby', cfg.aiDifficulty === 'ruby');
+				}
+				sfx('slider-tick');
+			});
+		}
+
+		// Slider Blancas (modo IA vs IA)
+		const iaWSlider = m.querySelector('#cfgIaWSlider');
+		if (iaWSlider) {
+			iaWSlider.addEventListener('input', (e) => {
+				const idx = parseInt(e.target.value, 10);
+				cfg.iaVsIaDifficulties.w = DIFF_STEPS[idx];
+				const label = m.querySelector('#cfgIaWLabel');
+				if (label) {
+					label.textContent = DIFF_LABELS[idx];
+					label.classList.toggle('ruby', cfg.iaVsIaDifficulties.w === 'ruby');
+				}
+				sfx('slider-tick');
+			});
+		}
+
+		// Slider Negras (modo IA vs IA)
+		const iaBSlider = m.querySelector('#cfgIaBSlider');
+		if (iaBSlider) {
+			iaBSlider.addEventListener('input', (e) => {
+				const idx = parseInt(e.target.value, 10);
+				cfg.iaVsIaDifficulties.b = DIFF_STEPS[idx];
+				const label = m.querySelector('#cfgIaBLabel');
+				if (label) {
+					label.textContent = DIFF_LABELS[idx];
+					label.classList.toggle('ruby', cfg.iaVsIaDifficulties.b === 'ruby');
+				}
+				sfx('slider-tick');
+			});
+		}
 		
 		m.querySelector('#cfgTime').onclick = async (e) => {
 			sfx('side-pick');
@@ -20056,29 +20100,24 @@ async function showStartMenu() {
 				aiEnabled = true;
 				aiDifficulty = 'hard';
 				rubyMode = false;
-				// Color aleatorio si eligió "Cualquiera"
 				humanColor = (cfg.side === 'random') ?
 					(Math.random() < 0.5 ? 'w' : 'b') :
 					(cfg.side || 'w');
 				aiColor = humanColor === 'w' ? 'b' : 'w';
 				debugState.enabled = true;
-				debugState.aiColors = {
-					w: false,
-					b: false
-				};
+				debugState.aiColors = { w: false, b: false };
 				debugState.editingPiece = null;
 				debugState.tab = 'world';
-			} else {
+			} else if (cfg.mode === 'vs-ia') {
 				aiEnabled = true;
-				aiDifficulty = cfg.mode;
-				rubyMode = (cfg.mode === 'ruby');
+				aiDifficulty = cfg.aiDifficulty || 'normal';
+				rubyMode = (aiDifficulty === 'ruby');
 				humanColor = (cfg.side === 'random') ?
 					(Math.random() < 0.5 ? 'w' : 'b') :
 					(cfg.side || 'w');
 				aiColor = humanColor === 'w' ? 'b' : 'w';
 				debugState.enabled = false;
 
-				// ⬇️ NUEVO: si fue random, sonar el dado
 				if (cfg.side === 'random') {
 					sfx('dice');
 				}
@@ -20096,24 +20135,41 @@ async function showStartMenu() {
 }
 
 async function doDraft() {
-	let wPicks, bPicks;
+	// ─── 1. Mazo maestro: las 6 cartas barajadas UNA sola vez ───
+	// Ambos jugadores ven este mismo array, en este mismo orden.
+	const masterDeck = shuffle([...ALL_CARD_KEYS]);
 
-	// IA vs IA: draft aleatorio para ambos, sin intervención humana.
+	// ─── 2. Cada jugador elige UNA carta del master ───
+	let wPick, bPick;
+
 	if (iaVsIaState.enabled) {
-		wPicks = shuffle([...ALL_CARD_KEYS]).slice(0, 3);
-		bPicks = shuffle([...ALL_CARD_KEYS]).slice(0, 3);
-	}
-	else if (!aiEnabled) {
-		wPicks = await showDraftModal('w');
-		bPicks = await showDraftModal('b');
+		// IAs: eligen al azar. Pueden coincidir o no.
+		wPick = masterDeck[Math.floor(Math.random() * masterDeck.length)];
+		bPick = masterDeck[Math.floor(Math.random() * masterDeck.length)];
+	} else if (!aiEnabled) {
+		// PvP: ambos humanos eligen, secuencial.
+		wPick = await showSinglePickModal(masterDeck, 'w');
+		bPick = await showSinglePickModal(masterDeck, 'b');
 	} else if (humanColor === 'w') {
-		wPicks = await showDraftModal('w');
-		bPicks = shuffle([...ALL_CARD_KEYS]).slice(0, 3);
+		wPick = await showSinglePickModal(masterDeck, 'w');
+		bPick = masterDeck[Math.floor(Math.random() * masterDeck.length)];
 	} else {
-		wPicks = shuffle([...ALL_CARD_KEYS]).slice(0, 3);
-		bPicks = await showDraftModal('b');
+		wPick = masterDeck[Math.floor(Math.random() * masterDeck.length)];
+		bPick = await showSinglePickModal(masterDeck, 'b');
 	}
-	setupDecks(wPicks, bPicks);
+
+	// ─── 3. Push-to-front: la pick va al inicio, el resto mantiene orden ───
+	// Equivalente a un splice + unshift (o a un "move to front" estilo editor).
+	const promoteToFront = (deck, pick) => [pick, ...deck.filter(k => k !== pick)];
+
+	const wDeck = promoteToFront(masterDeck, wPick);
+	const bDeck = promoteToFront(masterDeck, bPick);
+
+	// ─── 4. Los primeros 3 van a la mano, los últimos 3 a la queue ───
+	playerDecks.w.hand  = wDeck.slice(0, 3);
+	playerDecks.w.queue = wDeck.slice(3);
+	playerDecks.b.hand  = bDeck.slice(0, 3);
+	playerDecks.b.queue = bDeck.slice(3);
 }
 
 async function startGame() {
@@ -21858,6 +21914,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 function boot() {
+	setupDecks(['ray', 'shield', 'teleport'], ['ray', 'shield', 'teleport']);
+	
 	if (typeof Chess === 'undefined') {
 		document.body.innerHTML = '<div style="padding:40px;text-align:center;font-family:sans-serif;color:#f88">' +
 			'No se pudo cargar la librería de ajedrez (chess.js). Revisa tu conexión.</div>';
@@ -21867,6 +21925,7 @@ function boot() {
 	// ===== Aplicar preferencias guardadas ANTES de generar el terreno =====
 	const saved = loadPreferences();
 	try { backfillMatchSeeds(); } catch(e){ console.warn('backfill seeds:', e); }
+	
 	if (saved) {
 		// Modo / lado
 		if (saved.mode) {
@@ -21888,7 +21947,22 @@ function boot() {
 						b: saved.iaVsIaDifficulties.b || 'normal',
 					};
 				}
+			} else if (saved.mode === 'vs-ia') {
+				aiEnabled = true;
+				aiDifficulty = saved.aiDifficulty || 'normal';
+				rubyMode = (aiDifficulty === 'ruby');
+				humanColor = saved.side || 'w';
+				aiColor = humanColor === 'w' ? 'b' : 'w';
+			} else if (saved.mode === 'debug') {
+				// Save viejo que arrancó en debug: cae a vs-ia.
+				aiEnabled = true;
+				aiDifficulty = 'hard';
+				rubyMode = false;
+				humanColor = saved.side || 'w';
+				aiColor = humanColor === 'w' ? 'b' : 'w';
 			} else {
+				// Compatibilidad con saves viejos que guardaban
+				// mode: 'easy' | 'normal' | 'hard' | 'ruby'
 				aiEnabled = true;
 				aiDifficulty = saved.mode;
 				rubyMode = (saved.mode === 'ruby');
