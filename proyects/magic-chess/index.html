@@ -5400,9 +5400,11 @@ function updateQualityFromFPS(dt) {
 
 	quality.effective = target;
 	quality.lastChange = now;
-	//console.log(`[quality] → ${target}  (p25: ${p25.toFixed(1)}  p50: ${p50.toFixed(1)})`);
 
-	playSfx(isUpgrade ? 'quality-up' : 'quality-down');
+	// solo emitir sonido si el audio ya está inicializado.
+	// Si el usuario no interactuó todavía, no forzamos initAudio desde acá —
+	// el navegador tiraría "AudioContext was not allowed to start".
+	if (actx) playSfx(isUpgrade ? 'quality-up' : 'quality-down');
 
 	if (typeof toast === 'function') {
 		const icon = {
