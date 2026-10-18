@@ -19133,36 +19133,24 @@ function wireDebugGame() {
 
 	// ─── Forzar movimiento IA (destrabar) ───
 	$('#dbgForceAIMove').onclick = () => {
-		const turn = chess.turn();
-		if(!isAIPlayer(turn)){
-			toast(`El turno es de ${turn === 'w' ? 'Blancas' : 'Negras'} — no está la IA activa`, '#ff8080');
+		if (!isAIPlayer(chess.turn())) {
+			toast('El turno actual no es de la IA', '#ff8080');
 			return;
 		}
-		if(state.gameOver || replay.active || state.paused){
+		if (state.gameOver || replay.active || state.paused) {
 			toast('No se puede forzar en este estado', '#ff8080');
 			return;
 		}
-		// Limpiar posibles locks internos y disparar
+		if (aiThinking) {
+			toast('La IA ya está pensando…', '#c080ff');
+			return;
+		}
+		// Reset de todos los locks internos por si quedó trabado
 		aiThinking = false;
 		state.aiBusy = false;
 		aiSearchAbort = false;
 		aiTurn();
 		toast('🤖 IA re-disparada', '#c080ff');
-	};
-	
-	$('#dbgForceAIMove').onclick = () => {
-    if(!isAIPlayer(chess.turn())){
-        toast('El turno actual no es de la IA', '#ff8080');
-        return;
-    }
-    if(aiThinking){
-        toast('La IA ya está pensando…', '#c080ff');
-        return;
-    }
-    aiThinking = false;   // por si quedó trabado
-    state.aiBusy = false;
-    aiTurn();
-    toast('🤖 IA re-disparada', '#c080ff');
 	};
 	
 	// Mana
@@ -21027,7 +21015,7 @@ function drawWeatherParticles(W, H, dt) {
 	// ciclo de vida — al reactivar el clima aparecen en la posición donde
 	// se quedaron.
 	const intensity = rainAmt;
-	
+
 	// Actualizar vórtices y viento aunque la intensidad sea 0 (se apagan solos)
 	updateVortices(dt, W, H, intensity);
 	updateWindState(dt);
