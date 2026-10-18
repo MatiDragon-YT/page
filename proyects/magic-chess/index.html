@@ -768,6 +768,29 @@ body {
 	pointer-events: none
 }
 
+/* ⬇️ NUEVO: maná cerca del tope → leve pulso */
+.manaBar.mana-near .fill {
+	animation: manaPulseSoft 2.4s ease-in-out infinite;
+}
+.manaBar.mana-maxed .fill {
+	animation: manaPulseHard 1.2s ease-in-out infinite;
+	box-shadow: 0 0 18px rgba(120, 180, 255, 0.9),
+	            0 0 32px rgba(120, 180, 255, 0.4);
+}
+.manaBar.mana-maxed .lbl {
+	color: #fff;
+	text-shadow: 0 0 8px rgba(120, 180, 255, 0.9);
+}
+
+@keyframes manaPulseSoft {
+	0%, 100% { filter: brightness(1); }
+	50%      { filter: brightness(1.15); }
+}
+@keyframes manaPulseHard {
+	0%, 100% { filter: brightness(1);   transform: scaleY(1); }
+	50%      { filter: brightness(1.35); transform: scaleY(1.04); }
+}
+
 #oppHandRow {
 	display: flex;
 	align-items: center;
@@ -13653,6 +13676,12 @@ function updateUI() {
 	mb.querySelector('.fill').style.width = (state.mana.b / state.maxMana * 100) + '%';
 	mw.querySelector('.lbl').textContent = state.mana.w + ' / ' + state.maxMana;
 	mb.querySelector('.lbl').textContent = state.mana.b + ' / ' + state.maxMana;
+
+	// ⬇️ NUEVO: clases de saturación para feedback visual
+	mw.classList.toggle('mana-near', state.mana.w === state.maxMana - 1);
+	mw.classList.toggle('mana-maxed', state.mana.w >= state.maxMana);
+	mb.classList.toggle('mana-near', state.mana.b === state.maxMana - 1);
+	mb.classList.toggle('mana-maxed', state.mana.b >= state.maxMana);
 
 	if (!replay.active) {
 		renderPlayerHand();
