@@ -5424,6 +5424,10 @@ let humanColor = 'w';
 let aiDifficulty = 'normal';
 let rubyMode = false;
 let aiThinking = false;
+// anti-repetición de poderes para IA
+// Cada jugador trackea su último poder usado. Si intenta usar el mismo
+// dos veces seguidas, se le resta score para forzar variedad.
+const aiLastPowerUsed = { w: null, b: null };
 
 /* Modo IA vs IA — espectáculo automático.
    Ambas IAs juegan solas, cada una con su propia dificultad.
@@ -15372,23 +15376,40 @@ async function execHeal(sq, type, color, cost) {
 	if (chess.get(sq)) {
 		toast('Esa casilla está ocupada', '#ff8080');
 		state.busy = false;
+
+		// ⬇️ IA vs IA / IA vs humano-IA: no hay nadie para clickear el
+		// targeting. Si la casilla original estaba ocupada, elegimos
+		// el primer empty disponible y seguimos, sin bloquear el flujo.
+		if (iaVsIaState.enabled || isAIPlayer(color)) {
+			const empties = getAdjacentEmptySquares(color);
+			if (empties.length && empties[0] !== sq) {
+				return await execHeal(empties[0], type, color, cost);
+			}
+			// Si no hay alternativa, consumir la carta y terminar el turno
+			if (state.graveyard[color].includes(type)) {
+				const i = state.graveyard[color].indexOf(type);
+				state.graveyard[color].splice(i, 1);
+			}
+			finishPower({
+				type: 'spell', color, powerIcon: '💚',
+				powerName: 'Toque Curativo', powerKey: 'heal',
+				piece: { type, color }, to: sq, cost
+			});
+			return;
+		}
+
+		// Humano vs humano o humano vs IA (turno del humano): targeting normal
 		const empties = getAdjacentEmptySquares(color);
 		if (empties.length) {
 			state.targeting = {
 				key: 'heal',
 				step: 2,
 				target: 'heal',
-				data: {
-					type,
-					emptySquares: empties,
-					cost
-				}
+				data: { type, emptySquares: empties, cost }
 			};
 			highlightTargeting();
 			updateUI();
-		} else {
-			finishPower(null);
-		}
+		} else finishPower(null);
 		return;
 	}
 	const C = squareCenter(sq);
@@ -15758,7 +15779,11 @@ async function execQuake(centerSq) {
 function finishPower(entry) {
 	switchTurnInFen();
 	if (entry) {
-		if (entry.powerKey) cycleCard(entry.color, entry.powerKey);
+		if (entry.powerKey) {
+			cycleCard(entry.color, entry.powerKey);
+			// ⬇️ NUEVO: recordar para anti-repetición
+			aiLastPowerUsed[entry.color] = entry.powerKey;
+		}
 		recordHistory(entry);
 	}
 	if (chess.in_check()) {
@@ -17173,6 +17198,7 @@ async function aiFindQuakeOption(color, mana, hand) {
 	opts.sort((a, b) => b.score - a.score);
 	return opts[0];
 }
+
 async function aiFindBestPower(color) {
 	// *** FIX: si está en jaque, solo consideramos poderes que lo resuelvan ***
 	if (aiIsInCheck(color)) {
@@ -17194,6 +17220,22 @@ async function aiFindBestPower(color) {
 	push(aiFindShieldOption(color, mana, hand));
 	push(await aiFindTeleportOption(color, mana, hand));
 	push(await aiFindQuakeOption(color, mana, hand));
+
+	// ⬇️ NUEVO: penalizar el poder usado en el turno anterior.
+	// Un poder que se usó recién baja ~40% su score. Si la diferencia era
+	// marginal, otra opción toma la delantera y se produce variedad.
+	const lastUsed = aiLastPowerUsed[color];
+	if (lastUsed) {
+		for (const c of candidates) {
+			if (c.key === lastUsed) {
+				// Penalización proporcional al score: los muy fuertes igual
+				// ganan (si es un mate en 1 con Rayo, seguimos usándolo),
+				// pero los medianos ceden el paso a otras opciones.
+				c.score = c.score - 250;
+			}
+		}
+	}
+
 	candidates.sort((a, b) => b.score - a.score);
 	return candidates[0] || null;
 }
