@@ -21022,15 +21022,20 @@ function getRainSprite(alpha) {
 }
 
 function drawWeatherParticles(W, H, dt) {
+	// ⬇️ FIX #10: vórtices y viento SIEMPRE se actualizan, incluso con el
+	// render de clima apagado. Si no, quedan congelados y no terminan su
+	// ciclo de vida — al reactivar el clima aparecen en la posición donde
+	// se quedaron.
+	const intensity = rainAmt;
+	
+	// Actualizar vórtices y viento aunque la intensidad sea 0 (se apagan solos)
+	updateVortices(dt, W, H, intensity);
+	updateWindState(dt);
+
 	const q = getRainScale();
 	if (q <= 0) return;
 	const mode = currentBiome.weather.mode;
 	if (mode === 'none') return;
-	const intensity = rainAmt;
-
-	// Actualizar vórtices y viento aunque la intensidad sea 0 (se apagan solos)
-	updateVortices(dt, W, H, intensity);
-	updateWindState(dt);
 
 	// ⬇️ Fade-out suave: antes de 0.05 se multiplica por una rampa lineal
 	//    para que la lluvia no desaparezca de golpe al cruzar el umbral.
