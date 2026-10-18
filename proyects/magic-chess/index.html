@@ -2972,6 +2972,7 @@ body.hl-move-off.hl-power-off .cell .costTag{
 UTILIDADES
 ========================================================= */
 const $ = s => document.querySelector(s);
+const log = (x) => console.log(x);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -4772,7 +4773,7 @@ const _UI_SFX_KINDS = new Set([
   'biome-change','side-pick','deny'
 ]);
 
-function playSfx(kind) {
+function playSfx(kind, color) {
   if (!actx) initAudio();
   if (!actx) return;
   if (!soundEnabled) return;
@@ -4781,10 +4782,14 @@ function playSfx(kind) {
   const isUI = _UI_SFX_KINDS.has(kind);
   const bus  = isUI ? busGains.ui : busGains.sfx;
   const vol  = isUI ? audioVolumes.ui : audioVolumes.sfx;
-  if (!bus || vol < 0.001) return;      // ⬅️ early-return: 0 CPU
+  if (!bus || vol < 0.001) return;
 
-  // Wrappers locales que capturan el bus — las ~80 llamadas del switch no cambian
-  const tone       = (f, d, t, v, s) => _tone(f, d, t, v, s, bus);
+  // ⬇️ Identidad de color: blancas ~1 semitono más agudo, negras ~1 semitono más grave.
+  // El resto de las llamadas (UI, sistema, logros) siguen con factor 1.0.
+  const colorMul = color === 'w' ? 1.06 : color === 'b' ? 0.93 : 1.0;
+
+  // Wrappers locales: tone hereda el colorMul, noiseBurst queda intacto
+  const tone       = (f, d, t, v, s) => _tone(f * colorMul, d, t, v, s, bus);
   const noiseBurst = (d, v, ff)      => _noiseBurst(d, v, ff, bus);
 
   switch (kind) {
@@ -13932,11 +13937,11 @@ function aiChoosePromotion(mv) {
 	}
 }
 
-function playCaptureSfx(type) {
+function playCaptureSfx(type, color) {
 	if (!type) return;
-	if (type === 'q') playSfx('capture-major');
-	else if (type === 'r' || type === 'b' || type === 'n') playSfx('capture-minor');
-	else playSfx('capture-pawn');
+	if (type === 'q') playSfx('capture-major', color);
+	else if (type === 'r' || type === 'b' || type === 'n') playSfx('capture-minor', color);
+	else playSfx('capture-pawn', color);
 }
 
 /* =========================================================
@@ -13972,7 +13977,7 @@ async function doPlayerMove(mv) {
 						color: '#c8e0ff', spMin: 60, spMax: 220,
 						lifeMin: .25, lifeMax: .6, sizeMin: 1, sizeMax: 3, shape: 'tri'
 					});
-					playSfx('shield-break');
+					playSfx('shield-break', turn);
 					toast('💥 ¡El escudo se rompe! El ataque pasa.', '#ff8080');
 				} else {
 					state.shieldHits[defenderColor][capturedSquare] = hitsLeft - 1;
@@ -13989,7 +13994,7 @@ async function doPlayerMove(mv) {
 						color: '#8ecbff', spMin: 40, spMax: 180,
 						lifeMin: .3, lifeMax: .7, sizeMin: 1.5, sizeMax: 3.5
 					});
-					playSfx('shield');
+					playSfx('shield', turn);
 					toast('🛡️ Escudo absorbe el ataque · 1 golpe restante', '#8ecbff');
 					unlockAch(defenderColor, 'escudoSalvador');
 
@@ -14083,10 +14088,10 @@ async function doPlayerMove(mv) {
 
 		const isCastle = moveResult.flags && (moveResult.flags.includes('k') || moveResult.flags.includes('q'));
 		const isEpCapture = mv.flags.includes('e');
-		if (isCastle) playSfx('enroque');
-		else if (isEpCapture) playSfx('ep-capture');
-		else if (moveResult.captured) playCaptureSfx(moveResult.captured);
-		else playSfx('move');
+		if (isCastle) playSfx('enroque', turn);
+		else if (isEpCapture) playSfx('ep-capture', turn);
+		else if (moveResult.captured) playCaptureSfx(moveResult.captured, turn);
+		else playSfx('move', turn);
 
 		await animateMove(mv.from, mv.to, capturedSquare);
 
@@ -14125,12 +14130,12 @@ async function doPlayerMove(mv) {
 		});
 
 		state.mana[turn] = Math.min(state.maxMana, state.mana[turn] + 1);
-		setTimeout(() => playSfx('mana'), 60);
+		setTimeout(() => playSfx('mana', turn), 60);
 
 		if (movingPiece && movingPiece.type === 'k' && didCapture) {
 			state.mana[turn] = Math.min(state.maxMana, state.mana[turn] + 1);
 			toast('¡Rey cazador! +1 maná extra', '#ffd070');
-			setTimeout(() => playSfx('mana'), 140);
+			setTimeout(() => playSfx('mana', turn), 140);
 		}
 		if (movingPiece && isSpecial(movingPiece.type)) {
 			if (!state.iraCharge[turn]) {
@@ -14139,7 +14144,7 @@ async function doPlayerMove(mv) {
 					state.specialCount[turn] = 0;
 					state.iraCharge[turn] = true;
 					toast('¡IRA DE BATALLA CARGADA!', '#ffa040');
-					playSfx('ira-charge');
+					playSfx('ira-charge', turn);
 				}
 			}
 		}
@@ -14149,7 +14154,7 @@ async function doPlayerMove(mv) {
 
 		if (chess.in_check() && !chess.in_checkmate()) {
 			toast('¡Jaque!', '#ff8080');
-			playSfx('check');
+			playSfx('check', turn);
 		}
 
 		if (movingPiece && isSpecial(movingPiece.type) && didCapture && state.iraCharge[turn]) {
@@ -14177,7 +14182,7 @@ async function doPlayerMove(mv) {
 						achState[opp].lostPieces++;
 					}
 					toast('¡Doble captura!', '#ffa040');
-					playSfx('ira');
+					playSfx('ira', turn);
 					updateUI();
 				}
 			}
@@ -14274,7 +14279,7 @@ async function iraTargeting(fromSq, color) {
 			sizeMin: 2,
 			sizeMax: 5
 		});
-		playSfx('ira-blocked');
+		playSfx('ira-blocked', color);
 		vibrate([40, 30, 80]);
 		removeShield(targetPiece.color, targetSq);
 		state.iraCharge[color] = false;
@@ -14340,7 +14345,7 @@ async function iraTargeting(fromSq, color) {
 			return null;
 		}
 
-		playCaptureSfx(res.captured);
+		playCaptureSfx(res.captured, color);
 
 		await animateMove(mv.from, mv.to, capturedSquare, 400);
 
@@ -14957,7 +14962,7 @@ async function execTeleport(from, to, cost) {
 	const el = pieceEls.get(from);
 	const piece = chess.get(from);
 	spawnVortex(A.x, A.y, skin.v1, true);
-	playSfx('spell');
+	playSfx('spell', turn);
 	await sleep(320);
 	if (el) {
 		el.style.opacity = '0';
@@ -14984,7 +14989,7 @@ async function execTeleport(from, to, cost) {
 	}
 	if (state.shields[turn].includes(from)) {
 		removeShield(turn, from);
-		playSfx('shield-cancel');
+		playSfx('shield-cancel', turn);
 		toast('🛡️ Escudo cancelado al teletransportar', '#7ac0ff');
 	}
 	validateAndFixBoard();
@@ -15047,7 +15052,7 @@ async function execShield(sq) {
 	const turn = chess.turn();
 	const C = squareCenter(sq);
 	const piece = chess.get(sq);
-	playSfx('shield');
+	playSfx('shield', turn);
 	const start = performance.now();
 	const dur = 500;
 	await new Promise(res => {
@@ -15128,7 +15133,7 @@ async function execRay(sq, cost) {
 	const turn = chess.turn();
 	const C = squareCenter(sq);
 	const victim = chess.get(sq);
-	playSfx('ray');
+	playSfx('ray', turn);
 	spawnBolt(C.x, C.y, skin); // le pasamos la skin (ver cambio abajo)
 	boardWrap.animate([{
 			transform: 'translate(0,0)'
@@ -15224,7 +15229,7 @@ async function execZombie(sq) {
 		finishPower(null);
 		return;
 	}
-	playSfx('zombie');
+	playSfx('zombie', turn);
 	for (let i = 0; i < 4; i++) {
 		burst(C.x, C.y, 18, {
 			color: i % 2 ? skin.spore[0] : skin.spore[1],
@@ -15338,7 +15343,7 @@ async function execHeal(sq, type, color, cost) {
 		return;
 	}
 	const C = squareCenter(sq);
-	playSfx('heal');
+	playSfx('heal', turn);
 
 	// Dirección: el haz sale del lado donde vive el equipo.
 	// Sin flip: blancas abajo → haz desde abajo. Negras arriba → haz desde arriba.
@@ -15479,7 +15484,7 @@ async function execQuake(centerSq) {
 		c: cc
 	} = sqToRC(centerSq);
 	const C = squareCenter(centerSq);
-	playSfx('quake');
+	playSfx('quake', turn);
 	boardWrap.animate([{
 			transform: 'translate(0,0)'
 		}, {
@@ -15709,7 +15714,7 @@ function finishPower(entry) {
 	}
 	if (chess.in_check()) {
 		toast('¡Jaque!', '#ff8080');
-		playSfx('check');
+		playSfx('check', entry ? entry.color : null);
 	}
 	state.busy = false;
 	endTurn();
@@ -17667,8 +17672,8 @@ function playReplayEffects(entry) {
 				sizeMin: 1.2,
 				sizeMax: 3.2
 			});
-			playSfx('capture');
-		} else playSfx('move');
+			playSfx('capture', entry.color);
+		} else playSfx('move', entry.color);
 		return;
 	}
 
@@ -17696,7 +17701,7 @@ function playReplayEffects(entry) {
 			sizeMin: 1.5,
 			sizeMax: 3.5
 		});
-		playSfx('shield');
+		playSfx('shield', entry.color);
 		return;
 	}
 
@@ -17712,7 +17717,7 @@ function playReplayEffects(entry) {
 			const A = squareCenter(entry.from),
 				B = squareCenter(entry.to);
 			spawnVortex(A.x, A.y, skin.v1, true);
-			playSfx('spell');
+			playSfx('spell', entry.color);
 			if (alive()) spawnCurve(A, B, skin.curve);
 			setTimeout(() => {
 				if (!alive()) return;
@@ -17757,7 +17762,7 @@ function playReplayEffects(entry) {
 				lifeMin: .3,
 				lifeMax: .7
 			});
-			playSfx('shield');
+			playSfx('shield', entry.color);
 			return;
 		}
 
@@ -17766,7 +17771,7 @@ function playReplayEffects(entry) {
 			const skin = getPowerSkin('ray');
 			const C = squareCenter(entry.to);
 			spawnBolt(C.x, C.y, skin); // ⬅️ le pasamos la skin
-			playSfx('ray');
+			playSfx('ray', entry.color);
 			if (alive()) {
 				boardWrap.animate([{
 						transform: 'translate(0,0)'
@@ -17793,7 +17798,7 @@ function playReplayEffects(entry) {
 		if (name === 'Zombosis' && entry.to) {
 			const skin = getPowerSkin('zombie');
 			const C = squareCenter(entry.to);
-			playSfx('zombie');
+			playSfx('zombie', entry.color);
 			for (let i = 0; i < 4; i++) {
 				setTimeout(() => {
 					if (!alive()) return;
@@ -17836,7 +17841,7 @@ function playReplayEffects(entry) {
 		if (name === 'Toque Curativo' && entry.to) {
 			const skin = getPowerSkin('heal');
 			const C = squareCenter(entry.to);
-			playSfx('heal');
+			playSfx('heal', entry.color);
 			ripples.push({
 				x: C.x,
 				y: C.y,
@@ -17878,7 +17883,7 @@ function playReplayEffects(entry) {
 		if (name === 'Terremoto' && entry.to) {
 			const skin = getPowerSkin('quake');
 			const C = squareCenter(entry.to);
-			playSfx('quake');
+			playSfx('quake', entry.color);
 			if (alive()) {
 				boardWrap.animate([{
 						transform: 'translate(0,0)'
