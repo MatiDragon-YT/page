@@ -16882,7 +16882,20 @@ async function aiFindBestActionUnified(color, depth) {
 		} catch (e) {}
 
 		const manaCost = c.kind === 'power' ? (c.opt.cost || 0) : 0;
-		const finalScore = score - manaCost * 25;
+
+		// ⬇️ NUEVO: el costo real del maná baja cuando hay saturación.
+		// Con 10/10, gastar 4 maná no "duele" — se iban a perder igual.
+		// Eso incentiva a RUBY a tirar poderes caros cuando está saturado,
+		// en lugar de guardarlos para "cuando los necesite" (spoiler: nunca
+		// los va a necesitar si el maná se desborda).
+		const manaSlack = state.maxMana - mana;
+		const costMultiplier =
+			manaSlack <= 0 ? 0.15 :
+			manaSlack <= 1 ? 0.40 :
+			manaSlack <= 2 ? 0.70 :
+			1.00;
+
+		const finalScore = score - manaCost * 25 * costMultiplier;
 
 		if (finalScore > bestScore) {
 			bestScore = finalScore;
@@ -17221,18 +17234,31 @@ async function aiFindBestPower(color) {
 	push(await aiFindTeleportOption(color, mana, hand));
 	push(await aiFindQuakeOption(color, mana, hand));
 
-	// ⬇️ NUEVO: penalizar el poder usado en el turno anterior.
-	// Un poder que se usó recién baja ~40% su score. Si la diferencia era
-	// marginal, otra opción toma la delantera y se produce variedad.
+	// Penalizar el poder usado en el turno anterior (anti-repetición).
 	const lastUsed = aiLastPowerUsed[color];
 	if (lastUsed) {
 		for (const c of candidates) {
 			if (c.key === lastUsed) {
-				// Penalización proporcional al score: los muy fuertes igual
-				// ganan (si es un mate en 1 con Rayo, seguimos usándolo),
-				// pero los medianos ceden el paso a otras opciones.
 				c.score = c.score - 250;
 			}
+		}
+	}
+
+	// ⬇️ NUEVO: consciencia de saturación de maná.
+	// Cuando el maná está al tope (o cerca), cada turno que pasa se
+	// pierde 1 punto. Eso "abarata" el costo real de tirar un poder:
+	// aunque el score base sea mediocre, dejar el maná sin usar TAMBIÉN
+	// tiene un costo implícito. Este bonus refleja ese costo.
+	//
+	// También otorga un pequeño bonus por "ciclar la carta" — si la
+	// mano actual está trabada con cartas defensivas, tirar cualquiera
+	// (aunque sea mediocre) libera el slot para el próximo turno.
+	const manaSlack = state.maxMana - mana; // 0 al tope, 10 al inicio
+	if (manaSlack <= 2) {
+		// Bonus creciente: 0 en slack=2 → 50 en slack=1 → 100 en slack=0
+		const saturationBonus = (2 - manaSlack) * 50;
+		for (const c of candidates) {
+			c.score += saturationBonus;
 		}
 	}
 
@@ -17509,11 +17535,25 @@ async function _aiTurnBody(aiTurnColor) {
 	if (powerOption) {
 		let threshold;
 		if (aiIsRuby) threshold = 0;
-		else if (aiDiff === 'hard') threshold = 80;
-		else if (aiDiff === 'normal') threshold = 150;
+		else if (aiDiff === 'hard') threshold = 120;
+		else if (aiDiff === 'normal') threshold = 200;
 		else threshold = 500;
+
+		// ⬇️ NUEVO: umbral dinámico por saturación de maná.
+		// Si el maná está al tope, tirar un poder mediocre es MEJOR que
+		// no hacer nada (el maná se pierde igual). Bajamos el umbral
+		// para que la IA aproveche esas oportunidades.
+		//
+		// 10/10 → umbral ×0.4 (hard: 120→48, normal: 200→80)
+		//  9/10 → umbral ×0.7 (hard: 120→84, normal: 200→140)
+		//  8/10 → umbral ×1.0 (sin cambio)
+		const mana = state.mana[aiTurnColor];
+		const manaSlack = state.maxMana - mana;
+		if (manaSlack <= 0) threshold *= 0.4;
+		else if (manaSlack <= 1) threshold *= 0.7;
+
 		usePower = powerOption.score >= threshold;
-		if (aiIsRuby && state.mana[aiTurnColor] >= 6 && powerOption.score > 0) usePower = true;
+		if (aiIsRuby && mana >= 6 && powerOption.score > 0) usePower = true;
 		if (aiIsRuby && powerOption.score > PIECE_VALUE.r * 0.5) usePower = true;
 	}
 
