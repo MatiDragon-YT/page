@@ -13689,6 +13689,18 @@ function endTurn() {
 		if (!state.busy && !replay.active && !animatingEls.size) syncPieces();
 	}));
 
+	// ⬇️ NUEVO: si `busy` sigue activo (típico cuando endTurn se llama
+	// desde doPlayerMove antes de que el `finally` lo libere), diferimos
+	// un updateUI más para que las cartas del próximo jugador se iluminen
+	// correctamente una vez que `busy` se libere.
+	// Cuando endTurn viene de finishPower (busy ya en false), este bloque
+	// no se ejecuta y no hay updateUI duplicado.
+	if (state.busy) {
+		requestAnimationFrame(() => {
+			if (!state.busy && !replay.active) updateUI();
+		});
+	}
+
 	const turnNow = chess.turn();
 	if (isAIPlayer(turnNow) && !state.gameOver && !replay.active && !state.paused) {
 		setTimeout(aiTurn, 650);
@@ -15305,6 +15317,7 @@ async function execZombie(sq) {
 
 async function execHeal(sq, type, color, cost) {
 	const skin = getPowerSkin('heal');
+	const turn = chess.turn();
 	state.busy = true;
 	vibrate([25, 25, 25, 25, 401]);
 	const validTypes = ['p', 'n', 'b', 'r', 'q'];
