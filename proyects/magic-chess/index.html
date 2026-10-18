@@ -8847,6 +8847,137 @@ function updateDecals(dt){
   }
 }
 
+/* =========================================================
+   AFTERGLOW DE DECALS
+   ---------------------------------------------------------
+   Rayo: brasas / vapor residual por ~20s.
+   Heal: flores que crecen progresivamente.
+   Se llama desde el loop junto a updateDecals.
+   ========================================================= */
+function updateDecalsParticles(dt) {
+	if (replay.active) return;
+	if (!quality.particlesEnabled) return;
+	const level = currentQuality().level;
+	if (level === 'minimal' || level === 'low') return;
+
+	for (const d of decals) {
+		if (d.kind !== 'ray' && d.kind !== 'heal') continue;
+		if (d.life <= 0) continue;
+
+		// Clock por decal: acumula dt y emite cuando pasa el umbral
+		if (d._particleClock === undefined) d._particleClock = 0;
+		d._particleClock += dt;
+
+		const lifeRatio = d.life / d.maxLife;
+
+		if (d.kind === 'ray') {
+			// Rayo: emite durante los primeros ~20s (lifeRatio > 0.92)
+			// de los 240s totales del decal. "La casilla está caliente".
+			if (lifeRatio < 0.92) continue;
+			const interval = 0.6 + Math.random() * 0.8; // 0.6-1.4s
+			if (d._particleClock >= interval) {
+				d._particleClock = 0;
+				emitRayAfterglow(d);
+			}
+		} else {
+			// Heal: emite durante 3s-60s (lifeRatio entre 0.5 y 0.95).
+			// Con lluvia fuerte, el rango se agranda (crece más rápido).
+			const rainBoost = 1 + rainAmt * 0.5;
+			const minRatio = 0.50 - rainAmt * 0.15; // 0.35 si llueve mucho
+			const maxRatio = 0.95;
+			if (lifeRatio > maxRatio || lifeRatio < minRatio) continue;
+
+			// Probabilidad de emisión crece con el "crecimiento" del decal
+			// (más cerca de minRatio = más flores)
+			const growth = (maxRatio - lifeRatio) / (maxRatio - minRatio);
+			const effectiveGrowth = Math.min(1, growth * rainBoost);
+			if (Math.random() > 0.25 + effectiveGrowth * 0.75) continue;
+
+			const interval = 0.9 + Math.random() * 1.1; // 0.9-2.0s
+			if (d._particleClock >= interval) {
+				d._particleClock = 0;
+				emitHealFlower(d);
+			}
+		}
+	}
+}
+
+function emitRayAfterglow(d) {
+	const C = squareCenter(d.sq);
+	const skin = getPowerSkin('ray');
+
+	// Caso especial: sobre agua/lava/hielo → vapor que asciende
+	if (d.onWater) {
+		const mode = currentBiome.water.mode;
+		let vaporColor = '#d0e8ff';
+		if (mode === 'lava')      vaporColor = '#ff9040';
+		else if (mode === 'ice')  vaporColor = '#c0e8ff';
+
+		addParticle({
+			x: C.x + randomRange(-cellSize * 0.25, cellSize * 0.25),
+			y: C.y + randomRange(-cellSize * 0.15, cellSize * 0.15),
+			vx: randomRange(-8, 8),
+			vy: randomRange(-25, -45),
+			life: randomRange(1.0, 1.8),
+			maxLife: 1.8,
+			size: randomRange(2, 4),
+			color: vaporColor,
+			g: -8,
+			drag: 0.97
+		});
+		return;
+	}
+
+	// Brasas/chispas del bioma
+	const colors = skin && skin.spark1
+		? [skin.spark1, skin.spark2]
+		: ['#ffd070', '#ff9040'];
+	const color = colors[Math.floor(Math.random() * colors.length)];
+
+	addParticle({
+		x: C.x + randomRange(-cellSize * 0.30, cellSize * 0.30),
+		y: C.y + randomRange(-cellSize * 0.10, cellSize * 0.10),
+		vx: randomRange(-15, 15),
+		vy: randomRange(-40, -70),
+		life: randomRange(0.6, 1.2),
+		maxLife: 1.2,
+		size: randomRange(1.2, 2.6),
+		color,
+		g: -20,
+		drag: 0.95
+	});
+}
+
+function emitHealFlower(d) {
+	const C = squareCenter(d.sq);
+	const skin = getPowerSkin('heal');
+	const hasFlowers = currentBiome.hasFlowers;
+
+	// Colores de flor: en biomas con hasFlowers, paleta completa de
+	// flores silvestres. En otros biomas, partículas sutiles del heal.
+	const flowerColors = hasFlowers
+		? ['#ffb8d8', '#fff0f8', '#ffe070', '#ddc0ff', '#ffffff']
+		: [
+			(skin && skin.particle) || '#a8ffc0',
+			(skin && skin.particle) || '#c0f0ff'
+		];
+	const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+
+	addParticle({
+		x: C.x + randomRange(-cellSize * 0.35, cellSize * 0.35),
+		y: C.y + randomRange(-cellSize * 0.10, cellSize * 0.30),
+		vx: randomRange(-10, 10),
+		vy: randomRange(-30, -55),
+		life: randomRange(0.8, 1.5),
+		maxLife: 1.5,
+		size: randomRange(1.5, 3.0),
+		color,
+		g: -12,
+		drag: 0.96,
+		shape: hasFlowers && Math.random() < 0.4 ? 'tri' : 'circle'
+	});
+}
+
 function drawDecals(W, H){
   if(!boardStyle.decals) return;
   if(!decals.length) return;
@@ -21547,6 +21678,7 @@ function loop(now) {
 		updateParticles(dt);
 		updateAtmosphere(dt, W, H);
 		updateDecals(dt);
+		updateDecalsParticles(dt);
 		updateWaterScroll(dt);
 	}
 
