@@ -2879,6 +2879,38 @@ body.hl-move-off.hl-power-off .cell .costTag{
 	width: 100%;
 	height: 100%;
 }
+/* =========================================================
+   IRA DANGER — detalles de UI reactivos al peligro
+   Usan --ira-danger (0..1) seteado por JS en el loop.
+   ========================================================= */
+
+/* Vignette externa: glow rojo en los bordes de la pantalla */
+#app::before {
+	content: '';
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 50;
+	box-shadow: inset 0 0 180px rgba(255, 40, 20, calc(var(--ira-danger, 0) * 0.35));
+}
+
+/* Barra superior: línea roja tenue cuando hay peligro */
+#topBar {
+	position: relative;
+}
+#topBar::after {
+	content: '';
+	position: absolute;
+	bottom: -1px;
+	left: 0;
+	right: 0;
+	height: 2px;
+	background: linear-gradient(90deg,
+		transparent 8%,
+		rgba(255, 60, 30, calc(var(--ira-danger, 0) * 0.85)) 50%,
+		transparent 92%);
+	pointer-events: none;
+}
 </style>
 </head>
 
@@ -11516,6 +11548,10 @@ const CYCLE_SECONDS = 180;
 
 let worldTime = Math.random() * CYCLE_SECONDS;
 let gameTime = 0;
+// Ira danger overlay
+let iraDanger = 0;             // 0..1, suavizado
+let _lastIraDangerSet = -1;    // para throttling del CSS var
+
 
 function getPhase(){
   const t = (worldTime % CYCLE_SECONDS) / CYCLE_SECONDS;
@@ -21246,6 +21282,27 @@ function loop(now) {
 	const rawDt = Math.min(0.05, (now - lastT) / 1000);
 	lastT = now;
 
+	// ⬇️ NUEVO: Ira danger smoothing
+	// 0    = nadie tiene Ira
+	// 0.55 = uno la tiene
+	// 1.0  = los dos la tienen
+	// Sube rápido (0.6s), baja lento (1.8s) — asimetría emocional
+	{
+		const iraTarget = state.gameOver ? 0
+			: (state.iraCharge.w ? 0.55 : 0) + (state.iraCharge.b ? 0.55 : 0);
+		if (Math.abs(iraTarget - iraDanger) > 0.001) {
+			const speed = iraTarget > iraDanger ? 1.67 : 0.55;
+			const k = 1 - Math.exp(-speed * rawDt);
+			iraDanger += (iraTarget - iraDanger) * k;
+			if (Math.abs(iraDanger - iraTarget) < 0.005) iraDanger = iraTarget;
+		}
+		// CSS var para los detalles de UI, actualizada solo si cambia
+		if (Math.abs(iraDanger - _lastIraDangerSet) > 0.01) {
+			_lastIraDangerSet = iraDanger;
+			document.documentElement.style.setProperty('--ira-danger', iraDanger.toFixed(3));
+		}
+	}
+
 	// ⬇️ monitor de FPS adaptativo
 	if (!state.paused) updateQualityFromFPS(rawDt);
 
@@ -21313,12 +21370,36 @@ function loop(now) {
 	ctx.fillStyle = `rgb(${ph.tint[0]|0},${ph.tint[1]|0},${ph.tint[2]|0})`;
 	ctx.fillRect(0, 0, W, H);
 	ctx.restore();
-	if (currentBiome.biomeTint.a > 0) {
-		const bt = currentBiome.biomeTint;
-		const mult = currentBiome.isVolcano ? (0.7 + ph.dark * 1.6) : 1;
-		ctx.fillStyle = `rgba(${bt.r},${bt.g},${bt.b},${bt.a * mult})`;
+	
+	// IRA DANGER OVERLAY
+	// Tres capas para "peligro": oscurecer con rojo, calentar las luces,
+	// y un halo rojo en el borde. Todo escalado por iraDanger.
+	if (iraDanger > 0.01 && !replay.active) {
+		// 1. Multiply rojo — oscurece y vira a rojo
+		ctx.save();
+		ctx.globalCompositeOperation = 'multiply';
+		ctx.fillStyle = `rgba(210, 130, 120, ${0.22 * iraDanger})`;
+		ctx.fillRect(0, 0, W, H);
+		ctx.restore();
+
+		// 2. Screen cálido — apenas levanta los brillos
+		ctx.save();
+		ctx.globalCompositeOperation = 'screen';
+		ctx.fillStyle = `rgba(255, 90, 50, ${0.06 * iraDanger})`;
+		ctx.fillRect(0, 0, W, H);
+		ctx.restore();
+
+		// 3. Halo rojo desde los bordes — "peligro en el perímetro"
+		const edgeGrad = ctx.createRadialGradient(
+			W / 2, H / 2, H * 0.28,
+			W / 2, H / 2, H * 0.78
+		);
+		edgeGrad.addColorStop(0, 'rgba(255, 40, 20, 0)');
+		edgeGrad.addColorStop(1, `rgba(255, 40, 20, ${0.32 * iraDanger})`);
+		ctx.fillStyle = edgeGrad;
 		ctx.fillRect(0, 0, W, H);
 	}
+
 	if (ph.dark > 0.08) {
 
 		// ===== Lluvia: oscurecimiento y viraje frío del ambiente =====
@@ -21410,7 +21491,8 @@ function loop(now) {
 	// VIÑETA
 	const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.32, W / 2, H / 2, H * 0.78);
 	vg.addColorStop(0, 'rgba(0,0,0,0)');
-	vg.addColorStop(1, 'rgba(0,0,0,0.42)');
+	// la viñeta se profundiza con iraDanger
+	vg.addColorStop(1, `rgba(0,0,0,${0.42 + 0.20 * iraDanger})`);
 	ctx.fillStyle = vg;
 	ctx.fillRect(0, 0, W, H);
 
