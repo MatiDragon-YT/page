@@ -722,6 +722,53 @@ body {
 	border: 1px solid #2e2418
 }
 
+/* ⬇️ NUEVO: fila de velocidad para modo espectador IA vs IA */
+#speedRow {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	padding: 4px 8px;
+	background: #12100b;
+	border-radius: 8px;
+	border: 1px solid #2e2418;
+}
+#speedRow.hidden { display: none; }
+#speedRow .speed-label {
+	font-size: 9.5px;
+	color: #8a8070;
+	font-weight: 800;
+	letter-spacing: .7px;
+	margin-right: 4px;
+	flex-shrink: 0;
+}
+.speed-btn {
+	flex: 1;
+	padding: 6px 4px;
+	border-radius: 6px;
+	border: 1px solid #4a3d28;
+	background: linear-gradient(#221c14, #141009);
+	color: #d8ccb0;
+	font-size: 11px;
+	font-weight: 700;
+	cursor: pointer;
+	font-family: ui-monospace, monospace;
+	transition: all .13s;
+	line-height: 1;
+}
+.speed-btn:hover {
+	background: linear-gradient(#2a2416, #1a140c);
+	color: #fff;
+}
+.speed-btn:active {
+	transform: scale(.94);
+}
+.speed-btn.picked {
+	border-color: #ffd070;
+	background: linear-gradient(#3a2e1a, #20180e);
+	color: #ffe8b0;
+	box-shadow: 0 0 10px rgba(255, 200, 90, .45);
+}
+
 #turnDot {
 	width: 12px;
 	height: 12px;
@@ -2994,6 +3041,13 @@ body.hl-move-off.hl-power-off .cell .costTag{
 			<div id="clockBar">
 				<div class="clock hidden" id="clockW"><span class="who">BLANCAS</span><span class="t">--:--</span></div>
 				<div class="clock hidden" id="clockB"><span class="who">NEGRAS</span><span class="t">--:--</span></div>
+			</div>
+			<div id="speedRow" class="hidden">
+				<span class="speed-label">VELOCIDAD</span>
+				<button class="speed-btn" data-speed="0.1">0.1×</button>
+				<button class="speed-btn picked" data-speed="0.25">0.25×</button>
+				<button class="speed-btn" data-speed="0.5">0.5×</button>
+				<button class="speed-btn" data-speed="1">1×</button>
 			</div>
 			<div id="manaRow">
 				<div class="manaBar" id="manaW">
@@ -5494,6 +5548,10 @@ const aiLastPowerUsed = { w: null, b: null };
 const iaVsIaState = {
 	enabled: false,
 	difficulties: { w: 'normal', b: 'normal' },
+	// Multiplicador de velocidad para el modo espectador.
+	// Aplica a los delays de "thinking" y a los schedulers de turno.
+	// 1.0 = ritmo normal, 2.0 = el doble de rápido, 0.5 = la mitad.
+	speed: 1.0,
 };
 
 const undoStack = [];
@@ -9660,12 +9718,20 @@ async function playCinematicIntro(force = false){
 
   // 5. Título del bioma + modo
   if(r1 !== 'skipped'){
-    const modeLabel = aiEnabled
-      ? (rubyMode ? 'MODO RUBY' : `IA ${aiDifficulty.toUpperCase()}`)
-      : '2 JUGADORES';
-    const sideLabel = aiEnabled
-      ? `VOS: ${humanColor === 'w' ? '♔ BLANCAS' : '♚ NEGRAS'}`
-      : 'PARTIDA LOCAL';
+    let modeLabel, sideLabel;
+    if (iaVsIaState.enabled) {
+      // ⬇️ NUEVO: modo espectador
+      const wName = iaVsIaState.difficulties.w.toUpperCase();
+      const bName = iaVsIaState.difficulties.b.toUpperCase();
+      modeLabel = `⚔️ ESPECTADOR`;
+      sideLabel = `♔ ${wName} vs ♚ ${bName}`;
+    } else if (aiEnabled) {
+      modeLabel = rubyMode ? 'MODO RUBY' : `IA ${aiDifficulty.toUpperCase()}`;
+      sideLabel = `VOS: ${humanColor === 'w' ? '♔ BLANCAS' : '♚ NEGRAS'}`;
+    } else {
+      modeLabel = '2 JUGADORES';
+      sideLabel = 'PARTIDA LOCAL';
+    }
     showCineTitle(
       `${currentBiome.icon} ${currentBiome.name.toUpperCase()}`,
       `${modeLabel} · ${sideLabel}`,
@@ -9693,11 +9759,11 @@ async function playCinematicIntro(force = false){
   cineState.active = false;
   cineState.kind = null;
 
-  // 8. Si le toca a la IA, arrancamos su turno ahora
-  const turnNow = chess.turn();
-  if(isAIPlayer(turnNow) && !state.gameOver){
-    setTimeout(aiTurn, 500);
-  }
+	// 8. Si le toca a la IA, arrancamos su turno ahora
+	const turnNow = chess.turn();
+	if (isAIPlayer(turnNow) && !state.gameOver) {
+		scheduleAITurn(500);
+	}
 }
 
 /* =========================================================
@@ -13460,6 +13526,11 @@ function pushUndoSnapshot() {
 		}
 	};
 	undoStack.push(snap);
+	
+	// ⬇️ NUEVO: cap de 50 snapshots. Previene memory leaks en partidas
+	// largas con undo limit Infinity (easy) o en IA vs IA con debug.
+	// 50 es holgado — nadie hace más de 50 undos en una partida real.
+	if (undoStack.length > 50) undoStack.shift();
 }
 
 function performUndo() {
@@ -13723,9 +13794,11 @@ function updatePauseState() {
 	if (wasPaused && !state.paused && chess && !state.gameOver && !replay.active) {
 		const turnNow = chess.turn();
 		if (isAIPlayer(turnNow)) {
-			aiThinking = false;     // destrabar por las dudas
+			aiThinking = false;
 			state.aiBusy = false;
-			setTimeout(aiTurn, 500);
+			// scheduleAITurn incrementa el token → invalida cualquier
+			// setTimeout previo del endTurn que estuviera pendiente.
+			scheduleAITurn(500);
 		}
 	}
 }
@@ -14036,6 +14109,10 @@ function updateUI() {
 	}
 	$('#turnText').textContent = tName;
 
+	// la fila de velocidad solo se ve en IA vs IA
+	const speedRow = $('#speedRow');
+	if (speedRow) speedRow.classList.toggle('hidden', !iaVsIaState.enabled);
+
 	const mw = $('#manaW'),
 		mb = $('#manaB');
 	const fracW = state.manaFraction.w || 0;
@@ -14045,7 +14122,7 @@ function updateUI() {
 	mw.querySelector('.lbl').textContent = state.mana.w + ' / ' + state.maxMana;
 	mb.querySelector('.lbl').textContent = state.mana.b + ' / ' + state.maxMana;
 
-	// ⬇️ NUEVO: clases de saturación para feedback visual
+	// clases de saturación para feedback visual
 	mw.classList.toggle('mana-near', state.mana.w === state.maxMana - 1);
 	mw.classList.toggle('mana-maxed', state.mana.w >= state.maxMana);
 	mb.classList.toggle('mana-near', state.mana.b === state.maxMana - 1);
@@ -14144,7 +14221,7 @@ function endTurn() {
 
 	const turnNow = chess.turn();
 	if (isAIPlayer(turnNow) && !state.gameOver && !replay.active && !state.paused) {
-		setTimeout(aiTurn, 650);
+		scheduleAITurn(650);
 	}
 }
 
@@ -15038,6 +15115,17 @@ function startTargetingLoop(key) {
 		}
 		playSfx(sfxKey);
 	}, 550);
+}
+
+/* =========================================================
+   iaPace — sleep con velocidad IA vs IA
+   Se usa SOLO en delays de "thinking" (no en animaciones).
+   ========================================================= */
+function iaPace(ms) {
+	if (iaVsIaState.enabled && iaVsIaState.speed > 0) {
+		return sleep(ms / iaVsIaState.speed);
+	}
+	return sleep(ms);
 }
 
 async function handleHealStart(turn) {
@@ -17751,6 +17839,29 @@ async function aiExecutePower(opt) {
 
 let aiTurnWatchdogTimer = null;
 
+/* =========================================================
+   TOKEN DE GENERACIÓN DE TURNOS IA
+   ---------------------------------------------------------
+   Cada vez que queremos disparar un turno de IA, incrementamos
+   este contador y guardamos el valor. El setTimeout ejecuta
+   aiTurn() solo si su token sigue siendo el último. Así dos
+   setTimeout pendientes (el del endTurn + el del updatePauseState)
+   no pueden disparar dos turnos: el primero invalida al segundo.
+   ========================================================= */
+let aiTurnGeneration = 0;
+
+function scheduleAITurn(delay) {
+    const gen = ++aiTurnGeneration;
+    // Velocidad adaptable en IA vs IA
+    const pacedDelay = (iaVsIaState.enabled && iaVsIaState.speed > 0)
+        ? delay / iaVsIaState.speed
+        : delay;
+    setTimeout(() => {
+        if (gen !== aiTurnGeneration) return;  // superseded
+        aiTurn();
+    }, pacedDelay);
+}
+
 async function aiTurn() {
 	if (aiThinking) return;
 	if (state.gameOver || replay.active || state.paused) return;
@@ -17794,7 +17905,7 @@ async function _aiTurnInner() {
 	aiSearchDeadline = 0;
 	aiSearchLastYield = performance.now();
 	updateUI();
-	await sleep(180);
+	await iaPace(180);
 
 	const aiTurnColor = chess.turn();
 
@@ -17886,7 +17997,7 @@ async function _aiTurnBody(aiTurnColor) {
 						console.log(`[RUBY book] Rompe libro por ${bestPower.key} (score ${bestPower.score})`);
 						toast(`📖→⚡ Cobra el error`, '#c080ff');
 					}
-					await sleep(randomRange(200, 500));
+					await iaPace(randomRange(200, 500));
 					await aiExecutePower(bestPower);
 					return;
 				}
@@ -17898,7 +18009,7 @@ async function _aiTurnBody(aiTurnColor) {
 				toast(`📖 ${bookMove.lineName}`, '#c080ff');
 			}
 			// Delay variable: se siente "pensado" pero no siempre igual
-			await sleep(randomRange(250, 750));
+			await iaPace(randomRange(250, 750));
 			await doPlayerMove(bookMove.move);
 			return;
 		}
@@ -19531,8 +19642,8 @@ function wireDebugGame() {
 			playSfx('side-pick');
 			renderDebugTab('game');
 			// Si activás y es el turno de ese color, disparar
-			if(debugState.aiColors[color] && chess.turn() === color && !state.gameOver && !state.paused){
-				setTimeout(aiTurn, 300);
+			if (debugState.aiColors[color] && chess.turn() === color && !state.gameOver && !state.paused) {
+				scheduleAITurn(300);
 			}
 			// Si desactivás y era el turno del color que ahora juega un humano,
 			// no hacemos nada especial — el jugador mueve con click normal.
@@ -20821,7 +20932,7 @@ async function startGame() {
 	renderOppHand();
 	// Blancas mueve primero, así que solo dispara si blancas es IA
 	if (isAIPlayer('w')) {
-			setTimeout(aiTurn, 900);
+		scheduleAITurn(900);
 	}
 }
 
@@ -22492,6 +22603,19 @@ gridEl.addEventListener('contextmenu', (e) => {
 	e.preventDefault();
 	if (replay.active || state.paused || state.aiBusy) return;
 	if (state.targeting && state.targeting.key !== 'ira') cancelTargeting();
+});
+
+// velocidad IA vs IA
+document.querySelectorAll('#speedRow .speed-btn').forEach(btn => {
+	btn.onclick = () => {
+		const v = parseFloat(btn.dataset.speed);
+		if (!isFinite(v) || v <= 0) return;
+		iaVsIaState.speed = v;
+		document.querySelectorAll('#speedRow .speed-btn').forEach(b => {
+			b.classList.toggle('picked', parseFloat(b.dataset.speed) === v);
+		});
+		playSfx('side-pick');
+	};
 });
 
 $('#cancelBtn').onclick = () => cancelTargeting();
