@@ -5154,6 +5154,11 @@ const state = {
 		w: 0,
 		b: 0
 	},
+	manaFraction: {
+		w: 0,
+		b: 0
+	},
+	manaMultiplier: 1,
 	maxMana: 10,
 	specialCount: {
 		w: 0,
@@ -10862,6 +10867,7 @@ function savePreferences(cfg) {
 			biome: biomePreference,
 			timerMinutes: cfg.timerMinutes,
 			aiDifficulty: cfg.aiDifficulty || 'normal',
+			manaMultiplier: cfg.manaMultiplier !== undefined ? cfg.manaMultiplier : 1,
 			iaVsIaDifficulties: cfg.iaVsIaDifficulties || null,
 		}));
 	} catch (e) {}
@@ -12887,6 +12893,33 @@ function addToGraveyard(capturedType, capturedColor) {
 	state.graveyard[capturedColor].push(capturedType);
 }
 
+/* Acredita maná con multiplicador configurable.
+   Soporta fracciones (0.5× = 1 maná cada 2 turnos).
+   Respeta el tope de maxMana y descarta fracciones al tope. */
+function gainMana(color, baseAmount) {
+	const mult = state.manaMultiplier;
+	if (mult <= 0) return 0;
+
+	// Al tope: no acumulamos nada (evita "banca" de maná al salir del cap)
+	if (state.mana[color] >= state.maxMana) {
+		state.manaFraction[color] = 0;
+		return 0;
+	}
+
+	state.manaFraction[color] = (state.manaFraction[color] || 0) + baseAmount * mult;
+
+	let gained = 0;
+	while (state.manaFraction[color] >= 1 && state.mana[color] < state.maxMana) {
+		state.mana[color]++;
+		state.manaFraction[color]--;
+		gained++;
+	}
+	if (state.mana[color] >= state.maxMana) {
+		state.manaFraction[color] = 0;
+	}
+	return gained;
+}
+
 function removeShield(color, sq) {
 	const idx = state.shields[color].indexOf(sq);
 	if (idx < 0) return;
@@ -13374,6 +13407,10 @@ function pushUndoSnapshot() {
 		mana: {
 			...state.mana
 		},
+		manaFraction: {
+			w: state.manaFraction.w,
+			b: state.manaFraction.b
+		},
 		specialCount: {
 			...state.specialCount
 		},
@@ -13443,6 +13480,14 @@ function performUndo() {
 	state.mana = {
 		...snap.mana
 	};
+	if (snap.manaFraction) {
+		state.manaFraction = {
+			w: snap.manaFraction.w,
+			b: snap.manaFraction.b
+		};
+	} else {
+		state.manaFraction = { w: 0, b: 0 };
+	}
 	state.specialCount = {
 		...snap.specialCount
 	};
@@ -13993,8 +14038,10 @@ function updateUI() {
 
 	const mw = $('#manaW'),
 		mb = $('#manaB');
-	mw.querySelector('.fill').style.width = (state.mana.w / state.maxMana * 100) + '%';
-	mb.querySelector('.fill').style.width = (state.mana.b / state.maxMana * 100) + '%';
+	const fracW = state.manaFraction.w || 0;
+	const fracB = state.manaFraction.b || 0;
+	mw.querySelector('.fill').style.width = ((state.mana.w + fracW) / state.maxMana * 100) + '%';
+	mb.querySelector('.fill').style.width = ((state.mana.b + fracB) / state.maxMana * 100) + '%';
 	mw.querySelector('.lbl').textContent = state.mana.w + ' / ' + state.maxMana;
 	mb.querySelector('.lbl').textContent = state.mana.b + ' / ' + state.maxMana;
 
@@ -14029,7 +14076,11 @@ function updateUI() {
 	else if (aiThinking || state.aiBusy) msg = rubyMode ? '💎 RUBY pensando…' : '🤖 pensando…';
 	else if (chess.in_check()) msg = '¡Jaque!';
 	else if (state.iraCharge[turn]) msg = '⚔️ Ira lista';
-	else msg = 'Especiales: ' + state.specialCount[turn] + '/5';
+	else {
+		const mult = state.manaMultiplier;
+		const multTxt = mult === 1 ? '' : (mult === 0 ? ' · sin maná' : ` · maná ${mult}×`);
+		msg = 'Especiales: ' + state.specialCount[turn] + '/5' + multTxt;
+	}
 	$('#statusMsg').textContent = msg;
 	if (!replay.active) syncPieces();
 }
@@ -14542,13 +14593,15 @@ async function doPlayerMove(mv) {
 			promotion: moveResult.promotion || null
 		});
 
-		state.mana[turn] = Math.min(state.maxMana, state.mana[turn] + 1);
-		setTimeout(() => playSfx('mana', turn), 60);
+		const gainedBase = gainMana(turn, 1);
+		if (gainedBase > 0) setTimeout(() => playSfx('mana', turn), 60);
 
 		if (movingPiece && movingPiece.type === 'k' && didCapture) {
-			state.mana[turn] = Math.min(state.maxMana, state.mana[turn] + 1);
-			toast('¡Rey cazador! +1 maná extra', '#ffd070');
-			setTimeout(() => playSfx('mana', turn), 140);
+			const gainedKing = gainMana(turn, 1);
+			if (gainedKing > 0) {
+				toast('¡Rey cazador! +1 maná extra', '#ffd070');
+				setTimeout(() => playSfx('mana', turn), 140);
+			}
 		}
 		if (movingPiece && isSpecial(movingPiece.type)) {
 			if (!state.iraCharge[turn]) {
@@ -14789,8 +14842,8 @@ async function iraTargeting(fromSq, color) {
 
 		if (res.captured) addToGraveyard(res.captured, oppColor);
 		if (res.captured) vibrate([20, 40, 55]);
+		gainMana(color, 1);
 		
-		state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
 		for (const col of ['w', 'b']) {
 			if (state.shields[col].includes(capturedSquare)) removeShield(col, capturedSquare);
 		}
@@ -20311,6 +20364,7 @@ async function showConfigMenu() {
 			biome: biomePreference || 'random',
 			timerMinutes: gameTimer.enabled ? gameTimer.initial / 60 : 0,
 			aiDifficulty: rubyMode ? 'ruby' : aiDifficulty,
+			manaMultiplier: state.manaMultiplier || 1,
 			iaVsIaDifficulties: {
 				w: iaVsIaState.difficulties.w,
 				b: iaVsIaState.difficulties.b,
@@ -20376,6 +20430,21 @@ async function showConfigMenu() {
   <button class="cfgOpt small" data-v="custom">Personalizado</button>
 </div>
 </div>
+
+<div class="section">
+<div class="section-title">Generación de maná</div>
+<div class="timeRow" id="cfgManaMult">
+  <button class="cfgOpt small" data-v="0">Desactivada</button>
+  <button class="cfgOpt small" data-v="0.5">0.5×</button>
+  <button class="cfgOpt small" data-v="1">1×</button>
+  <button class="cfgOpt small" data-v="2">2×</button>
+  <button class="cfgOpt small" data-v="3">3× Blitz</button>
+</div>
+<div class="volHint" style="text-align:center;margin-top:4px">
+  0 = sin maná · 0.5 = 1 cada 2 turnos · 1 = default · 3 = Blitz
+</div>
+</div>
+
 <div class="section">
 <div class="section-title">Bioma</div>
 <div class="cfgGrid c3" id="cfgBiome">
@@ -20404,6 +20473,9 @@ async function showConfigMenu() {
 				else if (v === 'custom') match = ![0, 1, 3, 5, 10].includes(cfg.timerMinutes) && cfg.timerMinutes > 0;
 				else match = cfg.timerMinutes === parseInt(v, 10);
 				b.classList.toggle('picked', match);
+			});
+			m.querySelectorAll('#cfgManaMult .cfgOpt').forEach(b => {
+				b.classList.toggle('picked', parseFloat(b.dataset.v) === cfg.manaMultiplier);
 			});
 
 			const isPvp    = (cfg.mode === 'pvp');
@@ -20531,6 +20603,15 @@ async function showConfigMenu() {
 			});
 		}
 		
+		m.querySelector('#cfgManaMult').onclick = (e) => {
+			playSfx('side-pick');
+			const b = e.target.closest('.cfgOpt');
+			if (!b) return;
+			cfg.manaMultiplier = parseFloat(b.dataset.v);
+			refreshPicked();
+		};
+
+		
 		m.querySelector('#cfgTime').onclick = async (e) => {
 			playSfx('side-pick');
 			const b = e.target.closest('.cfgOpt');
@@ -20616,6 +20697,10 @@ async function showStartMenu() {
 		if (res.action === 'start') {
 			const cfg = res.cfg;
 			savePreferences(cfg);
+
+			// Aplicar multiplicador de maná (por defecto 1)
+			state.manaMultiplier = cfg.manaMultiplier !== undefined ? cfg.manaMultiplier : 1;
+			state.manaFraction = { w: 0, b: 0 };
 
 			// Por defecto, cualquier modo que NO sea ia-vs-ia desactiva
 			// el estado de IA vs IA. Si el usuario vuelve a elegir ia-vs-ia
@@ -20823,6 +20908,10 @@ function newGame() {
 
 	chess = new Chess();
 	state.mana = {
+		w: 0,
+		b: 0
+	};
+	state.manaFraction = {
 		w: 0,
 		b: 0
 	};
@@ -22631,6 +22720,10 @@ function boot() {
 			gameTimer.initial = saved.timerMinutes * 60;
 			gameTimer.w = gameTimer.initial;
 			gameTimer.b = gameTimer.initial;
+		}
+		// Multiplicador de maná
+		if (saved.manaMultiplier !== undefined) {
+			state.manaMultiplier = saved.manaMultiplier;
 		}
 		// Bioma (preferencia bruta)
 		biomePreference = saved.biome || 'random';
