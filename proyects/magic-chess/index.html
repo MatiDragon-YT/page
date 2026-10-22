@@ -7303,6 +7303,27 @@ const TARGET_RECALC_MS = 2000;   // recalcular targets cada 2s
 const NOCTURNAL_TYPES = new Set(['fox', 'scorpion']);
 const DIURNAL_TYPES   = new Set(['ladybug', 'butterfly', 'bees', 'woodpecker']);
 
+/* =========================================================
+   REACCIONES DE FAUNA A EVENTOS DEL TABLERO
+   ---------------------------------------------------------
+   Estado efímero que la fauna lee en cada update().
+   Los timestamps son performance.now() en ms.
+   Se actualizan en updateBoardReactions() (una vez por frame).
+   ========================================================= */
+const boardReactions = {
+	lastQuakeAt: 0,
+	lastQuakeCenter: null,       // {x, y} en px
+	quakeDuration: 3000,         // ms
+	lastIraBurstAt: 0,
+	lastIraBurstCenter: null,    // {x, y} en px
+	iraBurstDuration: 1500,      // ms
+	iraChargeLevel: 0,           // 0..1 (espejo de state.iraCharge)
+	kingInCheck: false,
+	// Helpers internos para saber si cada evento está "activo"
+	quakeActive()  { return performance.now() - this.lastQuakeAt < this.quakeDuration; },
+	iraBurstActive(){ return performance.now() - this.lastIraBurstAt < this.iraBurstDuration; },
+};
+
 /* Ruido orgánico 0..1 que fluctúa lento, con 3 capas de frecuencias */
 function organicNoise(t, seed){
   return clamp(
@@ -7441,23 +7462,37 @@ const AMBIENT_TYPES = {
 			_activity: 1
 		}),
 		update(e, dt, weather) {
-			// Objetivo: 1 si no llueve, 0 si llueve mucho.
-			// Entre 0.15 y 0.55 de lluvia, transición suave.
 			let target;
 			if (weather.rain < 0.15) target = 1;
 			else if (weather.rain > 0.55) target = 0;
 			else target = 1 - (weather.rain - 0.15) / 0.40;
 
-			// Suavizado: tarda ~1.2s en esconderse, ~2s en volver
 			const speed = target < e._activity ? 4.5 : 2.5;
 			e._activity += (target - e._activity) * Math.min(1, speed * dt);
 			e._activity = Math.max(0, Math.min(1, e._activity));
 
-			// Sigue volando normalmente pero más lento si está "semi-escondida"
-			e.phase += dt * e.speed * (0.3 + e._activity * 0.7);
-			e.flapPhase += dt * 12 * (0.5 + e._activity * 0.5);
-			e.x = e.anchorX + Math.cos(e.phase) * e.rx;
-			e.y = e.anchorY + Math.sin(e.phase * 1.7) * e.ry;
+			// ⬇️ NUEVO: si hay Ira cargada, la mariposa está nerviosa.
+			// Su órbita se achica (vuelo más errático cerca del anchor),
+			// el aleteo se acelera y el "phase" corre un poco más rápido.
+			const nervous = boardReactions.iraChargeLevel;
+			const orbitMul = 1 - nervous * 0.35;   // órbita 100% → 65%
+			const flapMul = 1 + nervous * 0.9;     // aleteo 1x → 1.9x
+			const phaseMul = 1 + nervous * 0.3;    // velocidad 1x → 1.3x
+
+			e.phase += dt * e.speed * (0.3 + e._activity * 0.7) * phaseMul;
+			e.flapPhase += dt * 12 * (0.5 + e._activity * 0.5) * flapMul;
+
+			// Oscilación extra cuando hay Ira: micro-desvíos en X e Y
+			// que se suman a la órbita. Se siente como "vuelo nervioso".
+			const jitterX = nervous > 0.01
+				? Math.sin(e.phase * 3.7) * nervous * 0.008
+				: 0;
+			const jitterY = nervous > 0.01
+				? Math.cos(e.phase * 4.1) * nervous * 0.008
+				: 0;
+
+			e.x = e.anchorX + Math.cos(e.phase) * e.rx * orbitMul + jitterX;
+			e.y = e.anchorY + Math.sin(e.phase * 1.7) * e.ry * orbitMul + jitterY;
 		},
 		draw(ctx, e, W, H) {
 			if (e._activity < 0.03) return; // escondida del todo → no dibujar
@@ -7523,21 +7558,39 @@ const AMBIENT_TYPES = {
 			_activity: 1
 		}),
 		update(e, dt, weather) {
-			// Las brasas se apagan con lluvia fuerte
 			let target;
 			if (weather.rain < 0.20) target = 1;
-			else if (weather.rain > 0.60) target = 0.15; // quedan algunas, débiles
+			else if (weather.rain > 0.60) target = 0.15;
 			else target = 1 - (weather.rain - 0.20) / 0.40 * 0.85;
 
 			e._activity += (target - e._activity) * Math.min(1, 3 * dt);
 
-			// El viento las empuja y las agita
 			const windBoost = 1 + weather.wind * 1.5;
 
 			e.phase += dt * 3 * windBoost;
 			e.life -= dt;
 			e.x += (e.vx * windBoost + Math.sin(e.phase) * 0.005 + windState.direction * windState.strength * 0.02) * dt;
 			e.y += e.vy * windBoost * dt;
+
+			// si el Quake acaba de ocurrir, la brasa huye
+			// radialmente desde el centro. Solo afecta a brasas dentro
+			// del "radio de influencia" (1.5 × cellSize en px, convertido
+			// a coords normalizadas 0..1).
+			if (boardReactions.quakeActive() && boardReactions.lastQuakeCenter) {
+				const q = boardReactions.lastQuakeCenter;
+				// e.x, e.y son 0..1, el centro está en px → convertir
+				const exPx = e.x * boardW;
+				const eyPx = e.y * boardH;
+				const dx = exPx - q.x;
+				const dy = eyPx - q.y;
+				const dist = Math.hypot(dx, dy);
+				const influence = cellSize * 4;  // radio de huida
+				if (dist < influence && dist > 1) {
+					const strength = (1 - dist / influence) * 3.5;
+					e.x += (dx / dist) * strength * dt;
+					e.y += (dy / dist) * strength * dt;
+				}
+			}
 
 			if (e.life <= 0 || e.y < -0.05) {
 				e.x = randomRange(0, 1);
@@ -7580,7 +7633,7 @@ const AMBIENT_TYPES = {
 				paused: false
 			};
 		},
-		update(e, dt, weather) {
+				update(e, dt, weather) {
 			// Los conejos se esconden con nieve muy intensa
 			let target;
 			if (weather.rain < 0.35) target = 1;
@@ -7588,6 +7641,13 @@ const AMBIENT_TYPES = {
 			else target = 1 - (weather.rain - 0.35) / 0.50;
 			e._activity += (target - e._activity) * Math.min(1, 3 * dt);
 			if (e._activity < 0.02) return;
+
+			// ⬇️ NUEVO: si hay Ira cargada, el conejo está nervioso.
+			// Salta más rápido y pausa menos.
+			const nervous = boardReactions.iraChargeLevel;
+			const hopSpeedMul = 1 + nervous * 0.6;      // 1.0 → 1.6
+			const pauseChance = 0.25 - nervous * 0.18;  // 25% → 7%
+			const pauseMul = 1 - nervous * 0.5;         // 1.0 → 0.5
 
 			// Pausa ocasional: el conejo se queda quieto mirando
 			if (e.paused) {
@@ -7600,15 +7660,13 @@ const AMBIENT_TYPES = {
 			}
 
 			// Saltar
-			e.hopPhase += dt * e.hopSpeed;
+			e.hopPhase += dt * e.hopSpeed * hopSpeedMul;
 			if (e.hopPhase >= 1) {
 				e.hopPhase -= 1;
-				// 25% de chance de pausar después de un salto
-				if (Math.random() < 0.25) {
+				if (Math.random() < pauseChance) {
 					e.paused = true;
-					e.pauseTimer = randomRange(0.6, 1.8);
+					e.pauseTimer = randomRange(0.6, 1.8) * pauseMul;
 				} else {
-					// A veces cambia de dirección
 					if (Math.random() < 0.3) {
 						e.vx = -e.vx;
 						e.facing = -e.facing;
@@ -7616,12 +7674,9 @@ const AMBIENT_TYPES = {
 				}
 			}
 
-			// Avance horizontal proporcional a la fase de salto
-			// (avanza más rápido en la parte media del salto)
 			const speedCurve = Math.sin(e.hopPhase * Math.PI);
 			e.x += e.vx * speedCurve * dt;
 
-			// Wrap horizontal
 			if (e.x < -0.06) e.x = 1.06;
 			if (e.x > 1.06) e.x = -0.06;
 		},
@@ -7915,20 +7970,33 @@ const AMBIENT_TYPES = {
 			_bornAt: performance.now(),
 		}),
 		update(e, dt, weather){
-			// Los búhos son estáticos: solo giran la cabeza y parpadean
+			// si hay rey en jaque, el búho está alerta.
+			// Gira la cabeza más seguido y prefiere el frame "de lado"
+			// (frame 1) — parece que vigila el tablero.
+			const inCheck = boardReactions.kingInCheck;
+
 			e.headTurnTimer -= dt;
-			if(e.headTurnTimer <= 0){
-				e.headTurnTarget = Math.random() < 0.5 ? 0 : 1;
-				e.headTurnTimer = randomRange(2, 6);
+			if (e.headTurnTimer <= 0) {
+				if (inCheck) {
+					// En jaque: 70% de quedarse en frame 1 (side),
+					// y vuelve a decidir rápido (0.8-2s).
+					e.headTurnTarget = Math.random() < 0.7 ? 1 : 0;
+					e.headTurnTimer = randomRange(0.8, 2.0);
+				} else {
+					e.headTurnTarget = Math.random() < 0.5 ? 0 : 1;
+					e.headTurnTimer = randomRange(2, 6);
+				}
 			}
-			e.headTurn += (e.headTurnTarget - e.headTurn) * Math.min(1, 3 * dt);
+			const turnSpeed = inCheck ? 5 : 3;
+			e.headTurn += (e.headTurnTarget - e.headTurn) * Math.min(1, turnSpeed * dt);
 
 			e.blinkTimer -= dt;
-			if(e.blinkTimer <= 0){
+			if (e.blinkTimer <= 0) {
 				e.blink = 1;
-				e.blinkTimer = randomRange(3, 8);
+				// En jaque, parpadea menos (alerta = ojos abiertos).
+				e.blinkTimer = inCheck ? randomRange(6, 12) : randomRange(3, 8);
 			}
-			if(e.blink > 0) e.blink = Math.max(0, e.blink - dt * 8);
+			if (e.blink > 0) e.blink = Math.max(0, e.blink - dt * 8);
 		},
 		draw(ctx, e, W, H){
 			if(e._activity < 0.04) return;
@@ -7965,11 +8033,30 @@ const AMBIENT_TYPES = {
 			_activity: 1,
 		}),
 		update(e, dt, weather){
-			// Vuelo rápido y errático
 			e.phase += dt * e.speed;
-			e.flapPhase += dt * 20;   // aleteo rápido
-			e.x = e.anchorX + Math.cos(e.phase) * e.rx;
-			e.y = e.anchorY + Math.sin(e.phase * 2.3) * e.ry;
+			e.flapPhase += dt * 20;
+
+			// ⬇️ NUEVO: si la Ira acaba de explotar, el murciélago
+			// se sobresalta y se aleja del centro de la explosión.
+			let offsetX = 0, offsetY = 0;
+			if (boardReactions.iraBurstActive() && boardReactions.lastIraBurstCenter) {
+				const b = boardReactions.lastIraBurstCenter;
+				const exPx = e.anchorX * boardW;
+				const eyPx = e.anchorY * boardH;
+				const dx = exPx - b.x;
+				const dy = eyPx - b.y;
+				const dist = Math.hypot(dx, dy);
+				const influence = cellSize * 5;
+				if (dist < influence && dist > 1) {
+					// Desplazamiento permanente del anchor mientras dura la reacción
+					const push = (1 - dist / influence) * 0.15;
+					offsetX = (dx / dist) * push;
+					offsetY = (dy / dist) * push;
+				}
+			}
+
+			e.x = e.anchorX + offsetX + Math.cos(e.phase) * e.rx;
+			e.y = e.anchorY + offsetY + Math.sin(e.phase * 2.3) * e.ry;
 		},
 		draw(ctx, e, W, H){
 			if(e._activity < 0.04) return;
@@ -8845,6 +8932,30 @@ function updateDecals(dt){
     d.life -= dt;
     if(d.life <= 0) decals.splice(i, 1);
   }
+}
+
+/* =========================================================
+   ACTUALIZACIÓN DEL ESTADO DE REACCIONES
+   Corre una vez por frame desde el loop. Es barato — solo
+   sincroniza los espejos de state y limpia timestamps viejos.
+   ========================================================= */
+function updateBoardReactions() {
+	// Ira cargada: 0, 0.55 (uno), o 1 (los dos)
+	boardReactions.iraChargeLevel =
+		(state.iraCharge.w ? 0.55 : 0) + (state.iraCharge.b ? 0.55 : 0);
+
+	// ¿Hay rey en jaque en el turno actual?
+	boardReactions.kingInCheck =
+		chess && !state.gameOver && chess.in_check();
+
+	// Limpieza de centros viejos (liberar referencia)
+	const now = performance.now();
+	if (now - boardReactions.lastQuakeAt > boardReactions.quakeDuration * 2) {
+		boardReactions.lastQuakeCenter = null;
+	}
+	if (now - boardReactions.lastIraBurstAt > boardReactions.iraBurstDuration * 2) {
+		boardReactions.lastIraBurstCenter = null;
+	}
 }
 
 /* =========================================================
@@ -14650,9 +14761,15 @@ async function iraTargeting(fromSq, color) {
 		addDecal(capturedSquare, 'ira', {
 			alpha: 0.85
 		});
+		
+		// notificar a la fauna de la explosión
+		const cc2 = squareCenter(capturedSquare);
+		boardReactions.lastIraBurstAt = performance.now();
+		boardReactions.lastIraBurstCenter = { x: cc2.x, y: cc2.y };
 
 		if (res.captured) addToGraveyard(res.captured, oppColor);
 		if (res.captured) vibrate([20, 40, 55]);
+		
 		state.mana[color] = Math.min(state.maxMana, state.mana[color] + 1);
 		for (const col of ['w', 'b']) {
 			if (state.shields[col].includes(capturedSquare)) removeShield(col, capturedSquare);
@@ -15813,6 +15930,11 @@ async function execQuake(centerSq) {
 		c: cc
 	} = sqToRC(centerSq);
 	const C = squareCenter(centerSq);
+	
+	// ⬇️ NUEVO: notificar a la fauna
+	boardReactions.lastQuakeAt = performance.now();
+	boardReactions.lastQuakeCenter = { x: C.x, y: C.y };
+	
 	playSfx('quake', turn);
 	boardWrap.animate([{
 			transform: 'translate(0,0)'
@@ -21672,6 +21794,9 @@ function loop(now) {
 	}
 	const W = boardW,
 		H = boardH;
+
+	// actualizar espejos de reacciones (barato, 1 vez/frame)
+	updateBoardReactions();
 
 	if (dt > 0) {
 		updateWeather(dt);
