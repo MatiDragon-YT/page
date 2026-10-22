@@ -624,6 +624,15 @@ body {
 	}
 }
 
+/* =========================================================
+   JAQUE: pulso rojo en el rey
+   ========================================================= */
+.piece.in-check .tok {
+	box-shadow: 0 0 0 3px rgba(255, 60, 60, .9),
+		0 0 18px 6px rgba(255, 40, 40, .7),
+		0 2px 6px rgba(0, 0, 0, .65);
+	animation: checkPulse .8s infinite alternate;
+}
 .piece.in-check-shielded .tok {
 	box-shadow: 0 0 0 3px rgba(255, 80, 80, .5),
 		0 0 14px 4px rgba(255, 60, 60, .35),
