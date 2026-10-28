@@ -3303,13 +3303,13 @@ const debugState = {
 	editingPiece: null,
 	tab: 'world',
 	wasPausedBeforeOpen: false,
-	// NUEVOS: locks que congelan los sistemas automáticos
 	weatherLocked: false,
 	timeLocked: false,
 	windLocked: false,
-	forcedLayoutKind: null,         // ⬅️ NUEVO: null | 'single' | 'split' | 'split-asym' | 'thirds'
-	customLayoutProbs: null,        // ⬅️ NUEVO: { single, split, splitAsym, thirds } o null
-	forcedHydroMode: null,     // ⬅️ NUEVO: null | 'unified' | 'separate'
+	forcedLayoutKind: null,
+	customLayoutProbs: null,
+	forcedWaterMode: null,     // ⬅️ NUEVO: null | uno de los 8 modos
+    forcedHydroMode: null,      // ⬅️ NUEVO: null | 'unified' | 'separate'
 };
 
 /* Devuelve la dificultad efectiva del color que va a jugar.
@@ -6107,7 +6107,8 @@ function saveCurrentMatch(result, resultColor) {
 		biomeId: currentBiome ? currentBiome.id : 'forest',
 		terrainSeed: terr.seed,
 		biomeRegions: terr.regions.map(r => ({ id: r.id, weight: r.weight })),  // Fase 2
-		hydroMode: terr.hydroMode,                                                // Fase 3
+		hydroMode: terr.hydroMode,   
+		waterMode: terr.waterMode,     // ⬅️ NUEVO                                             // Fase 3
 		moves: JSON.parse(JSON.stringify(historyLog)),
 		finalFen: chess ? chess.fen() : null,
 		weather: captureWeatherState() // snapshot del clima al terminar
@@ -11067,9 +11068,10 @@ const terr = {
 	biomeMap: null,
 	blendMap: null,
 	blendNeighbor: null,
-	boundaryDist: null,        // ⬅️ NUEVO
-	hydroMode: 'unified',      // ⬅️ NUEVO (Fase 3)
-	waterLayers: [],           // ⬅️ NUEVO (reemplaza las variables sueltas de Fase 2)
+	boundaryDist: null,
+	hydroMode: 'unified',      // interno, solo para lakes/rivers/mixed
+	waterMode: 'lakes',        // ⬅️ NUEVO
+	waterLayers: [],
 };
 
 let terrainOffscreen = null;
@@ -11173,6 +11175,269 @@ function layoutHalfQuarters(biomeMap, N, seed) {
 			}
 		}
 	}
+}
+
+/* ─────────────────────────────────────────────────────────
+   MODOS DE AGUA — Fase 5 (sistema ortogonal a biomas)
+   ───────────────────────────────────────────────────────── */
+const WATER_MODE_PROBS = {
+	dry:         0.35,
+	lakes:       0.20,
+	rivers:      0.15,
+	mixed:       0.10,
+	sea:         0.05,
+	archipelago: 0.05,
+	ocean:       0.05,
+	flood:       0.05,
+};
+
+function pickWaterMode() {
+	const roll = Math.random();
+	let acc = 0;
+	for (const [mode, prob] of Object.entries(WATER_MODE_PROBS)) {
+		acc += prob;
+		if (roll < acc) return mode;
+	}
+	return 'lakes';
+}
+
+/* Costa irregular desde un borde. Sin islas internas. */
+function generateSea(water, h, N, seed) {
+	water.fill(0);
+	const edge = Math.floor(Math.random() * 4);
+	const depth = N * randomRange(0.20, 0.40);
+	const coastNoiseScale = 0.08;
+	const coastAmp = N * 0.10;
+
+	for (let y = 0; y < N; y++) {
+		for (let x = 0; x < N; x++) {
+			const i = y * N + x;
+			let dist;
+			if (edge === 0)      dist = y;
+			else if (edge === 1) dist = N - 1 - x;
+			else if (edge === 2) dist = N - 1 - y;
+			else                 dist = x;
+
+			const coastOff = (fractalNoise(x * coastNoiseScale, y * coastNoiseScale, seed + 50) - 0.5) * coastAmp;
+			const effDepth = depth + coastOff;
+
+			if (dist < effDepth) {
+				water[i] = 1;
+				h[i] = Math.min(h[i], 0.20);
+			} else if (dist < effDepth + 3) {
+				h[i] = Math.min(h[i], 0.32);
+			}
+		}
+	}
+}
+
+/* Pinta una isla orgánica centrada en (cx, cy). */
+function paintIsland(water, h, N, cx, cy, baseR) {
+	const lumpiness = randomRange(0.15, 0.35);
+	const s1 = Math.random() * 100, s2 = Math.random() * 100;
+	const checkR = Math.ceil(baseR * (1 + lumpiness)) + 2;
+	const icx = Math.round(cx), icy = Math.round(cy);
+
+	for (let dy = -checkR; dy <= checkR; dy++) {
+		for (let dx = -checkR; dx <= checkR; dx++) {
+			const nx = icx + dx, ny = icy + dy;
+			if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+			const d = Math.hypot(dx, dy);
+			const ang = Math.atan2(dy, dx);
+			const rMod = 1 + lumpiness * 0.6 * Math.sin(ang * 3 + s1)
+			             + lumpiness * 0.4 * Math.sin(ang * 5 + s2);
+			const rEdge = baseR * rMod;
+			const ni = ny * N + nx;
+			if (d <= rEdge) {
+				water[ni] = 0;
+				h[ni] = Math.max(h[ni], 0.42);
+			}
+		}
+	}
+}
+
+/* Islas dispersas en agua. */
+function generateArchipelago(water, h, N, seed) {
+	water.fill(1);
+	const numIslands = 5 + Math.floor(Math.random() * 4);
+	const placed = [];
+
+	for (let k = 0; k < numIslands; k++) {
+		let cx, cy, r, tries = 0, ok = false;
+		while (tries < 20 && !ok) {
+			cx = randomRange(N * 0.10, N * 0.90);
+			cy = randomRange(N * 0.10, N * 0.90);
+			r = N * randomRange(0.05, 0.14);
+			ok = !placed.some(isl => Math.hypot(cx - isl.cx, cy - isl.cy) < (r + isl.r) * 0.85);
+			tries++;
+		}
+		if (!ok) continue;
+		placed.push({ cx, cy, r });
+		paintIsland(water, h, N, cx, cy, r);
+	}
+}
+
+/* Mar enorme con 1-3 islas chicas. */
+function generateOcean(water, h, N, seed) {
+	water.fill(1);
+	const numIslands = 1 + Math.floor(Math.random() * 3);
+	const placed = [];
+
+	for (let k = 0; k < numIslands; k++) {
+		let cx, cy, r, tries = 0, ok = false;
+		while (tries < 20 && !ok) {
+			cx = randomRange(N * 0.15, N * 0.85);
+			cy = randomRange(N * 0.15, N * 0.85);
+			r = N * randomRange(0.06, 0.13);
+			ok = !placed.some(isl => Math.hypot(cx - isl.cx, cy - isl.cy) < (r + isl.r) * 0.9);
+			tries++;
+		}
+		if (!ok) continue;
+		placed.push({ cx, cy, r });
+		paintIsland(water, h, N, cx, cy, r);
+	}
+}
+
+/* Casi todo agua. 25% sin islas (100% agua), 75% con 1 isla chica. */
+function generateFlood(water, h, N, seed) {
+	water.fill(1);
+	if (Math.random() < 0.25) return;
+	const cx = randomRange(N * 0.30, N * 0.70);
+	const cy = randomRange(N * 0.30, N * 0.70);
+	const r  = N * randomRange(0.10, 0.18);
+	paintIsland(water, h, N, cx, cy, r);
+}
+
+function generateWaterForMode(mode, water, h, N, seed) {
+	if (mode === 'dry') {
+		water.fill(0);
+		return;
+	}
+	if (mode === 'sea')          { generateSea(water, h, N, seed); return; }
+	if (mode === 'archipelago')  { generateArchipelago(water, h, N, seed); return; }
+	if (mode === 'ocean')        { generateOcean(water, h, N, seed); return; }
+	if (mode === 'flood')        { generateFlood(water, h, N, seed); return; }
+	// lakes/rivers/mixed los maneja el bloque original en generateTerrain
+}
+
+/* ─────────────────────────────────────────────────────────
+   REPARTO DE BIOMAS CON AGUA — integración A
+   ───────────────────────────────────────────────────────── */
+
+function findLandComponents(water, N) {
+	const visited = new Uint8Array(N * N);
+	const islands = [];
+	for (let i = 0; i < N * N; i++) {
+		if (water[i] || visited[i]) continue;
+		const tiles = [];
+		const queue = [i];
+		visited[i] = 1;
+		let head = 0;
+		while (head < queue.length) {
+			const cur = queue[head++];
+			tiles.push(cur);
+			const x = cur % N, y = (cur / N) | 0;
+			const nbs = [];
+			if (x > 0) nbs.push(cur - 1);
+			if (x < N - 1) nbs.push(cur + 1);
+			if (y > 0) nbs.push(cur - N);
+			if (y < N - 1) nbs.push(cur + N);
+			for (const ni of nbs) {
+				if (!water[ni] && !visited[ni]) {
+					visited[ni] = 1;
+					queue.push(ni);
+				}
+			}
+		}
+		islands.push({ tiles });
+	}
+	return islands;
+}
+
+/* Hereda el bioma del tile de tierra más cercano (BFS multi-source). */
+function assignWaterBiomes(biomeMap, water, N) {
+	const dist = new Uint8Array(N * N).fill(255);
+	const queue = [];
+	for (let i = 0; i < N * N; i++) {
+		if (!water[i]) { dist[i] = 0; queue.push(i); }
+	}
+	if (queue.length === 0) return;
+	let head = 0;
+	while (head < queue.length) {
+		const i = queue[head++];
+		const x = i % N, y = (i / N) | 0;
+		const nbs = [];
+		if (x > 0) nbs.push(i - 1);
+		if (x < N - 1) nbs.push(i + 1);
+		if (y > 0) nbs.push(i - N);
+		if (y < N - 1) nbs.push(i + N);
+		for (const ni of nbs) {
+			if (dist[ni] > dist[i] + 1) {
+				dist[ni] = dist[i] + 1;
+				biomeMap[ni] = biomeMap[i];
+				queue.push(ni);
+			}
+		}
+	}
+}
+
+/* Reparto por islas enteras. Cada isla = 1 bioma (nada de islas partidas). */
+function computeBiomeMapMarine(layout, N, seed, water) {
+	const biomeMap = new Uint8Array(N * N);
+	const blendMap = new Float32Array(N * N);
+	const blendNeighbor = new Uint8Array(N * N).fill(255);
+
+	const islands = findLandComponents(water, N);
+	if (islands.length === 0) {
+		return { biomeMap, blendMap, blendNeighbor, dist: new Uint8Array(N * N).fill(255) };
+	}
+
+	const totalLand = islands.reduce((sum, isl) => sum + isl.tiles.length, 0);
+	const targetPerRegion = layout.regions.map(r => r.weight * totalLand);
+	const currentPerRegion = layout.regions.map(() => 0);
+
+	const sortedIdx = islands.map((_, i) => i).sort((a, b) => islands[b].tiles.length - islands[a].tiles.length);
+
+	for (const islIdx of sortedIdx) {
+		const isl = islands[islIdx];
+		let bestR = 0, bestDef = -Infinity;
+		for (let r = 0; r < layout.regions.length; r++) {
+			const deficit = targetPerRegion[r] - currentPerRegion[r];
+			if (deficit > bestDef) { bestDef = deficit; bestR = r; }
+		}
+		currentPerRegion[bestR] += isl.tiles.length;
+		for (const i of isl.tiles) biomeMap[i] = bestR;
+	}
+
+	assignWaterBiomes(biomeMap, water, N);
+
+	const dist = computeBlendMap(biomeMap, blendMap, blendNeighbor, N);
+	for (let i = 0; i < N * N; i++) {
+		if (water[i]) { blendMap[i] = 0; blendNeighbor[i] = 255; }
+	}
+	return { biomeMap, blendMap, blendNeighbor, dist };
+}
+
+function computeBiomeMapOrthogonal(layout, N, seed, water, waterMode) {
+	if (layout.kind === 'single') {
+		return {
+			biomeMap: new Uint8Array(N * N),
+			blendMap: new Float32Array(N * N),
+			blendNeighbor: new Uint8Array(N * N).fill(255),
+			dist: new Uint8Array(N * N).fill(255),
+		};
+	}
+
+	const isMarine = ['archipelago', 'ocean', 'flood'].includes(waterMode);
+	if (isMarine) return computeBiomeMapMarine(layout, N, seed, water);
+
+	const normal = computeBiomeMap(layout, N, seed);
+	assignWaterBiomes(normal.biomeMap, water, N);
+	const dist = computeBlendMap(normal.biomeMap, normal.blendMap, normal.blendNeighbor, N);
+	for (let i = 0; i < N * N; i++) {
+		if (water[i]) { normal.blendMap[i] = 0; normal.blendNeighbor[i] = 255; }
+	}
+	return { ...normal, dist };
 }
 
 /* Elige un layout según la preferencia del jugador.
@@ -11594,7 +11859,7 @@ function buildLocalRiver(tiles, biomeMap, regionIdx, h, water, N) {
 }
 
 /* Orquesta la generación separada por región. */
-function buildSeparateHydro(regions, biomeMap, h, water, N) {
+function buildSeparateHydro(regions, biomeMap, h, water, N, waterMode) {
 	terr.rivers = [];
 	terr.lakes = [];
 
@@ -11602,27 +11867,24 @@ function buildSeparateHydro(regions, biomeMap, h, water, N) {
 		const tiles = collectRegionTiles(biomeMap, rIdx, N);
 		if (tiles.length < 100) continue;
 
-		// Lagos locales: 60% chance de tener 1
-		if (Math.random() < 0.60) {
+		if ((waterMode === 'lakes' || waterMode === 'mixed') && Math.random() < 0.60) {
 			const lake = buildLocalLake(tiles, biomeMap, rIdx, h, water, N);
 			if (lake) terr.lakes.push(lake);
 		}
-
-		// Río local: 55% chance de tener 1
-		if (Math.random() < 0.55) {
+		if ((waterMode === 'rivers' || waterMode === 'mixed') && Math.random() < 0.55) {
 			const river = buildLocalRiver(tiles, biomeMap, rIdx, h, water, N);
 			if (river) terr.rivers.push(river);
 		}
 	}
 }
 
-function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRegions) {
+function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRegions, forcedWaterMode) {
 	// ─── Override determinista de Math.random ───
 	const oldRandom = Math.random;
 	const useOverride = (seedOverride !== undefined && seedOverride !== null);
 	let seedValue;
 
-	if(useOverride){
+	if (useOverride) {
 		seedValue = seedOverride;
 		let s = (Math.floor(seedValue * 1000000) | 0) >>> 0;
 		Math.random = () => {
@@ -11638,15 +11900,14 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 
 	try {
 		const N = TERR_N;
-		const h = new Float32Array(N*N);
-		const water = new Uint8Array(N*N);
+		const h = new Float32Array(N * N);
+		const water = new Uint8Array(N * N);
 		const seed = seedValue;
 		terr.seed = seed;
 
 		/* ═══════════════════════════════════════════════════════════
 		   Fase 1 — Layout de biomas
 		   ═══════════════════════════════════════════════════════════ */
-
 		let layout;
 		if (forcedRegions && forcedRegions.length) {
 			let kind;
@@ -11656,13 +11917,11 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 				kind = Math.abs(forcedRegions[0].weight - forcedRegions[1].weight) < 0.1
 					? 'split' : 'split-asym';
 			} else {
-				// 3 biomas: distinguir mitad-y-cuartos de pastel por el weight del primero
 				kind = Math.abs(forcedRegions[0].weight - 0.5) < 0.1
 					? 'half-quarters' : 'thirds';
 			}
 			layout = { kind, regions: forcedRegions };
 		} else {
-			// ⬇️ Fase 4: soporte para debug
 			layout = pickBiomeLayout(
 				preferredBiome,
 				debugState.enabled ? debugState.forcedLayoutKind : null,
@@ -11695,305 +11954,336 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 			}
 
 		/* ═══════════════════════════════════════════════════════════
-		   Fase 1 — Mapa de biomas (movido antes que la hidrología,
-		   porque Fase 3 lo necesita para la hidrología separada)
+		   Fase 5 — Modo de agua y generación (integrado con Fase 1-3)
 		   ═══════════════════════════════════════════════════════════ */
-		const biomeData = computeBiomeMap(layout, N, seed);
+		terr.waterMode = forcedWaterMode || pickWaterMode();
+
+		const hydroApplicable = ['lakes', 'rivers', 'mixed'].includes(terr.waterMode);
+		terr.hydroMode = forcedHydroMode
+			? forcedHydroMode
+			: ((hydroApplicable && layout.kind !== 'single' && Math.random() < 0.33) ? 'separate' : 'unified');
+
+		terr.rivers = [];
+		terr.lakes = [];
+
+		// ⬇️ NUEVA ESTRUCTURA: decidir el orden según el modo
+		const isMarine = ['archipelago', 'ocean', 'flood'].includes(terr.waterMode);
+		let biomeData;
+
+		if (isMarine) {
+			/* ───── Modos marinos: AGUA primero, después reparto por islas ───── */
+			generateWaterForMode(terr.waterMode, water, h, N, seed);
+			biomeData = computeBiomeMapMarine(layout, N, seed, water);
+		} else {
+			/* ───── Modos con tierra: BIOMEMAP primero, después agua ───── */
+			const normal = computeBiomeMap(layout, N, seed);
+
+			if (terr.waterMode === 'dry') {
+				water.fill(0);
+				biomeData = {
+					biomeMap: normal.biomeMap,
+					blendMap: normal.blendMap,
+					blendNeighbor: normal.blendNeighbor,
+					dist: normal.dist,
+				};
+			} else if (terr.waterMode === 'sea') {
+				generateWaterForMode('sea', water, h, N, seed);
+				assignWaterBiomes(normal.biomeMap, water, N);
+				const newDist = computeBlendMap(normal.biomeMap, normal.blendMap, normal.blendNeighbor, N);
+				biomeData = {
+					biomeMap: normal.biomeMap,
+					blendMap: normal.blendMap,
+					blendNeighbor: normal.blendNeighbor,
+					dist: newDist,
+				};
+			} else {
+				/* lakes / rivers / mixed */
+				if (terr.hydroMode === 'unified') {
+					/* ═══════════════════════════════════════════════════
+					   SISTEMA HÍDRICO v4 — envuelto en 2 flags según waterMode
+					   ═══════════════════════════════════════════════════ */
+					const priorWaterSnapshot = new Uint8Array(N * N);
+					const edgesList = ['top', 'bottom', 'left', 'right'];
+
+					// ---- Helper: construir un río ----
+					function buildRiver(isWide) {
+						const pad = 3;
+						const overshoot = isWide ? 10 : 6;
+
+						for (let attempt = 0; attempt < 12; attempt++) {
+							const se = edgesList[Math.floor(Math.random() * 4)];
+							let ee;
+							do {
+								ee = edgesList[Math.floor(Math.random() * 4)];
+							} while (ee === se);
+
+							const pointOnEdge = (edge) => {
+								const t = 0.10 + Math.random() * 0.80;
+								switch (edge) {
+									case 'top':    return [pad + t * (N - 2 * pad), -overshoot];
+									case 'bottom': return [pad + t * (N - 2 * pad), N - 1 + overshoot];
+									case 'left':   return [-overshoot, pad + t * (N - 2 * pad)];
+									case 'right':  return [N - 1 + overshoot, pad + t * (N - 2 * pad)];
+								}
+							};
+							const start = pointOnEdge(se);
+							const end = pointOnEdge(ee);
+
+							const dx = end[0] - start[0];
+							const dy = end[1] - start[1];
+							const len = Math.hypot(dx, dy) || 1;
+							if (len < N * 0.55) continue;
+
+							let perpX = -dy / len;
+							let perpY = dx / len;
+							const midX = (start[0] + end[0]) / 2;
+							const midY = (start[1] + end[1]) / 2;
+							if (perpX * (N / 2 - midX) + perpY * (N / 2 - midY) < 0) {
+								perpX = -perpX;
+								perpY = -perpY;
+							}
+
+							const isStraight = Math.random() < (isWide ? 0.65 : 0.45);
+							const A1 = isStraight
+								? randomRange(0.004, 0.015) * N
+								: (isWide ? randomRange(0.020, 0.060) * N : randomRange(0.030, 0.110) * N);
+							const A2 = isStraight
+								? randomRange(0.002, 0.008) * N
+								: (isWide ? randomRange(0.005, 0.018) * N : randomRange(0.008, 0.030) * N);
+							const f1 = isWide ? randomRange(0.5, 1.0) : randomRange(0.7, 1.4);
+							const f2 = randomRange(2.0, 3.5);
+							const phase = Math.random() * Math.PI * 2;
+
+							const SAMPLES = 100;
+							const cand = [];
+							for (let i = 0; i <= SAMPLES; i++) {
+								const t = i / SAMPLES;
+								const baseX = start[0] + dx * t;
+								const baseY = start[1] + dy * t;
+								const envelope = Math.sin(t * Math.PI);
+								const offset = envelope * (
+									A1 * Math.sin(t * Math.PI * f1) +
+									A2 * Math.sin(t * Math.PI * f2 + phase)
+								);
+								cand.push([baseX + perpX * offset, baseY + perpY * offset]);
+							}
+
+							let firstInside = -1;
+							for (let i = 0; i < cand.length; i++) {
+								const [x, y] = cand[i];
+								if (x >= 0 && x < N && y >= 0 && y < N) {
+									firstInside = i;
+									break;
+								}
+							}
+							if (firstInside === -1) continue;
+
+							const [fx, fy] = cand[firstInside];
+							const cx = Math.round(fx), cy = Math.round(fy);
+							const checkR = isWide ? 6 : 3;
+							let startsOnWater = false;
+							for (let ddy = -checkR; ddy <= checkR && !startsOnWater; ddy++) {
+								for (let ddx = -checkR; ddx <= checkR; ddx++) {
+									const nx = cx + ddx, ny = cy + ddy;
+									if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+									if (priorWaterSnapshot[ny * N + nx]) {
+										startsOnWater = true;
+										break;
+									}
+								}
+							}
+							if (startsOnWater) continue;
+
+							return cand;
+						}
+						return null;
+					}
+
+					// ---- Helper: rasterizar río hasta merge ----
+					function rasterizeRiver(samples, rad) {
+						const radCeil = Math.ceil(rad) + 2;
+
+						let mergedAt = -1;
+						for (let i = 0; i < samples.length; i++) {
+							const cx = Math.round(samples[i][0]);
+							const cy = Math.round(samples[i][1]);
+							if (cx < 0 || cy < 0 || cx >= N || cy >= N) continue;
+							if (priorWaterSnapshot[cy * N + cx]) {
+								mergedAt = i;
+								break;
+							}
+						}
+						const lastSample = mergedAt >= 0 ? mergedAt : samples.length - 1;
+						if (lastSample <= 2) return null;
+
+						for (let i = 0; i <= lastSample; i++) {
+							const cx = Math.round(samples[i][0]);
+							const cy = Math.round(samples[i][1]);
+							for (let ddy = -radCeil; ddy <= radCeil; ddy++) {
+								for (let ddx = -radCeil; ddx <= radCeil; ddx++) {
+									const nx = cx + ddx, ny = cy + ddy;
+									if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+									const d = Math.hypot(ddx, ddy);
+									if (d <= rad) {
+										water[ny * N + nx] = 1;
+										h[ny * N + nx] = Math.min(h[ny * N + nx], 0.26 - (rad - d) * 0.05);
+									} else if (d <= rad + 1.5) {
+										h[ny * N + nx] = Math.min(h[ny * N + nx], 0.33);
+									}
+								}
+							}
+						}
+						return samples.slice(0, lastSample + 1);
+					}
+
+					// ---- Ríos: SOLO si waterMode es 'rivers' o 'mixed' ----
+					if (terr.waterMode === 'rivers' || terr.waterMode === 'mixed') {
+						const systemRoll = Math.random();
+						const riverMode = systemRoll < 0.28 ? 'none'
+							: systemRoll < 0.72 ? 'normal'
+							: 'wide';
+
+						if (riverMode !== 'none') {
+							const isWide = riverMode === 'wide';
+							let riverCount;
+							if (isWide) {
+								riverCount = Math.random() < 0.85 ? 1 : 2;
+							} else {
+								const r = Math.random();
+								riverCount = r < 0.60 ? 1 : (r < 0.90 ? 2 : 3);
+							}
+
+							for (let k = 0; k < riverCount; k++) {
+								priorWaterSnapshot.set(water);
+								const samples = buildRiver(isWide);
+								if (!samples) continue;
+
+								const rad = isWide ? randomRange(3.2, 5.2) : randomRange(0.5, 2.2);
+								const visibleSamples = rasterizeRiver(samples, rad);
+								if (!visibleSamples) continue;
+
+								terr.rivers.push({
+									type: riverMode,
+									width: rad,
+									samples: visibleSamples,
+								});
+							}
+						}
+					}
+
+					// ---- Lagos: SOLO si waterMode es 'lakes' o 'mixed' ----
+					if (terr.waterMode === 'lakes' || terr.waterMode === 'mixed') {
+						const lakesRoll = Math.random();
+						let lakeMode, lakeCount;
+						if (lakesRoll < 0.35) {
+							lakeMode = 'none';
+							lakeCount = 0;
+						} else if (lakesRoll < 0.65) {
+							lakeMode = 'small';
+							lakeCount = Math.random() < 0.60 ? 1 : 2;
+						} else {
+							lakeMode = 'huge';
+							lakeCount = 1;
+						}
+
+						for (let k = 0; k < lakeCount; k++) {
+							priorWaterSnapshot.set(water);
+
+							const isHuge = (lakeMode === 'huge');
+							const rMin = isHuge ? 12.0 : 4.0;
+							const rMax = isHuge ? 19.5 : 9.5;
+							const lumpMin = isHuge ? 0.18 : 0.15;
+							const lumpMax = isHuge ? 0.40 : 0.40;
+							const maxAttempts = isHuge ? 40 : 25;
+
+							for (let attempt = 0; attempt < maxAttempts; attempt++) {
+								const lcx = randomRange(N * 0.20, N * 0.80);
+								const lcy = randomRange(N * 0.20, N * 0.80);
+								const baseR = randomRange(rMin, rMax);
+								const lumpiness = randomRange(lumpMin, lumpMax);
+								const seed1 = Math.random() * 100;
+								const seed2 = Math.random() * 100;
+
+								const checkR = Math.ceil(baseR * (1 + lumpiness)) + 3;
+								const cx0 = Math.round(lcx);
+								const cy0 = Math.round(lcy);
+
+								if (cx0 - checkR < 1 || cx0 + checkR > N - 2) continue;
+								if (cy0 - checkR < 1 || cy0 + checkR > N - 2) continue;
+
+								let overlaps = false;
+								for (let ddy = -checkR; ddy <= checkR && !overlaps; ddy++) {
+									for (let ddx = -checkR; ddx <= checkR; ddx++) {
+										const nx = cx0 + ddx, ny = cy0 + ddy;
+										if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+										if (priorWaterSnapshot[ny * N + nx]) {
+											overlaps = true;
+											break;
+										}
+									}
+								}
+								if (overlaps) continue;
+
+								for (let ddy = -checkR; ddy <= checkR; ddy++) {
+									for (let ddx = -checkR; ddx <= checkR; ddx++) {
+										const nx = cx0 + ddx, ny = cy0 + ddy;
+										if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+										const d = Math.hypot(ddx, ddy);
+										const ang = Math.atan2(ddy, ddx);
+										const rMod = 1
+											+ lumpiness * 0.60 * Math.sin(ang * 3 + seed1)
+											+ lumpiness * 0.40 * Math.sin(ang * 5 + seed2);
+										const rEdge = baseR * rMod;
+										if (d <= rEdge) {
+											water[ny * N + nx] = 1;
+											h[ny * N + nx] = Math.min(h[ny * N + nx], 0.24 - (rEdge - d) * 0.03);
+										} else if (d <= rEdge + 1.8) {
+											h[ny * N + nx] = Math.min(h[ny * N + nx], 0.33);
+										}
+									}
+								}
+
+								terr.lakes.push({
+									x: lcx / N,
+									y: lcy / N,
+									r: baseR / N,
+									lumpiness,
+									type: lakeMode,
+								});
+								break;
+							}
+						}
+					}
+				} else {
+					/* Fase 3: hidrología separada, filtrada por waterMode */
+					buildSeparateHydro(terr.regions, normal.biomeMap, h, water, N, terr.waterMode);
+				}
+
+				assignWaterBiomes(normal.biomeMap, water, N);
+				const newDist = computeBlendMap(normal.biomeMap, normal.blendMap, normal.blendNeighbor, N);
+				biomeData = {
+					biomeMap: normal.biomeMap,
+					blendMap: normal.blendMap,
+					blendNeighbor: normal.blendNeighbor,
+					dist: newDist,
+				};
+			}
+		}
+
 		terr.biomeMap = biomeData.biomeMap;
 		terr.blendMap = biomeData.blendMap;
 		terr.blendNeighbor = biomeData.blendNeighbor;
 		terr.boundaryDist = biomeData.dist;
 
 		/* ═══════════════════════════════════════════════════════════
-		   Fase 3 — Modo hidrológico
-		   ═══════════════════════════════════════════════════════════ */
-		terr.hydroMode = forcedHydroMode
-			? forcedHydroMode
-			: ((layout.kind !== 'single' && Math.random() < 0.33) ? 'separate' : 'unified');
-
-		terr.rivers = [];
-		terr.lakes = [];
-
-		if (terr.hydroMode === 'unified') {
-			/* =========================================================
-			   SISTEMA HÍDRICO v4  (sin cambios)
-			   ========================================================= */
-			const priorWaterSnapshot = new Uint8Array(N * N);
-			const edgesList = ['top', 'bottom', 'left', 'right'];
-
-			// ---- Helper: construir un río ----
-			function buildRiver(isWide) {
-				const pad = 3;
-				const overshoot = isWide ? 10 : 6;
-
-				for (let attempt = 0; attempt < 12; attempt++) {
-					const se = edgesList[Math.floor(Math.random() * 4)];
-					let ee;
-					do {
-						ee = edgesList[Math.floor(Math.random() * 4)];
-					} while (ee === se);
-
-					const pointOnEdge = (edge) => {
-						const t = 0.10 + Math.random() * 0.80;
-						switch (edge) {
-							case 'top':
-								return [pad + t * (N - 2 * pad), -overshoot];
-							case 'bottom':
-								return [pad + t * (N - 2 * pad), N - 1 + overshoot];
-							case 'left':
-								return [-overshoot, pad + t * (N - 2 * pad)];
-							case 'right':
-								return [N - 1 + overshoot, pad + t * (N - 2 * pad)];
-						}
-					};
-					const start = pointOnEdge(se);
-					const end = pointOnEdge(ee);
-
-					const dx = end[0] - start[0];
-					const dy = end[1] - start[1];
-					const len = Math.hypot(dx, dy) || 1;
-					if (len < N * 0.55) continue;
-
-					let perpX = -dy / len;
-					let perpY = dx / len;
-					const midX = (start[0] + end[0]) / 2;
-					const midY = (start[1] + end[1]) / 2;
-					if (perpX * (N / 2 - midX) + perpY * (N / 2 - midY) < 0) {
-						perpX = -perpX;
-						perpY = -perpY;
-					}
-
-					const isStraight = Math.random() < (isWide ? 0.65 : 0.45);
-					const A1 = isStraight ?
-						randomRange(0.004, 0.015) * N :
-						(isWide ? randomRange(0.020, 0.060) * N : randomRange(0.030, 0.110) * N);
-					const A2 = isStraight ?
-						randomRange(0.002, 0.008) * N :
-						(isWide ? randomRange(0.005, 0.018) * N : randomRange(0.008, 0.030) * N);
-					const f1 = isWide ? randomRange(0.5, 1.0) : randomRange(0.7, 1.4);
-					const f2 = randomRange(2.0, 3.5);
-					const phase = Math.random() * Math.PI * 2;
-
-					const SAMPLES = 100;
-					const cand = [];
-					for (let i = 0; i <= SAMPLES; i++) {
-						const t = i / SAMPLES;
-						const baseX = start[0] + dx * t;
-						const baseY = start[1] + dy * t;
-						const envelope = Math.sin(t * Math.PI);
-						const offset = envelope * (
-							A1 * Math.sin(t * Math.PI * f1) +
-							A2 * Math.sin(t * Math.PI * f2 + phase)
-						);
-						cand.push([baseX + perpX * offset, baseY + perpY * offset]);
-					}
-
-					let firstInside = -1;
-					for (let i = 0; i < cand.length; i++) {
-						const [x, y] = cand[i];
-						if (x >= 0 && x < N && y >= 0 && y < N) {
-							firstInside = i;
-							break;
-						}
-					}
-					if (firstInside === -1) continue;
-
-					const [fx, fy] = cand[firstInside];
-					const cx = Math.round(fx),
-						cy = Math.round(fy);
-					const checkR = isWide ? 6 : 3;
-					let startsOnWater = false;
-					for (let ddy = -checkR; ddy <= checkR && !startsOnWater; ddy++) {
-						for (let ddx = -checkR; ddx <= checkR; ddx++) {
-							const nx = cx + ddx,
-								ny = cy + ddy;
-							if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-							if (priorWaterSnapshot[ny * N + nx]) {
-								startsOnWater = true;
-								break;
-							}
-						}
-					}
-					if (startsOnWater) continue;
-
-					return cand;
-				}
-				return null;
-			}
-
-			// ---- Helper: rasterizar río hasta merge ----
-			function rasterizeRiver(samples, rad) {
-				const radCeil = Math.ceil(rad) + 2;
-
-				let mergedAt = -1;
-				for (let i = 0; i < samples.length; i++) {
-					const cx = Math.round(samples[i][0]);
-					const cy = Math.round(samples[i][1]);
-					if (cx < 0 || cy < 0 || cx >= N || cy >= N) continue;
-					if (priorWaterSnapshot[cy * N + cx]) {
-						mergedAt = i;
-						break;
-					}
-				}
-				const lastSample = mergedAt >= 0 ? mergedAt : samples.length - 1;
-				if (lastSample <= 2) return null;
-
-				for (let i = 0; i <= lastSample; i++) {
-					const cx = Math.round(samples[i][0]);
-					const cy = Math.round(samples[i][1]);
-					for (let ddy = -radCeil; ddy <= radCeil; ddy++) {
-						for (let ddx = -radCeil; ddx <= radCeil; ddx++) {
-							const nx = cx + ddx,
-								ny = cy + ddy;
-							if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-							const d = Math.hypot(ddx, ddy);
-							if (d <= rad) {
-								water[ny * N + nx] = 1;
-								h[ny * N + nx] = Math.min(h[ny * N + nx], 0.26 - (rad - d) * 0.05);
-							} else if (d <= rad + 1.5) {
-								h[ny * N + nx] = Math.min(h[ny * N + nx], 0.33);
-							}
-						}
-					}
-				}
-				return samples.slice(0, lastSample + 1);
-			}
-
-			// ---- Ríos ----
-			const systemRoll = Math.random();
-			const riverMode = systemRoll < 0.28 ? 'none' :
-				systemRoll < 0.72 ? 'normal' :
-				'wide';
-
-			if (riverMode !== 'none') {
-				const isWide = riverMode === 'wide';
-				let riverCount;
-				if (isWide) {
-					riverCount = Math.random() < 0.85 ? 1 : 2;
-				} else {
-					const r = Math.random();
-					riverCount = r < 0.60 ? 1 : (r < 0.90 ? 2 : 3);
-				}
-
-				for (let k = 0; k < riverCount; k++) {
-					priorWaterSnapshot.set(water);
-					const samples = buildRiver(isWide);
-					if (!samples) continue;
-
-					const rad = isWide ? randomRange(3.2, 5.2) : randomRange(0.5, 2.2);
-					const visibleSamples = rasterizeRiver(samples, rad);
-					if (!visibleSamples) continue;
-
-					terr.rivers.push({
-						type: riverMode,
-						width: rad,
-						samples: visibleSamples
-					});
-				}
-			}
-
-			// ---- Lagos ----
-			const lakesRoll = Math.random();
-			let lakeMode, lakeCount;
-			if (lakesRoll < 0.35) {
-				lakeMode = 'none';
-				lakeCount = 0;
-			} else if (lakesRoll < 0.65) {
-				lakeMode = 'small';
-				lakeCount = Math.random() < 0.60 ? 1 : 2;
-			} else {
-				lakeMode = 'huge';
-				lakeCount = 1;
-			}
-
-			for (let k = 0; k < lakeCount; k++) {
-				priorWaterSnapshot.set(water);
-
-				const isHuge = (lakeMode === 'huge');
-				const rMin = isHuge ? 12.0 : 4.0;
-				const rMax = isHuge ? 19.5 : 9.5;
-				const lumpMin = isHuge ? 0.18 : 0.15;
-				const lumpMax = isHuge ? 0.40 : 0.40;
-				const maxAttempts = isHuge ? 40 : 25;
-
-				for (let attempt = 0; attempt < maxAttempts; attempt++) {
-					const lcx = randomRange(N * 0.20, N * 0.80);
-					const lcy = randomRange(N * 0.20, N * 0.80);
-					const baseR = randomRange(rMin, rMax);
-					const lumpiness = randomRange(lumpMin, lumpMax);
-					const seed1 = Math.random() * 100;
-					const seed2 = Math.random() * 100;
-
-					const checkR = Math.ceil(baseR * (1 + lumpiness)) + 3;
-					const cx0 = Math.round(lcx);
-					const cy0 = Math.round(lcy);
-
-					if (cx0 - checkR < 1 || cx0 + checkR > N - 2) continue;
-					if (cy0 - checkR < 1 || cy0 + checkR > N - 2) continue;
-
-					let overlaps = false;
-					for (let ddy = -checkR; ddy <= checkR && !overlaps; ddy++) {
-						for (let ddx = -checkR; ddx <= checkR; ddx++) {
-							const nx = cx0 + ddx,
-								ny = cy0 + ddy;
-							if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-							if (priorWaterSnapshot[ny * N + nx]) {
-								overlaps = true;
-								break;
-							}
-						}
-					}
-					if (overlaps) continue;
-
-					for (let ddy = -checkR; ddy <= checkR; ddy++) {
-						for (let ddx = -checkR; ddx <= checkR; ddx++) {
-							const nx = cx0 + ddx,
-								ny = cy0 + ddy;
-							if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
-							const d = Math.hypot(ddx, ddy);
-							const ang = Math.atan2(ddy, ddx);
-							const rMod = 1 +
-								lumpiness * 0.60 * Math.sin(ang * 3 + seed1) +
-								lumpiness * 0.40 * Math.sin(ang * 5 + seed2);
-							const rEdge = baseR * rMod;
-							if (d <= rEdge) {
-								water[ny * N + nx] = 1;
-								h[ny * N + nx] = Math.min(h[ny * N + nx], 0.24 - (rEdge - d) * 0.03);
-							} else if (d <= rEdge + 1.8) {
-								h[ny * N + nx] = Math.min(h[ny * N + nx], 0.33);
-							}
-						}
-					}
-
-					terr.lakes.push({
-						x: lcx / N,
-						y: lcy / N,
-						r: baseR / N,
-						lumpiness,
-						type: lakeMode
-					});
-					break;
-				}
-			}
-		} else {
-			// ─── Fase 3: hidrología separada por bioma ───
-			buildSeparateHydro(terr.regions, terr.biomeMap, h, water, N);
-		}
-
-		/* ═══════════════════════════════════════════════════════════
-		   Fase 1 — Separador agua-lava (UNA sola vez, después de
-		   toda la hidrología)
+		   Fase 1 — Separador agua-lava
 		   ═══════════════════════════════════════════════════════════ */
 		applyWaterLavaSeparator(terr.biomeMap, water, h, N, terr.regions);
 
 		/* ═══════════════════════════════════════════════════════════
-		   Fase 2 — Río divisor (50/50)
-		   Condiciones para que corra:
-		   - hay más de un bioma
-		   - NO hay mezcla lava/otro (si no, el río divisor reconvertiría
-		     a agua la franja de tierra que puso el separador)
+		   Fase 2 — Río divisor (SOLO en modos con tierra)
 		   ═══════════════════════════════════════════════════════════ */
-		if (layout.kind !== 'single' && Math.random() < 0.5) {
+		if (!isMarine && layout.kind !== 'single' && Math.random() < 0.5) {
 			const hasLava  = terr.regions.some(r => r.biome.water.mode === 'lava');
 			const hasOther = terr.regions.some(r => r.biome.water.mode !== 'lava');
 
@@ -12011,27 +12301,23 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 		/* ─── Rocas ─── */
 		const rocks = [];
 		for (let i = 0; i < 70; i++) {
-			const rx = Math.random(),
-				ry = Math.random();
-			const xi = Math.floor(rx * N),
-				yi = Math.floor(ry * N);
+			const rx = Math.random(), ry = Math.random();
+			const xi = Math.floor(rx * N), yi = Math.floor(ry * N);
 			if (water[yi * N + xi]) continue;
 			if (h[yi * N + xi] < 0.34) continue;
 			rocks.push({
 				x: rx,
 				y: ry,
 				r: randomRange(0.004, 0.011),
-				rot: randomRange(0, 6.28)
+				rot: randomRange(0, 6.28),
 			});
 		}
 
 		/* ─── Flores (por bioma del tile) ─── */
 		const flowers = [];
 		for (let i = 0; i < 160; i++) {
-			const fx = Math.random(),
-				fy = Math.random();
-			const xi = Math.floor(fx * N),
-				yi = Math.floor(fy * N);
+			const fx = Math.random(), fy = Math.random();
+			const xi = Math.floor(fx * N), yi = Math.floor(fy * N);
 			const idx = yi * N + xi;
 			if (water[idx]) continue;
 			if (h[idx] < 0.32) continue;
@@ -12039,14 +12325,14 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 			const tileBiome = terr.regions[terr.biomeMap[idx]].biome;
 			if (!tileBiome.hasFlowers) continue;
 
-			const hue = Math.random() < 0.60 ? 'pink' :
-				(Math.random() < 0.55 ? 'white' : 'lavender');
+			const hue = Math.random() < 0.60 ? 'pink'
+				: (Math.random() < 0.55 ? 'white' : 'lavender');
 			flowers.push({
 				x: fx,
 				y: fy,
 				r: randomRange(0.0035, 0.0075),
 				rot: randomRange(0, 6.28),
-				hue
+				hue,
 			});
 		}
 		terr.flowers = flowers;
@@ -12062,7 +12348,6 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 			const ffDensity = randomRange(0.06, 0.35);
 			const ffRadius = Math.random() < 0.30 ? 3 : 2;
 
-			// --- 1. Recolectar candidatos (adyacentes a agua Y bioma con fireflies) ---
 			const candidates = [];
 			for (let y = 0; y < N; y++) {
 				for (let x = 0; x < N; x++) {
@@ -12075,8 +12360,7 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 					let nearWater = false;
 					for (let dy = -ffRadius; dy <= ffRadius && !nearWater; dy++) {
 						for (let dx = -ffRadius; dx <= ffRadius; dx++) {
-							const nx = x + dx,
-								ny = y + dy;
+							const nx = x + dx, ny = y + dy;
 							if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
 							if (water[ny * N + nx]) {
 								nearWater = true;
@@ -12088,8 +12372,7 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 						let distMin = Infinity;
 						for (let dy = -ffRadius; dy <= ffRadius; dy++) {
 							for (let dx = -ffRadius; dx <= ffRadius; dx++) {
-								const nx = x + dx,
-									ny = y + dy;
+								const nx = x + dx, ny = y + dy;
 								if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
 								if (water[ny * N + nx]) {
 									const d = Math.hypot(dx, dy);
@@ -12097,28 +12380,21 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 								}
 							}
 						}
-						candidates.push({
-							x,
-							y,
-							distMin
-						});
+						candidates.push({ x, y, distMin });
 					}
 				}
 			}
 
-			// --- 2. Barajar ---
 			for (let i = candidates.length - 1; i > 0; i--) {
 				const j = Math.floor(Math.random() * (i + 1));
 				[candidates[i], candidates[j]] = [candidates[j], candidates[i]];
 			}
 
-			// --- 3. Modo: clusters o uniforme ---
 			const useClusters = Math.random() < 0.70;
 
 			if (useClusters && candidates.length > 10) {
 				const clusterCount = 3 + Math.floor(Math.random() * 7);
 				const clusterCenters = [];
-
 				const step = Math.max(1, Math.floor(candidates.length / clusterCount));
 				for (let i = 0; i < candidates.length && clusterCenters.length < clusterCount; i += step) {
 					clusterCenters.push(candidates[i]);
@@ -12149,7 +12425,7 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 							spd: randomRange(0.4, 1.2),
 							ax: randomRange(0.004, 0.012),
 							ay: randomRange(0.004, 0.012),
-							t: randomRange(0, 100)
+							t: randomRange(0, 100),
 						});
 					}
 				}
@@ -12165,7 +12441,7 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 							spd: randomRange(0.4, 1.2),
 							ax: randomRange(0.004, 0.012),
 							ay: randomRange(0.004, 0.012),
-							t: randomRange(0, 100)
+							t: randomRange(0, 100),
 						});
 					}
 				}
@@ -12180,7 +12456,7 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 						spd: randomRange(0.4, 1.2),
 						ax: randomRange(0.004, 0.012),
 						ay: randomRange(0.004, 0.012),
-						t: randomRange(0, 100)
+						t: randomRange(0, 100),
 					});
 				}
 			}
@@ -12198,6 +12474,249 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 	}
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Helper extraído: hidrología unificada (SISTEMA HÍDRICO v4)
+   Era un bloque gigante dentro de generateTerrain. Lo extraigo
+   para que la función principal se lea. El cuerpo es IDÉNTICO
+   al original — solo cambia que ahora lee `terr.waterMode` para
+   decidir qué tipos de cuerpo de agua generar.
+   ═══════════════════════════════════════════════════════════════ */
+function generateUnifiedHydro(N, h, water, seed) {
+	const priorWaterSnapshot = new Uint8Array(N * N);
+	const edgesList = ['top', 'bottom', 'left', 'right'];
+
+	// ---- Helper: construir un río ----
+	function buildRiver(isWide) {
+		const pad = 3;
+		const overshoot = isWide ? 10 : 6;
+
+		for (let attempt = 0; attempt < 12; attempt++) {
+			const se = edgesList[Math.floor(Math.random() * 4)];
+			let ee;
+			do { ee = edgesList[Math.floor(Math.random() * 4)]; } while (ee === se);
+
+			const pointOnEdge = (edge) => {
+				const t = 0.10 + Math.random() * 0.80;
+				switch (edge) {
+					case 'top':    return [pad + t * (N - 2 * pad), -overshoot];
+					case 'bottom': return [pad + t * (N - 2 * pad), N - 1 + overshoot];
+					case 'left':   return [-overshoot, pad + t * (N - 2 * pad)];
+					case 'right':  return [N - 1 + overshoot, pad + t * (N - 2 * pad)];
+				}
+			};
+			const start = pointOnEdge(se);
+			const end = pointOnEdge(ee);
+
+			const dx = end[0] - start[0];
+			const dy = end[1] - start[1];
+			const len = Math.hypot(dx, dy) || 1;
+			if (len < N * 0.55) continue;
+
+			let perpX = -dy / len, perpY = dx / len;
+			const midX = (start[0] + end[0]) / 2;
+			const midY = (start[1] + end[1]) / 2;
+			if (perpX * (N / 2 - midX) + perpY * (N / 2 - midY) < 0) {
+				perpX = -perpX; perpY = -perpY;
+			}
+
+			const isStraight = Math.random() < (isWide ? 0.65 : 0.45);
+			const A1 = isStraight
+				? randomRange(0.004, 0.015) * N
+				: (isWide ? randomRange(0.020, 0.060) * N : randomRange(0.030, 0.110) * N);
+			const A2 = isStraight
+				? randomRange(0.002, 0.008) * N
+				: (isWide ? randomRange(0.005, 0.018) * N : randomRange(0.008, 0.030) * N);
+			const f1 = isWide ? randomRange(0.5, 1.0) : randomRange(0.7, 1.4);
+			const f2 = randomRange(2.0, 3.5);
+			const phase = Math.random() * Math.PI * 2;
+
+			const SAMPLES = 100;
+			const cand = [];
+			for (let i = 0; i <= SAMPLES; i++) {
+				const t = i / SAMPLES;
+				const baseX = start[0] + dx * t;
+				const baseY = start[1] + dy * t;
+				const envelope = Math.sin(t * Math.PI);
+				const offset = envelope * (
+					A1 * Math.sin(t * Math.PI * f1) +
+					A2 * Math.sin(t * Math.PI * f2 + phase)
+				);
+				cand.push([baseX + perpX * offset, baseY + perpY * offset]);
+			}
+
+			let firstInside = -1;
+			for (let i = 0; i < cand.length; i++) {
+				const [x, y] = cand[i];
+				if (x >= 0 && x < N && y >= 0 && y < N) { firstInside = i; break; }
+			}
+			if (firstInside === -1) continue;
+
+			const [fx, fy] = cand[firstInside];
+			const cx = Math.round(fx), cy = Math.round(fy);
+			const checkR = isWide ? 6 : 3;
+			let startsOnWater = false;
+			for (let ddy = -checkR; ddy <= checkR && !startsOnWater; ddy++) {
+				for (let ddx = -checkR; ddx <= checkR; ddx++) {
+					const nx = cx + ddx, ny = cy + ddy;
+					if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+					if (priorWaterSnapshot[ny * N + nx]) { startsOnWater = true; break; }
+				}
+			}
+			if (startsOnWater) continue;
+
+			return cand;
+		}
+		return null;
+	}
+
+	// ---- Helper: rasterizar río hasta merge ----
+	function rasterizeRiver(samples, rad) {
+		const radCeil = Math.ceil(rad) + 2;
+
+		let mergedAt = -1;
+		for (let i = 0; i < samples.length; i++) {
+			const cx = Math.round(samples[i][0]);
+			const cy = Math.round(samples[i][1]);
+			if (cx < 0 || cy < 0 || cx >= N || cy >= N) continue;
+			if (priorWaterSnapshot[cy * N + cx]) { mergedAt = i; break; }
+		}
+		const lastSample = mergedAt >= 0 ? mergedAt : samples.length - 1;
+		if (lastSample <= 2) return null;
+
+		for (let i = 0; i <= lastSample; i++) {
+			const cx = Math.round(samples[i][0]);
+			const cy = Math.round(samples[i][1]);
+			for (let ddy = -radCeil; ddy <= radCeil; ddy++) {
+				for (let ddx = -radCeil; ddx <= radCeil; ddx++) {
+					const nx = cx + ddx, ny = cy + ddy;
+					if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+					const d = Math.hypot(ddx, ddy);
+					if (d <= rad) {
+						water[ny * N + nx] = 1;
+						h[ny * N + nx] = Math.min(h[ny * N + nx], 0.26 - (rad - d) * 0.05);
+					} else if (d <= rad + 1.5) {
+						h[ny * N + nx] = Math.min(h[ny * N + nx], 0.33);
+					}
+				}
+			}
+		}
+		return samples.slice(0, lastSample + 1);
+	}
+
+	// ---- Ríos (solo en rivers/mixed) ----
+	if (terr.waterMode === 'rivers' || terr.waterMode === 'mixed') {
+		const systemRoll = Math.random();
+		const riverMode = systemRoll < 0.28 ? 'none' :
+			systemRoll < 0.72 ? 'normal' : 'wide';
+
+		if (riverMode !== 'none') {
+			const isWide = riverMode === 'wide';
+			let riverCount;
+			if (isWide) {
+				riverCount = Math.random() < 0.85 ? 1 : 2;
+			} else {
+				const r = Math.random();
+				riverCount = r < 0.60 ? 1 : (r < 0.90 ? 2 : 3);
+			}
+
+			for (let k = 0; k < riverCount; k++) {
+				priorWaterSnapshot.set(water);
+				const samples = buildRiver(isWide);
+				if (!samples) continue;
+
+				const rad = isWide ? randomRange(3.2, 5.2) : randomRange(0.5, 2.2);
+				const visibleSamples = rasterizeRiver(samples, rad);
+				if (!visibleSamples) continue;
+
+				terr.rivers.push({
+					type: riverMode,
+					width: rad,
+					samples: visibleSamples
+				});
+			}
+		}
+	}
+
+	// ---- Lagos (solo en lakes/mixed) ----
+	if (terr.waterMode === 'lakes' || terr.waterMode === 'mixed') {
+		const lakesRoll = Math.random();
+		let lakeMode, lakeCount;
+		if (lakesRoll < 0.35) {
+			lakeMode = 'none';
+			lakeCount = 0;
+		} else if (lakesRoll < 0.65) {
+			lakeMode = 'small';
+			lakeCount = Math.random() < 0.60 ? 1 : 2;
+		} else {
+			lakeMode = 'huge';
+			lakeCount = 1;
+		}
+
+		for (let k = 0; k < lakeCount; k++) {
+			priorWaterSnapshot.set(water);
+
+			const isHuge = (lakeMode === 'huge');
+			const rMin = isHuge ? 12.0 : 4.0;
+			const rMax = isHuge ? 19.5 : 9.5;
+			const lumpMin = isHuge ? 0.18 : 0.15;
+			const lumpMax = 0.40;
+			const maxAttempts = isHuge ? 40 : 25;
+
+			for (let attempt = 0; attempt < maxAttempts; attempt++) {
+				const lcx = randomRange(N * 0.20, N * 0.80);
+				const lcy = randomRange(N * 0.20, N * 0.80);
+				const baseR = randomRange(rMin, rMax);
+				const lumpiness = randomRange(lumpMin, lumpMax);
+				const seed1 = Math.random() * 100;
+				const seed2 = Math.random() * 100;
+
+				const checkR = Math.ceil(baseR * (1 + lumpiness)) + 3;
+				const cx0 = Math.round(lcx), cy0 = Math.round(lcy);
+
+				if (cx0 - checkR < 1 || cx0 + checkR > N - 2) continue;
+				if (cy0 - checkR < 1 || cy0 + checkR > N - 2) continue;
+
+				let overlaps = false;
+				for (let ddy = -checkR; ddy <= checkR && !overlaps; ddy++) {
+					for (let ddx = -checkR; ddx <= checkR; ddx++) {
+						const nx = cx0 + ddx, ny = cy0 + ddy;
+						if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+						if (priorWaterSnapshot[ny * N + nx]) { overlaps = true; break; }
+					}
+				}
+				if (overlaps) continue;
+
+				for (let ddy = -checkR; ddy <= checkR; ddy++) {
+					for (let ddx = -checkR; ddx <= checkR; ddx++) {
+						const nx = cx0 + ddx, ny = cy0 + ddy;
+						if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+						const d = Math.hypot(ddx, ddy);
+						const ang = Math.atan2(ddy, ddx);
+						const rMod = 1 +
+							lumpiness * 0.60 * Math.sin(ang * 3 + seed1) +
+							lumpiness * 0.40 * Math.sin(ang * 5 + seed2);
+						const rEdge = baseR * rMod;
+						if (d <= rEdge) {
+							water[ny * N + nx] = 1;
+							h[ny * N + nx] = Math.min(h[ny * N + nx], 0.24 - (rEdge - d) * 0.03);
+						} else if (d <= rEdge + 1.8) {
+							h[ny * N + nx] = Math.min(h[ny * N + nx], 0.33);
+						}
+					}
+				}
+
+				terr.lakes.push({
+					x: lcx / N,
+					y: lcy / N,
+					r: baseR / N,
+					lumpiness,
+					type: lakeMode
+				});
+				break;
+			}
+		}
+	}
+}
 /* =========================================================
    SCROLL DEL AGUA — velocidad variable + dirección por viento
    ========================================================= */
@@ -19008,6 +19527,7 @@ function startReplayFromStored(match) {
 				match.biomeId || 'random',
 				match.hydroMode || null,
 				match.biomeRegions || null,
+				match.waterMode || null,     // ⬅️ NUEVO
 			);
 
 			// Persistir el cambio si recién se generó ahora
@@ -19025,6 +19545,7 @@ function startReplayFromStored(match) {
 				match.biomeId || 'random',
 				match.hydroMode || null,
 				match.biomeRegions || null,
+				match.waterMode || null,     // ⬅️ NUEVO
 			);
 		}
 
@@ -19943,30 +20464,6 @@ Clima del bioma: <b style="color:#c8a0e0">${weatherMode}</b>
 </div>
 
 <div class="debugSection">
-<h4>Hidrología
-<button class="dbg-lock ${debugState.forcedHydroMode?'on':''}" id="dbgHydroLock" title="${debugState.forcedHydroMode?'Volver a aleatoria':'Forzar modo'}">
-${debugState.forcedHydroMode ? '🔒 Forzado' : '🎲 Aleatoria'}
-</button>
-</h4>
-<div class="cfgGrid c3" id="dbgHydro">
-  <button class="cfgOpt ${debugState.forcedHydroMode==='unified'?'picked':''}" data-v="unified">
-    <span class="ic">🌊</span>Unificado
-  </button>
-  <button class="cfgOpt ${debugState.forcedHydroMode==='separate'?'picked':''}" data-v="separate">
-    <span class="ic">🏞️</span>Separado
-  </button>
-  <button class="cfgOpt ${!debugState.forcedHydroMode?'picked':''}" data-v="random">
-    <span class="ic">🎲</span>Aleatoria
-  </button>
-</div>
-<div style="font-size:10px;color:#8a8070;text-align:center;margin-top:4px">
-  ${debugState.forcedHydroMode
-    ? 'Modo forzado — regenerá el terreno para aplicar'
-    : 'El sistema tira un dado (67% unificado · 33% separado)'}
-</div>
-</div>
-
-<div class="debugSection">
 <h4>Layout de biomas
 <button class="dbg-lock ${debugState.forcedLayoutKind?'on':''}" id="dbgLayoutLock" title="${debugState.forcedLayoutKind?'Volver a aleatorio':'Forzar layout'}">
 ${debugState.forcedLayoutKind ? '🔒 Forzado' : '🔓 Aleatorio'}
@@ -19990,6 +20487,74 @@ ${debugState.forcedLayoutKind ? '🔒 Forzado' : '🔓 Aleatorio'}
   ${debugState.forcedLayoutKind
     ? 'Layout forzado — regenerá el terreno para aplicar'
     : 'Probabilidades actuales: 35% / 40% / 15% / 10%'}
+</div>
+</div>
+
+<div class="debugSection">
+<h4>Cuerpo de agua
+<button class="dbg-lock ${debugState.forcedWaterMode?'on':''}" id="dbgWaterLock" title="${debugState.forcedWaterMode?'Volver a aleatorio':'Forzar modo'}">
+${debugState.forcedWaterMode ? '🔒 Forzado' : '🎲 Aleatorio'}
+</button>
+</h4>
+<div class="cfgGrid c3" id="dbgWater">
+  <button class="cfgOpt ${debugState.forcedWaterMode==='dry'?'picked':''}" data-v="dry">
+    <span class="ic">🏜️</span>Seco
+  </button>
+  <button class="cfgOpt ${debugState.forcedWaterMode==='lakes'?'picked':''}" data-v="lakes">
+    <span class="ic">🏞️</span>Lagos
+  </button>
+  <button class="cfgOpt ${debugState.forcedWaterMode==='rivers'?'picked':''}" data-v="rivers">
+    <span class="ic">🏞️</span>Ríos
+  </button>
+  <button class="cfgOpt ${debugState.forcedWaterMode==='mixed'?'picked':''}" data-v="mixed">
+    <span class="ic">🌊</span>Mixto
+  </button>
+  <button class="cfgOpt ${debugState.forcedWaterMode==='sea'?'picked':''}" data-v="sea">
+    <span class="ic">🌊</span>Mar
+  </button>
+  <button class="cfgOpt ${debugState.forcedWaterMode==='archipelago'?'picked':''}" data-v="archipelago">
+    <span class="ic">🏝️</span>Islas
+  </button>
+  <button class="cfgOpt ${debugState.forcedWaterMode==='ocean'?'picked':''}" data-v="ocean">
+    <span class="ic">🌊</span>Océano
+  </button>
+  <button class="cfgOpt ${debugState.forcedWaterMode==='flood'?'picked':''}" data-v="flood">
+    <span class="ic">💧</span>Diluvio
+  </button>
+  <button class="cfgOpt ${!debugState.forcedWaterMode?'picked':''}" data-v="random">
+    <span class="ic">🎲</span>Aleatorio
+  </button>
+</div>
+<div style="font-size:10px;color:#8a8070;text-align:center;margin-top:4px">
+  ${debugState.forcedWaterMode
+    ? 'Modo forzado — regenerá el terreno para aplicar'
+    : 'Tirada natural: 8 modos con sus pesos'}
+</div>
+</div>
+
+<div class="debugSection">
+<h4>Hidrología interna
+${!['lakes','rivers','mixed'].includes(terr.waterMode)
+    ? '<span style="font-size:9px;color:#ffb060;font-weight:600;letter-spacing:0;text-transform:none">no aplica</span>'
+    : ''}
+</h4>
+<div class="cfgGrid c3" id="dbgHydro">
+  <button class="cfgOpt ${debugState.forcedHydroMode==='unified'?'picked':''} ${!['lakes','rivers','mixed'].includes(terr.waterMode)?'dis':''}" data-v="unified">
+    <span class="ic">🌊</span>Unificado
+  </button>
+  <button class="cfgOpt ${debugState.forcedHydroMode==='separate'?'picked':''} ${!['lakes','rivers','mixed'].includes(terr.waterMode)?'dis':''}" data-v="separate">
+    <span class="ic">🏞️</span>Separado
+  </button>
+  <button class="cfgOpt ${!debugState.forcedHydroMode?'picked':''} ${!['lakes','rivers','mixed'].includes(terr.waterMode)?'dis':''}" data-v="random">
+    <span class="ic">🎲</span>Aleatorio
+  </button>
+</div>
+<div style="font-size:10px;color:#8a8070;text-align:center;margin-top:4px">
+  ${!['lakes','rivers','mixed'].includes(terr.waterMode)
+    ? 'Solo aplica a lagos, ríos y mixto'
+    : debugState.forcedHydroMode === 'unified' ? 'Un solo sistema de ríos para todo el mapa'
+    : debugState.forcedHydroMode === 'separate' ? 'Cada bioma con sus propios arroyos'
+    : 'Tirada natural: 67% unificado · 33% separado'}
 </div>
 </div>
 
@@ -20092,7 +20657,6 @@ function wireDebugWorld() {
 
 			clearTintedDecalCache();
 			playSfx('biome-change');
-
 			vortices.list.length = 0;
 			vortices.targetCount = 0;
 			for (const d of rainDrops) {
@@ -20101,25 +20665,40 @@ function wireDebugWorld() {
 				d.consumeTime = 0;
 			}
 
-			generateTerrain(undefined, id, debugState.forcedHydroMode);
+			// ⬇️ PRESERVAR forcedWaterMode
+			generateTerrain(undefined, id, debugState.forcedHydroMode, null, debugState.forcedWaterMode);
 			pendingBiome = id;
 
 			if (boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
 			initAtmosphere();
 			initSecondaryWeatherParticles();
 			applyBiomeAudioTargets(currentBiome.id);
-			toast(`${currentBiome.icon} ${currentBiome.name}`, '#c080ff');
+
+			// ⬇️ Feedback del waterMode activo
+			const wm = terr.waterMode;
+			const wmLabel = {
+				dry: '🏜️ seco', lakes: '🏞️ lagos', rivers: '🌊 ríos',
+				mixed: '💧 mixto', sea: '🌊 mar', archipelago: '🏝️ islas',
+				ocean: '🌊 océano', flood: '💧 diluvio',
+			}[wm] || wm;
+			toast(`${currentBiome.icon} ${currentBiome.name} · ${wmLabel}`, '#c080ff');
 			renderDebugTab('world');
 		};
 	});
 
 	document.querySelectorAll('#dbgHydro .cfgOpt').forEach(b => {
 		b.onclick = () => {
+			if (b.classList.contains('dis')) return;
 			const v = b.dataset.v;
-			// ⬇️ 'random' = null → deja que el sistema elija por probabilidad
 			debugState.forcedHydroMode = (v === 'random') ? null : v;
 
-			generateTerrain(undefined, currentBiome.id, debugState.forcedHydroMode);
+			generateTerrain(
+				undefined,
+				currentBiome.id,
+				debugState.forcedHydroMode,   // ⬅️ 3° arg
+				null,
+				debugState.forcedWaterMode    // ⬅️ 5° arg
+			);
 			pendingBiome = currentBiome.id;
 
 			if (boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
@@ -20127,31 +20706,52 @@ function wireDebugWorld() {
 			applyBiomeAudioTargets(currentBiome.id);
 			playSfx('biome-change');
 
-			const label = debugState.forcedHydroMode
-				? (debugState.forcedHydroMode === 'separate' ? '🏞️ Hidrología separada' : '🌊 Hidrología unificada')
+			const label = debugState.forcedHydroMode === 'unified' ? '🌊 Hidrología unificada'
+				: debugState.forcedHydroMode === 'separate' ? '🏞️ Hidrología separada'
 				: '🎲 Hidrología aleatoria';
 			toast(label, '#c080ff');
 			renderDebugTab('world');
 		};
 	});
 
-	$('#dbgHydroLock').onclick = () => {
-		debugState.forcedHydroMode = debugState.forcedHydroMode ? null : 'unified';
-		// Regenerar para aplicar el cambio
-		generateTerrain(undefined, currentBiome.id, debugState.forcedHydroMode);
+	document.querySelectorAll('#dbgWater .cfgOpt').forEach(b => {
+		b.onclick = () => {
+			const v = b.dataset.v;
+			debugState.forcedWaterMode = (v === 'random') ? null : v;
+			generateTerrain(undefined, currentBiome.id, debugState.forcedHydroMode, null, debugState.forcedWaterMode);
+			pendingBiome = currentBiome.id;
+			if (boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
+			initSecondaryWeatherParticles();
+			applyBiomeAudioTargets(currentBiome.id);
+			playSfx('biome-change');
+			const label = debugState.forcedWaterMode
+				? `💧 Agua forzada: ${debugState.forcedWaterMode}`
+				: '🎲 Agua aleatoria';
+			toast(label, '#c080ff');
+			renderDebugTab('world');
+		};
+	});
+
+	$('#dbgWaterLock').onclick = () => {
+		debugState.forcedWaterMode = debugState.forcedWaterMode ? null : 'lakes';
+		generateTerrain(undefined, currentBiome.id, debugState.forcedHydroMode, null, debugState.forcedWaterMode);
 		if (boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
 		initSecondaryWeatherParticles();
 		applyBiomeAudioTargets(currentBiome.id);
-		toast(debugState.forcedHydroMode ? '🔒 Hidrología forzada' : '🎲 Hidrología aleatoria', '#c080ff');
+		toast(debugState.forcedWaterMode ? '🔒 Agua forzada' : '🎲 Agua aleatoria', '#c080ff');
 		renderDebugTab('world');
 	};
 
+	// ─── Layout ───
 	document.querySelectorAll('#dbgLayoutForce .cfgOpt').forEach(b => {
 		b.onclick = () => {
 			const v = b.dataset.v;
 			debugState.forcedLayoutKind = (v === 'random') ? null : v;
-			// Forzar regeneración
-			generateTerrain(undefined, currentBiome.id, terr.hydroMode);
+
+			// ⬇️ PRESERVAR forcedWaterMode
+			generateTerrain(undefined, currentBiome.id, debugState.forcedHydroMode, null, debugState.forcedWaterMode);
+			pendingBiome = currentBiome.id;
+
 			if (boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
 			initSecondaryWeatherParticles();
 			playSfx('biome-change');
@@ -20166,6 +20766,30 @@ function wireDebugWorld() {
 		debugState.forcedLayoutKind = debugState.forcedLayoutKind ? null : (debugState.forcedLayoutKind || 'split');
 		renderDebugTab('world');
 	};
+
+	const resetBtn = $('#dbgResetLayout');
+	if (resetBtn) {
+		resetBtn.onclick = () => {
+			debugState.forcedLayoutKind = null;
+			debugState.forcedWaterMode = null;
+			debugState.forcedHydroMode = null;
+
+			generateTerrain(undefined, 'random', null, null, null);
+			pendingBiome = 'random';
+
+			if (boardW > 0 && boardH > 0) renderTerrain(boardW, boardH);
+			initAtmosphere();
+			initSecondaryWeatherParticles();
+			applyBiomeAudioTargets(currentBiome.id);
+
+			vortices.list.length = 0;
+			vortices.targetCount = 0;
+
+			playSfx('biome-change');
+			toast('↺ Todo aleatorio', '#c080ff');
+			renderDebugTab('world');
+		};
+	}
 
 	// ─── Hora ───
 	const hour = $('#dbgHour');
