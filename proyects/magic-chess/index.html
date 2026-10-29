@@ -8354,79 +8354,106 @@ const AMBIENT_TYPES = {
 	},
 };
 
-function computeAmbientTarget(typeKey, pool){
-  const spec = pool.spec;
-  const now = performance.now();
-  const ph = getPhase();
+function computeAmbientTarget(pool) {
+	const typeKey = pool.spec.type;
+	const region = terr.regions[pool.regionIdx];
+	if (!region) return 0;
 
-  // ─── 1. Actividad por hora del día ───
-  const activity = activityAtPhase(typeKey, ph.t);
+	const now = performance.now();
+	const ph = getPhase();
 
-  // Si la actividad es muy baja, el target ES CERO. Sin excepciones.
-  // Esto es lo que hace que los conejos desaparezcan de verdad de noche.
-  if(activity < 0.10) return 0;
+	const activity = activityAtPhase(typeKey, ph.t);
+	if (activity < 0.10) return 0;
 
-  // ─── 2. Ruido orgánico (pequeño, para que no sea mecánico) ───
-  const noise = organicNoise(now, pool.seed);
-  const noiseMul = 0.75 + noise * 0.50;   // 0.75 .. 1.25
+	const noise = organicNoise(now, pool.seed);
+	const noiseMul = 0.75 + noise * 0.50;
 
-  // ─── 3. Target base ───
-  let target = spec.count * activity * noiseMul;
+	// ⬇️ Ajuste por área de la región.
+	// sqrt(nRegions) infla un poco para que biomas chicos no queden vacíos.
+	const totalTiles = TERR_N * TERR_N;
+	const regionShare = pool.tilesCount / totalTiles;
+	const factor = regionShare * Math.sqrt(terr.regions.length);
+	const adjustedCount = Math.max(1, pool.spec.count * factor);
 
-  // ─── 4. Modificadores por clima (más agresivos ahora) ───
-  const rain = rainAmt;
+	let target = adjustedCount * activity * noiseMul;
 
-  switch(typeKey){
-    case 'leaf':
-      target *= (1 - rain * 0.7);
-      target *= (1 + Math.abs(windState.direction) * windState.strength * 0.9);
-      break;
-    case 'butterfly':
-    case 'ladybug':
-    case 'bees':
-      // Con CUALQUIER lluvia notable, las mariposas ya no salen
-      if(rain > 0.15) return 0;
-      target *= 1 - rain * 3;
-      break;
-    case 'ember':
-      target *= 1 - rain * 0.85;
-      break;
-    case 'sparkle':
-      target *= 1 - rain * 0.5;
-      break;
-    case 'bunny':
-      if(rain > 0.55) return 0;              // se esconden con lluvia fuerte
-      target *= 1 - Math.max(0, (rain - 0.30) * 2);
-      break;
-    case 'fox':
-    case 'wolf':
-    case 'deer':
-      if(rain > 0.65) return 0;
-      target *= 1 - Math.max(0, (rain - 0.35) * 1.8);
-      break;
-    case 'scorpion':
-      if(rain > 0.20) return 0;              // insecto del desierto
-      break;
-    case 'owl':
-    case 'bat':
-    case 'rat':
-      // Salen aunque llueva (son nocturnos, no les molesta tanto)
-      target *= 1 - rain * 0.5;
-      break;
-  }
-
-  return Math.max(0, Math.round(target));
+	const rain = rainAmt;
+	switch (typeKey) {
+		case 'leaf':
+			target *= (1 - rain * 0.7);
+			target *= (1 + Math.abs(windState.direction) * windState.strength * 0.9);
+			break;
+		case 'butterfly':
+		case 'ladybug':
+		case 'bees':
+			if (rain > 0.15) return 0;
+			target *= 1 - rain * 3;
+			break;
+		case 'ember':
+			target *= 1 - rain * 0.85;
+			break;
+		case 'sparkle':
+			target *= 1 - rain * 0.5;
+			break;
+		case 'bunny':
+			if (rain > 0.55) return 0;
+			target *= 1 - Math.max(0, (rain - 0.30) * 2);
+			break;
+		case 'fox':
+		case 'wolf':
+		case 'deer':
+			if (rain > 0.65) return 0;
+			target *= 1 - Math.max(0, (rain - 0.35) * 1.8);
+			break;
+		case 'scorpion':
+			if (rain > 0.20) return 0;
+			break;
+		case 'owl':
+		case 'bat':
+		case 'rat':
+			target *= 1 - rain * 0.5;
+			break;
+	}
+	return Math.max(0, Math.round(target));
 }
 
-function spawnAmbientIndividual(pool, immediate = false){
-  const ent = pool.type.spawn();
-  ent._type = pool.type;
-  ent._poolKey = pool.spec.type;
-  ent._exiting = false;
-  ent._activity = immediate ? 1 : 0;   // fade-in desde 0 si no es inmediato
-  ent._bornAt = performance.now();
-  pool.individuals.add(ent);
-  ambientLife.push(ent);
+function spawnAmbientIndividual(pool, immediate = false) {
+	const ent = pool.type.spawn();
+	ent._type = pool.type;
+	ent._poolKey = pool.key;          // ⬅️ '0:leaf', '1:bunny', etc.
+	ent._regionIdx = pool.regionIdx;
+	ent._territorial = TERRITORIAL_TYPES.has(pool.spec.type);
+	ent._exiting = false;
+	ent._activity = immediate ? 1 : 0;
+	ent._bornAt = performance.now();
+
+	// Elegir un tile del pool → centro del tile + jitter
+	const N = TERR_N;
+	const tile = pool.tiles[Math.floor(Math.random() * pool.tiles.length)];
+	const tx = tile % N;
+	const ty = (tile / N) | 0;
+	const cx = (tx + 0.5) / N + randomRange(-0.01, 0.01);
+	const cy = (ty + 0.5) / N + randomRange(-0.01, 0.01);
+
+	if (ent.anchorX !== undefined) {
+		ent.anchorX = cx;
+		ent.anchorY = cy;
+		ent.x = cx;
+		ent.y = cy;
+	} else {
+		ent.x = cx;
+		ent.y = cy;
+	}
+
+	// Ajustes por tipo atmosférico
+	if (pool.spec.type === 'leaf') {
+		ent.y = cy - randomRange(0.05, 0.15);
+	} else if (pool.spec.type === 'ember') {
+		ent.y = cy + randomRange(0.05, 0.15);
+	}
+
+	pool.individuals.add(ent);
+	ambientLife.push(ent);
 }
 
 function markAmbientForExit(ent){
@@ -8439,122 +8466,161 @@ function markAmbientForExit(ent){
   }
 }
 
-function spawnAmbientLife(W, H){
-  ambientLife.length = 0;
-  ambientPools.clear();
-  if(!currentBiome.ambientLife) return;
-
-  // Crear pools con target inicial 0
-  for(const spec of currentBiome.ambientLife){
-    const type = AMBIENT_TYPES[spec.type];
-    if(!type) continue;
-    ambientPools.set(spec.type, {
-      spec,
-      type,
-      target: 0,
-      individuals: new Set(),
-      spawnAcc: 0,
-      despawnAcc: 0,
-      spawnRate: spec.spawnRate || 1.4,     // individuos/segundo al spawnear
-      despawnRate: spec.despawnRate || 0.4, // individuos/segundo al despawnear
-      seed: Math.random() * 100,
-    });
-  }
-
-  // Spawn inicial: 60% del target calculado, para no arrancar vacío
-  for(const [key, pool] of ambientPools){
-    const initialTarget = computeAmbientTarget(key, pool);
-    const initialCount = Math.floor(initialTarget * 0.6);
-    for(let i = 0; i < initialCount; i++){
-      spawnAmbientIndividual(pool, /* immediate */ true);
-    }
-  }
-  ambientLifeSpawnedFor = currentBiome.id;
+function isInBiome(nx, ny, regionIdx) {
+	if (!terr.biomeMap) return true;
+	const tx = Math.floor(nx * TERR_N);
+	const ty = Math.floor(ny * TERR_N);
+	if (tx < 0 || ty < 0 || tx >= TERR_N || ty >= TERR_N) return false;
+	return terr.biomeMap[ty * TERR_N + tx] === regionIdx;
 }
 
-function updateAmbientLife(dt){
-	if(!quality.ambientEnabled) return;
-  const now = performance.now();
-  const weather = {
-    rain: rainAmt,
-    wind: Math.abs(windState.direction) * windState.strength,
-  };
+const TERRITORIAL_TYPES = new Set([
+	'beetle', 'butterfly', 'bunny', 'fox', 'scorpion',
+	'ladybug', 'owl', 'bat', 'rat', 'wolf',
+]);
 
-  // ─── 1. Recalcular targets cada 2s ───
-  if(now - _lastTargetCalc > TARGET_RECALC_MS){
-    _lastTargetCalc = now;
-    for(const [key, pool] of ambientPools){
-      pool.target = computeAmbientTarget(key, pool);
-    }
-  }
+function spawnAmbientLife(W, H) {
+	ambientLife.length = 0;
+	ambientPools.clear();
+	if (!terr.regions || !terr.regions.length) return;
 
-  // ─── 2. Spawn/despawn gradual por pool ───
-  for(const [key, pool] of ambientPools){
-    const current = pool.individuals.size;
+	// Un pool por (región, tipo)
+	for (let regionIdx = 0; regionIdx < terr.regions.length; regionIdx++) {
+		const region = terr.regions[regionIdx];
+		if (!region.biome.ambientLife) continue;
 
-    if(current < pool.target){
-      // Faltan individuos → spawnear gradualmente
-      pool.spawnAcc += dt * pool.spawnRate;
-      while(pool.spawnAcc >= 1 && pool.individuals.size < pool.target){
-        pool.spawnAcc -= 1;
-        spawnAmbientIndividual(pool, false);
-      }
-      pool.despawnAcc = 0;   // resetear el otro acumulador
+		const tiles = collectRegionTiles(terr.biomeMap, regionIdx, TERR_N);
+		if (tiles.length < 30) continue;
 
-    } else if(current > pool.target){
-      // Sobran → marcar el más viejo para salir
-      pool.despawnAcc += dt * pool.despawnRate;
-      while(pool.despawnAcc >= 1 && pool.individuals.size > pool.target){
-        pool.despawnAcc -= 1;
-        // Buscar el más viejo del pool
-        let oldest = null, oldestTime = Infinity;
-        for(const ind of pool.individuals){
-          if(ind._bornAt < oldestTime){ oldestTime = ind._bornAt; oldest = ind; }
-        }
-        if(oldest) markAmbientForExit(oldest);
-        else break;
-      }
-      pool.spawnAcc = 0;
+		for (const spec of region.biome.ambientLife) {
+			const type = AMBIENT_TYPES[spec.type];
+			if (!type) continue;
+			const key = regionIdx + ':' + spec.type;
+			ambientPools.set(key, {
+				key,
+				spec,
+				type,
+				target: 0,
+				individuals: new Set(),
+				spawnAcc: 0,
+				despawnAcc: 0,
+				spawnRate: spec.spawnRate || 1.4,
+				despawnRate: spec.despawnRate || 0.4,
+				seed: Math.random() * 100,
+				regionIdx,
+				tiles,
+				tilesCount: tiles.length,
+			});
+		}
+	}
 
-    } else {
-      // Está en el target → decaer los acumuladores
-      pool.spawnAcc = Math.max(0, pool.spawnAcc - dt * 0.5);
-      pool.despawnAcc = Math.max(0, pool.despawnAcc - dt * 0.5);
-    }
-  }
+	// Spawn inicial
+	for (const [, pool] of ambientPools) {
+		const initialTarget = computeAmbientTarget(pool);
+		const initialCount = Math.floor(initialTarget * 0.6);
+		for (let i = 0; i < initialCount; i++) {
+			spawnAmbientIndividual(pool, /* immediate */ true);
+		}
+	}
+	ambientLifeSpawnedFor = currentBiome.id;
+}
 
-  // ─── 3. Actualizar cada individuo ───
-  for(let i = ambientLife.length - 1; i >= 0; i--){
-    const e = ambientLife[i];
+function updateAmbientLife(dt) {
+	if (!quality.ambientEnabled) return;
+	const now = performance.now();
+	const weather = {
+		rain: rainAmt,
+		wind: Math.abs(windState.direction) * windState.strength,
+	};
 
-    // Fade-in / fade-out
-    if(e._exiting){
-      e._activity = Math.max(0, e._activity - dt * 0.9);
-      if(e._activity < 0.02){
-        ambientLife.splice(i, 1);
-        continue;
-      }
-    } else if(e._activity < 1){
-      e._activity = Math.min(1, e._activity + dt * 1.5);
-    }
+	// 1. Recalcular targets cada 2s
+	if (now - _lastTargetCalc > TARGET_RECALC_MS) {
+		_lastTargetCalc = now;
+		for (const [, pool] of ambientPools) {
+			pool.target = computeAmbientTarget(pool);
+		}
+	}
 
-    // Ciclo de vida natural: después de N segundos, se va solo
-    const age = (now - e._bornAt) / 1000;
-    const maxAge = e._poolKey && ambientPools.has(e._poolKey)
-      ? (ambientPools.get(e._poolKey).spec.maxAge || 45)
-      : 45;
-    if(!e._exiting && age > maxAge && Math.random() < dt * 0.2){
-      // Chance baja por frame: no todos se van al mismo tiempo
-      markAmbientForExit(e);
-    }
+	// 2. Spawn/despawn gradual
+	for (const [, pool] of ambientPools) {
+		const current = pool.individuals.size;
 
-    // Update del tipo (con el weather actual)
-    if(e._type){
-      // Escalar el efecto del clima según la "vida" del individuo
-      // (los que están saliendo casi no se mueven)
-      e._type.update(e, dt * e._activity, weather);
-    }
-  }
+		if (current < pool.target) {
+			pool.spawnAcc += dt * pool.spawnRate;
+			while (pool.spawnAcc >= 1 && pool.individuals.size < pool.target) {
+				pool.spawnAcc -= 1;
+				spawnAmbientIndividual(pool, false);
+			}
+			pool.despawnAcc = 0;
+		} else if (current > pool.target) {
+			pool.despawnAcc += dt * pool.despawnRate;
+			while (pool.despawnAcc >= 1 && pool.individuals.size > pool.target) {
+				pool.despawnAcc -= 1;
+				let oldest = null, oldestTime = Infinity;
+				for (const ind of pool.individuals) {
+					if (ind._bornAt < oldestTime) { oldestTime = ind._bornAt; oldest = ind; }
+				}
+				if (oldest) markAmbientForExit(oldest);
+				else break;
+			}
+			pool.spawnAcc = 0;
+		} else {
+			pool.spawnAcc = Math.max(0, pool.spawnAcc - dt * 0.5);
+			pool.despawnAcc = Math.max(0, pool.despawnAcc - dt * 0.5);
+		}
+	}
+
+	// 3. Update por individuo
+	for (let i = ambientLife.length - 1; i >= 0; i--) {
+		const e = ambientLife[i];
+
+		if (e._exiting) {
+			e._activity = Math.max(0, e._activity - dt * 0.9);
+			if (e._activity < 0.02) {
+				ambientLife.splice(i, 1);
+				continue;
+			}
+		} else if (e._activity < 1) {
+			e._activity = Math.min(1, e._activity + dt * 1.5);
+		}
+
+		const age = (now - e._bornAt) / 1000;
+		const maxAge = e._poolKey && ambientPools.has(e._poolKey)
+			? (ambientPools.get(e._poolKey).spec.maxAge || 45)
+			: 45;
+		if (!e._exiting && age > maxAge && Math.random() < dt * 0.2) {
+			markAmbientForExit(e);
+		}
+
+		// Snapshot antes del update
+		const prevX = e.x, prevY = e.y;
+		const prevAX = e.anchorX, prevAY = e.anchorY;
+
+		if (e._type) {
+			e._type.update(e, dt * e._activity, weather);
+		}
+
+		// ⬇️ Restricción territorial
+		if (e._territorial && e._regionIdx !== undefined) {
+			if (e.anchorX !== undefined) {
+				// Anclados (butterfly, owl, bat): el anchor debe quedar dentro
+				if (!isInBiome(e.anchorX, e.anchorY, e._regionIdx)) {
+					e.anchorX = prevAX ?? e.anchorX;
+					e.anchorY = prevAY ?? e.anchorY;
+					e.x = prevX;
+					e.y = prevY;
+				}
+			} else {
+				// Móviles: rebote en el borde
+				if (!isInBiome(e.x, e.y, e._regionIdx)) {
+					e.x = prevX;
+					e.y = prevY;
+					if (e.vx !== undefined) e.vx = -e.vx;
+					if (e.walkPhase !== undefined) e.walkPhase = 1 - e.walkPhase;
+				}
+			}
+		}
+	}
 }
 
 function drawAmbientLife(W, H){
@@ -12305,13 +12371,20 @@ function generateTerrain(seedOverride, preferredBiome, forcedHydroMode, forcedRe
 		for (let i = 0; i < 70; i++) {
 			const rx = Math.random(), ry = Math.random();
 			const xi = Math.floor(rx * N), yi = Math.floor(ry * N);
-			if (water[yi * N + xi]) continue;
-			if (h[yi * N + xi] < 0.34) continue;
+			const idx = yi * N + xi;
+			if (water[idx]) continue;
+			if (h[idx] < 0.34) continue;
+
+			// ⬇️ Bioma del tile donde cae la roca
+			const tileRegionIdx = terr.biomeMap[idx];
+			const tileBiomeId = terr.regions[tileRegionIdx] ? terr.regions[tileRegionIdx].id : currentBiome.id;
+
 			rocks.push({
 				x: rx,
 				y: ry,
 				r: randomRange(0.004, 0.011),
 				rot: randomRange(0, 6.28),
+				biomeId: tileBiomeId,    // ⬅️ NUEVO
 			});
 		}
 
@@ -12971,7 +13044,7 @@ function renderTerrain(W, H) {
 	}
 
 	// ─── Pase 2: borde costero (sin cambios) ───
-	for (let y = 0; y < N; y++)
+	for (let y = 0; y < N; y++) {
 		for (let x = 0; x < N; x++) {
 			const i = y * N + x;
 			if (water[i]) continue;
@@ -12985,26 +13058,31 @@ function renderTerrain(W, H) {
 				o.fillRect(Math.floor(x * cw), Math.floor(y * ch), Math.ceil(cw) + 1, Math.ceil(ch) + 1);
 			}
 		}
+	}
 
 	// ─── Pase 3: rocas (sin cambios, usan el rock del bioma dominante) ───
 	for (const rk of terr.rocks) {
+		const biomeRock = (BIOMES[rk.biomeId] || currentBiome).rock;
 		const px = rk.x * oc.width,
 			py = rk.y * oc.height,
 			rr = rk.r * oc.width;
-		const R = currentBiome.rock;
-		o.fillStyle = R.shadow;
+
+		o.fillStyle = biomeRock.shadow;
 		o.beginPath();
 		o.ellipse(px, py + rr * 0.55, rr * 1.05, rr * 0.42, 0, 0, 6.2832);
 		o.fill();
-		o.fillStyle = R.base;
+
+		o.fillStyle = biomeRock.base;
 		o.beginPath();
 		o.ellipse(px, py, rr, rr * 0.78, rk.rot, 0, 6.2832);
 		o.fill();
-		o.fillStyle = R.light;
+
+		o.fillStyle = biomeRock.light;
 		o.beginPath();
 		o.ellipse(px - rr * 0.22, py - rr * 0.28, rr * 0.62, rr * 0.44, rk.rot, 0, 6.2832);
 		o.fill();
-		o.fillStyle = R.hi;
+
+		o.fillStyle = biomeRock.hi;
 		o.beginPath();
 		o.ellipse(px - rr * 0.32, py - rr * 0.42, rr * 0.30, rr * 0.20, rk.rot, 0, 6.2832);
 		o.fill();
