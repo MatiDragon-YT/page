@@ -3469,19 +3469,17 @@ function randWindTarget() {
 	const u = Math.random();
 	// Lluvia FUERTE → viento asegurado
 	if (r > 0.70) return 0.55 + Math.random() * 0.45;
-	// Lluvia MEDIA → 75% chance de viento marcado
 	if (r > 0.35) {
 		if (u < 0.75) return 0.25 + Math.random() * 0.55;
-		return 0.02 + Math.random() * 0.12;
+		return 0.05 + Math.random() * 0.15;
 	}
-	// Lluvia LIGERA → 45% chance de viento suave
 	if (r > 0.08) {
-		if (u < 0.45) return 0.10 + Math.random() * 0.40;
-		return 0;
+		if (u < 0.55) return 0.10 + Math.random() * 0.40;
+		return 0.02 + Math.random() * 0.08;
 	}
-	// Día SECO → 20% chance de brisa suave, 80% calma total
-	if (u < 0.20) return 0.06 + Math.random() * 0.22;
-	return 0;
+	// Día SECO → 50% de brisa audible, 50% calma
+	if (u < 0.50) return 0.15 + Math.random() * 0.35;
+	return 0.02 + Math.random() * 0.06;
 }
 
 function scheduleWindChange() {
@@ -4605,13 +4603,17 @@ function updateAmbience() {
 	ambience.rainLp.frequency.setTargetAtTime(rm.lpBase + rl * rm.lpScale, t, 0.6);
 	ambience.rainBp.frequency.setTargetAtTime(rm.hiBase + rl * rm.hiScale, t, 0.6);
 
-	// --- VIENTO: sin base fija. Si el generador dice 0, no se oye nada ---
-	const windG = windLevel * 0.055 * pauseFactor;
-	ambience.windGain.gain.setTargetAtTime(windG, t, 0.35);
-	if (ambience.windPanner) {
-		const pan = clamp(windState.direction * 0.85, -1, 1);
-		ambience.windPanner.pan.setTargetAtTime(pan, t, 0.8);
-	}
+	// --- VIENTO: siempre audible, con brisa base ---
+		const windG = (0.020 + windLevel * 0.10) * pauseFactor;
+		ambience.windGain.gain.setTargetAtTime(windG, t, 0.35);
+		if (ambience.windLp) {
+			// Cutoff sube con el viento (más fuerza = más agudo/audible)
+			ambience.windLp.frequency.setTargetAtTime(180 + windLevel * 240, t, 0.5);
+		}
+		if (ambience.windPanner) {
+			const pan = clamp(windState.direction * 0.85, -1, 1);
+			ambience.windPanner.pan.setTargetAtTime(pan, t, 0.8);
+		}
 
 	// --- GRILLOS: energía propia + noche + castigo por lluvia ---
 	const cricketLevel = nl * cricketEner * (1 - rl * 0.9);
@@ -19425,6 +19427,8 @@ function startReplay() {
 	}
 	aiSearchAbort = true;
 	state.aiBusy = false;
+	state.paused = false;              // ⬅️ NUEVO
+	state.userPaused = false;          // ⬅️ NUEVO
 	if (!replay.storedMatch) {
 		replay.originalHistory = null;
 	}
@@ -19502,6 +19506,8 @@ function startReplayFromStored(match) {
 	}
 	aiSearchAbort = true;
 	state.aiBusy = false;
+	state.paused = false;              // ⬅️ NUEVO
+	state.userPaused = false;          // ⬅️ NUEVO
 	replay.storedMatch = match;
 	replay.originalHistory = historyLog.slice();
 	historyLog.length = 0;
@@ -19614,6 +19620,7 @@ function closeReplay() {
 	ripples.length = 0;
 	decals.length = 0;
 	for (const el of historyEl.children) el.classList.remove('replay-active');
+	updatePauseState();                // ⬅️ NUEVO (al final, antes del return si hay)
 	updateUI();
 }
 
@@ -23471,9 +23478,11 @@ function drawSecondaryWeather(W, H, dt, t) {
 			if (p.x > 1.05) p.x -= 1.1;
 			if (p.x < -0.05) p.x += 1.1;
 
-			const px = p.x * W, py = p.y * H;
+			const px = p.x * W;
+			const py = p.y * H;
 			const r = 1.4 + p.size * 12;
-			ctx.save();
+
+			ctx.save();                              // ⬅️ clave
 			ctx.translate(px, py);
 			ctx.rotate(p.phase + i * 0.5);
 			ctx.fillStyle = i % 3 === 0 ? 'rgba(255,245,252,0.75)'
@@ -23482,7 +23491,7 @@ function drawSecondaryWeather(W, H, dt, t) {
 			ctx.beginPath();
 			ctx.ellipse(0, 0, r, r * 0.55, 0, 0, 6.2832);
 			ctx.fill();
-			ctx.restore();
+			ctx.restore();                           // ⬅️ clave
 		}
 	}
 	else if (secMode === 'snow') {
