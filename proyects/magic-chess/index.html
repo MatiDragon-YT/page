@@ -2623,6 +2623,181 @@ MODO DEBUG — LAYOUT ESCRITORIO (panel lateral)
 }
 
 /* =========================================================
+   CINEMÁTICA DE PROMOCIÓN
+   ========================================================= */
+#promoCinematic {
+	position: fixed;
+	inset: 0;
+	z-index: 180;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+	background: radial-gradient(ellipse at center,
+		transparent 25%,
+		rgba(0, 0, 0, 0.55) 75%,
+		rgba(0, 0, 0, 0.88) 100%);
+	transition: opacity 0.4s ease-out;
+}
+
+#promoCinematic.hidden { display: none; }
+
+#promoCinematic.fade-in {
+	animation: promoFadeIn 0.5s ease-out both;
+}
+
+#promoCinematic.fade-out {
+	opacity: 0;
+	transition: opacity 0.4s ease-in;
+}
+
+@keyframes promoFadeIn {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+
+.promo-title {
+	font-size: clamp(18px, 4.5vw, 30px);
+	font-weight: 900;
+	letter-spacing: 4px;
+	color: #ffe8a8;
+	text-shadow:
+		0 0 20px rgba(255, 200, 90, 0.85),
+		0 0 44px rgba(255, 180, 60, 0.45),
+		0 3px 8px rgba(0, 0, 0, 0.95);
+	margin-bottom: clamp(20px, 5vw, 34px);
+	font-family: "Cinzel", "Trajan Pro", Georgia, serif;
+	pointer-events: none;
+	animation: promoTitleIn 0.75s cubic-bezier(.2, 1.25, .4, 1) both;
+	animation-delay: 0.1s;
+}
+
+@keyframes promoTitleIn {
+	from {
+		transform: scale(0.45) translateY(-24px);
+		opacity: 0;
+		letter-spacing: 14px;
+	}
+	to {
+		transform: scale(1) translateY(0);
+		opacity: 1;
+		letter-spacing: 4px;
+	}
+}
+
+.promo-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: clamp(14px, 3.5vw, 24px);
+	pointer-events: auto;
+}
+
+.promo-card {
+	width: clamp(72px, 17vw, 102px);
+	height: clamp(72px, 17vw, 102px);
+	border-radius: 18px;
+	border: 2px solid #6a5030;
+	background: linear-gradient(145deg, #2a2016, #14100a);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: clamp(44px, 11vw, 66px);
+	color: #ffe8a8;
+	cursor: pointer;
+	position: relative;
+	box-shadow:
+		0 6px 24px rgba(0, 0, 0, 0.75),
+		0 0 0 rgba(255, 200, 90, 0),
+		inset 0 1px 0 rgba(255, 220, 160, 0.15);
+	transition: transform 0.22s ease-out, border-color 0.2s, box-shadow 0.25s;
+	animation: promoCardIn 0.65s cubic-bezier(.2, 1.35, .4, 1) both;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
+	font-family: serif;
+	line-height: 1;
+	text-shadow:
+		0 0 12px rgba(255, 200, 90, 0.65),
+		0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.promo-card:nth-child(1) { animation-delay: 0.25s; }
+.promo-card:nth-child(2) { animation-delay: 0.35s; }
+.promo-card:nth-child(3) { animation-delay: 0.45s; }
+.promo-card:nth-child(4) { animation-delay: 0.55s; }
+
+.promo-card:hover {
+	transform: scale(1.09) translateY(-3px);
+	border-color: #ffd070;
+	box-shadow:
+		0 12px 34px rgba(0, 0, 0, 0.85),
+		0 0 32px rgba(255, 200, 90, 0.60),
+		inset 0 1px 0 rgba(255, 220, 160, 0.35);
+}
+
+.promo-card:active {
+	transform: scale(0.95);
+}
+
+.promo-card.picked {
+	transform: scale(1.22);
+	border-color: #ffd070;
+	background: linear-gradient(145deg, #5c4a20, #3a2a10);
+	box-shadow:
+		0 0 52px rgba(255, 200, 90, 1.0),
+		0 0 110px rgba(255, 180, 60, 0.60),
+		inset 0 1px 0 rgba(255, 220, 160, 0.55);
+	animation: promoCardPicked 0.55s ease-out;
+	z-index: 2;
+}
+
+.promo-card.picked::before {
+	content: '';
+	position: absolute;
+	inset: -14px;
+	border-radius: 24px;
+	border: 2px solid rgba(255, 210, 110, 0.85);
+	animation: promoRingPulse 0.75s ease-out infinite;
+}
+
+.promo-card.dimmed {
+	opacity: 0.10;
+	transform: scale(0.80);
+	filter: grayscale(1);
+	transition: all 0.4s ease-out;
+}
+
+@keyframes promoCardIn {
+	from {
+		transform: scale(0.15) translateY(45px);
+		opacity: 0;
+		filter: brightness(3);
+	}
+	to {
+		transform: scale(1) translateY(0);
+		opacity: 1;
+		filter: brightness(1);
+	}
+}
+
+@keyframes promoCardPicked {
+	0%   { transform: scale(1.22); }
+	50%  { transform: scale(1.40); }
+	100% { transform: scale(1.22); }
+}
+
+@keyframes promoRingPulse {
+	0%, 100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.25;
+		transform: scale(1.10);
+	}
+}
+
+/* =========================================================
    CINEMÁTICAS DE PARTIDA — INTRO Y OUTRO
    ========================================================= */
 .cine-overlay{
@@ -3046,6 +3221,129 @@ body.hl-move-off.hl-power-off .cell .costTag{
 		rgba(255, 60, 30, calc(var(--ira-danger, 0) * 0.85)) 50%,
 		transparent 92%);
 	pointer-events: none;
+}
+
+/* =========================================================
+   LETTERBOX REUTILIZABLE (para promo, castle, ep, ira)
+   ========================================================= */
+#cineBars {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 155;
+}
+
+#cineBars::before,
+#cineBars::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	height: 0;
+	background: linear-gradient(180deg, #000 0%, #06070b 85%, rgba(6, 7, 11, 0.85) 100%);
+	transition: height 0.4s cubic-bezier(.5, .05, .2, 1);
+	box-shadow: 0 0 40px 10px rgba(0, 0, 0, 0.75);
+}
+
+#cineBars::before { top: 0; }
+
+#cineBars::after {
+	bottom: 0;
+	background: linear-gradient(0deg, #000 0%, #06070b 85%, rgba(6, 7, 11, 0.85) 100%);
+}
+
+body.cine-active #cineBars::before,
+body.cine-active #cineBars::after {
+	height: 5vh;
+}
+
+/* =========================================================
+   IRA — ESTADO "ESPERANDO SEGUNDO TARGET"
+   ========================================================= */
+
+/* Zoom con origen en la pieza atacante */
+body.ira-awaiting #boardWrap {
+	transform-origin: var(--ira-zoom-x, 50%) var(--ira-zoom-y, 50%);
+	transform: scale(1.06);
+	transition: transform 0.6s cubic-bezier(.3, .05, .2, 1);
+}
+
+/* Desaturar terreno y efectos, NO las piezas */
+body.ira-awaiting #grid,
+body.ira-awaiting #fx {
+	filter: saturate(0.50) contrast(1.12);
+	transition: filter 0.4s ease-out;
+}
+
+/* Tinte rojo radial (más intenso en los bordes) */
+body.ira-awaiting #boardWrap::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 4;
+	background: radial-gradient(ellipse at var(--ira-zoom-x, 50%) var(--ira-zoom-y, 50%),
+			rgba(255, 60, 20, 0) 22%,
+			rgba(255, 40, 10, 0.18) 62%,
+			rgba(255, 30, 10, 0.34) 100%);
+	animation: iraPulseGlow 2.2s ease-in-out infinite;
+	transition: opacity 0.4s ease-out;
+}
+
+@keyframes iraPulseGlow {
+	0%, 100% { opacity: 1; }
+	50%      { opacity: 0.68; }
+}
+
+/* Respiración del tablero más agitada */
+body.ira-awaiting #boardWrap {
+	animation-duration: 2.8s !important;
+}
+
+/* Pieza atacante vibra */
+.piece.ira-attacker .tok {
+	animation: iraAttackerVibe 0.33s linear infinite !important;
+	box-shadow:
+		0 0 0 3px rgba(255, 60, 30, 0.85),
+		0 0 18px 6px rgba(255, 40, 20, 0.55),
+		0 2px 6px rgba(0, 0, 0, 0.65) !important;
+}
+
+@keyframes iraAttackerVibe {
+	0%   { transform: translate(0, 0); }
+	20%  { transform: translate(-1.5px, 0.5px); }
+	40%  { transform: translate(1px, -1px); }
+	60%  { transform: translate(-0.5px, 1.5px); }
+	80%  { transform: translate(1px, 0.5px); }
+	100% { transform: translate(0, 0); }
+}
+
+/* Atenuar UI */
+body.ira-awaiting #topBar,
+body.ira-awaiting #history,
+body.ira-awaiting #clockBar,
+body.ira-awaiting #controls {
+	filter: brightness(0.55);
+	transition: filter 0.4s ease-out;
+}
+
+/* La carta de Ira en la mano pulsa */
+body.ira-awaiting .pbtn[data-key="ira"],
+body.ira-awaiting .pbtn.active {
+	animation: iraCardPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes iraCardPulse {
+	0%, 100% { box-shadow: 0 0 18px rgba(255, 100, 30, 0.55), inset 0 0 12px rgba(255, 80, 30, 0.2); }
+	50%      { box-shadow: 0 0 36px rgba(255, 100, 30, 0.95), inset 0 0 22px rgba(255, 80, 30, 0.4); }
+}
+
+/* =========================================================
+   CAPTURA AL PASO — GRIS + CÁMARA LENTA
+   ========================================================= */
+body.cine-grayscale #boardWrap {
+	filter: saturate(0.15) contrast(1.18) brightness(0.85);
+	transition: filter 0.18s ease-out;
 }
 </style>
 </head>
@@ -5239,6 +5537,61 @@ function playSfx(kind, color) {
 		case 'slider-tick':
 			tone(1600, .022, 'triangle', .014, -180, uiGain);
 			break;
+		
+		case 'promo-cinematic':
+			// Acorde ascendente grande + shimmer
+			[392, 523, 659, 784, 1046, 1319, 1568].forEach((f, i) =>
+				setTimeout(() => tone(f, .55, 'triangle', .055, 25), i * 65));
+			noiseBurst(.7, .045, 4200);
+			break;
+
+		case 'castle-cinematic':
+			// Impacto grave + subida dorada
+			tone(160, .35, 'sawtooth', .05, 100);
+			setTimeout(() => tone(340, .45, 'sine', .055, 220), 110);
+			setTimeout(() => tone(680, .40, 'triangle', .045, 380), 220);
+			noiseBurst(.55, .055, 2600);
+			break;
+
+		case 'ep-cinematic':
+			// Deslizamiento descendente + click de "sorpresa"
+			tone(240, .30, 'sawtooth', .05, -90);
+			setTimeout(() => tone(140, .25, 'square', .055, -40), 140);
+			setTimeout(() => tone(880, .15, 'triangle', .045, -300), 280);
+			noiseBurst(.4, .07, 1900);
+			break;
+
+		case 'ira-rumble':
+			// Rugido grave de entrada
+			tone(80, .65, 'sawtooth', .055, 60);
+			tone(120, .55, 'triangle', .045, 40);
+			noiseBurst(.5, .06, 800);
+			break;
+
+		case 'ira-drone':
+			// Drone sostenido (se llama en loop mientras espera)
+			tone(55, 1.2, 'sine', .035, 8);
+			tone(82, 1.2, 'triangle', .022, 4);
+			break;
+
+		case 'ira-heartbeat':
+			// Dos golpes por ciclo, 100ms aparte
+			tone(58, .14, 'sine', .05, -8);
+			setTimeout(() => tone(48, .16, 'sine', .04, -6), 110);
+			break;
+
+		case 'ira-crackle':
+			// Chispas de fuego
+			noiseBurst(.28, .032, 5500);
+			tone(2200 + Math.random() * 800, .04, 'triangle', .015, -600);
+			break;
+
+		case 'ira-execute':
+			// Impacto de ejecución
+			tone(140, .4, 'sawtooth', .07, -80);
+			noiseBurst(.35, .09, 1800);
+			tone(90, .5, 'sine', .05, -40);
+			break;
 	}
 }
 
@@ -5259,6 +5612,45 @@ const gridEl = $('#grid');
 const piecesEl = $('#pieces');
 const historyEl = $('#history');
 let targetingLoopTimer = null;
+
+/* ─────────────────────────────────────────────────────────
+   SLOW-MO GLOBAL para el "mundo exterior"
+   ───────────────────────────────────────────────────────── */
+let worldSlowMo = 1.0;
+let worldSlowMoTarget = 1.0;
+let cineHitStopUntil = 0;
+
+function setWorldSlowMo(target) {
+	worldSlowMoTarget = clamp(target, 0.1, 1.0);
+}
+
+function updateWorldSlowMo(dt) {
+	const k = 1 - Math.exp(-dt / 0.35);
+	worldSlowMo += (worldSlowMoTarget - worldSlowMo) * k;
+	if (Math.abs(worldSlowMo - worldSlowMoTarget) < 0.01) {
+		worldSlowMo = worldSlowMoTarget;
+	}
+}
+
+function triggerHitStop(ms) {
+	cineHitStopUntil = performance.now() + ms;
+}
+
+/* ─────────────────────────────────────────────────────────
+   LETTERBOX helper
+   ───────────────────────────────────────────────────────── */
+function activateLetterbox() {
+	if (!document.getElementById('cineBars')) {
+		const el = document.createElement('div');
+		el.id = 'cineBars';
+		document.body.appendChild(el);
+	}
+	document.body.classList.add('cine-active');
+}
+
+function deactivateLetterbox() {
+	document.body.classList.remove('cine-active');
+}
 
 const state = {
 	mana: {
@@ -14201,7 +14593,56 @@ function rebuildPieces() {
 		}
 	piecesEl.style.setProperty('--cs', cellSize + 'px');
 }
+
+/* Anima la torre del enroque EN PARALELO con el rey.
+   Usa el mismo mecanismo de animateMove (transición + animatingEls). */
+async function animateRookCastle(rookFrom, rookTo, duration) {
+	const el = pieceEls.get(rookFrom);
+	if (!el) return;
+	animatingEls.add(el);
+	try {
+		pieceEls.delete(rookFrom);
+		pieceEls.set(rookTo, el);
+		el.dataset.pendingTo = rookTo;
+
+		el.style.transition = `transform ${duration}ms cubic-bezier(.18,.75,.28,1)`;
+		el.getBoundingClientRect();       // reflow
+		positionPiece(el, rookTo);
+
+		await sleep(duration);
+		positionPiece(el, rookTo);
+		setTimeout(() => { el.style.transition = ''; }, 60);
+	} finally {
+		animatingEls.delete(el);
+	}
+}
+
+/* Estela dorada sobre el camino recorrido. */
+function spawnCastleTrail(from, to) {
+	const a = squareCenter(from);
+	const b = squareCenter(to);
+	const steps = 22;
+	for (let i = 0; i < steps; i++) {
+		const t = i / steps;
+		addParticle({
+			x: lerp(a.x, b.x, t) + randomRange(-5, 5),
+			y: lerp(a.y, b.y, t) + randomRange(-5, 5),
+			vx: randomRange(-25, 25),
+			vy: randomRange(-50, -18),
+			life: randomRange(.4, .95),
+			maxLife: .95,
+			size: randomRange(1.5, 3.6),
+			color: i % 3 === 0 ? '#ffe8a8'
+				: i % 3 === 1 ? '#ffd070' : '#ffb040',
+			g: 30,
+			drag: .93,
+			shape: i % 4 === 0 ? 'tri' : 'circle'
+		});
+	}
+}
+
 const animatingEls = new Set();
+
 async function animateMove(from, to, capturedSquare, duration = 200) {
 	let el = pieceEls.get(from);
 	if (!el) {
@@ -14612,6 +15053,101 @@ function showModal(title, body, buttons, opts) {
 			playSfx('modal-open');
 		}
 	});
+}
+
+async function askPromotionCinematic(color) {
+	// ─── Guardar estado y pausar ───
+	const prevPaused = state.paused;
+	state.paused = true;
+	cineState.active = true;
+	cineState.kind = 'promotion';
+	cineState.skip = false;
+
+	// ─── Overlay ───
+	const ov = document.createElement('div');
+	ov.id = 'promoCinematic';
+	ov.classList.add('fade-in');
+	ov.innerHTML = `
+		<div class="promo-title">CORONACIÓN</div>
+		<div class="promo-grid">
+			<div class="promo-card" data-piece="n">♞</div>
+			<div class="promo-card" data-piece="q">♛</div>
+			<div class="promo-card" data-piece="b">♝</div>
+			<div class="promo-card" data-piece="r">♜</div>
+		</div>
+	`;
+	document.body.appendChild(ov);
+
+	// ─── Zoom-in del tablero + desaturate ───
+	boardWrap.style.transition = 'transform 0.7s cubic-bezier(.3,.05,.2,1), filter 1.0s ease-out';
+	boardWrap.style.transform = 'scale(1.07)';
+	boardWrap.classList.add('cine-outro-board');
+	document.body.classList.add('cinematic');
+
+	playSfx('promo-cinematic');
+
+	// ─── Esperar elección ───
+	const picked = await new Promise(resolve => {
+		let resolved = false;
+		const cards = ov.querySelectorAll('.promo-card');
+
+		const pickPiece = (piece) => {
+			if (resolved) return;
+			resolved = true;
+
+			const card = ov.querySelector(`[data-piece="${piece}"]`);
+			if (card) {
+				cards.forEach(c => {
+					if (c === card) c.classList.add('picked');
+					else c.classList.add('dimmed');
+				});
+			}
+			playSfx('ach-rare');
+
+			// Pequeño delay para que se vea el "picked"
+			setTimeout(() => resolve(piece), 650);
+		};
+
+		ov.addEventListener('click', (e) => {
+			const card = e.target.closest('.promo-card');
+			if (!card) return;
+			pickPiece(card.dataset.piece);
+		});
+
+		const keyHandler = (e) => {
+			const map = { n: 'n', q: 'q', r: 'r', b: 'b',
+				'1': 'n', '2': 'q', '3': 'b', '4': 'r' };
+			const k = e.key.toLowerCase();
+			if (map[k]) {
+				e.preventDefault();
+				pickPiece(map[k]);
+			}
+		};
+		document.addEventListener('keydown', keyHandler);
+
+		ov._cleanup = () => {
+			document.removeEventListener('keydown', keyHandler);
+		};
+	});
+
+	// ─── Fade-out + zoom-out ───
+	ov.classList.add('fade-out');
+	ov._cleanup?.();
+	await sleep(350);
+	ov.remove();
+
+	boardWrap.style.transform = '';
+	await sleep(400);
+	boardWrap.classList.remove('cine-outro-board');
+	document.body.classList.remove('cinematic');
+	setTimeout(() => { boardWrap.style.transition = ''; }, 900);
+
+	// ─── Restaurar estado ───
+	state.paused = prevPaused;
+	cineState.active = false;
+	cineState.kind = null;
+
+	return picked;
 }
 
 async function askPromotion() {
@@ -15932,7 +16468,12 @@ async function doPlayerMove(mv) {
 			if (isAIMove) {
 				promotion = aiChoosePromotion(mv);
 			} else {
-				promotion = await askPromotion();
+				const useCine = quality.cinematicsEnabled
+					&& !prefersReducedMotion()
+					&& !replay.active;
+				promotion = useCine
+					? await askPromotionCinematic(chess.turn())
+					: await askPromotion();
 			}
 		}
 
@@ -16001,7 +16542,97 @@ async function doPlayerMove(mv) {
 		else if (moveResult.captured) playCaptureSfx(moveResult.captured, turn);
 		else playSfx('move', turn);
 
-		await animateMove(mv.from, mv.to, capturedSquare);
+		const isCastleCine = isCastle && quality.cinematicsEnabled && !prefersReducedMotion();
+		const isEpCine = isEpCapture && quality.cinematicsEnabled && !prefersReducedMotion();
+
+		let rookPromise = null;
+		let rookFromCine = null, rookToCine = null;
+
+		if (isCastleCine) {
+			const rank = mv.from[1];
+			const isKingside = moveResult.flags.includes('k');
+			rookFromCine = isKingside ? 'h' + rank : 'a' + rank;
+			rookToCine   = isKingside ? 'f' + rank : 'd' + rank;
+
+			// Animación de la torre en paralelo
+			rookPromise = animateRookCastle(rookFromCine, rookToCine, 400);
+
+			// Estelas
+			spawnCastleTrail(mv.from, mv.to);
+			if (pieceEls.get(rookFromCine)) spawnCastleTrail(rookFromCine, rookToCine);
+
+			// Sacudida sutil
+			if (boardWrap.animate) {
+				boardWrap.animate([
+					{ transform: 'translate(0,0)' },
+					{ transform: 'translate(-3px,2px)' },
+					{ transform: 'translate(3px,-2px)' },
+					{ transform: 'translate(-2px,-1px)' },
+					{ transform: 'translate(0,0)' },
+				], { duration: 400, easing: 'ease-out' });
+			}
+
+			playSfx('castle-cinematic', turn);
+		}
+
+		if (isEpCine) {
+			const capturedEl = pieceEls.get(capturedSquare);
+			if (capturedEl) {
+				const capturedPos = squareCenter(capturedSquare);
+				const destPos = squareCenter(mv.to);
+				const dx = destPos.x - capturedPos.x;
+				const dy = destPos.y - capturedPos.y;
+
+				capturedEl.style.transition = 'transform 0.4s cubic-bezier(.5,-0.3,.6,1), opacity 0.4s ease-in';
+				capturedEl.style.willChange = 'transform, opacity';
+				capturedEl.getBoundingClientRect();
+				capturedEl.style.transform += ` translate(${dx * 0.65}px, ${dy * 0.65}px) scale(0.35) rotate(40deg)`;
+				capturedEl.style.opacity = '0';
+
+				// Lo sacamos de pieceEls → animateMove no le aplica el efecto por default
+				pieceEls.delete(capturedSquare);
+
+				setTimeout(() => { capturedEl.remove(); }, 500);
+			}
+
+			playSfx('ep-cinematic', turn);
+
+			// Ripple de "sorpresa" en la casilla de destino del capturador
+			setTimeout(() => {
+				const C = squareCenter(mv.to);
+				ripples.push({
+					x: C.x, y: C.y, r: 2, maxR: cellSize * 1.15,
+					life: 0.6, maxLife: 0.6, color: '255,200,140'
+				});
+				burst(C.x, C.y, 18, {
+					color: '#ffd070', spMin: 40, spMax: 140,
+					lifeMin: .3, lifeMax: .6, sizeMin: 1.2, sizeMax: 2.8
+				});
+			}, 180);
+		}
+
+		const kingDuration = isCastleCine ? 400 : 200;
+		await animateMove(mv.from, mv.to, capturedSquare, kingDuration);
+
+		if (rookPromise) await rookPromise;
+
+		// Impacto del castillo (después de que ambos aterrizan)
+		if (isCastleCine) {
+			const C1 = squareCenter(mv.to);
+			const C2 = squareCenter(rookToCine);
+			[[C1, '#ffe8a8'], [C2, '#ffd070']].forEach(([C, col]) => {
+				ripples.push({
+					x: C.x, y: C.y, r: 2, maxR: cellSize * 1.3,
+					life: 0.7, maxLife: 0.7, color: '255,200,90'
+				});
+				burst(C.x, C.y, 22, {
+					color: col, spMin: 50, spMax: 200,
+					lifeMin: .3, lifeMax: .8,
+					sizeMin: 1.2, sizeMax: 3.2,
+					shape: 'tri'
+				});
+			});
+		}
 
 		const didCapture = !!(moveResult.captured || mv.flags.includes('e'));
 
@@ -23721,9 +24352,10 @@ function loop(now) {
 	// Cuando está pausado, congelar TODO el avance de simulación.
 	// El render sigue corriendo para no dejar la pantalla en negro.
 	// El mundo se congela SOLO si está pausado de verdad.
-  // Durante una cinemática, el juego está pausado pero el mundo respira.
-  const worldFrozen = state.paused && !cineState.active;
-  const dt = worldFrozen ? 0 : rawDt;
+	// Durante una cinemática, el juego está pausado pero el mundo respira.
+	const worldFrozen = state.paused && !cineState.active;
+	const inHitStop = performance.now() < cineHitStopUntil;
+	const dt = (worldFrozen || inHitStop) ? 0 : rawDt;
 
 	if(!(debugState.enabled && debugState.timeLocked)) worldTime += dt;
 	gameTime += dt;
