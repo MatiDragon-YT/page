@@ -4864,12 +4864,12 @@ function initAmbience() {
 }
 
 function updateAmbience() {
-	if (state.paused === 0) return;
-	
 	if (!actx || !ambience.started) return;
 	const now = performance.now();
-	const elapsed = Math.min(0.5, (now - ambience.lastUpdate) / 1000);
+	const realElapsed = Math.min(0.5, (now - ambience.lastUpdate) / 1000);
 	ambience.lastUpdate = now;
+	const slowFactor = (now < cinePace.slowUntil) ? cinePace.slowFactor : 1;
+	const elapsed = realElapsed * slowFactor;
 
 	// --- Suavizado de los niveles "maestros" ---
 	const kRain = 1 - Math.exp(-elapsed / 1.4);
@@ -5415,6 +5415,19 @@ function playSfx(kind, color) {
 			tone(800, .25, 'triangle', .05, -500);
 			tone(500, .30, 'sine', .04, -300);
 			break;
+		case 'ira-engage':
+			tone(120, .7, 'sawtooth', .055, 80);
+			tone(90, .9, 'sine', .04, 60);
+			noiseBurst(.5, .04, 900);
+			break;
+		case 'ira-heartbeat':
+			tone(60, .12, 'sine', .05, -8);
+			tone(50, .14, 'sine', .035, -6);
+			break;
+		case 'ira-flash':
+			noiseBurst(.12, .10, 800);
+			tone(90, .2, 'square', .06, -30);
+			break;
 		case 'cycle':
 			// Whoosh sutil de carta rotando
 			noiseBurst(.18, .04, 5000);
@@ -5650,6 +5663,141 @@ function activateLetterbox() {
 
 function deactivateLetterbox() {
 	document.body.classList.remove('cine-active');
+}
+
+const cinePace = {
+	slowUntil: 0,
+	slowFactor: 1,
+};
+
+const iraCine = {
+	active: false,
+	targetingFrom: null,
+	droneInterval: null,
+	emberInterval: null,
+};
+
+function cineLetterbox(show) {
+	if (show) {
+		activateLetterbox();
+		if (!boardWrap.querySelector('.cine-letterbox-bar')) {
+			const top = document.createElement('div');
+			top.className = 'cine-letterbox-bar top';
+			const bot = document.createElement('div');
+			bot.className = 'cine-letterbox-bar bottom';
+			boardWrap.appendChild(top);
+			boardWrap.appendChild(bot);
+			boardWrap.getBoundingClientRect();
+		}
+		boardWrap.classList.add('cine-letterbox');
+	} else {
+		boardWrap.classList.remove('cine-letterbox');
+		deactivateLetterbox();
+		setTimeout(() => {
+			boardWrap.querySelectorAll('.cine-letterbox-bar').forEach(el => el.remove());
+		}, 500);
+	}
+}
+
+function cineHitStop(ms) {
+	const wasPaused = state.paused;
+	state.paused = true;
+	return new Promise(r => setTimeout(() => {
+		state.paused = wasPaused;
+		r();
+	}, ms));
+}
+
+function iraFlash() {
+	const flash = document.createElement('div');
+	flash.style.cssText = `
+		position: fixed; inset: 0; z-index: 250;
+		background: rgba(255,60,20,0.55);
+		pointer-events: none;
+		animation: iraFlashAnim 0.35s ease-out forwards;
+	`;
+	document.body.appendChild(flash);
+	setTimeout(() => flash.remove(), 400);
+	playSfx('ira-flash');
+}
+
+function enterIraCinematic(fromSq) {
+	if (!quality.cinematicsEnabled || prefersReducedMotion() || replay.active) return;
+	iraCine.active = true;
+	iraCine.targetingFrom = fromSq;
+
+	cinePace.slowUntil = performance.now() + 60000;
+	cinePace.slowFactor = 0.30;
+
+	const C = squareCenter(fromSq);
+	const px = (C.x / boardW) * 100;
+	const py = (C.y / boardH) * 100;
+	boardWrap.style.transformOrigin = `${px}% ${py}%`;
+	boardWrap.style.transition = 'transform 0.6s cubic-bezier(.3,.05,.2,1), filter 0.6s ease-out';
+	boardWrap.style.transform = 'scale(1.06)';
+	boardWrap.style.filter = 'saturate(0.55) contrast(1.15)';
+	cineLetterbox(true);
+	document.body.classList.add('ira-awaiting');
+
+	const el = pieceEls.get(fromSq);
+	if (el) el.classList.add('ira-awaiting-piece');
+	playSfx('ira-engage');
+
+	iraCine.droneInterval = setInterval(() => {
+		if (!iraCine.active || state.paused) return;
+		if (actx && soundEnabled) playSfx('ira-heartbeat');
+	}, 1200);
+
+	iraCine.emberInterval = setInterval(() => {
+		if (!iraCine.active || state.paused) return;
+		const C2 = squareCenter(fromSq);
+		addParticle({
+			x: C2.x + randomRange(-cellSize * 0.20, cellSize * 0.20),
+			y: C2.y + randomRange(-cellSize * 0.10, cellSize * 0.10),
+			vx: randomRange(-8, 8),
+			vy: randomRange(-40, -20),
+			life: randomRange(0.6, 1.2),
+			maxLife: 1.2,
+			size: randomRange(1.2, 2.6),
+			color: Math.random() < 0.6 ? '#ff8040' : '#ffd070',
+			g: -10,
+			drag: 0.94,
+		});
+	}, 380);
+
+	if (busGains.ambience && actx) {
+		try {
+			busGains.ambience.gain.setTargetAtTime(
+				audioVolumes.ambience * 0.20, actx.currentTime, 0.4
+			);
+		} catch (e) {}
+	}
+}
+
+function exitIraCinematic() {
+	if (!iraCine.active) return;
+	iraCine.active = false;
+	cinePace.slowUntil = 0;
+	cinePace.slowFactor = 1;
+	boardWrap.style.transform = '';
+	boardWrap.style.filter = '';
+	setTimeout(() => {
+		boardWrap.style.transition = '';
+		boardWrap.style.transformOrigin = '';
+	}, 800);
+	cineLetterbox(false);
+	document.body.classList.remove('ira-awaiting');
+	const el = iraCine.targetingFrom ? pieceEls.get(iraCine.targetingFrom) : null;
+	if (el) el.classList.remove('ira-awaiting-piece');
+	if (iraCine.droneInterval) { clearInterval(iraCine.droneInterval); iraCine.droneInterval = null; }
+	if (iraCine.emberInterval) { clearInterval(iraCine.emberInterval); iraCine.emberInterval = null; }
+	iraCine.targetingFrom = null;
+
+	if (busGains.ambience && actx) {
+		try {
+			busGains.ambience.gain.setTargetAtTime(audioVolumes.ambience, actx.currentTime, 0.4);
+		} catch (e) {}
+	}
 }
 
 const state = {
@@ -15085,6 +15233,7 @@ async function askPromotionCinematic(color) {
 	document.body.classList.add('cinematic');
 
 	playSfx('promo-cinematic');
+	cineLetterbox(true);
 
 	// ─── Esperar elección ───
 	const picked = await new Promise(resolve => {
@@ -15146,6 +15295,7 @@ async function askPromotionCinematic(color) {
 	state.paused = prevPaused;
 	cineState.active = false;
 	cineState.kind = null;
+	cineLetterbox(false);
 
 	return picked;
 }
@@ -16573,9 +16723,18 @@ async function doPlayerMove(mv) {
 			}
 
 			playSfx('castle-cinematic', turn);
+			cineLetterbox(true);
+			cinePace.slowUntil = performance.now() + 600;
+			cinePace.slowFactor = 0.50;
 		}
 
 		if (isEpCine) {
+			boardWrap.style.transition = 'filter 0.35s ease-out, transform 0.35s cubic-bezier(.3,.05,.2,1)';
+			boardWrap.style.filter = 'grayscale(0.85) contrast(1.15) brightness(0.85)';
+			boardWrap.style.transform = 'scale(1.03)';
+			cinePace.slowUntil = performance.now() + 350;
+			cinePace.slowFactor = 0.20;
+			cineLetterbox(true);
 			const capturedEl = pieceEls.get(capturedSquare);
 			if (capturedEl) {
 				const capturedPos = squareCenter(capturedSquare);
@@ -16609,6 +16768,14 @@ async function doPlayerMove(mv) {
 					lifeMin: .3, lifeMax: .6, sizeMin: 1.2, sizeMax: 2.8
 				});
 			}, 180);
+			setTimeout(() => {
+				boardWrap.style.filter = '';
+				boardWrap.style.transform = '';
+				cineLetterbox(false);
+				cinePace.slowUntil = 0;
+				cinePace.slowFactor = 1;
+				setTimeout(() => { boardWrap.style.transition = ''; }, 400);
+			}, 350);
 		}
 
 		const kingDuration = isCastleCine ? 400 : 200;
@@ -16632,6 +16799,9 @@ async function doPlayerMove(mv) {
 					shape: 'tri'
 				});
 			});
+			cineLetterbox(false);
+			cinePace.slowUntil = 0;
+			cinePace.slowFactor = 1;
 		}
 
 		const didCapture = !!(moveResult.captured || mv.flags.includes('e'));
@@ -16836,6 +17006,8 @@ async function iraTargeting(fromSq, color) {
 			sizeMin: 2,
 			sizeMax: 5
 		});
+		await cineHitStop(180);
+		iraFlash();
 		playSfx('ira-blocked', color);
 		vibrate([40, 30, 80]);
 		removeShield(targetPiece.color, targetSq);
@@ -16860,6 +17032,7 @@ async function iraTargeting(fromSq, color) {
 		});
 		syncPieces();
 		await sleep(700);
+		exitIraCinematic();
 	};
 
 	const resolveIraTarget = async (toSq) => {
@@ -16904,7 +17077,20 @@ async function iraTargeting(fromSq, color) {
 
 		playCaptureSfx(res.captured, color);
 
+		await cineHitStop(180);
+		iraFlash();
+		if (boardWrap.animate) {
+			boardWrap.animate([
+				{ transform: boardWrap.style.transform || 'scale(1.06) translate(0, 0)' },
+				{ transform: 'translate(-6px, 3px)' },
+				{ transform: 'translate(6px, -3px)' },
+				{ transform: 'translate(-3px, -2px)' },
+				{ transform: 'translate(0, 0)' },
+			], { duration: 180, easing: 'ease-out' });
+		}
+
 		await animateMove(mv.from, mv.to, capturedSquare, 400);
+		exitIraCinematic();
 
 		addDecal(capturedSquare, 'ira', {
 			alpha: 0.85
@@ -16958,6 +17144,7 @@ async function iraTargeting(fromSq, color) {
 	}
 
 	// ===== RAMA JUGADOR =====
+	enterIraCinematic(fromSq);
 	const result = await new Promise(resolve => {
 		const targets = new Set(moves.map(m => m.to));
 		let resolved = false;   // ⬅️ NUEVO: flag de resolución
@@ -16975,6 +17162,9 @@ async function iraTargeting(fromSq, color) {
 		const safeResolve = (value) => {
 			if (resolved) return;
 			resolved = true;
+			if (value === null) {
+				exitIraCinematic();
+			}
 			cleanup();
 			resolve(value);
 		};
