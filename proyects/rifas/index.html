@@ -9,6 +9,7 @@
   :root{
     --blue:#1d4ed8; --blue-dark:#1e3a8a; --green:#16a34a; --green-dark:#15803d;
     --red:#dc2626; --gray:#64748b; --line:#d7dce5; --ink:#0f172a;
+    --gold:#f59e0b; --gold-dark:#b45309;
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   [hidden]{ display:none !important; }
@@ -42,18 +43,34 @@
   .stat-label{ display:block; font-size:12px; color:var(--gray); text-transform:uppercase; letter-spacing:.6px; font-weight:700; }
   .stat-value{ display:block; font-size:21px; font-weight:900; color:var(--ink); margin-top:1px; }
 
+  /* ---------- Banner ganador ---------- */
+  #winnerBanner{
+    background:#fef3c7; color:#92400e; border-bottom:1px solid #fde68a;
+    padding:10px 14px; text-align:center; font-weight:800; font-size:16px; cursor:pointer;
+  }
+
   /* ---------- Cuadrícula ---------- */
   #gridWrap{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:12px; }
-  #grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; padding-bottom:30px; max-width:560px; margin:0 auto; }
+  #grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; padding-bottom:20px; max-width:560px; margin:0 auto; }
   .cell{
     aspect-ratio:1/1; border-radius:12px; border:2px solid var(--line); background:#fff;
-    color:var(--ink); font-family:inherit; font-weight:800; padding:0;
-    font-size:clamp(15px,4.2vw,22px); display:flex; align-items:center; justify-content:center;
-    cursor:pointer; transition:background .12s, transform .08s;
+    color:var(--ink); font-family:inherit; font-weight:800; padding:2px 2px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    cursor:pointer; transition:background .12s, transform .08s; overflow:hidden;
   }
   .cell:active{ transform:scale(.93); }
+  .cell-num{ font-size:clamp(14px,4vw,22px); font-weight:800; line-height:1.05; }
+  .cell-name{
+    display:block; width:100%; text-align:center; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; font-size:clamp(7px,1.9vw,11px); font-weight:700;
+    opacity:.95; margin-top:2px; line-height:1.15;
+  }
   .cell.sold{ background:var(--green); border-color:var(--green-dark); color:#fff; }
   .cell.sold:active{ transform:none; }
+  .cell.winner{ background:var(--gold); border-color:var(--gold-dark); color:#fff; }
+  .cell.winner:active{ transform:none; }
+  .cell.disabled{ background:#f1f5f9; border-color:#e2e8f0; color:#cbd5e1; cursor:default; }
+  .cell.disabled:active{ transform:none; }
 
   /* ---------- Estado vacío ---------- */
   #empty{ flex:1; overflow-y:auto; text-align:center; padding:56px 22px; color:var(--gray); }
@@ -74,6 +91,14 @@
   .btn.full{ width:100%; }
   .row{ display:flex; gap:10px; margin-top:20px; }
   .row .btn{ flex:1; }
+
+  /* ---------- Pie de acciones ---------- */
+  #footer{
+    background:#fff; border-top:1px solid var(--line);
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+    display:flex; gap:10px;
+  }
+  #footer .btn{ flex:1; min-height:54px; font-size:16.5px; padding:14px 8px; }
 
   /* ---------- Modales ---------- */
   .overlay{
@@ -110,6 +135,20 @@
   .sug-item:active{ background:#eef2ff; }
   .sug-name{ font-weight:800; font-size:16px; }
   .sug-phone{ font-size:14px; color:var(--gray); }
+
+  /* ---------- Lista de datos ---------- */
+  .info-list{ background:#f5f7fb; border-radius:14px; padding:10px 14px; margin-top:12px; }
+  .info-row{
+    display:flex; justify-content:space-between; gap:12px; padding:8px 0;
+    border-bottom:1px solid #e6ebf3; font-size:16px;
+  }
+  .info-row:last-child{ border-bottom:none; }
+  .info-k{ color:var(--gray); font-weight:700; flex:0 0 auto; }
+  .info-v{ font-weight:700; text-align:right; word-break:break-word; }
+
+  /* ---------- Ganador ---------- */
+  .trophy{ font-size:56px; text-align:center; line-height:1; }
+  .winner-number{ font-size:40px; font-weight:900; color:var(--gold-dark); text-align:center; margin:6px 0 4px; }
 
   /* ---------- Menú lateral ---------- */
   #menuOverlay{ align-items:stretch; justify-content:flex-start; }
@@ -162,7 +201,15 @@
     <div class="stat"><span class="stat-label">Recaudado</span><span class="stat-value" id="statMoney">$0</span></div>
   </div>
 
+  <div id="winnerBanner" hidden></div>
+
   <main id="gridWrap" hidden><div id="grid"></div></main>
+
+  <footer id="footer" hidden>
+    <button class="btn btn-primary" id="finishBtn">🏁 Finalizar rifa</button>
+    <button class="btn btn-primary" id="winBtn" hidden>🏆 Ver ganador</button>
+    <button class="btn btn-ghost" id="deleteRaffleBtn" hidden>🗑 Eliminar</button>
+  </footer>
 
   <div id="empty" hidden>
     <div class="icon">🎟️</div>
@@ -233,6 +280,19 @@
   </div>
 </div>
 
+<!-- ===== Datos del comprador ===== -->
+<div class="overlay" id="infoOverlay" hidden>
+  <div class="modal">
+    <div class="sale-number" id="infoNumber">Número 0</div>
+    <div class="sale-info" id="infoSub"></div>
+    <div class="info-list" id="infoBody"></div>
+    <div class="row">
+      <button class="btn btn-ghost" id="infoClose">Cerrar</button>
+      <button class="btn btn-danger" id="infoDelete">Eliminar venta</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Confirmación genérica ===== -->
 <div class="overlay" id="confirmOverlay" hidden>
   <div class="modal">
@@ -241,6 +301,20 @@
     <div class="row">
       <button class="btn btn-ghost" id="confirmNo">No</button>
       <button class="btn btn-danger" id="confirmYes">Sí, borrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Ganador ===== -->
+<div class="overlay" id="winnerOverlay" hidden>
+  <div class="modal">
+    <div class="trophy">🏆</div>
+    <h2 style="text-align:center">¡Tenemos ganador!</h2>
+    <p class="sub" style="text-align:center" id="winSub"></p>
+    <div class="winner-number" id="winNumber"></div>
+    <div class="info-list" id="winInfo"></div>
+    <div class="row">
+      <button class="btn btn-primary full" id="winClose">Listo</button>
     </div>
   </div>
 </div>
@@ -295,10 +369,12 @@ function showToast(msg, ms = 2200){
    CONFIRMACIÓN GENÉRICA
    ===================================================== */
 let confirmCallback = null;
-function confirmDialog(title, text, cb, yesLabel){
+function confirmDialog(title, text, cb, yesLabel, danger){
   $('confirmTitle').textContent = title;
   $('confirmText').textContent = text;
-  $('confirmYes').textContent = yesLabel || 'Sí, borrar';
+  const yes = $('confirmYes');
+  yes.textContent = yesLabel || 'Sí, borrar';
+  yes.className = 'btn ' + (danger === false ? 'btn-primary' : 'btn-danger');
   confirmCallback = cb;
   $('confirmOverlay').hidden = false;
 }
@@ -314,27 +390,59 @@ $('confirmYes').addEventListener('click', () => {
 });
 
 /* =====================================================
+   UTILIDADES DE TEXTO
+   ===================================================== */
+function shortName(full){
+  const parts = String(full || '').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return '';
+  if(parts.length === 1) return parts[0];
+  return parts[0] + ' ' + parts[parts.length - 1].charAt(0).toUpperCase() + '.';
+}
+function addRow(box, k, v){
+  const row = document.createElement('div'); row.className = 'info-row';
+  const kk = document.createElement('span'); kk.className = 'info-k'; kk.textContent = k;
+  const vv = document.createElement('span'); vv.className = 'info-v'; vv.textContent = v;
+  row.appendChild(kk); row.appendChild(vv); box.appendChild(row);
+}
+
+/* =====================================================
    RENDER PRINCIPAL
    ===================================================== */
-let cellMap = {};
-
 function renderAll(){
   const r = getActiveRaffle();
+  const footer = $('footer');
 
   if(!r){
     $('raffleTitle').textContent = 'Mis rifas';
     $('raffleSub').textContent = '';
     $('stats').hidden = true;
+    $('winnerBanner').hidden = true;
     $('gridWrap').hidden = true;
     $('empty').hidden = false;
+    footer.hidden = true;
     return;
   }
 
+  const finished = !!r.finished;
+
   $('raffleTitle').textContent = r.name;
-  $('raffleSub').textContent = fmtMoney(r.price) + ' cada número';
+  $('raffleSub').textContent = fmtMoney(r.price) + ' cada número' + (finished ? ' · Finalizada' : '');
   $('stats').hidden = false;
   $('gridWrap').hidden = false;
   $('empty').hidden = true;
+  footer.hidden = false;
+
+  $('finishBtn').hidden = finished;
+  $('winBtn').hidden = !finished;
+  $('deleteRaffleBtn').hidden = !finished;
+
+  if(finished && r.winner != null){
+    const b = r.numbers[r.winner];
+    $('winnerBanner').hidden = false;
+    $('winnerBanner').textContent = '🏆 Ganador: Número ' + r.winner + (b ? ' — ' + b.name : '');
+  }else{
+    $('winnerBanner').hidden = true;
+  }
 
   renderGrid(r);
   updateStats();
@@ -343,19 +451,32 @@ function renderAll(){
 function renderGrid(r){
   const grid = $('grid');
   grid.innerHTML = '';
-  cellMap = {};
   const cols = Math.min(5, Math.max(1, r.total));
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
 
   const frag = document.createDocumentFragment();
   for(let i = 1; i <= r.total; i++){
+    const sold = r.numbers[i];
     const btn = document.createElement('button');
-    btn.className = 'cell' + (r.numbers[i] ? ' sold' : '');
-    btn.textContent = i;
-    btn.dataset.n = i;
+    btn.className = 'cell';
+    if(sold) btn.classList.add('sold');
+    if(r.finished && r.winner === i) btn.classList.add('winner');
+    if(r.finished && !sold) btn.classList.add('disabled');
+
+    const num = document.createElement('span');
+    num.className = 'cell-num';
+    num.textContent = i;
+    btn.appendChild(num);
+
+    if(sold){
+      const nm = document.createElement('span');
+      nm.className = 'cell-name';
+      nm.textContent = shortName(sold.name);
+      btn.appendChild(nm);
+    }
+
     btn.addEventListener('click', () => onCellClick(i));
     frag.appendChild(btn);
-    cellMap[i] = btn;
   }
   grid.appendChild(frag);
 }
@@ -374,51 +495,121 @@ function updateStats(){
 function onCellClick(n){
   const r = getActiveRaffle();
   if(!r) return;
-  if(r.numbers[n]) handleSoldTap(n);
-  else openSaleModal(n);
+  if(r.numbers[n]){ openInfoModal(n); return; }
+  if(r.finished){ showToast('La rifa ya finalizó'); return; }
+  openSaleModal(n);
 }
 
-/* --- Tres toques en 10 segundos para cancelar una venta --- */
-let tap = { num: null, count: 0, start: 0, timer: null };
+/* =====================================================
+   DATOS DEL COMPRADOR
+   ===================================================== */
+let infoNumber = null;
 
-function handleSoldTap(n){
-  const now = Date.now();
-  if(tap.num !== n || (now - tap.start) > 10000){
-    clearTimeout(tap.timer);
-    tap = { num: n, count: 0, start: now, timer: null };
-    tap.timer = setTimeout(() => { tap = { num:null, count:0, start:0, timer:null }; }, 10000);
-  }
-  tap.count++;
-
-  if(tap.count >= 3){
-    clearTimeout(tap.timer);
-    tap = { num:null, count:0, start:0, timer:null };
-    askCancelSale(n);
-    return;
-  }
-  const falta = 3 - tap.count;
-  showToast('Tocá ' + falta + (falta === 1 ? ' vez más' : ' veces más') + ' para cancelar la venta');
-}
-
-function askCancelSale(n){
+function openInfoModal(n){
   const r = getActiveRaffle();
-  const buyer = r.numbers[n];
-  if(!buyer) return;
+  if(!r) return;
+  const b = r.numbers[n];
+  if(!b) return;
+  infoNumber = n;
+
+  $('infoNumber').textContent = 'Número ' + n;
+  $('infoSub').textContent = r.name + ' · ' + fmtMoney(r.price);
+
+  const box = $('infoBody');
+  box.innerHTML = '';
+  addRow(box, 'Nombre', b.name || '—');
+  addRow(box, 'Teléfono', b.phone || '—');
+  if(b.address) addRow(box, 'Dirección', b.address);
+  if(b.note) addRow(box, 'Nota', b.note);
+  if(b.date){
+    try{
+      addRow(box, 'Fecha', new Date(b.date).toLocaleString('es-AR', {dateStyle:'short', timeStyle:'short'}));
+    }catch(e){}
+  }
+
+  $('infoDelete').hidden = !!r.finished;
+  $('infoOverlay').hidden = false;
+}
+
+$('infoClose').addEventListener('click', () => { $('infoOverlay').hidden = true; });
+
+$('infoDelete').addEventListener('click', () => {
+  const r = getActiveRaffle();
+  if(!r || r.finished) return;
+  const n = infoNumber;
+  const b = r.numbers[n];
+  if(!b) return;
   confirmDialog(
     'Cancelar venta',
-    '¿Querés borrar la venta del número ' + n + ' a ' + buyer.name + '?',
-    () => { cancelSale(n); showToast('Venta borrada'); },
-    'Sí, borrar'
+    '¿Querés borrar la venta del número ' + n + ' a ' + b.name + '?',
+    () => {
+      delete r.numbers[n];
+      saveState();
+      $('infoOverlay').hidden = true;
+      renderAll();
+      showToast('Venta borrada');
+    },
+    'Sí, borrar',
+    true
   );
+});
+
+/* =====================================================
+   GANADOR
+   ===================================================== */
+function openWinnerModal(){
+  const r = getActiveRaffle();
+  if(!r || !r.finished || r.winner == null) return;
+  const b = r.numbers[r.winner];
+
+  $('winSub').textContent = r.name;
+  $('winNumber').textContent = 'Número ' + r.winner;
+
+  const box = $('winInfo');
+  box.innerHTML = '';
+  if(b){
+    addRow(box, 'Nombre', b.name || '—');
+    addRow(box, 'Teléfono', b.phone || '—');
+    if(b.address) addRow(box, 'Dirección', b.address);
+    if(b.note) addRow(box, 'Nota', b.note);
+  }else{
+    addRow(box, 'Aviso', 'El número ganador ya no tiene datos.');
+  }
+
+  $('winnerOverlay').hidden = false;
 }
 
-function cancelSale(n){
+$('winClose').addEventListener('click', () => { $('winnerOverlay').hidden = true; });
+$('winBtn').addEventListener('click', openWinnerModal);
+$('winnerBanner').addEventListener('click', openWinnerModal);
+
+/* =====================================================
+   FINALIZAR RIFA
+   ===================================================== */
+$('finishBtn').addEventListener('click', () => {
   const r = getActiveRaffle();
-  delete r.numbers[n];
-  saveState();
-  if(cellMap[n]) cellMap[n].classList.remove('sold');
-  updateStats();
-}
+  if(!r || r.finished) return;
+  const soldNums = Object.keys(r.numbers).map(Number);
+  if(!soldNums.length){
+    showToast('Todavía no hay números vendidos');
+    return;
+  }
+  confirmDialog(
+    'Finalizar rifa',
+    'Se va a elegir un ganador al azar entre los ' + soldNums.length +
+      ' números vendidos. Después no se van a poder vender más números.',
+    () => {
+      r.winner = soldNums[Math.floor(Math.random() * soldNums.length)];
+      r.finished = true;
+      r.finishedAt = Date.now();
+      saveState();
+      renderAll();
+      openWinnerModal();
+    },
+    'Sí, finalizar',
+    false
+  );
+});
 
 /* =====================================================
    VENDER UN NÚMERO
@@ -455,19 +646,20 @@ $('saleConfirm').addEventListener('click', () => {
   if(!name){ showToast('Falta el nombre'); $('fName').focus(); return; }
   if(!phone){ showToast('Falta el teléfono'); $('fPhone').focus(); return; }
 
-  sellNumber(currentSaleNumber, { name, phone, address, note, date: Date.now() });
+  const num = currentSaleNumber;
+  sellNumber(num, { name, phone, address, note, date: Date.now() });
   $('saleOverlay').hidden = true;
-  showToast('✔ Vendido el número ' + currentSaleNumber);
+  showToast('✔ Vendido el número ' + num);
   currentSaleNumber = null;
 });
 
 function sellNumber(n, data){
   const r = getActiveRaffle();
+  if(!r || r.finished || r.numbers[n]) return;
   r.numbers[n] = data;
   saveContact(data.name, data.phone, data.address);
   saveState();
-  if(cellMap[n]) cellMap[n].classList.add('sold');
-  updateStats();
+  renderAll();
 }
 
 /* =====================================================
@@ -487,7 +679,7 @@ function fillContact(c){
 
 function renderSuggestions(input, box){
   const q = input.value.trim().toLowerCase();
-  const contacts = state.contacts.slice().reverse(); // más recientes primero
+  const contacts = state.contacts.slice().reverse();
   let list;
   if(!q) list = contacts.slice(0, 6);
   else list = contacts.filter(c =>
@@ -558,7 +750,8 @@ function renderRaffleList(){
       '<button class="ri-del" title="Borrar rifa">🗑</button>';
     item.querySelector('.ri-name').textContent = r.name;
     item.querySelector('.ri-meta').textContent =
-      fmtMoney(r.price) + ' · ' + sold + '/' + r.total + ' vendidos';
+      fmtMoney(r.price) + ' · ' + sold + '/' + r.total + ' vendidos' +
+      (r.finished ? ' · 🏆 Finalizada' : '');
 
     item.addEventListener('click', () => {
       state.activeId = r.id;
@@ -582,13 +775,35 @@ function renderRaffleList(){
           renderAll();
           showToast('Rifa borrada');
         },
-        'Sí, borrar'
+        'Sí, borrar',
+        true
       );
     });
 
     list.appendChild(item);
   });
 }
+
+/* =====================================================
+   BORRAR RIFA DESDE EL PIE (FINALIZADA)
+   ===================================================== */
+$('deleteRaffleBtn').addEventListener('click', () => {
+  const r = getActiveRaffle();
+  if(!r) return;
+  confirmDialog(
+    'Borrar rifa',
+    '¿Seguro que querés borrar "' + r.name + '"? Se van a perder todas sus ventas.',
+    () => {
+      state.raffles = state.raffles.filter(x => x.id !== r.id);
+      state.activeId = state.raffles.length ? state.raffles[0].id : null;
+      saveState();
+      renderAll();
+      showToast('Rifa borrada');
+    },
+    'Sí, borrar',
+    true
+  );
+});
 
 /* =====================================================
    CREAR RIFA
@@ -619,7 +834,7 @@ $('newConfirm').addEventListener('click', () => {
   }
   if(total > 1000){ showToast('El máximo es 1000 números'); return; }
 
-  const raffle = { id: uid(), name, price, total, numbers: {}, created: Date.now() };
+  const raffle = { id: uid(), name, price, total, numbers: {}, created: Date.now(), finished: false, winner: null };
   state.raffles.push(raffle);
   state.activeId = raffle.id;
   saveState();
@@ -632,7 +847,7 @@ $('newConfirm').addEventListener('click', () => {
 /* =====================================================
    CERRAR MODALES TOCANDO EL FONDO
    ===================================================== */
-['newOverlay', 'saleOverlay', 'confirmOverlay'].forEach(id => {
+['newOverlay', 'saleOverlay', 'infoOverlay', 'confirmOverlay', 'winnerOverlay'].forEach(id => {
   $(id).addEventListener('click', e => {
     if(e.target === $(id)){
       $(id).hidden = true;
