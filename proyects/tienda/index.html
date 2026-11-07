@@ -89,6 +89,16 @@ button{cursor:pointer;}
 .card h2 .badge{background:var(--verde);color:#fff;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:20px;letter-spacing:0;}
 .vacio{text-align:center;color:var(--gris2);font-size:13px;padding:18px 10px;font-style:italic;}
 
+/* Admin colapsable */
+.admin-collapse{background:var(--card);border-radius:var(--radio);box-shadow:var(--sombra);margin-bottom:12px;overflow:hidden;}
+.admin-collapse-header{display:flex;align-items:center;justify-content:space-between;padding:13px;cursor:pointer;user-select:none;transition:.15s;gap:8px;}
+.admin-collapse-header:active{background:var(--gris-claro);}
+.admin-collapse-header h2{margin:0;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris);font-weight:700;display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
+.admin-collapse-header .arrow{font-size:12px;color:var(--gris);transition:transform .2s;flex-shrink:0;}
+.admin-collapse.abierto .admin-collapse-header .arrow{transform:rotate(90deg);}
+.admin-collapse-body{display:none;padding:0 13px 13px;}
+.admin-collapse.abierto .admin-collapse-body{display:block;animation:fade .18s ease;}
+
 .item-carrito{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--gris-claro);}
 .item-carrito:last-child{border-bottom:none;}
 .ic-emoji{font-size:19px;width:26px;text-align:center;flex-shrink:0;}
@@ -281,10 +291,6 @@ button{cursor:pointer;}
 #toast.error{background:var(--rojo);}
 #toast.warn{background:var(--amarillo);color:#000;}
 
-.tabs{display:flex;gap:4px;margin-bottom:12px;background:var(--gris-claro);padding:4px;border-radius:11px;}
-.tab{flex:1;padding:7px;border:none;background:transparent;border-radius:8px;font-size:12.5px;font-weight:700;color:var(--gris);transition:.15s;}
-.tab.activo{background:var(--card);color:var(--texto);box-shadow:0 1px 3px rgba(0,0,0,.1);}
-
 .kbd{display:inline-block;padding:2px 6px;background:var(--gris-claro);border-radius:5px;font-family:monospace;font-size:11px;font-weight:700;border:1px solid var(--borde);margin:0 2px;}
 
 .undo-bar{position:fixed;left:50%;bottom:200px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:700;z-index:190;display:none;align-items:center;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,.35);}
@@ -431,141 +437,179 @@ button{cursor:pointer;}
 </section>
 
 <section id="vista-admin" class="vista">
-  <div class="card">
-    <h2>🏪 Comercio</h2>
-    <div class="admin-form">
-      <input id="cfgNombre" placeholder="Nombre" autocomplete="off">
-      <input id="cfgDireccion" placeholder="Dirección (opcional)" autocomplete="off">
-      <input id="cfgTelefono" placeholder="WhatsApp (opcional)" autocomplete="off" inputmode="tel">
-      <input id="cfgEmail" placeholder="Email para tickets (opcional)" autocomplete="off" inputmode="email" type="email">
-      <input id="cfgGananciaDefault" type="number" placeholder="Ganancia esperada por kg/u (ej: 1000)" min="0" step="100">
-      <button class="btn-primary btn-full" id="btnGuardarCfg" type="button">Guardar</button>
+  <div class="admin-collapse" data-seccion="comercio">
+    <div class="admin-collapse-header">
+      <h2>🏪 Comercio</h2>
+      <span class="arrow">▶</span>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>🔊 Preferencias</h2>
-    <div class="fila-admin">
-      <div class="ic-emoji">🔊</div>
-      <div class="ic-info"><div class="ic-nombre">Sonidos</div><div class="stock-info">Al agregar y cobrar</div></div>
-      <input type="checkbox" id="cfgSonido" style="width:22px;height:22px;accent-color:var(--verde)">
-    </div>
-    <div class="fila-admin">
-      <div class="ic-emoji">📳</div>
-      <div class="ic-info"><div class="ic-nombre">Vibración</div><div class="stock-info">En cada acción</div></div>
-      <input type="checkbox" id="cfgVibrar" style="width:22px;height:22px;accent-color:var(--verde)">
-    </div>
-    <div class="fila-admin">
-      <div class="ic-emoji">⚖️</div>
-      <div class="ic-info"><div class="ic-nombre">Redondeo $100</div><div class="stock-info">Hacia arriba en peso</div></div>
-      <input type="checkbox" id="cfgRedondeo" style="width:22px;height:22px;accent-color:var(--verde)">
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>💾 Backups internos <span class="badge" id="snapshotCount">0</span></h2>
-    <div class="db-status" id="dbStatus">IndexedDB · Guardado local seguro</div>
-    <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
-      Guardados dentro de este dispositivo. No necesitás descargar archivos. Se hace uno automático cada 6 horas y antes de operaciones riesgosas.
-    </div>
-    <button class="btn-primary btn-full" id="btnSnapshotAhora" type="button">📸 Crear backup ahora</button>
-    <div class="info-bk" id="infoUltimoBackup"></div>
-    <div id="listaSnapshots" style="margin-top:12px"></div>
-  </div>
-
-  <div class="card">
-    <h2>📤 Exportar / Importar (opcional)</h2>
-    <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
-      Descargá un archivo JSON para guardar en otro lado (Google Drive, email, etc.) o importá uno externo.
-    </div>
-    <div class="btn-row">
-      <button class="btn-ghost btn-full" id="btnBackup" type="button">⬇️ Descargar JSON</button>
-      <button class="btn-ghost btn-full" id="btnRestore" type="button">⬆️ Importar archivo</button>
-    </div>
-    <input type="file" id="fileRestore" accept=".json" style="display:none">
-  </div>
-
-  <div class="card">
-    <h2>🎯 Días clave</h2>
-    <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
-      Aparecen marcados en el calendario anual y se te avisa cuando se acercan. Podés agregar los que quieras.
-    </div>
-    <div class="admin-form">
-      <input id="dcNombre" placeholder="Nombre (ej: Día de la Madre)" autocomplete="off">
-      <input id="dcEmoji" placeholder="Emoji (ej: 💐)" maxlength="4" autocomplete="off">
-      <select id="dcTipo">
-        <option value="fija">Fecha fija (cada año el mismo día)</option>
-        <option value="n-esimo-dia">N-ésimo día de la semana del mes</option>
-      </select>
-      <div id="dcFijaCampos">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <input id="dcDia" type="number" placeholder="Día (1-31)" min="1" max="31">
-          <input id="dcMes" type="number" placeholder="Mes (1-12)" min="1" max="12">
-        </div>
+    <div class="admin-collapse-body">
+      <div class="admin-form">
+        <input id="cfgNombre" placeholder="Nombre" autocomplete="off">
+        <input id="cfgDireccion" placeholder="Dirección (opcional)" autocomplete="off">
+        <input id="cfgTelefono" placeholder="WhatsApp (opcional)" autocomplete="off" inputmode="tel">
+        <input id="cfgEmail" placeholder="Email para tickets (opcional)" autocomplete="off" inputmode="email" type="email">
+        <input id="cfgGananciaDefault" type="number" placeholder="Ganancia esperada por kg/u (ej: 1000)" min="0" step="100">
+        <button class="btn-primary btn-full" id="btnGuardarCfg" type="button">Guardar</button>
       </div>
-      <div id="dcNeCampos" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-          <input id="dcSemana" type="number" placeholder="N° sem (1-5)" min="1" max="5">
-          <select id="dcDiaSem">
-            <option value="0">Domingo</option>
-            <option value="1">Lunes</option>
-            <option value="2">Martes</option>
-            <option value="3">Miércoles</option>
-            <option value="4">Jueves</option>
-            <option value="5">Viernes</option>
-            <option value="6">Sábado</option>
-          </select>
-          <input id="dcMesN" type="number" placeholder="Mes (1-12)" min="1" max="12">
-        </div>
+    </div>
+  </div>
+
+  <div class="admin-collapse" data-seccion="preferencias">
+    <div class="admin-collapse-header">
+      <h2>🔊 Preferencias</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <div class="fila-admin">
+        <div class="ic-emoji">🔊</div>
+        <div class="ic-info"><div class="ic-nombre">Sonidos</div><div class="stock-info">Al agregar y cobrar</div></div>
+        <input type="checkbox" id="cfgSonido" style="width:22px;height:22px;accent-color:var(--verde)">
       </div>
-      <button class="btn-primary btn-full" id="dcAgregar" type="button">Agregar día clave</button>
-    </div>
-    <div id="listaDiasClave" style="margin-top:12px"></div>
-  </div>
-
-  <div class="card">
-    <h2>🏷️ Categorías</h2>
-    <div class="admin-form">
-      <input id="catNombre" placeholder="Nueva categoría (ej: Frutas)" autocomplete="off">
-      <button class="btn-primary btn-full" id="catAgregar" type="button">Agregar categoría</button>
-    </div>
-    <div id="listaCategorias" style="margin-top:10px"></div>
-  </div>
-
-  <div class="card">
-    <h2>➕ Nuevo producto</h2>
-    <div class="admin-form">
-      <input id="npNombre" placeholder="Nombre (ej: Tomate)" autocomplete="off">
-      <input id="npPrecio" type="number" inputmode="numeric" placeholder="Precio venta">
-      <input id="npCosto" type="number" inputmode="numeric" placeholder="Costo compra (por kg/u) — opcional">
-      <input id="npEmoji" placeholder="Emoji (opcional)" maxlength="4" autocomplete="off">
-      <select id="npTipo">
-        <option value="kg">Por kilo</option>
-        <option value="unidad">Por unidad</option>
-      </select>
-      <select id="npCategoria"></select>
-      <button class="btn-primary btn-full" id="npAgregar" type="button">Agregar producto</button>
+      <div class="fila-admin">
+        <div class="ic-emoji">📳</div>
+        <div class="ic-info"><div class="ic-nombre">Vibración</div><div class="stock-info">En cada acción</div></div>
+        <input type="checkbox" id="cfgVibrar" style="width:22px;height:22px;accent-color:var(--verde)">
+      </div>
+      <div class="fila-admin">
+        <div class="ic-emoji">⚖️</div>
+        <div class="ic-info"><div class="ic-nombre">Redondeo $100</div><div class="stock-info">Hacia arriba en peso</div></div>
+        <input type="checkbox" id="cfgRedondeo" style="width:22px;height:22px;accent-color:var(--verde)">
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <h2>📦 Productos</h2>
-    <button class="btn-primary btn-full" id="btnCargarCostos" style="margin-bottom:10px" type="button">💲 Cargar costos faltantes</button>
-    <div id="listaAdmin"></div>
+  <div class="admin-collapse" data-seccion="backups">
+    <div class="admin-collapse-header">
+      <h2>💾 Backups internos <span class="badge" id="snapshotCount">0</span></h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <div class="db-status" id="dbStatus">IndexedDB · Guardado local seguro</div>
+      <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
+        Guardados dentro de este dispositivo. Se hace uno automático cada 6 horas y antes de operaciones riesgosas.
+      </div>
+      <button class="btn-primary btn-full" id="btnSnapshotAhora" type="button">📸 Crear backup ahora</button>
+      <div class="info-bk" id="infoUltimoBackup"></div>
+      <div id="listaSnapshots" style="margin-top:12px"></div>
+    </div>
   </div>
 
-  <button class="btn-ghost btn-full" id="btnReset" style="margin-top:6px" type="button">🔄 Restaurar productos por defecto</button>
-  <button class="btn-danger btn-full" id="btnBorrarTodo" style="margin-top:8px" type="button">🗑️ Borrar TODOS los datos</button>
+  <div class="admin-collapse" data-seccion="exportar">
+    <div class="admin-collapse-header">
+      <h2>📤 Exportar / Importar</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
+        Descargá un archivo JSON para guardar en otro lado o importá uno externo.
+      </div>
+      <div class="btn-row">
+        <button class="btn-ghost btn-full" id="btnBackup" type="button">⬇️ Descargar JSON</button>
+        <button class="btn-ghost btn-full" id="btnRestore" type="button">⬆️ Importar archivo</button>
+      </div>
+      <input type="file" id="fileRestore" accept=".json" style="display:none">
+    </div>
+  </div>
 
-  <div class="card" style="margin-top:12px">
-    <h2>⌨️ Atajos</h2>
-    <div style="font-size:12.5px;line-height:2;color:var(--gris)">
-      <div><span class="kbd">/</span> Buscar</div>
-      <div><span class="kbd">↑↓</span> Navegar · <span class="kbd">Enter</span> Agregar</div>
-      <div><span class="kbd">F2</span> Cobrar · <span class="kbd">F4</span> Aparcar</div>
-      <div><span class="kbd">F5</span> Nueva pestaña · <span class="kbd">Ctrl+Z</span> Deshacer</div>
-      <div><span class="kbd">Ctrl+Y</span> Rehacer · <span class="kbd">Ctrl+B</span> Snapshot</div>
-      <div><span class="kbd">Esc</span> Cerrar modal</div>
+  <div class="admin-collapse" data-seccion="dias-clave">
+    <div class="admin-collapse-header">
+      <h2>🎯 Días clave</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
+        Aparecen marcados en el calendario anual. Podés agregar los que quieras.
+      </div>
+      <div class="admin-form">
+        <input id="dcNombre" placeholder="Nombre (ej: Día de la Madre)" autocomplete="off">
+        <input id="dcEmoji" placeholder="Emoji (ej: 💐)" maxlength="4" autocomplete="off">
+        <select id="dcTipo">
+          <option value="fija">Fecha fija (cada año el mismo día)</option>
+          <option value="n-esimo-dia">N-ésimo día de la semana del mes</option>
+        </select>
+        <div id="dcFijaCampos">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <input id="dcDia" type="number" placeholder="Día (1-31)" min="1" max="31">
+            <input id="dcMes" type="number" placeholder="Mes (1-12)" min="1" max="12">
+          </div>
+        </div>
+        <div id="dcNeCampos" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <input id="dcSemana" type="number" placeholder="N° sem (1-5)" min="1" max="5">
+            <select id="dcDiaSem">
+              <option value="0">Domingo</option>
+              <option value="1">Lunes</option>
+              <option value="2">Martes</option>
+              <option value="3">Miércoles</option>
+              <option value="4">Jueves</option>
+              <option value="5">Viernes</option>
+              <option value="6">Sábado</option>
+            </select>
+            <input id="dcMesN" type="number" placeholder="Mes (1-12)" min="1" max="12">
+          </div>
+        </div>
+        <button class="btn-primary btn-full" id="dcAgregar" type="button">Agregar día clave</button>
+      </div>
+      <div id="listaDiasClave" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div class="admin-collapse" data-seccion="nuevo-producto">
+    <div class="admin-collapse-header">
+      <h2>➕ Nuevo producto</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <div class="admin-form">
+        <input id="npNombre" placeholder="Nombre (ej: Tomate)" autocomplete="off">
+        <input id="npPrecio" type="number" inputmode="numeric" placeholder="Precio venta">
+        <input id="npCosto" type="number" inputmode="numeric" placeholder="Costo compra (por kg/u) — opcional">
+        <input id="npEmoji" placeholder="Emoji (opcional)" maxlength="4" autocomplete="off">
+        <select id="npTipo">
+          <option value="kg">Por kilo</option>
+          <option value="unidad">Por unidad</option>
+        </select>
+        <button class="btn-primary btn-full" id="npAgregar" type="button">Agregar producto</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-collapse" data-seccion="productos">
+    <div class="admin-collapse-header">
+      <h2>📦 Productos <span class="badge" id="productosCount">0</span></h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <button class="btn-primary btn-full" id="btnCargarCostos" style="margin-bottom:10px" type="button">💲 Cargar costos faltantes</button>
+      <div id="listaAdmin"></div>
+    </div>
+  </div>
+
+  <div class="admin-collapse" data-seccion="reset">
+    <div class="admin-collapse-header">
+      <h2>🔄 Restaurar / Borrar</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <button class="btn-ghost btn-full" id="btnReset" type="button">🔄 Restaurar productos por defecto</button>
+      <button class="btn-danger btn-full" id="btnBorrarTodo" style="margin-top:8px" type="button">🗑️ Borrar TODOS los datos</button>
+    </div>
+  </div>
+
+  <div class="admin-collapse" data-seccion="atajos">
+    <div class="admin-collapse-header">
+      <h2>⌨️ Atajos</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <div style="font-size:12.5px;line-height:2;color:var(--gris)">
+        <div><span class="kbd">/</span> Buscar</div>
+        <div><span class="kbd">↑↓</span> Navegar · <span class="kbd">Enter</span> Agregar</div>
+        <div><span class="kbd">F2</span> Cobrar · <span class="kbd">F4</span> Aparcar</div>
+        <div><span class="kbd">F5</span> Nueva pestaña · <span class="kbd">Ctrl+Z</span> Deshacer</div>
+        <div><span class="kbd">Ctrl+Y</span> Rehacer · <span class="kbd">Ctrl+B</span> Snapshot</div>
+        <div><span class="kbd">Esc</span> Cerrar modal</div>
+      </div>
     </div>
   </div>
 </section>
@@ -585,6 +629,7 @@ button{cursor:pointer;}
   <button id="undoBtn" type="button">Deshacer</button>
 </div>
 
+<!-- Modal cantidad -->
 <div class="modal-overlay" id="modalCantidad">
   <div class="modal">
     <h3 id="mcTitulo">Producto</h3>
@@ -601,6 +646,32 @@ button{cursor:pointer;}
     <div class="modal-actions">
       <button class="btn-ghost" id="mcCancelar" type="button">Cancelar</button>
       <button class="btn-primary" id="mcAgregar" type="button">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- NUEVO: Modal editar producto -->
+<div class="modal-overlay" id="modalEditarProducto">
+  <div class="modal">
+    <h3>✏️ Editar producto</h3>
+    <div class="admin-form">
+      <label style="font-size:11.5px;font-weight:700;color:var(--gris);text-transform:uppercase">Nombre</label>
+      <input id="epNombre" placeholder="Nombre" autocomplete="off">
+      <label style="font-size:11.5px;font-weight:700;color:var(--gris);text-transform:uppercase">Precio venta</label>
+      <input id="epPrecio" type="number" inputmode="numeric" placeholder="Precio">
+      <label style="font-size:11.5px;font-weight:700;color:var(--gris);text-transform:uppercase">Costo compra (por kg/u)</label>
+      <input id="epCosto" type="number" inputmode="numeric" placeholder="0">
+      <label style="font-size:11.5px;font-weight:700;color:var(--gris);text-transform:uppercase">Emoji</label>
+      <input id="epEmoji" placeholder="Emoji" maxlength="4" autocomplete="off">
+      <label style="font-size:11.5px;font-weight:700;color:var(--gris);text-transform:uppercase">Tipo</label>
+      <select id="epTipo">
+        <option value="kg">Por kilo</option>
+        <option value="unidad">Por unidad</option>
+      </select>
+    </div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-ghost" id="epCancelar" type="button">Cancelar</button>
+      <button class="btn-primary" id="epAplicar" type="button">Aplicar</button>
     </div>
   </div>
 </div>
@@ -802,7 +873,7 @@ window.addEventListener('beforeunload', () => { flush().catch(() => {}); });
 ============================================================ */
 const SNAPSHOT_KEYS = [
   'vd_productos_v3', 'vd_ventas_v3',
-  'vd_cfg_v3', 'vd_categorias_v3', 'vd_favoritos_v3',
+  'vd_cfg_v3', 'vd_favoritos_v3',
   'vd_espera_v3', 'vd_precios_hist_v3',
   'vd_tabs_v3', 'vd_tab_activa_v3', 'vd_tema_v3',
   'vd_dias_clave_v1',
@@ -909,25 +980,23 @@ if (!cfg.gananciaDefault || cfg.gananciaDefault <= 0) cfg.gananciaDefault = 1000
 let tema = LS.get('vd_tema_v3', matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
 
 const PRODUCTOS_DEFAULT = [
-  { id:'p1', nombre:'Banana', precio:2400, emoji:'🍌', tipo:'kg', categoria:'Frutas' },
-  { id:'p2', nombre:'Manzana', precio:2800, emoji:'🍎', tipo:'kg', categoria:'Frutas' },
-  { id:'p3', nombre:'Naranja', precio:1900, emoji:'🍊', tipo:'kg', categoria:'Frutas' },
-  { id:'p4', nombre:'Palta', precio:6500, emoji:'🥑', tipo:'unidad', categoria:'Frutas' },
-  { id:'p5', nombre:'Papa', precio:2500, emoji:'🥔', tipo:'kg', categoria:'Verduras' },
-  { id:'p6', nombre:'Cebolla', precio:2900, emoji:'🧅', tipo:'kg', categoria:'Verduras' },
-  { id:'p7', nombre:'Tomate', precio:3200, emoji:'🍅', tipo:'kg', categoria:'Verduras' },
-  { id:'p8', nombre:'Zanahoria', precio:2200, emoji:'🥕', tipo:'kg', categoria:'Verduras' },
-  { id:'p9', nombre:'Lechuga', precio:1800, emoji:'🥬', tipo:'unidad', categoria:'Verduras' },
-  { id:'p10', nombre:'Batata', precio:3500, emoji:'🍠', tipo:'kg', categoria:'Verduras' },
-  { id:'p11', nombre:'Cabutia', precio:2400, emoji:'🎃', tipo:'kg', categoria:'Verduras' },
-  { id:'p12', nombre:'Limón', precio:1500, emoji:'🍋', tipo:'kg', categoria:'Frutas' },
+  { id:'p1', nombre:'Banana', precio:2400, emoji:'🍌', tipo:'kg' },
+  { id:'p2', nombre:'Manzana', precio:2800, emoji:'🍎', tipo:'kg' },
+  { id:'p3', nombre:'Naranja', precio:1900, emoji:'🍊', tipo:'kg' },
+  { id:'p4', nombre:'Palta', precio:6500, emoji:'🥑', tipo:'unidad' },
+  { id:'p5', nombre:'Papa', precio:2500, emoji:'🥔', tipo:'kg' },
+  { id:'p6', nombre:'Cebolla', precio:2900, emoji:'🧅', tipo:'kg' },
+  { id:'p7', nombre:'Tomate', precio:3200, emoji:'🍅', tipo:'kg' },
+  { id:'p8', nombre:'Zanahoria', precio:2200, emoji:'🥕', tipo:'kg' },
+  { id:'p9', nombre:'Lechuga', precio:1800, emoji:'🥬', tipo:'unidad' },
+  { id:'p10', nombre:'Batata', precio:3500, emoji:'🍠', tipo:'kg' },
+  { id:'p11', nombre:'Cabutia', precio:2400, emoji:'🎃', tipo:'kg' },
+  { id:'p12', nombre:'Limón', precio:1500, emoji:'🍋', tipo:'kg' },
 ];
 
 let productos = LS.get('vd_productos_v3', null);
 if (!productos) { productos = PRODUCTOS_DEFAULT.slice(); LS.set('vd_productos_v3', productos); }
-productos.forEach(p => { if (p.categoria === undefined) p.categoria = 'Sin categoría'; });
 
-let categorias = LS.get('vd_categorias_v3', ['Frutas','Verduras','Hierbas','Sin categoría']);
 let favoritos = LS.get('vd_favoritos_v3', []);
 
 let tabsVenta = LS.get('vd_tabs_v3', null);
@@ -944,6 +1013,7 @@ let filtroHistorial = 'hoy';
 let filtroCaja = 'hoy';
 let filtroVenta = 'todos';
 let mcProducto = null, mcValor = 0, mcEditando = null;
+let epIdx = -1;
 let topCache = new Set();
 let anioCalendario = new Date().getFullYear();
 
@@ -1606,6 +1676,18 @@ function mostrarVista(nombre) {
 }
 
 /* ============================================================
+   ADMIN COLAPSABLE
+============================================================ */
+function initAdminCollapse() {
+  $$('.admin-collapse').forEach(col => {
+    const header = col.querySelector('.admin-collapse-header');
+    header.onclick = () => {
+      col.classList.toggle('abierto');
+    };
+  });
+}
+
+/* ============================================================
    TOP CACHE
 ============================================================ */
 function refrescarTop() {
@@ -1635,14 +1717,6 @@ function renderFiltrosVenta() {
     b.onclick = () => { filtroVenta = f.k; renderFiltrosVenta(); renderProductos(); };
     cont.appendChild(b);
   });
-  [...new Set(productos.map(p => p.categoria).filter(Boolean))].forEach(c => {
-    const k = 'cat:' + c;
-    const b = document.createElement('button');
-    b.className = 'chip' + (filtroVenta === k ? ' activo' : '');
-    b.textContent = c; b.type = 'button';
-    b.onclick = () => { filtroVenta = k; renderFiltrosVenta(); renderProductos(); };
-    cont.appendChild(b);
-  });
 }
 
 function renderProductos() {
@@ -1655,7 +1729,6 @@ function renderProductos() {
     if (filtroVenta === 'unidad') return p.tipo === 'unidad';
     if (filtroVenta === 'top') return topCache.has(p.nombre);
     if (filtroVenta === 'favoritos') return favoritos.includes(p.id);
-    if (filtroVenta.startsWith('cat:')) return p.categoria === filtroVenta.slice(4);
     return true;
   });
   lista.sort((a,b) => {
@@ -2246,9 +2319,9 @@ function renderCaja() {
    ADMIN
 ============================================================ */
 function renderAdmin() {
-  const sel = $('#npCategoria'); sel.innerHTML = '';
-  categorias.forEach(c => { const op = document.createElement('option'); op.value = c; op.textContent = c; sel.appendChild(op); });
   const cont = $('#listaAdmin'); cont.innerHTML = '';
+  const badge = $('#productosCount');
+  if (badge) badge.textContent = productos.length;
   if (!productos.length) cont.innerHTML = '<p class="vacio">Sin productos</p>';
   productos.forEach((p, idx) => {
     const div = document.createElement('div');
@@ -2263,7 +2336,7 @@ function renderAdmin() {
       <div class="ic-emoji">${p.emoji||'🥬'}</div>
       <div class="ic-info">
         <div class="ic-nombre">${esc(p.nombre)}</div>
-        <div class="ic-cant">${money(p.precio)} / ${p.tipo==='unidad'?'u':'kg'} · ${esc(p.categoria||'')}</div>
+        <div class="ic-cant">${money(p.precio)} / ${p.tipo==='unidad'?'u':'kg'}</div>
         ${costoInfo}
       </div>
       <div class="ic-acciones">
@@ -2272,7 +2345,7 @@ function renderAdmin() {
         <button class="mini" data-a="borrar" type="button">❌</button>
       </div>
     `;
-    div.querySelector('[data-a="editar"]').onclick = () => editarProducto(idx);
+    div.querySelector('[data-a="editar"]').onclick = () => abrirModalEditarProducto(idx);
     div.querySelector('[data-a="costo"]').onclick = () => {
       const g = (cfg && cfg.gananciaDefault > 0) ? cfg.gananciaDefault : 1000;
       const sugerido = p.costo > 0 ? p.costo : Math.max(0, p.precio - g);
@@ -2297,44 +2370,49 @@ function renderAdmin() {
     };
     cont.appendChild(div);
   });
-  const lc = $('#listaCategorias'); lc.innerHTML = '';
-  categorias.forEach((c, i) => {
-    const div = document.createElement('div');
-    div.className = 'fila-admin';
-    div.innerHTML = `<div class="ic-emoji">🏷️</div><div class="ic-info"><div class="ic-nombre">${esc(c)}</div></div><button class="mini" type="button">❌</button>`;
-    div.querySelector('.mini').onclick = () => {
-      if (c === 'Sin categoría') return toast('No se puede eliminar', 'warn');
-      if (!confirm(`Eliminar categoría "${c}"?`)) return;
-      categorias.splice(i, 1);
-      productos.forEach(p => { if (p.categoria === c) p.categoria = 'Sin categoría'; });
-      LS.set('vd_categorias_v3', categorias);
-      LS.set('vd_productos_v3', productos);
-      renderAdmin(); renderProductos(); renderFiltrosVenta();
-    };
-    lc.appendChild(div);
-  });
 }
 
-function editarProducto(idx) {
+/* ============================================================
+   MODAL EDITAR PRODUCTO
+============================================================ */
+function abrirModalEditarProducto(idx) {
   const p = productos[idx];
-  const nombre = prompt('Nombre:', p.nombre); if (!nombre) return;
-  const precio = parseFloat(prompt('Precio:', p.precio)); if (!precio || precio <= 0) return;
-  const emoji = prompt('Emoji:', p.emoji||'') || p.emoji;
-  const tipo = confirm('¿Por KILO?\n\nAceptar = kilo · Cancelar = unidad') ? 'kg' : 'unidad';
-  const g = (cfg && cfg.gananciaDefault > 0) ? cfg.gananciaDefault : 1000;
-  const sugerido = p.costo > 0 ? p.costo : Math.max(0, Math.round(precio) - g);
-  const costoInput = prompt(`Costo por ${tipo === 'kg' ? 'kilo' : 'unidad'} (dejá vacío para estimar):`, sugerido);
-  const costo = costoInput === null ? (p.costo || 0) : Math.round(parseFloat(costoInput) || 0);
+  if (!p) return;
+  epIdx = idx;
+  $('#epNombre').value = p.nombre || '';
+  $('#epPrecio').value = p.precio || 0;
+  $('#epCosto').value = p.costo || 0;
+  $('#epEmoji').value = p.emoji || '';
+  $('#epTipo').value = p.tipo || 'kg';
+  abrirModal('#modalEditarProducto');
+  setTimeout(() => $('#epNombre').focus(), 150);
+}
+
+function aplicarEdicionProducto() {
+  if (epIdx < 0 || !productos[epIdx]) return;
+  const p = productos[epIdx];
+  const nombre = $('#epNombre').value.trim();
+  const precio = parseFloat($('#epPrecio').value);
+  const costo = parseFloat($('#epCosto').value) || 0;
+  const emoji = $('#epEmoji').value.trim() || '🥬';
+  const tipo = $('#epTipo').value;
+  if (!nombre) return toast('Nombre requerido', 'error');
+  if (!precio || precio <= 0) return toast('Precio inválido', 'error');
   const viejo = p.precio;
-  productos[idx] = { ...p, nombre: nombre.trim(), precio: Math.round(precio), emoji, tipo, costo };
+  productos[epIdx] = { ...p, nombre, precio: Math.round(precio), emoji, tipo, costo: Math.round(costo) };
   if (viejo !== Math.round(precio)) {
     const hist = LS.get('vd_precios_hist_v3', []);
-    hist.push({ producto: productos[idx].nombre, antes: viejo, ahora: productos[idx].precio, ts: Date.now() });
+    hist.push({ producto: productos[epIdx].nombre, antes: viejo, ahora: productos[epIdx].precio, ts: Date.now() });
     LS.set('vd_precios_hist_v3', hist.slice(-500));
-    toast(`✏️ ${productos[idx].nombre}: ${money(viejo)} → ${money(productos[idx].precio)}`, 'ok');
-  } else toast('✏️ Actualizado', 'ok');
+    toast(`✏️ ${productos[epIdx].nombre}: ${money(viejo)} → ${money(productos[epIdx].precio)}`, 'ok');
+  } else {
+    toast('✏️ Producto actualizado', 'ok');
+  }
   LS.set('vd_productos_v3', productos);
+  cerrarModal('#modalEditarProducto');
+  epIdx = -1;
   renderAdmin(); renderProductos();
+  SND.ok();
 }
 
 function agregarProductoAdmin() {
@@ -2343,10 +2421,9 @@ function agregarProductoAdmin() {
   const costo = parseFloat($('#npCosto').value) || 0;
   const emoji = $('#npEmoji').value.trim() || '🥬';
   const tipo = $('#npTipo').value;
-  const categoria = $('#npCategoria').value || 'Sin categoría';
   if (!nombre) return toast('Nombre requerido', 'error');
   if (!precio || precio <= 0) return toast('Precio inválido', 'error');
-  const nuevo = { id: uid(), nombre, precio: Math.round(precio), emoji, tipo, categoria, costo: Math.round(costo) };
+  const nuevo = { id: uid(), nombre, precio: Math.round(precio), emoji, tipo, costo: Math.round(costo) };
   productos.push(nuevo);
   LS.set('vd_productos_v3', productos);
   ['#npNombre','#npPrecio','#npCosto','#npEmoji'].forEach(s => $(s).value = '');
@@ -2413,7 +2490,7 @@ async function renderListaSnapshots() {
 async function descargarBackupCompleto() {
   const data = {
     version: 3, ts: Date.now(),
-    productos, favoritos, categorias, cfg,
+    productos, favoritos, cfg,
     ventas: LS.get('vd_ventas_v3', []),
     espera: LS.get('vd_espera_v3', []),
     precios_hist: LS.get('vd_precios_hist_v3', []),
@@ -2435,12 +2512,11 @@ async function importarBackupFile(file) {
     try {
       const d = JSON.parse(e.target.result);
       await crearSnapshot('Antes de importar archivo · ' + new Date().toLocaleString('es-AR'));
-      if (!confirm(`Importar backup del ${new Date(d.ts || Date.now()).toLocaleString('es-AR')}?\n\nSe reemplazarán los datos actuales.\n\n(Se guardó un backup automático del estado actual)`)) {
+      if (!confirm(`Importar backup del ${new Date(d.ts || Date.now()).toLocaleString('es-AR')}?\n\nSe reemplazarán los datos actuales.`)) {
         toast('Importación cancelada'); return;
       }
       if (d.productos) await LS.set('vd_productos_v3', d.productos);
       if (d.favoritos) await LS.set('vd_favoritos_v3', d.favoritos);
-      if (d.categorias) await LS.set('vd_categorias_v3', d.categorias);
       if (d.cfg) await LS.set('vd_cfg_v3', d.cfg);
       if (d.ventas) await LS.set('vd_ventas_v3', d.ventas);
       if (d.espera) await LS.set('vd_espera_v3', d.espera);
@@ -2491,10 +2567,9 @@ function abrirListaEspera() {
       const total = v.carrito.reduce((a,i) => a + i.subtotal, 0);
       const final = Math.round(total * (1 - (v.descuento||0)/100));
       const div = document.createElement('div');
-      div.className = 'cliente';
       div.style.cssText = 'background:var(--card);border-radius:12px;padding:11px;margin-bottom:7px;box-shadow:var(--sombra);display:flex;align-items:center;gap:9px';
       div.innerHTML = `
-        <div class="cliente-avatar" style="width:36px;height:36px;border-radius:50%;background:var(--gris-claro);display:flex;align-items:center;justify-content:center;font-size:17px">🅿️</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--gris-claro);display:flex;align-items:center;justify-content:center;font-size:17px">🅿️</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:13.5px">${esc(v.etiqueta)}</div>
           <div style="font-size:11px;color:var(--gris)">${v.carrito.length} prod · ${new Date(v.ts).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</div>
@@ -2549,6 +2624,16 @@ $('#btnTema').onclick = () => {
 };
 $('#buscar').addEventListener('input', renderProductos);
 $('#btnLimpiar').onclick = () => { $('#buscar').value = ''; renderProductos(); $('#buscar').focus(); };
+
+// Modal editar producto
+$('#epCancelar').onclick = () => { cerrarModal('#modalEditarProducto'); epIdx = -1; };
+$('#epAplicar').onclick = aplicarEdicionProducto;
+$('#epNombre').addEventListener('keydown', e => { if (e.key === 'Enter') $('#epPrecio').focus(); });
+$('#epPrecio').addEventListener('keydown', e => { if (e.key === 'Enter') $('#epCosto').focus(); });
+$('#epCosto').addEventListener('keydown', e => { if (e.key === 'Enter') $('#epEmoji').focus(); });
+$('#epEmoji').addEventListener('keydown', e => { if (e.key === 'Enter') aplicarEdicionProducto(); });
+
+// Modal cantidad
 $('#mcMenos').onclick = () => { const p = mcProducto.tipo==='kg'?100:1; mcValor = Math.max(p, mcValor-p); pintarModalCantidad(); };
 $('#mcMas').onclick = () => { const p = mcProducto.tipo==='kg'?100:1; mcValor = mcValor+p; pintarModalCantidad(); };
 $('#mcInput').addEventListener('input', e => {
@@ -2562,6 +2647,8 @@ $('#mcInput').addEventListener('input', e => {
 $('#mcInput').addEventListener('keydown', e => { if (e.key === 'Enter') confirmarCantidad(); });
 $('#mcCancelar').onclick = () => cerrarModal('#modalCantidad');
 $('#mcAgregar').onclick = confirmarCantidad;
+
+// Cobro
 $('#btnCobrar').onclick = abrirCobro;
 $$('#metodos .metodo').forEach(m => {
   m.onclick = () => {
@@ -2575,11 +2662,15 @@ $('#cobroRecibido').addEventListener('input', actualizarVuelto);
 $('#cobroRecibido').addEventListener('keydown', e => { if (e.key === 'Enter') finalizarVenta(); });
 $('#cobroCancelar').onclick = () => cerrarModal('#modalCobro');
 $('#cobroConfirmar').onclick = finalizarVenta;
+
+// Ticket
 $('#ticketCerrar').onclick = () => cerrarModal('#modalTicket');
 $('#ticketImprimir').onclick = () => window.print();
 $('#ticketWsp').onclick = compartirWhatsApp;
 $('#ticketEmail').onclick = enviarEmail;
 $('#detalleDiaCerrar').onclick = () => cerrarModal('#modalDetalleDia');
+
+// Filtros historial
 $$('#filtrosHistorial .chip').forEach(c => {
   c.onclick = () => {
     filtroHistorial = c.dataset.filtro;
@@ -2587,6 +2678,8 @@ $$('#filtrosHistorial .chip').forEach(c => {
     renderHistorial();
   };
 });
+
+// CSV
 $('#btnCSV').onclick = () => {
   const ventas = ventasFiltradas();
   if (!ventas.length) return toast('No hay ventas', 'warn');
@@ -2606,6 +2699,8 @@ $('#btnCSV').onclick = () => {
   a.click(); URL.revokeObjectURL(a.href);
   toast('⬇️ CSV descargado', 'ok');
 };
+
+// Filtros caja
 $$('#filtrosCaja .chip').forEach(c => {
   c.onclick = () => {
     filtroCaja = c.dataset.caja;
@@ -2613,22 +2708,18 @@ $$('#filtrosCaja .chip').forEach(c => {
     renderCaja();
   };
 });
+
+// Aparcar / espera / undo
 $('#btnAparcar').onclick = abrirListaEspera;
 $('#esperaCerrar').onclick = () => cerrarModal('#modalEspera');
 $('#btnUndo').onclick = deshacer;
 $('#undoBtn').onclick = deshacer;
+
+// Nuevo producto admin
 $('#npAgregar').onclick = agregarProductoAdmin;
 $('#npPrecio').addEventListener('keydown', e => { if (e.key === 'Enter') agregarProductoAdmin(); });
-$('#catAgregar').onclick = () => {
-  const n = $('#catNombre').value.trim();
-  if (!n) return toast('Nombre requerido', 'error');
-  if (categorias.includes(n)) return toast('Ya existe', 'warn');
-  categorias.push(n);
-  LS.set('vd_categorias_v3', categorias);
-  $('#catNombre').value = '';
-  renderAdmin(); renderFiltrosVenta();
-  toast('✅ Categoría agregada', 'ok');
-};
+
+// Guardar cfg
 $('#btnGuardarCfg').onclick = () => {
   cfg.nombre = $('#cfgNombre').value.trim() || 'Verdulería';
   cfg.direccion = $('#cfgDireccion').value.trim();
@@ -2646,7 +2737,11 @@ $('#btnGuardarCfg').onclick = () => {
     LS.set('vd_cfg_v3', cfg);
   };
 });
+
+// Cargar costos
 $('#btnCargarCostos').onclick = cargarCostosFaltantes;
+
+// Backups
 $('#btnSnapshotAhora').onclick = async () => {
   try {
     await crearSnapshot('Manual · ' + new Date().toLocaleString('es-AR'));
@@ -2663,13 +2758,13 @@ $('#fileRestore').onchange = e => {
   if (e.target.files[0]) importarBackupFile(e.target.files[0]);
   e.target.value = '';
 };
+
+// Reset / borrar
 $('#btnReset').onclick = async () => {
   if (!confirm('¿Restaurar productos por defecto?')) return;
   productos = PRODUCTOS_DEFAULT.slice();
   await LS.set('vd_productos_v3', productos);
   favoritos = []; await LS.set('vd_favoritos_v3', favoritos);
-  categorias = ['Frutas','Verduras','Hierbas','Sin categoría'];
-  await LS.set('vd_categorias_v3', categorias);
   renderAdmin(); renderProductos(); renderFiltrosVenta();
   toast('🔄 Restaurado', 'ok');
 };
@@ -2686,6 +2781,7 @@ $('#btnBorrarTodo').onclick = async () => {
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 };
 
+// Días clave
 $('#dcTipo').onchange = () => {
   const esFija = $('#dcTipo').value === 'fija';
   $('#dcFijaCampos').style.display = esFija ? 'block' : 'none';
@@ -2717,8 +2813,14 @@ $('#dcAgregar').onclick = () => {
   SND.ok();
 };
 
+// Cerrar modales al hacer click fuera
 $$('.modal-overlay').forEach(ov => {
-  ov.addEventListener('click', e => { if (e.target === ov) ov.classList.remove('abierto'); });
+  ov.addEventListener('click', e => {
+    if (e.target === ov) {
+      ov.classList.remove('abierto');
+      if (ov.id === 'modalEditarProducto') epIdx = -1;
+    }
+  });
 });
 
 /* ============================================================
@@ -2729,6 +2831,7 @@ document.addEventListener('keydown', e => {
   const enInput = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);
   if (e.key === 'Escape') {
     $$('.modal-overlay.abierto').forEach(m => m.classList.remove('abierto'));
+    epIdx = -1;
     return;
   }
   if (e.ctrlKey && e.key.toLowerCase() === 'b') {
@@ -2765,6 +2868,7 @@ document.addEventListener('keydown', e => {
   const f = new Date();
   $('#fechaHoy').textContent = f.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' });
   aplicarCfg();
+  initAdminCollapse();
   refrescarTop();
   renderTabsVenta();
   renderFiltrosVenta();
@@ -2774,6 +2878,7 @@ document.addEventListener('keydown', e => {
   $('#descuento').value = tabActiva().descuento || 0;
   actualizarTotales();
 
+  // Chips de descuento rápido
   document.addEventListener('click', e => {
     const btn = e.target.closest('[data-dto]');
     if (btn) { $('#descuento').value = btn.dataset.dto; actualizarTotales(); }
@@ -2799,7 +2904,7 @@ document.addEventListener('keydown', e => {
     }
   });
 
-  console.log('%c🥬 Verdulería POS · versión limpia','background:#16a34a;color:#fff;padding:6px 12px;border-radius:6px;font-weight:bold');
+  console.log('%c🥬 Verdulería POS · Editar modal + admin colapsable','background:#16a34a;color:#fff;padding:6px 12px;border-radius:6px;font-weight:bold');
   console.log('Datos en IndexedDB · Backups automáticos cada 6h');
 })();
 
