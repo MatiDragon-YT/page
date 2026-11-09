@@ -64,10 +64,6 @@ button{cursor:pointer;}
 .buscador input{width:100%;padding:12px 42px 12px 14px;border-radius:12px;border:2px solid var(--borde);font-size:16px;background:var(--card);outline:none;transition:.15s;color:var(--texto);}
 .buscador input:focus{border-color:var(--verde);box-shadow:0 0 0 4px var(--verde-claro);}
 .buscador .clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:var(--gris);width:30px;height:30px;border-radius:8px;}
-.btn-voz{background:var(--card);border:2px solid var(--borde);border-radius:12px;width:48px;flex-shrink:0;font-size:20px;transition:.15s;}
-.btn-voz:active{transform:scale(.92);}
-.btn-voz.grabando{background:var(--rojo);color:#fff;border-color:var(--rojo);animation:pulse 1s infinite;}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.6)}50%{box-shadow:0 0 0 8px rgba(220,38,38,0)}}
 
 .chips-row{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none;}
 .chips-row::-webkit-scrollbar{display:none;}
@@ -79,24 +75,29 @@ button{cursor:pointer;}
 .grid-productos{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:8px;margin-bottom:16px;}
 .prod{background:var(--card);border:2px solid var(--borde);border-radius:var(--radio);padding:10px 7px;text-align:center;position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;transition:.14s;color:var(--texto);min-height:92px;justify-content:center;}
 .prod:active{transform:scale(.95);border-color:var(--verde);background:var(--verde-claro);}
-.prod.agotado{opacity:.5;pointer-events:none;}
 .prod-emoji{font-size:25px;line-height:1;}
 .prod-nombre{font-size:12px;font-weight:700;line-height:1.15;word-break:break-word;}
 .prod-precio{font-size:13px;font-weight:800;color:var(--verde-osc);}
-.prod-precio.tachado{text-decoration:line-through;color:var(--gris2);font-size:11px;}
-.prod-precio.oferta{color:var(--rojo);}
 [data-tema="oscuro"] .prod-precio{color:#4ade80;}
 .prod-precio small{font-size:9px;font-weight:600;color:var(--gris);}
 .prod.libre{border-style:dashed;color:var(--gris);}
 .prod .fav{position:absolute;top:5px;right:5px;font-size:10px;opacity:.7;}
 .prod .top-badge{position:absolute;top:-4px;left:-4px;background:var(--amarillo);color:#000;font-size:8.5px;font-weight:800;padding:1px 5px;border-radius:7px;}
-.prod .stock-badge{position:absolute;top:5px;left:5px;background:var(--rojo);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:7px;}
-.prod .oferta-tag{position:absolute;top:-4px;right:-4px;background:var(--rosa);color:#fff;font-size:8.5px;font-weight:800;padding:1px 6px;border-radius:7px;box-shadow:0 2px 6px rgba(236,72,153,.4);}
 
 .card{background:var(--card);border-radius:var(--radio);padding:13px;box-shadow:var(--sombra);margin-bottom:12px;}
 .card h2{margin:0 0 10px;font-size:13px;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris);}
 .card h2 .badge{background:var(--verde);color:#fff;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:20px;letter-spacing:0;}
 .vacio{text-align:center;color:var(--gris2);font-size:13px;padding:18px 10px;font-style:italic;}
+
+/* Admin colapsable */
+.admin-collapse{background:var(--card);border-radius:var(--radio);box-shadow:var(--sombra);margin-bottom:12px;overflow:hidden;}
+.admin-collapse-header{display:flex;align-items:center;justify-content:space-between;padding:13px;cursor:pointer;user-select:none;transition:.15s;gap:8px;}
+.admin-collapse-header:active{background:var(--gris-claro);}
+.admin-collapse-header h2{margin:0;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris);font-weight:700;display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
+.admin-collapse-header .arrow{font-size:12px;color:var(--gris);transition:transform .2s;flex-shrink:0;}
+.admin-collapse.abierto .admin-collapse-header .arrow{transform:rotate(90deg);}
+.admin-collapse-body{display:none;padding:0 13px 13px;}
+.admin-collapse.abierto .admin-collapse-body{display:block;animation:fade .18s ease;}
 
 .item-carrito{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--gris-claro);}
 .item-carrito:last-child{border-bottom:none;}
@@ -214,7 +215,6 @@ button{cursor:pointer;}
 .top-rank.r2{background:#94a3b8;}
 .top-rank.r3{background:#b45309;}
 
-/* Calendar heatmap */
 .cal-wrap{display:flex;gap:4px;overflow-x:auto;padding-bottom:8px;scrollbar-width:thin;}
 .cal-wrap::-webkit-scrollbar{height:5px;}
 .cal-wrap::-webkit-scrollbar-thumb{background:var(--borde);border-radius:3px;}
@@ -243,7 +243,6 @@ button{cursor:pointer;}
 .cal-legend .cal-cell:hover{transform:none;box-shadow:none;}
 .cal-legend-label{font-weight:700;font-size:9.5px;}
 
-/* Weekday bar chart */
 .bar-chart-semana{display:flex;flex-direction:column;gap:5px;}
 .bar-row{display:grid;grid-template-columns:34px 1fr 68px;align-items:center;gap:8px;font-size:11px;}
 .bar-label{font-weight:700;color:var(--gris);font-size:10.5px;}
@@ -254,7 +253,6 @@ button{cursor:pointer;}
 .bar-fill.best{background:linear-gradient(90deg,#f59e0b,#d97706);}
 [data-tema="oscuro"] .bar-value.best{color:#fbbf24;}
 
-/* Key day cards */
 .dia-clave-card{background:var(--bg);border-radius:11px;padding:11px;margin-bottom:8px;border-left:4px solid var(--gris2);}
 .dia-clave-card.warn{border-left-color:var(--rojo);background:var(--rojo-bg);}
 .dia-clave-card.ok{border-left-color:var(--verde);}
@@ -287,31 +285,11 @@ button{cursor:pointer;}
 .caja-fila .monto.pos{color:var(--verde-osc);}
 [data-tema="oscuro"] .caja-fila .monto.pos{color:#4ade80;}
 
-.cliente{background:var(--card);border-radius:12px;padding:11px;margin-bottom:7px;box-shadow:var(--sombra);display:flex;align-items:center;gap:9px;}
-.cliente-avatar{width:36px;height:36px;border-radius:50%;background:var(--gris-claro);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;position:relative;}
-.cliente-avatar .nivel{position:absolute;bottom:-2px;right:-2px;font-size:11px;}
-.cliente-info{flex:1;min-width:0;}
-.cliente-nombre{font-weight:700;font-size:13.5px;}
-.cliente-tel{font-size:11px;color:var(--gris);}
-.cliente-deuda{font-weight:900;font-size:14px;color:var(--rojo);white-space:nowrap;}
-.cliente-deuda.cero{color:var(--verde-osc);}
-[data-tema="oscuro"] .cliente-deuda.cero{color:#4ade80;}
-
 #toast{position:fixed;left:50%;bottom:135px;transform:translate(-50%,20px);background:#0f172a;color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;font-weight:700;z-index:200;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:90vw;text-align:center;}
 #toast.show{opacity:1;transform:translate(-50%,0);}
 #toast.ok{background:var(--verde);}
 #toast.error{background:var(--rojo);}
 #toast.warn{background:var(--amarillo);color:#000;}
-
-.tabs{display:flex;gap:4px;margin-bottom:12px;background:var(--gris-claro);padding:4px;border-radius:11px;}
-.tab{flex:1;padding:7px;border:none;background:transparent;border-radius:8px;font-size:12.5px;font-weight:700;color:var(--gris);transition:.15s;}
-.tab.activo{background:var(--card);color:var(--texto);box-shadow:0 1px 3px rgba(0,0,0,.1);}
-
-.voz-texto{background:var(--gris-claro);border-radius:12px;padding:14px;font-size:15px;font-weight:700;text-align:center;min-height:60px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;color:var(--texto);}
-.voz-hint{font-size:11.5px;color:var(--gris);text-align:center;margin-bottom:12px;}
-.voz-ejemplos{font-size:11.5px;color:var(--gris);line-height:1.8;background:var(--bg);padding:10px;border-radius:10px;}
-
-#scannerVideo{width:100%;border-radius:12px;background:#000;aspect-ratio:1;object-fit:cover;}
 
 .kbd{display:inline-block;padding:2px 6px;background:var(--gris-claro);border-radius:5px;font-family:monospace;font-size:11px;font-weight:700;border:1px solid var(--borde);margin:0 2px;}
 
@@ -359,7 +337,6 @@ button{cursor:pointer;}
       </div>
     </div>
     <div class="top-actions">
-      <button class="icon-btn" id="btnClientes" title="Clientes">👥</button>
       <button class="icon-btn" id="btnCaja" title="Caja">💼</button>
       <button class="icon-btn" id="btnHistorial" title="Historial">📊</button>
       <button class="icon-btn" id="btnAdmin" title="Config">⚙️</button>
@@ -375,8 +352,6 @@ button{cursor:pointer;}
       <input id="buscar" type="search" placeholder="Buscar producto…" autocomplete="off" inputmode="search">
       <button class="clear" id="btnLimpiar" style="display:none" type="button">✕</button>
     </div>
-    <button class="btn-voz" id="btnVoz" title="Dictar" type="button">🎤</button>
-    <button class="btn-voz" id="btnScan" title="Escanear código" type="button" style="display:none">📷</button>
   </div>
   <div class="chips-row" id="filtrosVenta"></div>
   <div id="gridProductos" class="grid-productos"></div>
@@ -384,7 +359,7 @@ button{cursor:pointer;}
   <div class="card">
     <h2>🧺 Carrito <span class="badge" id="contadorItems">0</span></h2>
     <div id="listaCarrito"></div>
-    <div id="carritoVacio" class="vacio">Tocá un producto o dictá "dos kilos de papa"</div>
+    <div id="carritoVacio" class="vacio">Tocá un producto para agregarlo</div>
     <div class="desc-row">
       <label>Descuento</label>
       <input id="descuento" type="number" min="0" max="100" step="1" value="0">
@@ -407,7 +382,6 @@ button{cursor:pointer;}
     <button class="chip" data-filtro="todo" type="button">Todo</button>
   </div>
 
-  <!-- NUEVO: Calendario anual -->
   <div class="chart-container">
     <div class="chart-title">
       <span>📅 Calendario anual</span>
@@ -416,7 +390,6 @@ button{cursor:pointer;}
     <div id="calendarioAnual"></div>
   </div>
 
-  <!-- NUEVO: Próximos días clave -->
   <div class="chart-container">
     <div class="chart-title">
       <span>🎯 Próximos días clave</span>
@@ -437,7 +410,6 @@ button{cursor:pointer;}
     <div id="chartHeatmap"></div>
   </div>
 
-  <!-- NUEVO: Mejor día de la semana -->
   <div class="chart-container" id="cardAnalisisSemanal" style="display:none">
     <div class="chart-title">📊 Mejor día de la semana</div>
     <div id="analisisSemanal"></div>
@@ -449,31 +421,6 @@ button{cursor:pointer;}
   </div>
   <div id="contenidoHistorial"></div>
   <button class="btn-ghost btn-full" id="btnCSV" style="margin-top:6px" type="button">⬇️ Exportar CSV</button>
-</section>
-
-<section id="vista-clientes" class="vista">
-  <div class="card">
-    <h2>👥 Clientes · Fiado · Puntos</h2>
-    <div class="buscador" style="margin-bottom:10px">
-      <div class="inp-wrap"><input id="buscarCliente" type="search" placeholder="Buscar cliente…" autocomplete="off"></div>
-    </div>
-    <button class="btn-primary btn-full" id="btnNuevoCliente" style="margin-bottom:12px" type="button">➕ Nuevo cliente</button>
-    <div id="listaClientes"></div>
-    <div id="clientesVacio" class="vacio">Todavía no hay clientes</div>
-  </div>
-  <div class="card">
-    <h2>💰 Totales</h2>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center">
-      <div>
-        <div style="font-size:10.5px;color:var(--gris);font-weight:700;text-transform:uppercase">Fiado</div>
-        <div id="totalFiado" style="font-size:24px;font-weight:900;color:var(--rojo);letter-spacing:-1px;">$0</div>
-      </div>
-      <div>
-        <div style="font-size:10.5px;color:var(--gris);font-weight:700;text-transform:uppercase">Puntos</div>
-        <div id="totalPuntos" style="font-size:24px;font-weight:900;color:var(--amarillo);letter-spacing:-1px;">0</div>
-      </div>
-    </div>
-  </div>
 </section>
 
 <section id="vista-caja" class="vista">
@@ -490,166 +437,179 @@ button{cursor:pointer;}
 </section>
 
 <section id="vista-admin" class="vista">
-  <div class="card">
-    <h2>🏪 Comercio</h2>
-    <div class="admin-form">
-      <input id="cfgNombre" placeholder="Nombre" autocomplete="off">
-      <input id="cfgDireccion" placeholder="Dirección (opcional)" autocomplete="off">
-      <input id="cfgTelefono" placeholder="WhatsApp (opcional)" autocomplete="off" inputmode="tel">
-      <input id="cfgEmail" placeholder="Email para tickets (opcional)" autocomplete="off" inputmode="email" type="email">
-      <input id="cfgPuntos" type="number" placeholder="% en puntos por venta (ej: 5)" min="0" max="30">
-      <button class="btn-primary btn-full" id="btnGuardarCfg" type="button">Guardar</button>
+  <div class="admin-collapse" data-seccion="comercio">
+    <div class="admin-collapse-header">
+      <h2>🏪 Comercio</h2>
+      <span class="arrow">▶</span>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>🔊 Preferencias</h2>
-    <div class="fila-admin">
-      <div class="ic-emoji">🔊</div>
-      <div class="ic-info"><div class="ic-nombre">Sonidos</div><div class="stock-info">Al agregar y cobrar</div></div>
-      <input type="checkbox" id="cfgSonido" style="width:22px;height:22px;accent-color:var(--verde)">
-    </div>
-    <div class="fila-admin">
-      <div class="ic-emoji">📳</div>
-      <div class="ic-info"><div class="ic-nombre">Vibración</div><div class="stock-info">En cada acción</div></div>
-      <input type="checkbox" id="cfgVibrar" style="width:22px;height:22px;accent-color:var(--verde)">
-    </div>
-    <div class="fila-admin">
-      <div class="ic-emoji">⚖️</div>
-      <div class="ic-info"><div class="ic-nombre">Redondeo $100</div><div class="stock-info">Hacia arriba en peso</div></div>
-      <input type="checkbox" id="cfgRedondeo" style="width:22px;height:22px;accent-color:var(--verde)">
-    </div>
-    <div class="fila-admin">
-      <div class="ic-emoji">📦</div>
-      <div class="ic-info"><div class="ic-nombre">Control de stock</div><div class="stock-info">Descontar y avisar si queda poco</div></div>
-      <input type="checkbox" id="cfgStock" style="width:22px;height:22px;accent-color:var(--verde)">
-    </div>
-    <div class="fila-admin">
-      <div class="ic-emoji">🎁</div>
-      <div class="ic-info"><div class="ic-nombre">Puntos de fidelidad</div><div class="stock-info">Sumar puntos a clientes</div></div>
-      <input type="checkbox" id="cfgPuntosActivo" style="width:22px;height:22px;accent-color:var(--verde)">
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>💾 Backups internos <span class="badge" id="snapshotCount">0</span></h2>
-    <div class="db-status" id="dbStatus">IndexedDB · Guardado local seguro</div>
-    <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
-      Guardados dentro de este dispositivo. No necesitás descargar archivos. Se hace uno automático cada 6 horas y antes de operaciones riesgosas.
-    </div>
-    <button class="btn-primary btn-full" id="btnSnapshotAhora" type="button">📸 Crear backup ahora</button>
-    <div class="info-bk" id="infoUltimoBackup"></div>
-    <div id="listaSnapshots" style="margin-top:12px"></div>
-  </div>
-
-  <div class="card">
-    <h2>📤 Exportar / Importar (opcional)</h2>
-    <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
-      Descargá un archivo JSON para guardar en otro lado (Google Drive, email, etc.) o importá uno externo.
-    </div>
-    <div class="btn-row">
-      <button class="btn-ghost btn-full" id="btnBackup" type="button">⬇️ Descargar JSON</button>
-      <button class="btn-ghost btn-full" id="btnRestore" type="button">⬆️ Importar archivo</button>
-    </div>
-    <input type="file" id="fileRestore" accept=".json" style="display:none">
-  </div>
-
-  <!-- NUEVO: Gestión de días clave -->
-  <div class="card">
-    <h2>🎯 Días clave</h2>
-    <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
-      Aparecen marcados en el calendario anual y se te avisa cuando se acercan. Podés agregar los que quieras.
-    </div>
-    <div class="admin-form">
-      <input id="dcNombre" placeholder="Nombre (ej: Día de la Madre)" autocomplete="off">
-      <input id="dcEmoji" placeholder="Emoji (ej: 💐)" maxlength="4" autocomplete="off">
-      <select id="dcTipo">
-        <option value="fija">Fecha fija (cada año el mismo día)</option>
-        <option value="n-esimo-dia">N-ésimo día de la semana del mes</option>
-      </select>
-      <div id="dcFijaCampos">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <input id="dcDia" type="number" placeholder="Día (1-31)" min="1" max="31">
-          <input id="dcMes" type="number" placeholder="Mes (1-12)" min="1" max="12">
-        </div>
+    <div class="admin-collapse-body">
+      <div class="admin-form">
+        <input id="cfgNombre" placeholder="Nombre" autocomplete="off">
+        <input id="cfgDireccion" placeholder="Dirección (opcional)" autocomplete="off">
+        <input id="cfgTelefono" placeholder="WhatsApp (opcional)" autocomplete="off" inputmode="tel">
+        <input id="cfgEmail" placeholder="Email para tickets (opcional)" autocomplete="off" inputmode="email" type="email">
+        <input id="cfgGananciaDefault" type="number" placeholder="Ganancia esperada por kg/u (ej: 1000)" min="0" step="100">
+        <button class="btn-primary btn-full" id="btnGuardarCfg" type="button">Guardar</button>
       </div>
-      <div id="dcNeCampos" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-          <input id="dcSemana" type="number" placeholder="N° sem (1-5)" min="1" max="5">
-          <select id="dcDiaSem">
-            <option value="0">Domingo</option>
-            <option value="1">Lunes</option>
-            <option value="2">Martes</option>
-            <option value="3">Miércoles</option>
-            <option value="4">Jueves</option>
-            <option value="5">Viernes</option>
-            <option value="6">Sábado</option>
-          </select>
-          <input id="dcMesN" type="number" placeholder="Mes (1-12)" min="1" max="12">
-        </div>
+    </div>
+  </div>
+
+  <div class="admin-collapse" data-seccion="preferencias">
+    <div class="admin-collapse-header">
+      <h2>🔊 Preferencias</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <div class="fila-admin">
+        <div class="ic-emoji">🔊</div>
+        <div class="ic-info"><div class="ic-nombre">Sonidos</div><div class="stock-info">Al agregar y cobrar</div></div>
+        <input type="checkbox" id="cfgSonido" style="width:22px;height:22px;accent-color:var(--verde)">
       </div>
-      <button class="btn-primary btn-full" id="dcAgregar" type="button">Agregar día clave</button>
-    </div>
-    <div id="listaDiasClave" style="margin-top:12px"></div>
-  </div>
-
-  <div class="card">
-    <h2>🏷️ Categorías</h2>
-    <div class="admin-form">
-      <input id="catNombre" placeholder="Nueva categoría (ej: Frutas)" autocomplete="off">
-      <button class="btn-primary btn-full" id="catAgregar" type="button">Agregar categoría</button>
-    </div>
-    <div id="listaCategorias" style="margin-top:10px"></div>
-  </div>
-
-  <div class="card">
-    <h2>➕ Nuevo producto</h2>
-    <div class="admin-form">
-      <input id="npNombre" placeholder="Nombre (ej: Tomate)" autocomplete="off">
-      <input id="npPrecio" type="number" inputmode="numeric" placeholder="Precio">
-      <input id="npOferta" type="number" inputmode="numeric" placeholder="Precio oferta (opcional)">
-      <input id="npEmoji" placeholder="Emoji (opcional)" maxlength="4" autocomplete="off">
-      <input id="npCodigo" placeholder="Código de barras (opcional)" autocomplete="off" inputmode="numeric">
-      <input id="npStock" type="number" placeholder="Stock inicial (opcional)" inputmode="numeric">
-      <select id="npTipo">
-        <option value="kg">Por kilo</option>
-        <option value="unidad">Por unidad</option>
-      </select>
-      <select id="npCategoria"></select>
-      <button class="btn-primary btn-full" id="npAgregar" type="button">Agregar producto</button>
+      <div class="fila-admin">
+        <div class="ic-emoji">📳</div>
+        <div class="ic-info"><div class="ic-nombre">Vibración</div><div class="stock-info">En cada acción</div></div>
+        <input type="checkbox" id="cfgVibrar" style="width:22px;height:22px;accent-color:var(--verde)">
+      </div>
+      <div class="fila-admin">
+        <div class="ic-emoji">⚖️</div>
+        <div class="ic-info"><div class="ic-nombre">Redondeo $100</div><div class="stock-info">Hacia arriba en peso</div></div>
+        <input type="checkbox" id="cfgRedondeo" style="width:22px;height:22px;accent-color:var(--verde)">
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <h2>📦 Productos</h2>
-    <div id="listaAdmin"></div>
-  </div>
-
-  <div class="card">
-    <h2>🎁 Ofertas por horario</h2>
-    <div style="font-size:12px;color:var(--gris);margin-bottom:10px">Aplicá descuentos automáticos en franjas horarias.</div>
-    <div class="admin-form">
-      <select id="ofProducto"></select>
-      <input id="ofDesde" type="time" title="Desde">
-      <input id="ofHasta" type="time" title="Hasta">
-      <input id="ofPct" type="number" placeholder="% descuento" min="1" max="90">
-      <button class="btn-primary btn-full" id="ofAgregar" type="button">Agregar oferta</button>
+  <div class="admin-collapse" data-seccion="backups">
+    <div class="admin-collapse-header">
+      <h2>💾 Backups internos <span class="badge" id="snapshotCount">0</span></h2>
+      <span class="arrow">▶</span>
     </div>
-    <div id="listaOfertas" style="margin-top:10px"></div>
+    <div class="admin-collapse-body">
+      <div class="db-status" id="dbStatus">IndexedDB · Guardado local seguro</div>
+      <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
+        Guardados dentro de este dispositivo. Se hace uno automático cada 6 horas y antes de operaciones riesgosas.
+      </div>
+      <button class="btn-primary btn-full" id="btnSnapshotAhora" type="button">📸 Crear backup ahora</button>
+      <div class="info-bk" id="infoUltimoBackup"></div>
+      <div id="listaSnapshots" style="margin-top:12px"></div>
+    </div>
   </div>
 
-  <button class="btn-ghost btn-full" id="btnReset" style="margin-top:6px" type="button">🔄 Restaurar productos por defecto</button>
-  <button class="btn-danger btn-full" id="btnBorrarTodo" style="margin-top:8px" type="button">🗑️ Borrar TODOS los datos</button>
+  <div class="admin-collapse" data-seccion="exportar">
+    <div class="admin-collapse-header">
+      <h2>📤 Exportar / Importar</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
+        Descargá un archivo JSON para guardar en otro lado o importá uno externo.
+      </div>
+      <div class="btn-row">
+        <button class="btn-ghost btn-full" id="btnBackup" type="button">⬇️ Descargar JSON</button>
+        <button class="btn-ghost btn-full" id="btnRestore" type="button">⬆️ Importar archivo</button>
+      </div>
+      <input type="file" id="fileRestore" accept=".json" style="display:none">
+    </div>
+  </div>
 
-  <div class="card" style="margin-top:12px">
-    <h2>⌨️ Atajos</h2>
-    <div style="font-size:12.5px;line-height:2;color:var(--gris)">
-      <div><span class="kbd">/</span> Buscar · <span class="kbd">V</span> Voz · <span class="kbd">B</span> Escanear</div>
-      <div><span class="kbd">↑↓</span> Navegar · <span class="kbd">Enter</span> Agregar</div>
-      <div><span class="kbd">F2</span> Cobrar · <span class="kbd">F4</span> Aparcar</div>
-      <div><span class="kbd">F5</span> Nueva pestaña · <span class="kbd">Ctrl+Z</span> Deshacer</div>
-      <div><span class="kbd">Ctrl+Y</span> Rehacer · <span class="kbd">Ctrl+B</span> Snapshot</div>
-      <div><span class="kbd">Esc</span> Cerrar modal</div>
+  <div class="admin-collapse" data-seccion="dias-clave">
+    <div class="admin-collapse-header">
+      <h2>🎯 Días clave</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <div style="font-size:12px;color:var(--gris);margin-bottom:10px">
+        Aparecen marcados en el calendario anual. Podés agregar los que quieras.
+      </div>
+      <div class="admin-form">
+        <input id="dcNombre" placeholder="Nombre (ej: Día de la Madre)" autocomplete="off">
+        <input id="dcEmoji" placeholder="Emoji (ej: 💐)" maxlength="4" autocomplete="off">
+        <select id="dcTipo">
+          <option value="fija">Fecha fija (cada año el mismo día)</option>
+          <option value="n-esimo-dia">N-ésimo día de la semana del mes</option>
+        </select>
+        <div id="dcFijaCampos">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <input id="dcDia" type="number" placeholder="Día (1-31)" min="1" max="31">
+            <input id="dcMes" type="number" placeholder="Mes (1-12)" min="1" max="12">
+          </div>
+        </div>
+        <div id="dcNeCampos" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <input id="dcSemana" type="number" placeholder="N° sem (1-5)" min="1" max="5">
+            <select id="dcDiaSem">
+              <option value="0">Domingo</option>
+              <option value="1">Lunes</option>
+              <option value="2">Martes</option>
+              <option value="3">Miércoles</option>
+              <option value="4">Jueves</option>
+              <option value="5">Viernes</option>
+              <option value="6">Sábado</option>
+            </select>
+            <input id="dcMesN" type="number" placeholder="Mes (1-12)" min="1" max="12">
+          </div>
+        </div>
+        <button class="btn-primary btn-full" id="dcAgregar" type="button">Agregar día clave</button>
+      </div>
+      <div id="listaDiasClave" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div class="admin-collapse" data-seccion="nuevo-producto">
+    <div class="admin-collapse-header">
+      <h2>➕ Nuevo producto</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <div class="admin-form">
+        <input id="npNombre" placeholder="Nombre (ej: Tomate)" autocomplete="off">
+        <input id="npPrecio" type="number" inputmode="numeric" placeholder="Precio venta">
+        <input id="npCosto" type="number" inputmode="numeric" placeholder="Costo compra (por kg/u) — opcional">
+        <input id="npEmoji" placeholder="Emoji (opcional)" maxlength="4" autocomplete="off">
+        <select id="npTipo">
+          <option value="kg">Por kilo</option>
+          <option value="unidad">Por unidad</option>
+        </select>
+        <button class="btn-primary btn-full" id="npAgregar" type="button">Agregar producto</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-collapse" data-seccion="productos">
+    <div class="admin-collapse-header">
+      <h2>📦 Productos <span class="badge" id="productosCount">0</span></h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <button class="btn-primary btn-full" id="btnCargarCostos" style="margin-bottom:10px" type="button">💲 Cargar costos faltantes</button>
+      <div id="listaAdmin"></div>
+    </div>
+  </div>
+
+  <div class="admin-collapse" data-seccion="reset">
+    <div class="admin-collapse-header">
+      <h2>🔄 Restaurar / Borrar</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <button class="btn-ghost btn-full" id="btnReset" type="button">🔄 Restaurar productos por defecto</button>
+      <button class="btn-danger btn-full" id="btnBorrarTodo" style="margin-top:8px" type="button">🗑️ Borrar TODOS los datos</button>
+    </div>
+  </div>
+
+  <div class="admin-collapse" data-seccion="atajos">
+    <div class="admin-collapse-header">
+      <h2>⌨️ Atajos</h2>
+      <span class="arrow">▶</span>
+    </div>
+    <div class="admin-collapse-body">
+      <div style="font-size:12.5px;line-height:2;color:var(--gris)">
+        <div><span class="kbd">/</span> Buscar</div>
+        <div><span class="kbd">↑↓</span> Navegar · <span class="kbd">Enter</span> Agregar</div>
+        <div><span class="kbd">F2</span> Cobrar · <span class="kbd">F4</span> Aparcar</div>
+        <div><span class="kbd">F5</span> Nueva pestaña · <span class="kbd">Ctrl+Z</span> Deshacer</div>
+        <div><span class="kbd">Ctrl+Y</span> Rehacer · <span class="kbd">Ctrl+B</span> Snapshot</div>
+        <div><span class="kbd">Esc</span> Cerrar modal</div>
+      </div>
     </div>
   </div>
 </section>
@@ -669,6 +629,7 @@ button{cursor:pointer;}
   <button id="undoBtn" type="button">Deshacer</button>
 </div>
 
+<!-- Modal cantidad -->
 <div class="modal-overlay" id="modalCantidad">
   <div class="modal">
     <h3 id="mcTitulo">Producto</h3>
@@ -689,31 +650,28 @@ button{cursor:pointer;}
   </div>
 </div>
 
-<div class="modal-overlay" id="modalVoz">
+<!-- NUEVO: Modal editar producto -->
+<div class="modal-overlay" id="modalEditarProducto">
   <div class="modal">
-    <h3>🎤 Dictar venta</h3>
-    <div class="voz-texto" id="vozTexto">Escuchando…</div>
-    <div class="voz-hint">Hablá claro y esperá el resultado</div>
-    <div class="voz-ejemplos">
-      <b>Ejemplos:</b><br>
-      • "dos kilos de papa" · "medio de tomate"<br>
-      • "tres bananas" · "un cuarto de cebolla"<br>
-      • "borrar" · "vaciar"
+    <h3>✏️ Editar producto</h3>
+    <div class="admin-form">
+      <label style="font-size:11.5px;font-weight:700;color:var(--gris);text-transform:uppercase">Nombre</label>
+      <input id="epNombre" placeholder="Nombre" autocomplete="off">
+      <label style="font-size:11.5px;font-weight:700;color:var(--gris);text-transform:uppercase">Precio venta</label>
+      <input id="epPrecio" type="number" inputmode="numeric" placeholder="Precio">
+      <label style="font-size:11.5px;font-weight:700;color:var(--gris);text-transform:uppercase">Costo compra (por kg/u)</label>
+      <input id="epCosto" type="number" inputmode="numeric" placeholder="0">
+      <label style="font-size:11.5px;font-weight:700;color:var(--gris);text-transform:uppercase">Emoji</label>
+      <input id="epEmoji" placeholder="Emoji" maxlength="4" autocomplete="off">
+      <label style="font-size:11.5px;font-weight:700;color:var(--gris);text-transform:uppercase">Tipo</label>
+      <select id="epTipo">
+        <option value="kg">Por kilo</option>
+        <option value="unidad">Por unidad</option>
+      </select>
     </div>
-    <div class="modal-actions" style="margin-top:12px">
-      <button class="btn-ghost" id="vozCancelar" type="button">Cancelar</button>
-      <button class="btn-primary" id="vozConfirmar" type="button">Usar texto</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modalScanner">
-  <div class="modal">
-    <h3>📷 Escanear código</h3>
-    <video id="scannerVideo" autoplay muted playsinline></video>
-    <div style="font-size:11.5px;color:var(--gris);text-align:center;margin:10px 0" id="scanStatus">Apuntá al código…</div>
-    <div class="modal-actions">
-      <button class="btn-ghost" id="scanCancelar" type="button">Cerrar</button>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-ghost" id="epCancelar" type="button">Cancelar</button>
+      <button class="btn-primary" id="epAplicar" type="button">Aplicar</button>
     </div>
   </div>
 </div>
@@ -727,8 +685,6 @@ button{cursor:pointer;}
       <button class="metodo" data-metodo="Transferencia" type="button">📱 Transfe</button>
       <button class="metodo" data-metodo="Débito" type="button">💳 Débito</button>
       <button class="metodo" data-metodo="QR" type="button">🔳 QR</button>
-      <button class="metodo" data-metodo="Fiado" type="button">👥 Fiado</button>
-      <button class="metodo" data-metodo="Mixto" type="button">🔀 Mixto</button>
     </div>
 
     <div id="cobroEfectivo">
@@ -736,21 +692,6 @@ button{cursor:pointer;}
       <input id="cobroRecibido" type="number" inputmode="numeric" placeholder="0">
       <div class="chips" id="chipsBilletes" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
       <div class="vuelto" id="cobroVuelto">Vuelto: $0</div>
-    </div>
-
-    <div id="cobroFiado" style="display:none">
-      <label style="font-size:12px;font-weight:700;color:var(--gris);display:block;margin-bottom:5px">Cliente</label>
-      <select id="cobroCliente" style="width:100%;padding:12px;border-radius:12px;border:2px solid var(--borde);font-size:14.5px;margin-bottom:12px;background:var(--bg);color:var(--texto)"></select>
-    </div>
-
-    <div id="cobroMixto" style="display:none">
-      <label style="font-size:12px;font-weight:700;color:var(--gris);display:block;margin-bottom:5px">Monto en efectivo</label>
-      <input id="cobroMixtoEf" type="number" inputmode="numeric" placeholder="0" style="width:100%;padding:12px;border-radius:12px;border:2px solid var(--borde);font-size:18px;font-weight:800;text-align:center;margin-bottom:10px;background:var(--bg);color:var(--texto)">
-      <div id="cobroMixtoResto" style="text-align:center;font-size:13.5px;font-weight:700;color:var(--gris);margin-bottom:12px"></div>
-    </div>
-
-    <div id="cobroPuntosBox" style="display:none;background:var(--amarillo-bg);border-radius:12px;padding:11px;margin-bottom:12px;font-size:12.5px;font-weight:700;color:#92400e">
-      🎁 <span id="cobroPuntosTxt"></span>
     </div>
 
     <div class="modal-actions">
@@ -773,66 +714,12 @@ button{cursor:pointer;}
   </div>
 </div>
 
-<!-- NUEVO: Modal detalle día -->
 <div class="modal-overlay" id="modalDetalleDia">
   <div class="modal">
     <h3 id="detalleDiaTitulo">📅 Día</h3>
     <div id="detalleDiaContenido"></div>
     <div class="modal-actions" style="margin-top:14px">
       <button class="btn-ghost" id="detalleDiaCerrar" type="button">Cerrar</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modalCliente">
-  <div class="modal">
-    <h3 id="clienteTitulo">👤 Nuevo cliente</h3>
-    <div class="admin-form">
-      <input id="cliNombre" placeholder="Nombre y apellido" autocomplete="off">
-      <input id="cliTel" placeholder="Teléfono (opcional)" autocomplete="off" inputmode="tel">
-      <input id="cliNota" placeholder="Nota (opcional)" autocomplete="off">
-    </div>
-    <div class="modal-actions" style="margin-top:14px">
-      <button class="btn-ghost" id="cliCancelar" type="button">Cancelar</button>
-      <button class="btn-primary" id="cliGuardar" type="button">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modalCuenta">
-  <div class="modal">
-    <h3 id="cuentaTitulo">👤 Cliente</h3>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-      <div style="background:var(--rojo-bg);border-radius:12px;padding:11px;text-align:center">
-        <div style="font-size:10px;font-weight:700;color:var(--rojo);text-transform:uppercase;letter-spacing:.5px">Deuda</div>
-        <div id="cuentaDeuda" style="font-size:22px;font-weight:900;color:var(--rojo);letter-spacing:-1px">$0</div>
-      </div>
-      <div style="background:var(--amarillo-bg);border-radius:12px;padding:11px;text-align:center">
-        <div style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px">Puntos</div>
-        <div id="cuentaPuntos" style="font-size:22px;font-weight:900;color:#92400e;letter-spacing:-1px">0</div>
-      </div>
-    </div>
-    <div class="tabs">
-      <button class="tab activo" data-tab="abonar" type="button">Abonar</button>
-      <button class="tab" data-tab="canjear" type="button">Canjear</button>
-      <button class="tab" data-tab="historial" type="button">Historial</button>
-    </div>
-    <div id="cuentaTabAbonar">
-      <div class="chips" id="cuentaChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
-      <input id="cuentaMonto" type="number" inputmode="numeric" placeholder="Monto" style="width:100%;padding:12px;border-radius:12px;border:2px solid var(--borde);font-size:19px;font-weight:800;text-align:center;margin-bottom:10px;background:var(--bg);color:var(--texto)">
-      <button class="btn-primary btn-full" id="cuentaAbonar" type="button">💵 Registrar pago</button>
-    </div>
-    <div id="cuentaTabCanjear" style="display:none">
-      <div style="font-size:12.5px;color:var(--gris);text-align:center;margin-bottom:10px">100 puntos = $500 de descuento</div>
-      <div class="chips" id="cuentaCanjeChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
-      <input id="cuentaCanjeMonto" type="number" inputmode="numeric" placeholder="Puntos a canjear" style="width:100%;padding:12px;border-radius:12px;border:2px solid var(--borde);font-size:19px;font-weight:800;text-align:center;margin-bottom:10px;background:var(--bg);color:var(--texto)">
-      <button class="btn-warn btn-full" id="cuentaCanjear" type="button">🎁 Canjear puntos</button>
-    </div>
-    <div id="cuentaTabHistorial" style="display:none;max-height:42vh;overflow:auto">
-      <div id="cuentaMovimientos"></div>
-    </div>
-    <div class="modal-actions" style="margin-top:14px">
-      <button class="btn-ghost" id="cuentaCerrar" type="button">Cerrar</button>
     </div>
   </div>
 </div>
@@ -877,7 +764,6 @@ function idbGetAll() {
     req.onerror = () => rej(req.error);
   });
 }
-
 function idbSet(k, v) {
   return new Promise((res, rej) => {
     const tx = db.transaction('kv', 'readwrite');
@@ -886,7 +772,6 @@ function idbSet(k, v) {
     tx.onerror = () => rej(tx.error);
   });
 }
-
 function idbDelete(k) {
   return new Promise((res, rej) => {
     const tx = db.transaction('kv', 'readwrite');
@@ -895,7 +780,6 @@ function idbDelete(k) {
     tx.onerror = () => rej(tx.error);
   });
 }
-
 function idbClearAll() {
   return new Promise((res, rej) => {
     const tx = db.transaction('kv', 'readwrite');
@@ -904,7 +788,6 @@ function idbClearAll() {
     tx.onerror = () => rej(tx.error);
   });
 }
-
 function idbSaveSnapshot(snap) {
   return new Promise((res, rej) => {
     const tx = db.transaction('snapshots', 'readwrite');
@@ -913,7 +796,6 @@ function idbSaveSnapshot(snap) {
     tx.onerror = () => rej(tx.error);
   });
 }
-
 function idbGetSnapshots() {
   return new Promise((res, rej) => {
     const tx = db.transaction('snapshots', 'readonly');
@@ -926,7 +808,6 @@ function idbGetSnapshots() {
     req.onerror = () => rej(req.error);
   });
 }
-
 function idbDeleteSnapshot(id) {
   return new Promise((res, rej) => {
     const tx = db.transaction('snapshots', 'readwrite');
@@ -959,9 +840,7 @@ const LS = {
 };
 
 async function flush() {
-  while (pendingWrites.size > 0) {
-    await Promise.all([...pendingWrites]);
-  }
+  while (pendingWrites.size > 0) await Promise.all([...pendingWrites]);
 }
 
 async function cargarTodo() {
@@ -972,16 +851,14 @@ async function cargarTodo() {
     const lsKeys = Object.keys(localStorage).filter(k => k.startsWith('vd_'));
     if (lsKeys.length > 0) {
       console.log('%c🔄 Migrando de localStorage a IndexedDB…', 'color:#f59e0b;font-weight:bold');
-      let count = 0;
       for (const k of lsKeys) {
         try {
           const v = JSON.parse(localStorage.getItem(k));
           memStore[k] = v;
           await idbSet(k, v);
-          count++;
         } catch(e) { console.warn('Error migrando', k, e); }
       }
-      console.log('%c✅ Migrados ' + count + ' items a IndexedDB', 'color:#16a34a;font-weight:bold');
+      console.log('%c✅ Migración completa', 'color:#16a34a;font-weight:bold');
     }
   }
 }
@@ -995,9 +872,9 @@ window.addEventListener('beforeunload', () => { flush().catch(() => {}); });
    SNAPSHOTS INTERNOS
 ============================================================ */
 const SNAPSHOT_KEYS = [
-  'vd_productos_v3', 'vd_ventas_v3', 'vd_clientes_v3',
-  'vd_cfg_v3', 'vd_categorias_v3', 'vd_favoritos_v3',
-  'vd_ofertas_v3', 'vd_espera_v3', 'vd_precios_hist_v3',
+  'vd_productos_v3', 'vd_ventas_v3',
+  'vd_cfg_v3', 'vd_favoritos_v3',
+  'vd_espera_v3', 'vd_precios_hist_v3',
   'vd_tabs_v3', 'vd_tab_activa_v3', 'vd_tema_v3',
   'vd_dias_clave_v1',
   'vd_last_auto_backup'
@@ -1019,9 +896,7 @@ async function crearSnapshot(nombre) {
   };
   await idbSaveSnapshot(snap);
   const all = await idbGetSnapshots();
-  if (all.length > 20) {
-    for (let i = 20; i < all.length; i++) await idbDeleteSnapshot(all[i].id);
-  }
+  if (all.length > 20) for (let i = 20; i < all.length; i++) await idbDeleteSnapshot(all[i].id);
   return snap;
 }
 
@@ -1045,7 +920,6 @@ async function autoBackupIfNeeded() {
   }
 }
 
-/* BOOT */
 try {
   await initDB();
   await cargarTodo();
@@ -1099,33 +973,31 @@ function vibrar(p=12){ if (cfg.vibrar && navigator.vibrate) navigator.vibrate(p)
 /* ============================================================
    ESTADO
 ============================================================ */
-let cfg = LS.get('vd_cfg_v3', { nombre:'Verdulería', direccion:'', telefono:'', email:'', puntos:5, sonido:true, vibrar:true, redondeo:true, stock:true, puntosActivo:true });
-Object.assign(cfg, { sonido: cfg.sonido !== false, vibrar: cfg.vibrar !== false, redondeo: cfg.redondeo !== false, stock: cfg.stock !== false, puntosActivo: cfg.puntosActivo !== false });
+let cfg = LS.get('vd_cfg_v3', { nombre:'Verdulería', direccion:'', telefono:'', email:'', sonido:true, vibrar:true, redondeo:true, gananciaDefault:1000 });
+Object.assign(cfg, { sonido: cfg.sonido !== false, vibrar: cfg.vibrar !== false, redondeo: cfg.redondeo !== false });
+if (!cfg.gananciaDefault || cfg.gananciaDefault <= 0) cfg.gananciaDefault = 1000;
 
 let tema = LS.get('vd_tema_v3', matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro');
 
 const PRODUCTOS_DEFAULT = [
-  { id:'p1', nombre:'Banana', precio:2400, emoji:'🍌', tipo:'kg', categoria:'Frutas' },
-  { id:'p2', nombre:'Manzana', precio:2800, emoji:'🍎', tipo:'kg', categoria:'Frutas' },
-  { id:'p3', nombre:'Naranja', precio:1900, emoji:'🍊', tipo:'kg', categoria:'Frutas' },
-  { id:'p4', nombre:'Palta', precio:6500, emoji:'🥑', tipo:'unidad', categoria:'Frutas' },
-  { id:'p5', nombre:'Papa', precio:2500, emoji:'🥔', tipo:'kg', categoria:'Verduras' },
-  { id:'p6', nombre:'Cebolla', precio:2900, emoji:'🧅', tipo:'kg', categoria:'Verduras' },
-  { id:'p7', nombre:'Tomate', precio:3200, emoji:'🍅', tipo:'kg', categoria:'Verduras' },
-  { id:'p8', nombre:'Zanahoria', precio:2200, emoji:'🥕', tipo:'kg', categoria:'Verduras' },
-  { id:'p9', nombre:'Lechuga', precio:1800, emoji:'🥬', tipo:'unidad', categoria:'Verduras' },
-  { id:'p10', nombre:'Batata', precio:3500, emoji:'🍠', tipo:'kg', categoria:'Verduras' },
-  { id:'p11', nombre:'Cabutia', precio:2400, emoji:'🎃', tipo:'kg', categoria:'Verduras' },
-  { id:'p12', nombre:'Limón', precio:1500, emoji:'🍋', tipo:'kg', categoria:'Frutas' },
+  { id:'p1', nombre:'Banana', precio:2400, emoji:'🍌', tipo:'kg' },
+  { id:'p2', nombre:'Manzana', precio:2800, emoji:'🍎', tipo:'kg' },
+  { id:'p3', nombre:'Naranja', precio:1900, emoji:'🍊', tipo:'kg' },
+  { id:'p4', nombre:'Palta', precio:6500, emoji:'🥑', tipo:'unidad' },
+  { id:'p5', nombre:'Papa', precio:2500, emoji:'🥔', tipo:'kg' },
+  { id:'p6', nombre:'Cebolla', precio:2900, emoji:'🧅', tipo:'kg' },
+  { id:'p7', nombre:'Tomate', precio:3200, emoji:'🍅', tipo:'kg' },
+  { id:'p8', nombre:'Zanahoria', precio:2200, emoji:'🥕', tipo:'kg' },
+  { id:'p9', nombre:'Lechuga', precio:1800, emoji:'🥬', tipo:'unidad' },
+  { id:'p10', nombre:'Batata', precio:3500, emoji:'🍠', tipo:'kg' },
+  { id:'p11', nombre:'Cabutia', precio:2400, emoji:'🎃', tipo:'kg' },
+  { id:'p12', nombre:'Limón', precio:1500, emoji:'🍋', tipo:'kg' },
 ];
 
 let productos = LS.get('vd_productos_v3', null);
 if (!productos) { productos = PRODUCTOS_DEFAULT.slice(); LS.set('vd_productos_v3', productos); }
-productos.forEach(p => { if (p.categoria === undefined) p.categoria = 'Sin categoría'; });
 
-let categorias = LS.get('vd_categorias_v3', ['Frutas','Verduras','Hierbas','Sin categoría']);
 let favoritos = LS.get('vd_favoritos_v3', []);
-let ofertas = LS.get('vd_ofertas_v3', []);
 
 let tabsVenta = LS.get('vd_tabs_v3', null);
 if (!tabsVenta || !tabsVenta.length) {
@@ -1141,7 +1013,7 @@ let filtroHistorial = 'hoy';
 let filtroCaja = 'hoy';
 let filtroVenta = 'todos';
 let mcProducto = null, mcValor = 0, mcEditando = null;
-let clienteCuentaActual = null;
+let epIdx = -1;
 let topCache = new Set();
 let anioCalendario = new Date().getFullYear();
 
@@ -1160,25 +1032,22 @@ const DIAS_CLAVE_DEFAULT = [
   { id: 'reyes', nombre: 'Día de Reyes', emoji: '👑', tipo: 'fija', dia: 6, mes: 1 },
   { id: 'dia-amigo', nombre: 'Día del Amigo', emoji: '🍻', tipo: 'fija', dia: 20, mes: 7 },
   { id: 'primavera', nombre: 'Día de la Primavera', emoji: '🌸', tipo: 'fija', dia: 21, mes: 9 },
-{ id: 'locro-25mayo', nombre: 'Dia de la Revolución · Locro', emoji: '🇦🇷', tipo: 'fija', dia: 25, mes: 5 },
-{ id: 'locro-20junio', nombre: 'Día de la Bandera · Locro', emoji: '🏳️', tipo: 'fija', dia: 20, mes: 6 },
-{ id: 'locro-9julio', nombre: 'Dia de la Independencia · Locro', emoji: '🇦🇷', tipo: 'fija', dia: 9, mes: 7 },
+  { id: 'locro-25mayo', nombre: 'Revolución de Mayo · Locro', emoji: '🇦🇷', tipo: 'fija', dia: 25, mes: 5 },
+  { id: 'locro-20junio', nombre: 'Día de la Bandera · Locro', emoji: '🏳️', tipo: 'fija', dia: 20, mes: 6 },
+  { id: 'locro-9julio', nombre: 'Día de la Independencia · Locro', emoji: '🇦🇷', tipo: 'fija', dia: 9, mes: 7 },
   { id: 'tradicion', nombre: 'Día de la Tradición', emoji: '🐴', tipo: 'fija', dia: 10, mes: 11 },
   { id: 'dia-madre', nombre: 'Día de la Madre', emoji: '💐', tipo: 'n-esimo-dia', semana: 3, diaSem: 0, mes: 10 },
   { id: 'dia-padre', nombre: 'Día del Padre', emoji: '👔', tipo: 'n-esimo-dia', semana: 3, diaSem: 0, mes: 6 },
   { id: 'dia-nino', nombre: 'Día del Niño', emoji: '🧸', tipo: 'n-esimo-dia', semana: 3, diaSem: 0, mes: 8 },
   { id: 'fin-de-ano', nombre: 'Fin de año · Fiestas', emoji: '🎆', tipo: 'fija', dia: 31, mes: 12 },
-{ id: 'inicio-clases', nombre: 'Inicio de clases', emoji: '🎒', tipo: 'fija', dia: 1, mes: 3 },
-{ id: 'estudiante', nombre: 'Día del Estudiante', emoji: '🎓', tipo: 'fija', dia: 21, mes: 9 },
+  { id: 'inicio-clases', nombre: 'Inicio de clases', emoji: '🎒', tipo: 'fija', dia: 1, mes: 3 },
+  { id: 'estudiante', nombre: 'Día del Estudiante', emoji: '🎓', tipo: 'fija', dia: 21, mes: 9 },
 ];
 
-function getDiasClave() {
-  return LS.get('vd_dias_clave_v1', DIAS_CLAVE_DEFAULT);
-}
+function getDiasClave() { return LS.get('vd_dias_clave_v1', DIAS_CLAVE_DEFAULT); }
+
 function calcularFechaDiaClave(dc, anio) {
-  if (dc.tipo === 'fija') {
-    return new Date(anio, dc.mes - 1, dc.dia);
-  }
+  if (dc.tipo === 'fija') return new Date(anio, dc.mes - 1, dc.dia);
   if (dc.tipo === 'n-esimo-dia') {
     let contador = 0;
     for (let d = 1; d <= 31; d++) {
@@ -1207,30 +1076,26 @@ function getDiasClaveDeFecha(fecha) {
 function renderCalendarioAnual() {
   const contenedor = $('#calendarioAnual');
   if (!contenedor) return;
-  
+
   const anioVer = anioCalendario;
   const ventas = LS.get('vd_ventas_v3', []);
-  
-  // Agrupar ventas por fecha
+
   const porDia = {};
   ventas.forEach(v => {
     if (!porDia[v.fechaISO]) porDia[v.fechaISO] = { total: 0, count: 0 };
     porDia[v.fechaISO].total += v.total;
     porDia[v.fechaISO].count++;
   });
-  
+
   const hoy = new Date();
   hoy.setHours(12, 0, 0, 0);
-  
-  // 1° de enero del año mostrado, ajustado al domingo anterior
+
   const primerDia = new Date(anioVer, 0, 1);
   const inicio = new Date(primerDia);
   inicio.setDate(inicio.getDate() - inicio.getDay());
-  
-  // 31 de diciembre del año mostrado
+
   const ultimoDia = new Date(anioVer, 11, 31);
-  
-  // Generar semanas (cada columna = 1 semana)
+
   const semanas = [];
   const cursor = new Date(inicio);
   while (cursor <= ultimoDia) {
@@ -1242,13 +1107,12 @@ function renderCalendarioAnual() {
     semanas.push(semana);
   }
   const numCols = semanas.length;
-  
-  // Escala de intensidad — solo del año mostrado
+
   const valoresAno = Object.entries(porDia)
     .filter(([iso]) => iso.startsWith(anioVer + '-'))
     .map(([_, x]) => x.total);
   const max = valoresAno.length ? Math.max(...valoresAno) : 0;
-  
+
   function nivel(total) {
     if (!total || !max) return 0;
     const r = total / max;
@@ -1257,38 +1121,33 @@ function renderCalendarioAnual() {
     if (r > 0.25) return 2;
     return 1;
   }
-  
-  // Columna donde arranca cada mes (para los labels de arriba)
-  const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+  const mesesCortos = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const mesStarts = [];
   for (let m = 0; m < 12; m++) {
     const primero = new Date(anioVer, m, 1);
     const dias = Math.round((primero - inicio) / 86400000);
     mesStarts.push(Math.floor(dias / 7));
   }
-  
+
   let html = '';
-  
-  // Navegación de año
+
   html += `<div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:12px">
     <button class="chip sm" id="calAnioPrev" type="button" style="padding:5px 12px;font-size:14px">◀</button>
     <div style="font-size:16px;font-weight:900;color:var(--texto);min-width:70px;text-align:center">${anioVer}</div>
     <button class="chip sm" id="calAnioNext" type="button" style="padding:5px 12px;font-size:14px">▶</button>
   </div>`;
-  
-  // Contenedor del calendario
+
   html += '<div class="cal-wrap">';
-  
-  // Labels de días de la semana
+
   html += '<div class="cal-dias">';
-  ['','D', 'L', 'M', 'M', 'J', 'V', 'S'].forEach((d, i) => {
+  ['','D','L','M','M','J','V','S'].forEach(d => {
     html += `<div class="cal-dia-label">${d}</div>`;
   });
   html += '</div>';
-  
+
   html += '<div>';
-  
-  // Header con nombres de meses
+
   html += `<div style="display:grid;grid-template-columns:repeat(${numCols},12px);gap:2px;margin-bottom:4px;height:12px">`;
   for (let m = 0; m < 12; m++) {
     const colIni = mesStarts[m];
@@ -1299,8 +1158,7 @@ function renderCalendarioAnual() {
     }
   }
   html += '</div>';
-  
-  // Grid de días
+
   html += `<div class="cal-grid" style="grid-template-columns:repeat(${numCols},12px)">`;
   semanas.forEach(sem => {
     sem.forEach(fecha => {
@@ -1315,33 +1173,31 @@ function renderCalendarioAnual() {
       const esFuturo = fecha > hoy;
       const emoji = claves.length ? claves[0].emoji : '';
       const nombre = claves.map(c => c.nombre).join(' / ');
-      
+
       const title = fecha.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }) +
         (count ? ` — ${count} venta${count > 1 ? 's' : ''} · ${money(total)}` : ' — sin ventas') +
         (nombre ? ` — ${emoji} ${nombre}` : '');
-      
+
       const clases = `cal-cell nivel-${nv}` +
         (esHoy ? ' hoy' : '') +
         (esFuturo && enAnio ? ' futuro' : '') +
         (claves.length ? ' clave' : '') +
         (!enAnio ? ' otro-anio' : '');
-      
+
       html += `<div class="${clases}" data-fecha="${iso}" title="${title}">${emoji ? `<span class="cal-key">${emoji}</span>` : ''}</div>`;
     });
   });
   html += '</div>';
   html += '</div>';
   html += '</div>';
-  
-  // Resumen del año
+
   const ventasAno = ventas.filter(v => v.fechaISO && v.fechaISO.startsWith(anioVer + '-'));
   const totalAno = ventasAno.reduce((a, v) => a + v.total, 0);
   const diasConVentas = new Set(ventasAno.map(v => v.fechaISO)).size;
   html += `<div style="text-align:center;font-size:11px;color:var(--gris);margin-top:10px">
     ${diasConVentas} día${diasConVentas !== 1 ? 's' : ''} con ventas · Total: ${money(totalAno)}
   </div>`;
-  
-  // Leyenda
+
   html += `<div class="cal-legend">
     <span class="cal-legend-label">Menos</span>
     <div class="cal-cell nivel-0"></div>
@@ -1351,26 +1207,18 @@ function renderCalendarioAnual() {
     <div class="cal-cell nivel-4"></div>
     <span class="cal-legend-label">Más</span>
   </div>`;
-  
+
   contenedor.innerHTML = html;
-  
-  // Click en días
+
   contenedor.querySelectorAll('.cal-cell[data-fecha]').forEach(cell => {
     cell.onclick = () => {
       if (cell.classList.contains('otro-anio')) return;
       abrirDetalleDia(cell.dataset.fecha);
     };
   });
-  
-  // Navegación de año
-  contenedor.querySelector('#calAnioPrev').onclick = () => {
-    anioCalendario--;
-    renderCalendarioAnual();
-  };
-  contenedor.querySelector('#calAnioNext').onclick = () => {
-    anioCalendario++;
-    renderCalendarioAnual();
-  };
+
+  contenedor.querySelector('#calAnioPrev').onclick = () => { anioCalendario--; renderCalendarioAnual(); };
+  contenedor.querySelector('#calAnioNext').onclick = () => { anioCalendario++; renderCalendarioAnual(); };
 }
 
 function abrirDetalleDia(iso) {
@@ -1380,7 +1228,6 @@ function abrirDetalleDia(iso) {
   const total = ventas.reduce((a, v) => a + v.total, 0);
   const kg = ventas.reduce((a, v) => a + v.items.reduce((b, i) => b + (i.tipo === 'kg' ? i.cantidad/1000 : 0), 0), 0);
 
-  // Productos del día
   const prods = {};
   ventas.forEach(v => v.items.forEach(i => {
     if (!prods[i.nombre]) prods[i.nombre] = { total: 0, cant: 0, unidad: i.tipo };
@@ -1388,7 +1235,6 @@ function abrirDetalleDia(iso) {
     prods[i.nombre].cant += i.tipo === 'kg' ? i.cantidad/1000 : i.cantidad;
   }));
 
-  // Mismo día año anterior
   const hace1ano = new Date(fecha);
   hace1ano.setFullYear(hace1ano.getFullYear() - 1);
   const isoAnt = hace1ano.toISOString().slice(0, 10);
@@ -1447,19 +1293,13 @@ function renderAnalisisSemanal() {
   const card = $('#cardAnalisisSemanal');
   const ventas = LS.get('vd_ventas_v3', []);
 
-  if (ventas.length < 7) {
-    card.style.display = 'none';
-    return;
-  }
+  if (ventas.length < 7) { card.style.display = 'none'; return; }
   card.style.display = 'block';
 
-  const nombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const nombres = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
-  // Agrupar por fecha primero
   const porFecha = {};
-  ventas.forEach(v => {
-    porFecha[v.fechaISO] = (porFecha[v.fechaISO] || 0) + v.total;
-  });
+  ventas.forEach(v => { porFecha[v.fechaISO] = (porFecha[v.fechaISO] || 0) + v.total; });
 
   const totalPorDia = [0,0,0,0,0,0,0];
   const cantDias = [0,0,0,0,0,0,0];
@@ -1528,7 +1368,6 @@ function renderProximosDiasClave() {
 
   let html = '';
   proximos.slice(0, 5).forEach(p => {
-    // Datos del año pasado para ese día clave
     const fechaAnt = new Date(p.fecha);
     fechaAnt.setFullYear(fechaAnt.getFullYear() - 1);
     const isoAnt = fechaAnt.toISOString().slice(0, 10);
@@ -1555,18 +1394,12 @@ function renderProximosDiasClave() {
       </div>`;
 
     if (totalAnt > 0) {
-      html += `<div class="dc-historial">
-        <b>Año pasado:</b> ${money(totalAnt)} en ${ventasAnt.length} venta${ventasAnt.length>1?'s':''}
-      </div>`;
+      html += `<div class="dc-historial"><b>Año pasado:</b> ${money(totalAnt)} en ${ventasAnt.length} venta${ventasAnt.length>1?'s':''}</div>`;
       if (topProds.length) {
-        html += `<div class="dc-prods">
-          <b>Se vendió mucho:</b> ${topProds.map(([n]) => esc(n)).join(', ')}
-        </div>`;
+        html += `<div class="dc-prods"><b>Se vendió mucho:</b> ${topProds.map(([n]) => esc(n)).join(', ')}</div>`;
       }
     } else {
-      html += `<div class="dc-historial" style="color:var(--gris2)">
-        Sin datos del año pasado · ¡Buena oportunidad para stockear!
-      </div>`;
+      html += `<div class="dc-historial" style="color:var(--gris2)">Sin datos del año pasado · ¡Buena oportunidad para stockear!</div>`;
     }
     html += '</div>';
   });
@@ -1617,12 +1450,10 @@ function aplicarCfg() {
   $('#cfgDireccion').value = cfg.direccion || '';
   $('#cfgTelefono').value = cfg.telefono || '';
   $('#cfgEmail').value = cfg.email || '';
-  $('#cfgPuntos').value = cfg.puntos || 0;
+  $('#cfgGananciaDefault').value = cfg.gananciaDefault || 1000;
   $('#cfgSonido').checked = !!cfg.sonido;
   $('#cfgVibrar').checked = !!cfg.vibrar;
   $('#cfgRedondeo').checked = !!cfg.redondeo;
-  $('#cfgStock').checked = !!cfg.stock;
-  $('#cfgPuntosActivo').checked = !!cfg.puntosActivo;
   document.documentElement.setAttribute('data-tema', tema);
   $('#btnTema').textContent = tema === 'oscuro' ? '☀️' : '🌙';
   document.title = (cfg.nombre||'Verdulería') + ' POS';
@@ -1734,20 +1565,8 @@ function rehacer() {
    CÁLCULOS
 ============================================================ */
 const redondear = n => cfg.redondeo ? Math.ceil(n/100)*100 : Math.round(n);
-function ofertaActivaPara(prodId) {
-  const ahora = new Date();
-  const mins = ahora.getHours()*60 + ahora.getMinutes();
-  return ofertas.find(o => {
-    if (o.productoId !== prodId) return false;
-    const [dh,dm] = o.desde.split(':').map(Number);
-    const [hh,hm] = o.hasta.split(':').map(Number);
-    const d = dh*60+dm, h = hh*60+hm;
-    return d <= h ? (mins >= d && mins <= h) : (mins >= d || mins <= h);
-  });
-}
+
 function precioEfectivo(prod) {
-  const o = ofertaActivaPara(prod.id);
-  if (o) return { precio: redondear(prod.precio * (1 - o.pct/100)), oferta: true, pct: o.pct };
   return { precio: prod.precio, oferta: false, pct: 0 };
 }
 function calcSubtotal(item) {
@@ -1767,21 +1586,105 @@ function descuentoPct() {
 function totalFinal() { return Math.round(subtotalCarrito() * (1 - descuentoPct()/100)); }
 
 /* ============================================================
+   COSTOS Y GANANCIA
+============================================================ */
+function esCostoEstimado(p) {
+  return !(p && typeof p.costo === 'number' && p.costo > 0);
+}
+function costoDeProducto(p) {
+  if (!p) return 0;
+  if (typeof p.costo === 'number' && p.costo > 0) return p.costo;
+  const g = (cfg && cfg.gananciaDefault > 0) ? cfg.gananciaDefault : 1000;
+  return Math.max(0, Math.round(p.precio - g));
+}
+function costoDeItem(item) {
+  if (typeof item.costo === 'number' && item.costo > 0) return item.costo;
+  const p = productos.find(x => x.id === item.pid);
+  if (p) return costoDeProducto(p);
+  const g = (cfg && cfg.gananciaDefault > 0) ? cfg.gananciaDefault : 1000;
+  return Math.max(0, Math.round(item.precio - g));
+}
+function costoTotalItem(item) {
+  const c = costoDeItem(item);
+  return item.tipo === 'kg' ? Math.round(c * item.cantidad / 1000) : Math.round(c * item.cantidad);
+}
+function itemTieneCostoReal(item) {
+  if (item.costoEstimado === true) return false;
+  if (item.costoEstimado === false) return true;
+  const p = productos.find(x => x.id === item.pid);
+  return !!(p && typeof p.costo === 'number' && p.costo > 0);
+}
+function calcGananciaPeriodo(ventas) {
+  let conCostoSubtotal = 0, costoTotal = 0, itemsTotal = 0, itemsEstimados = 0;
+  ventas.forEach(v => (v.items || []).forEach(item => {
+    itemsTotal++;
+    conCostoSubtotal += item.subtotal || 0;
+    costoTotal += costoTotalItem(item);
+    if (!itemTieneCostoReal(item)) itemsEstimados++;
+  }));
+  const ganancia = conCostoSubtotal - costoTotal;
+  return {
+    ganancia, conCostoSubtotal, costoTotal,
+    itemsTotal, itemsEstimados,
+    todoReal: itemsTotal > 0 && itemsEstimados === 0,
+    todoEstimado: itemsTotal > 0 && itemsEstimados === itemsTotal,
+    margenPct: conCostoSubtotal > 0 ? Math.round(ganancia / conCostoSubtotal * 100) : 0
+  };
+}
+function cargarCostosFaltantes() {
+  const faltantes = productos.filter(p => esCostoEstimado(p));
+  if (!faltantes.length) return toast('Todos los productos ya tienen costo real ✅', 'ok');
+  if (!confirm(`Vas a cargar el costo real de ${faltantes.length} producto(s).\n\nTe sugiero un valor basado en tu ganancia esperada. Podés cancelar cuando quieras.`)) return;
+  const g = (cfg && cfg.gananciaDefault > 0) ? cfg.gananciaDefault : 1000;
+  let cargados = 0;
+  for (const p of faltantes) {
+    const sugerido = Math.max(0, p.precio - g);
+    const v = prompt(
+      `Costo por ${p.tipo === 'kg' ? 'KILO' : 'UNIDAD'} de ${p.nombre}\n` +
+      `Precio venta: ${money(p.precio)}\n` +
+      `Sugerido (≈${money(g)} de ganancia): ${money(sugerido)}`,
+      sugerido
+    );
+    if (v === null) break;
+    const c = parseFloat(v);
+    if (!isNaN(c) && c >= 0) {
+      const prod = productos.find(x => x.id === p.id);
+      if (prod) { prod.costo = Math.round(c); cargados++; }
+    }
+  }
+  LS.set('vd_productos_v3', productos);
+  renderAdmin(); renderProductos();
+  const restantes = productos.filter(p => esCostoEstimado(p)).length;
+  toast(cargados > 0 ? `✅ ${cargados} costo(s) cargado(s). Quedan ${restantes} estimados.` : 'Cancelado', cargados > 0 ? 'ok' : 'warn');
+}
+
+/* ============================================================
    VISTAS
 ============================================================ */
 function mostrarVista(nombre) {
   $$('.vista').forEach(v => v.classList.remove('activa'));
   $('#vista-' + nombre).classList.add('activa');
-  ['clientes','caja','historial','admin'].forEach(n => {
+  ['caja','historial','admin'].forEach(n => {
     const b = $('#btn' + n.charAt(0).toUpperCase() + n.slice(1));
     if (b) b.classList.toggle('activo', n === nombre);
   });
   $('#barraInferior').style.display = nombre === 'venta' ? 'flex' : 'none';
   if (nombre === 'historial') renderHistorial();
   if (nombre === 'admin') { renderAdmin(); renderListaSnapshots(); renderAdminDiasClave(); }
-  if (nombre === 'clientes') renderClientes();
   if (nombre === 'caja') renderCaja();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ============================================================
+   ADMIN COLAPSABLE
+============================================================ */
+function initAdminCollapse() {
+  $$('.admin-collapse').forEach(col => {
+    const header = col.querySelector('.admin-collapse-header');
+    header.onclick = () => {
+      col.classList.toggle('abierto');
+    };
+  });
 }
 
 /* ============================================================
@@ -1805,21 +1708,13 @@ function renderFiltrosVenta() {
   cont.innerHTML = '';
   const base = [
     { k:'todos', label:'Todos' }, { k:'kg', label:'Por kilo' }, { k:'unidad', label:'Por unidad' },
-    { k:'top', label:'⭐ Top' }, { k:'favoritos', label:'❤️ Favoritos' }, { k:'oferta', label:'🏷️ Ofertas' },
+    { k:'top', label:'⭐ Top' }, { k:'favoritos', label:'❤️ Favoritos' },
   ];
   base.forEach(f => {
     const b = document.createElement('button');
     b.className = 'chip' + (filtroVenta === f.k ? ' activo' : '');
     b.textContent = f.label; b.type = 'button';
     b.onclick = () => { filtroVenta = f.k; renderFiltrosVenta(); renderProductos(); };
-    cont.appendChild(b);
-  });
-  [...new Set(productos.map(p => p.categoria).filter(Boolean))].forEach(c => {
-    const k = 'cat:' + c;
-    const b = document.createElement('button');
-    b.className = 'chip' + (filtroVenta === k ? ' activo' : '');
-    b.textContent = c; b.type = 'button';
-    b.onclick = () => { filtroVenta = k; renderFiltrosVenta(); renderProductos(); };
     cont.appendChild(b);
   });
 }
@@ -1829,13 +1724,11 @@ function renderProductos() {
   const cont = $('#gridProductos');
   cont.innerHTML = '';
   let lista = productos.filter(p => {
-    if (q && !p.nombre.toLowerCase().includes(q) && !(p.codigo||'').includes(q)) return false;
+    if (q && !p.nombre.toLowerCase().includes(q)) return false;
     if (filtroVenta === 'kg') return p.tipo === 'kg';
     if (filtroVenta === 'unidad') return p.tipo === 'unidad';
     if (filtroVenta === 'top') return topCache.has(p.nombre);
     if (filtroVenta === 'favoritos') return favoritos.includes(p.id);
-    if (filtroVenta === 'oferta') return ofertaActivaPara(p.id);
-    if (filtroVenta.startsWith('cat:')) return p.categoria === filtroVenta.slice(4);
     return true;
   });
   lista.sort((a,b) => {
@@ -1847,27 +1740,18 @@ function renderProductos() {
   });
 
   lista.forEach(p => {
-    const of = ofertaActivaPara(p.id);
-    const pe = precioEfectivo(p);
-    const agotado = cfg.stock && p.stock !== undefined && p.stock !== null && p.stock <= 0;
     const b = document.createElement('button');
-    b.className = 'prod' + (agotado ? ' agotado' : '');
+    b.className = 'prod';
     b.type = 'button';
     b.dataset.nombre = p.nombre.toLowerCase();
     const esFav = favoritos.includes(p.id);
     const esTop = topCache.has(p.nombre);
-    const stockBadge = (cfg.stock && p.stock !== undefined && p.stock !== null && p.stock > 0 && p.stock <= 5) ? `<span class="stock-badge">${p.stock}</span>` : '';
-    const precioHTML = of
-      ? `<span class="prod-precio tachado">${money(p.precio)}</span><span class="prod-precio oferta">${money(pe.precio)}<small>/${p.tipo==='unidad'?'u':'kg'}</small></span>`
-      : `<span class="prod-precio">${money(p.precio)}<small>/${p.tipo==='unidad'?'u':'kg'}</small></span>`;
     b.innerHTML = `
       ${esTop ? '<span class="top-badge">⭐ TOP</span>' : ''}
-      ${of ? '<span class="oferta-tag">-' + of.pct + '%</span>' : ''}
-      ${stockBadge}
       ${esFav ? '<span class="fav">❤️</span>' : ''}
       <span class="prod-emoji">${p.emoji || '🥬'}</span>
       <span class="prod-nombre">${esc(p.nombre)}</span>
-      ${precioHTML}
+      <span class="prod-precio">${money(p.precio)}<small>/${p.tipo==='unidad'?'u':'kg'}</small></span>
     `;
     b.onclick = () => abrirModalCantidad(p, null);
     let taps = 0, tTimer;
@@ -1902,7 +1786,9 @@ function productoLibre() {
   const precio = parseFloat(prompt('Precio:'));
   if (!precio || precio <= 0) return toast('Precio inválido', 'error');
   const porKilo = confirm('¿Por KILO?\n\nAceptar = kilo · Cancelar = unidad');
-  abrirModalCantidad({ id:'libre-'+uid(), nombre:nombre.trim(), precio:Math.round(precio), emoji:'🛒', tipo:porKilo?'kg':'unidad' }, null);
+  const costoInput = prompt(`Costo por ${porKilo?'kg':'unidad'} (0 si no sabés):`, 0);
+  const costo = Math.round(parseFloat(costoInput) || 0);
+  abrirModalCantidad({ id:'libre-'+uid(), nombre:nombre.trim(), precio:Math.round(precio), emoji:'🛒', tipo:porKilo?'kg':'unidad', costo }, null);
 }
 
 /* ============================================================
@@ -1933,9 +1819,7 @@ function pintarModalCantidad() {
   const pe = precioEfectivo(mcProducto);
   const sub = esKg ? redondear(pe.precio * mcValor / 1000) : Math.round(pe.precio * mcValor);
   $('#mcSubtotal').textContent = money(sub);
-  let det = `${money(pe.precio)} / ${esKg?'kg':'u.'} · ${esKg ? mcValor+' g' : mcValor+' u.'}`;
-  if (pe.oferta) det += ` · 🔥 -${pe.pct}%`;
-  $('#mcDetalle').textContent = det;
+  $('#mcDetalle').textContent = `${money(pe.precio)} / ${esKg?'kg':'u.'} · ${esKg ? mcValor+' g' : mcValor+' u.'}`;
 }
 function confirmarCantidad() {
   const v = parseFloat($('#mcInput').value);
@@ -1966,7 +1850,9 @@ function agregarAlCarrito(prod, valor, sinHistory) {
     const item = {
       uid: uid(), pid: prod.id, nombre: prod.nombre, emoji: prod.emoji || '🥬',
       precio: pe.precio, tipo: prod.tipo, cantidad: valor, subtotal: 0,
-      oferta: pe.oferta, pct: pe.pct
+      oferta: false, pct: 0,
+      costo: costoDeProducto(prod),
+      costoEstimado: esCostoEstimado(prod)
     };
     item.subtotal = calcSubtotal(item);
     t.carrito.push(item);
@@ -1987,7 +1873,7 @@ function renderCarrito() {
     div.innerHTML = `
       <div class="ic-emoji">${item.emoji}</div>
       <div class="ic-info">
-        <div class="ic-nombre">${esc(item.nombre)}${item.oferta ? ' 🔥' : ''}</div>
+        <div class="ic-nombre">${esc(item.nombre)}</div>
         <div class="ic-cant">${fmtCantidad(item)} × ${money(item.precio)}</div>
       </div>
       <div class="ic-sub">${money(item.subtotal)}</div>
@@ -2024,126 +1910,6 @@ function actualizarTotales() {
 }
 
 /* ============================================================
-   VOZ
-============================================================ */
-let reconocimiento = null;
-let vozTextoFinal = '';
-function abrirModalVoz() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) return toast('Tu navegador no soporta dictado', 'error');
-  reconocimiento = new SR();
-  reconocimiento.lang = 'es-AR';
-  reconocimiento.continuous = true;
-  reconocimiento.interimResults = true;
-  vozTextoFinal = '';
-  $('#vozTexto').textContent = '🎤 Escuchando…';
-  abrirModal('#modalVoz');
-  $('#btnVoz').classList.add('grabando');
-  reconocimiento.onresult = (e) => {
-    let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const r = e.results[i];
-      if (r.isFinal) vozTextoFinal += r[0].transcript + ' ';
-      else interim += r[0].transcript;
-    }
-    $('#vozTexto').textContent = (vozTextoFinal + interim).trim() || '🎤 Escuchando…';
-  };
-  reconocimiento.onend = () => { $('#btnVoz').classList.remove('grabando'); };
-  try { reconocimiento.start(); } catch(e){}
-}
-function cerrarModalVoz() {
-  if (reconocimiento) { try { reconocimiento.stop(); } catch(e){} }
-  $('#btnVoz').classList.remove('grabando');
-  cerrarModal('#modalVoz');
-}
-const NUMEROS_PALABRA = {
-  'un':1,'una':1,'uno':1,'medio':0.5,'media':0.5,'dos':2,'tres':3,'cuatro':4,'cinco':5,
-  'seis':6,'siete':7,'ocho':8,'nueve':9,'diez':10,'once':11,'doce':12,
-  'cuarto':0.25,'tres cuartos':0.75,'un kilo y medio':1.5,'kilo y medio':1.5,
-  'un cuarto':0.25,'medio kilo':0.5,'un kilo':1,'dos kilos':2,'tres kilos':3
-};
-function procesarVoz(texto) {
-  texto = texto.toLowerCase().trim().replace(/[.,;!?]/g, '');
-  if (/^borrar|^eliminar|^sacar/.test(texto)) {
-    const t = tabActiva();
-    if (t.carrito.length) {
-      pushHistory({ msg:'voz: borrar último' });
-      t.carrito.pop();
-      guardarTabs(); renderCarrito(); renderTabsVenta();
-      toast('🗑️ Último eliminado');
-    } else toast('Carrito vacío', 'warn');
-    return true;
-  }
-  if (/^vaciar|^limpiar|^borrar todo/.test(texto)) {
-    pushHistory({ msg:'voz: vaciar' });
-    tabActiva().carrito = [];
-    guardarTabs(); renderCarrito(); renderTabsVenta();
-    toast('🧹 Carrito vaciado');
-    return true;
-  }
-  let cant = null, producto = null;
-  const m1 = texto.match(/^(.*?)\s+(?:de\s+)?([a-záéíóúñ]+)$/);
-  if (m1) {
-    const cs = m1[1].trim();
-    producto = m1[2].trim();
-    if (NUMEROS_PALABRA[cs] !== undefined) cant = NUMEROS_PALABRA[cs];
-    else {
-      const nm = cs.match(/^([\d.]+)\s*(kg|kilos?|g|gramos?|u|unidades?)?/);
-      if (nm) {
-        cant = parseFloat(nm[1]);
-        const u = nm[2];
-        if (u && /kg|kilo/.test(u)) cant = cant * 1000;
-      }
-    }
-  }
-  if (cant === null || !producto) { toast('No entendí: "' + texto + '"', 'warn'); return false; }
-  const prod = productos.find(p => p.nombre.toLowerCase().includes(producto) || producto.includes(p.nombre.toLowerCase()));
-  if (!prod) { toast('No encontré: ' + producto, 'error'); return false; }
-  let valor = cant;
-  if (prod.tipo === 'kg') { if (valor <= 20) valor = valor * 1000; }
-  else { if (valor > 100) valor = Math.round(valor/1000); }
-  agregarAlCarrito(prod, valor, false);
-  guardarTabs(); renderCarrito(); renderTabsVenta();
-  toast(`✅ ${prod.nombre} ${fmtCantidad({tipo:prod.tipo, cantidad:valor})}`, 'ok');
-  SND.ok();
-  return true;
-}
-
-/* ============================================================
-   SCANNER
-============================================================ */
-let scanStream = null;
-async function abrirScanner() {
-  if (!('BarcodeDetector' in window)) return toast('Tu navegador no soporta escaneo', 'error');
-  abrirModal('#modalScanner');
-  $('#scanStatus').textContent = 'Iniciando cámara…';
-  try {
-    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    $('#scannerVideo').srcObject = scanStream;
-    $('#scanStatus').textContent = 'Apuntá al código…';
-    const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code'] });
-    const scan = async () => {
-      if (!scanStream) return;
-      try {
-        const codes = await detector.detect($('#scannerVideo'));
-        if (codes.length) {
-          const code = codes[0].rawValue;
-          const prod = productos.find(p => p.codigo === code);
-          if (prod) { abrirModalCantidad(prod, null); cerrarScanner(); return; }
-          else $('#scanStatus').textContent = 'Código ' + code + ' no encontrado';
-        }
-      } catch(e){}
-      requestAnimationFrame(scan);
-    };
-    scan();
-  } catch(e) { $('#scanStatus').textContent = 'Error: ' + e.message; }
-}
-function cerrarScanner() {
-  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
-  cerrarModal('#modalScanner');
-}
-
-/* ============================================================
    COBRO
 ============================================================ */
 function abrirCobro() {
@@ -2151,9 +1917,6 @@ function abrirCobro() {
   metodoPago = 'Efectivo';
   $$('#metodos .metodo').forEach(m => m.classList.toggle('activo', m.dataset.metodo === 'Efectivo'));
   $('#cobroEfectivo').style.display = 'block';
-  $('#cobroFiado').style.display = 'none';
-  $('#cobroMixto').style.display = 'none';
-  $('#cobroPuntosBox').style.display = 'none';
   $('#cobroRecibido').value = '';
   $('#cobroTotal').textContent = money(totalFinal());
   const cont = $('#chipsBilletes'); cont.innerHTML = '';
@@ -2169,19 +1932,7 @@ function abrirCobro() {
     c.onclick = () => { $('#cobroRecibido').value = b; actualizarVuelto(); };
     cont.appendChild(c);
   });
-  const sel = $('#cobroCliente'); sel.innerHTML = '';
-  const clientes = LS.get('vd_clientes_v3', []);
-  if (!clientes.length) {
-    const op = document.createElement('option'); op.value=''; op.textContent='⚠️ No hay clientes';
-    sel.appendChild(op);
-  } else clientes.forEach(c => {
-    const op = document.createElement('option');
-    op.value = c.id;
-    op.textContent = c.nombre + (c.deuda>0 ? ` (debe ${money(c.deuda)})` : '');
-    sel.appendChild(op);
-  });
-  $('#cobroMixtoEf').value = '';
-  actualizarMixto(); actualizarVuelto();
+  actualizarVuelto();
   abrirModal('#modalCobro');
 }
 function actualizarVuelto() {
@@ -2193,33 +1944,18 @@ function actualizarVuelto() {
   if (dif < 0) { el.className='vuelto falta'; el.textContent = `⚠️ Faltan ${money(Math.abs(dif))}`; }
   else { el.className='vuelto ok'; el.textContent = `💵 Vuelto: ${money(dif)}`; }
 }
-function actualizarMixto() {
-  const total = totalFinal();
-  const ef = parseFloat($('#cobroMixtoEf').value) || 0;
-  const resto = Math.max(0, total - ef);
-  $('#cobroMixtoResto').textContent = resto > 0 ? `Resto: ${money(resto)}` : (ef > total ? `De más: ${money(ef-total)}` : 'Cubre el total');
-}
 
 async function finalizarVenta() {
   const t = tabActiva();
   const total = totalFinal();
   const st = subtotalCarrito();
   const pct = descuentoPct();
-  let recibido = null, vuelto = 0, clienteId = null, clienteNombre = null, pagoMixtoEf = null;
+  let recibido = null, vuelto = 0;
   if (metodoPago === 'Efectivo') {
     const v = parseFloat($('#cobroRecibido').value);
     recibido = isNaN(v) || v === 0 ? total : v;
     vuelto = recibido - total;
     if (vuelto < 0) { toast(`Faltan ${money(Math.abs(vuelto))}`, 'error'); SND.err(); vibrar(120); return; }
-  } else if (metodoPago === 'Fiado') {
-    clienteId = $('#cobroCliente').value;
-    if (!clienteId) { toast('Elegí cliente', 'error'); SND.err(); return; }
-    const cli = LS.get('vd_clientes_v3', []).find(c => c.id === clienteId);
-    if (!cli) return toast('Cliente no encontrado', 'error');
-    clienteNombre = cli.nombre;
-  } else if (metodoPago === 'Mixto') {
-    pagoMixtoEf = parseFloat($('#cobroMixtoEf').value) || 0;
-    if (pagoMixtoEf > total) return toast('Efectivo > total', 'error');
   }
   const ahora = new Date();
   const venta = {
@@ -2228,55 +1964,12 @@ async function finalizarVenta() {
     fechaISO: ahora.toISOString().slice(0,10),
     hora: ahora.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}),
     total, subtotal: st, descuento: pct, metodo: metodoPago,
-    recibido, vuelto, clienteId, clienteNombre, pagoMixtoEf,
+    recibido, vuelto,
     items: t.carrito.map(i => ({...i}))
   };
   const ventas = LS.get('vd_ventas_v3', []);
   ventas.push(venta);
   await LS.set('vd_ventas_v3', ventas);
-  if (cfg.stock) {
-    t.carrito.forEach(item => {
-      const p = productos.find(x => x.id === item.pid);
-      if (p && p.stock !== undefined && p.stock !== null) {
-        const cant = item.tipo === 'kg' ? item.cantidad / 1000 : item.cantidad;
-        p.stock = Math.max(0, +(p.stock - cant).toFixed(3));
-      }
-    });
-    LS.set('vd_productos_v3', productos);
-  }
-  const clientes = LS.get('vd_clientes_v3', []);
-  if (clienteId) {
-    const idx = clientes.findIndex(c => c.id === clienteId);
-    if (idx >= 0) {
-      if (metodoPago === 'Fiado') {
-        clientes[idx].deuda = (clientes[idx].deuda || 0) + total;
-        clientes[idx].movimientos = clientes[idx].movimientos || [];
-        clientes[idx].movimientos.push({ ts: ahora.getTime(), tipo:'deuda', monto:total, nota:'Venta fiada', ventaId: venta.id });
-      } else if (metodoPago === 'Mixto') {
-        const fiado = total - pagoMixtoEf;
-        if (fiado > 0) {
-          clientes[idx].deuda = (clientes[idx].deuda || 0) + fiado;
-          clientes[idx].movimientos = clientes[idx].movimientos || [];
-          clientes[idx].movimientos.push({ ts: ahora.getTime(), tipo:'deuda', monto:fiado, nota:'Parte fiada', ventaId: venta.id });
-        }
-      }
-      LS.set('vd_clientes_v3', clientes);
-    }
-  }
-  if (cfg.puntosActivo && clienteId && metodoPago !== 'Fiado') {
-    const pts = Math.round(total * (cfg.puntos/100));
-    if (pts > 0) {
-      const cs = LS.get('vd_clientes_v3', []);
-      const idx = cs.findIndex(c => c.id === clienteId);
-      if (idx >= 0) {
-        cs[idx].puntos = (cs[idx].puntos || 0) + pts;
-        cs[idx].movimientos = cs[idx].movimientos || [];
-        cs[idx].movimientos.push({ ts: ahora.getTime(), tipo:'puntos', monto:pts, nota:'Puntos ganados' });
-        LS.set('vd_clientes_v3', cs);
-        toast(`🎁 +${pts} puntos`, 'ok');
-      }
-    }
-  }
   t.carrito = []; t.descuento = 0;
   $('#descuento').value = 0;
   history.stack = []; history.redo = [];
@@ -2288,7 +1981,6 @@ async function finalizarVenta() {
   renderCarrito(); renderTabsVenta();
   refrescarTop();
   if ($('#vista-historial').classList.contains('activa')) renderHistorial();
-  if ($('#vista-clientes').classList.contains('activa')) renderClientes();
   autoBackupIfNeeded().catch(e => console.warn('auto-backup:', e));
 }
 
@@ -2305,7 +1997,7 @@ function textoTicket(v) {
   t += '     ' + v.fecha + '  ' + v.hora + '\n';
   t += L + '\n';
   v.items.forEach(i => {
-    t += i.nombre + (i.oferta ? ' 🔥' : '') + '\n';
+    t += i.nombre + '\n';
     t += '  ' + fmtCantidad(i) + ' × ' + money(i.precio) + '\n';
     t += pad(money(i.subtotal), W) + '\n';
   });
@@ -2321,8 +2013,6 @@ function textoTicket(v) {
     t += 'Recibido: ' + money(v.recibido) + '\n';
     t += 'Vuelto:   ' + money(v.vuelto) + '\n';
   }
-  if (v.metodo === 'Fiado') t += 'Cliente: ' + (v.clienteNombre||'') + '\n';
-  if (v.metodo === 'Mixto') t += 'Efectivo: ' + money(v.pagoMixtoEf) + ' · Resto: ' + money(v.total-v.pagoMixtoEf) + '\n';
   const kg = v.items.reduce((a,i) => a + (i.tipo==='kg'?i.cantidad/1000:0), 0);
   if (kg > 0) t += 'Kilos: ' + kg.toFixed(3) + ' kg\n';
   t += L + '\n';
@@ -2448,7 +2138,6 @@ function renderHeatmap(ventas) {
 }
 
 function renderHistorial() {
-  // Nuevas secciones
   renderCalendarioAnual();
   renderProximosDiasClave();
   renderAnalisisSemanal();
@@ -2459,12 +2148,19 @@ function renderHistorial() {
   const totalPlata = ventas.reduce((a,v) => a + v.total, 0);
   const totalKg = ventas.reduce((a,v) => a + v.items.reduce((b,i) => b + (i.tipo==='kg'?i.cantidad/1000:0), 0), 0);
   const promedio = ventas.length ? Math.round(totalPlata/ventas.length) : 0;
+  const gan = calcGananciaPeriodo(ventas);
+  const pref = gan.todoReal ? '' : '≈';
   stats.innerHTML = `
     <div class="stat verde"><div class="s-label">Recaudado</div><div class="s-val">${money(totalPlata)}</div></div>
+    <div class="stat verde"><div class="s-label">Ganancia ${gan.todoReal?'neta':'aprox.'}</div><div class="s-val">${pref}${money(gan.ganancia)}<small style="font-size:11px;font-weight:600;color:var(--gris)"> ${pref}${gan.margenPct}%</small></div></div>
     <div class="stat"><div class="s-label">Ventas</div><div class="s-val">${ventas.length}</div></div>
-    <div class="stat"><div class="s-label">Kilos</div><div class="s-val">${totalKg.toFixed(2)} kg</div></div>
     <div class="stat"><div class="s-label">Ticket prom.</div><div class="s-val">${money(promedio)}</div></div>
   `;
+  if (ventas.length > 0 && gan.todoEstimado) {
+    stats.innerHTML += `<div class="stat" style="grid-column:1/-1;background:var(--azul-bg)"><div class="s-label" style="color:#1e40af">💡 Costos estimados</div><div class="s-val" style="color:#1e40af;font-size:13px;letter-spacing:0">Cargá costos reales (⚙️ → Productos) para ver la ganancia exacta</div></div>`;
+  } else if (gan.itemsEstimados > 0) {
+    stats.innerHTML += `<div class="stat" style="grid-column:1/-1;background:var(--amarillo-bg)"><div class="s-label" style="color:#92400e">⚠️ Mezcla de costos</div><div class="s-val" style="color:#92400e;font-size:12.5px;letter-spacing:0">${gan.itemsEstimados} item(s) estimado(s) · ${gan.itemsTotal - gan.itemsEstimados} real(es)</div></div>`;
+  }
   const top = calcularTopProductos(ventas, 5);
   if (top.length) {
     $('#cardTopProductos').style.display = 'block';
@@ -2506,12 +2202,12 @@ function renderHistorial() {
       totalDia += v.total; kgDia += kgV;
       const div = document.createElement('div');
       div.className = 'venta turno-' + turno;
-      const ico = v.metodo==='Efectivo'?'💵':v.metodo==='Transferencia'?'📱':v.metodo==='QR'?'🔳':v.metodo==='Débito'?'💳':v.metodo==='Fiado'?'👥':'🔀';
+      const ico = v.metodo==='Efectivo'?'💵':v.metodo==='Transferencia'?'📱':v.metodo==='QR'?'🔳':'💳';
       const itemsHTML = v.items.map(i => `• ${i.emoji||''} ${esc(i.nombre)} — ${fmtCantidad(i)} — ${money(i.subtotal)}`).join('<br>');
       div.innerHTML = `
         <div class="v-info">
           <div class="v-top"><span class="v-hora">🕐 ${v.hora}</span><span class="v-total">${money(v.total)}</span></div>
-          <div class="v-metodo">${ico} ${v.metodo}${v.clienteNombre?' · '+esc(v.clienteNombre):''}${v.descuento>0?` · dto ${v.descuento}%`:''}</div>
+          <div class="v-metodo">${ico} ${v.metodo}${v.descuento>0?` · dto ${v.descuento}%`:''}</div>
           <div class="v-items">${itemsHTML}</div>
         </div>
         <div class="v-acciones">
@@ -2524,22 +2220,17 @@ function renderHistorial() {
         if (!confirm(`¿Eliminar venta de ${money(v.total)}?`)) return;
         const todas = LS.get('vd_ventas_v3', []);
         LS.set('vd_ventas_v3', todas.filter(x => x.id !== v.id));
-        if (v.metodo === 'Fiado' && v.clienteId) {
-          const cs = LS.get('vd_clientes_v3', []);
-          const ix = cs.findIndex(c => c.id === v.clienteId);
-          if (ix >= 0) {
-            cs[ix].deuda = Math.max(0, (cs[ix].deuda||0) - v.total);
-            cs[ix].movimientos = (cs[ix].movimientos||[]).filter(m => m.ventaId !== v.id);
-            LS.set('vd_clientes_v3', cs);
-          }
-        }
         toast('Venta eliminada'); renderHistorial();
       };
       bloque.appendChild(div);
     });
     const resumen = document.createElement('div');
     resumen.className = 'dia-resumen';
-    resumen.innerHTML = `<span>💰 ${money(totalDia)}</span><span>⚖️ ${kgDia.toFixed(2)} kg</span><span>🧾 ${lista.length}</span>`;
+    const ganDia = calcGananciaPeriodo(lista);
+    const prefDia = ganDia.todoReal ? '' : '≈';
+    resumen.innerHTML = `<span>💰 ${money(totalDia)}</span>` +
+      (ganDia.itemsTotal > 0 ? `<span style="color:var(--verde-osc);font-weight:900">${prefDia}📈 ${money(ganDia.ganancia)}</span>` : '') +
+      `<span>⚖️ ${kgDia.toFixed(2)} kg</span><span>🧾 ${lista.length}</span>`;
     bloque.appendChild(resumen);
     cont.appendChild(bloque);
   });
@@ -2564,21 +2255,44 @@ function renderCaja() {
   let total = 0, kg = 0;
   filtradas.forEach(v => {
     m[v.metodo] = (m[v.metodo]||0) + v.total;
-    if (v.metodo === 'Mixto') { m['Efectivo'] = (m['Efectivo']||0) + (v.pagoMixtoEf||0); m['Mixto'] -= (v.pagoMixtoEf||0); }
     total += v.total;
     kg += v.items.reduce((a,i) => a + (i.tipo==='kg'?i.cantidad/1000:0), 0);
   });
   const cont = $('#contenidoCaja');
-  cont.innerHTML = `
+  const gan = calcGananciaPeriodo(filtradas);
+  const prefijoGan = gan.todoReal ? '' : '≈';
+  let htmlCaja = `
     <div class="caja-fila"><span>💵 Efectivo</span><span class="monto pos">${money(m['Efectivo']||0)}</span></div>
     <div class="caja-fila"><span>📱 Transferencia</span><span class="monto pos">${money(m['Transferencia']||0)}</span></div>
     <div class="caja-fila"><span>💳 Débito</span><span class="monto pos">${money(m['Débito']||0)}</span></div>
     <div class="caja-fila"><span>🔳 QR</span><span class="monto pos">${money(m['QR']||0)}</span></div>
-    <div class="caja-fila"><span>👥 Fiado</span><span class="monto neg">${money(m['Fiado']||0)}</span></div>
     <div class="caja-fila total"><span>TOTAL</span><span class="monto">${money(total)}</span></div>
     <div class="caja-fila"><span>🧾 Ventas</span><span>${filtradas.length}</span></div>
     <div class="caja-fila"><span>⚖️ Kilos</span><span>${kg.toFixed(2)} kg</span></div>
   `;
+  htmlCaja += `<div style="margin-top:14px;padding-top:12px;border-top:2px dashed var(--borde)">
+    <div style="font-size:11px;font-weight:800;color:var(--gris);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📊 Ganancia del período</div>
+    <div class="caja-fila"><span>📦 Costo de mercadería${gan.todoReal?'':' (estimado)'}</span><span class="monto neg">${prefijoGan}${money(gan.costoTotal)}</span></div>
+    <div class="caja-fila" style="background:var(--verde-bg);padding:11px;border-radius:10px;margin-top:6px;border-bottom:none">
+      <span style="font-weight:900">💰 Ganancia neta${gan.todoReal?'':' (aprox.)'}</span>
+      <span class="monto pos" style="font-size:16px">${prefijoGan}${money(gan.ganancia)} (${prefijoGan}${gan.margenPct}%)</span>
+    </div>`;
+  if (gan.itemsTotal === 0) {
+    htmlCaja += `<div style="background:var(--gris-claro);border-radius:10px;padding:12px;margin-top:10px;font-size:12px;color:var(--gris);text-align:center">Sin ventas en el período</div>`;
+  } else if (gan.todoReal) {
+    htmlCaja += `<div style="background:var(--verde-bg);border-radius:10px;padding:10px;margin-top:8px;font-size:11.5px;font-weight:700;color:var(--verde-osc);text-align:center">✅ Todos los costos son reales</div>`;
+  } else if (gan.todoEstimado) {
+    htmlCaja += `<div style="background:var(--azul-bg);border-radius:10px;padding:11px;margin-top:8px;font-size:12px;color:#1e40af;text-align:center">
+      💡 <b>Todo estimado</b><br>
+      <span style="font-size:11.5px">Cargá costos reales en ⚙️ → Productos (💲) para precisión total</span>
+    </div>`;
+  } else {
+    htmlCaja += `<div style="background:var(--amarillo-bg);border-radius:10px;padding:10px;margin-top:8px;font-size:11.5px;font-weight:700;color:#92400e">
+      ⚠️ ${gan.itemsEstimados} de ${gan.itemsTotal} items usan costo estimado.
+    </div>`;
+  }
+  htmlCaja += `</div>`;
+  cont.innerHTML = htmlCaja;
   const btn = document.createElement('button');
   btn.className = 'btn-primary btn-full';
   btn.style.marginTop = '14px';
@@ -2590,11 +2304,11 @@ function renderCaja() {
     t += 'Transferencia: ' + money(m['Transferencia']||0).padStart(12) + '\n';
     t += 'Débito:        ' + money(m['Débito']||0).padStart(12) + '\n';
     t += 'QR:            ' + money(m['QR']||0).padStart(12) + '\n';
-    t += 'Fiado:         ' + money(m['Fiado']||0).padStart(12) + '\n';
     t += '─'.repeat(32) + '\n';
     t += 'TOTAL:         ' + money(total).padStart(12) + '\n';
     t += '─'.repeat(32) + '\n';
     t += `Ventas: ${filtradas.length}\nKilos: ${kg.toFixed(2)} kg\n`;
+    t += `Costo: ${prefijoGan}${money(gan.costoTotal)}\nGanancia: ${prefijoGan}${money(gan.ganancia)} (${prefijoGan}${gan.margenPct}%)\n`;
     $('#ticketPrint').textContent = t;
     abrirModal('#modalTicket');
   };
@@ -2602,182 +2316,48 @@ function renderCaja() {
 }
 
 /* ============================================================
-   CLIENTES
-============================================================ */
-function renderClientes() {
-  const clientes = LS.get('vd_clientes_v3', []);
-  const q = ($('#buscarCliente')?.value||'').toLowerCase().trim();
-  const lista = $('#listaClientes'); lista.innerHTML = '';
-  const filtrados = clientes.filter(c => !q || c.nombre.toLowerCase().includes(q));
-  $('#clientesVacio').style.display = filtrados.length ? 'none' : 'block';
-  filtrados.sort((a,b) => (b.deuda||0) - (a.deuda||0));
-  filtrados.forEach(c => {
-    const div = document.createElement('div');
-    div.className = 'cliente';
-    const inicial = (c.nombre||'?').charAt(0).toUpperCase();
-    const deuda = c.deuda || 0;
-    const pts = c.puntos || 0;
-    const nivel = pts >= 500 ? '💎' : pts >= 200 ? '🥇' : pts >= 50 ? '🥈' : '';
-    div.innerHTML = `
-      <div class="cliente-avatar">${inicial}${nivel?`<span class="nivel">${nivel}</span>`:''}</div>
-      <div class="cliente-info">
-        <div class="cliente-nombre">${esc(c.nombre)}</div>
-        <div class="cliente-tel">${esc(c.tel || c.nota || '—')}${pts>0?' · '+pts+' pts':''}</div>
-      </div>
-      <div class="cliente-deuda ${deuda===0?'cero':''}">${deuda===0?'✓ al día':money(deuda)}</div>
-    `;
-    div.onclick = () => abrirCuentaCliente(c.id);
-    lista.appendChild(div);
-  });
-  const totalDeuda = clientes.reduce((a,c) => a + (c.deuda||0), 0);
-  const totalPuntos = clientes.reduce((a,c) => a + (c.puntos||0), 0);
-  $('#totalFiado').textContent = money(totalDeuda);
-  $('#totalPuntos').textContent = totalPuntos;
-}
-function abrirNuevoCliente() {
-  $('#clienteTitulo').textContent = '👤 Nuevo cliente';
-  $('#cliNombre').value = ''; $('#cliTel').value = ''; $('#cliNota').value = '';
-  $('#modalCliente').dataset.editId = '';
-  abrirModal('#modalCliente');
-  setTimeout(() => $('#cliNombre').focus(), 150);
-}
-function guardarCliente() {
-  const nombre = $('#cliNombre').value.trim();
-  const tel = $('#cliTel').value.trim();
-  const nota = $('#cliNota').value.trim();
-  const editId = $('#modalCliente').dataset.editId;
-  if (!nombre) return toast('Nombre requerido', 'error');
-  const clientes = LS.get('vd_clientes_v3', []);
-  if (editId) {
-    const ix = clientes.findIndex(c => c.id === editId);
-    if (ix >= 0) Object.assign(clientes[ix], { nombre, tel, nota });
-    toast('✏️ Actualizado', 'ok');
-  } else {
-    clientes.push({ id: uid(), nombre, tel, nota, deuda: 0, puntos: 0, movimientos: [], creado: Date.now() });
-    toast('✅ Cliente agregado', 'ok');
-  }
-  LS.set('vd_clientes_v3', clientes);
-  cerrarModal('#modalCliente');
-  renderClientes();
-}
-function abrirCuentaCliente(id) {
-  const clientes = LS.get('vd_clientes_v3', []);
-  const c = clientes.find(x => x.id === id);
-  if (!c) return;
-  clienteCuentaActual = c.id;
-  $('#cuentaTitulo').textContent = '👤 ' + c.nombre;
-  $('#cuentaDeuda').textContent = money(c.deuda||0);
-  $('#cuentaPuntos').textContent = c.puntos||0;
-  $('#cuentaMonto').value = '';
-  $('#cuentaCanjeMonto').value = '';
-  const chips = $('#cuentaChips'); chips.innerHTML = '';
-  const d = c.deuda||0;
-  [1000,2000,5000,10000].forEach(v => {
-    if (v <= Math.max(d, 10000)) {
-      const b = document.createElement('button'); b.className='chip'; b.type='button'; b.textContent=money(v);
-      b.onclick = () => $('#cuentaMonto').value = v;
-      chips.appendChild(b);
-    }
-  });
-  if (d > 0) {
-    const b = document.createElement('button'); b.className='chip'; b.type='button'; b.textContent='Total '+money(d);
-    b.onclick = () => $('#cuentaMonto').value = d;
-    chips.appendChild(b);
-  }
-  const cc = $('#cuentaCanjeChips'); cc.innerHTML = '';
-  const pts = c.puntos||0;
-  [100,200,500].forEach(v => {
-    if (v <= pts) {
-      const b = document.createElement('button'); b.className='chip'; b.type='button'; b.textContent=v+' pts';
-      b.onclick = () => $('#cuentaCanjeMonto').value = v;
-      cc.appendChild(b);
-    }
-  });
-  const movs = (c.movimientos||[]).slice().reverse();
-  const cM = $('#cuentaMovimientos');
-  if (!movs.length) cM.innerHTML = '<p class="vacio">Sin movimientos</p>';
-  else cM.innerHTML = movs.map(mm => {
-    const ico = mm.tipo==='deuda'?'🛒':mm.tipo==='pago'?'💵':mm.tipo==='puntos'?'🎁':'📝';
-    const sgn = mm.tipo==='deuda' ? '+' : (mm.tipo==='pago'||mm.tipo==='canje') ? '−' : '+';
-    return `<div class="caja-fila"><span>${ico} ${esc(mm.nota||mm.tipo)}<br><small style="color:var(--gris);font-weight:400">${new Date(mm.ts).toLocaleString('es-AR')}</small></span><span class="monto ${mm.tipo==='deuda'?'neg':'pos'}">${sgn}${mm.tipo==='puntos'?mm.monto+' pts':money(mm.monto)}</span></div>`;
-  }).join('');
-  $$('#modalCuenta .tab').forEach(t => t.classList.toggle('activo', t.dataset.tab === 'abonar'));
-  $('#cuentaTabAbonar').style.display = 'block';
-  $('#cuentaTabCanjear').style.display = 'none';
-  $('#cuentaTabHistorial').style.display = 'none';
-  abrirModal('#modalCuenta');
-}
-function abonarCliente() {
-  const monto = parseFloat($('#cuentaMonto').value);
-  if (!monto || monto <= 0) return toast('Monto inválido', 'error');
-  const cs = LS.get('vd_clientes_v3', []);
-  const ix = cs.findIndex(c => c.id === clienteCuentaActual);
-  if (ix < 0) return;
-  const c = cs[ix];
-  if (monto > (c.deuda||0)) if (!confirm(`Supera la deuda (${money(c.deuda||0)}). ¿Registrar igual?`)) return;
-  c.deuda = Math.max(0, (c.deuda||0) - monto);
-  c.movimientos = c.movimientos || [];
-  c.movimientos.push({ ts: Date.now(), tipo:'pago', monto, nota:'Pago recibido' });
-  LS.set('vd_clientes_v3', cs);
-  SND.ok(); vibrar();
-  toast('💵 Pago registrado', 'ok');
-  cerrarModal('#modalCuenta');
-  renderClientes();
-}
-function canjearPuntos() {
-  const puntos = parseInt($('#cuentaCanjeMonto').value);
-  if (!puntos || puntos <= 0) return toast('Puntos inválidos', 'error');
-  const cs = LS.get('vd_clientes_v3', []);
-  const ix = cs.findIndex(c => c.id === clienteCuentaActual);
-  if (ix < 0) return;
-  const c = cs[ix];
-  if (puntos > (c.puntos||0)) return toast('Puntos insuficientes', 'error');
-  const desc = Math.floor(puntos / 100) * 500;
-  if (desc === 0) return toast('Mínimo 100 puntos', 'warn');
-  c.puntos = (c.puntos||0) - (Math.floor(puntos/100)*100);
-  c.movimientos = c.movimientos || [];
-  c.movimientos.push({ ts: Date.now(), tipo:'canje', monto:desc, nota:`Canje ${Math.floor(puntos/100)*100} pts → ${money(desc)}` });
-  LS.set('vd_clientes_v3', cs);
-  SND.ok(); vibrar();
-  toast(`🎁 ${money(desc)} acreditados`, 'ok');
-  cerrarModal('#modalCuenta');
-  renderClientes();
-}
-
-/* ============================================================
    ADMIN
 ============================================================ */
 function renderAdmin() {
-  const sel = $('#npCategoria'); sel.innerHTML = '';
-  categorias.forEach(c => { const op = document.createElement('option'); op.value = c; op.textContent = c; sel.appendChild(op); });
   const cont = $('#listaAdmin'); cont.innerHTML = '';
+  const badge = $('#productosCount');
+  if (badge) badge.textContent = productos.length;
   if (!productos.length) cont.innerHTML = '<p class="vacio">Sin productos</p>';
   productos.forEach((p, idx) => {
     const div = document.createElement('div');
     div.className = 'fila-admin';
-    const stockTxt = cfg.stock && p.stock !== undefined && p.stock !== null ? `<span class="stock-info ${p.stock<=5?'low':''}">Stock: ${p.stock}</span>` : '';
-    const of = ofertaActivaPara(p.id);
+    const costoReal = !esCostoEstimado(p);
+    const costoUsado = costoDeProducto(p);
+    const margen = p.precio > 0 ? Math.round((p.precio - costoUsado) / p.precio * 100) : 0;
+    const costoInfo = costoReal
+      ? `<span class="stock-info" style="color:var(--verde-osc);font-weight:700">💲 Costo: ${money(costoUsado)} · Margen: ${margen}%</span>`
+      : `<span class="stock-info" style="color:var(--amarillo);font-weight:700">⚠️ Costo estimado: ≈${money(costoUsado)} · Margen ≈${margen}%</span>`;
     div.innerHTML = `
       <div class="ic-emoji">${p.emoji||'🥬'}</div>
       <div class="ic-info">
-        <div class="ic-nombre">${esc(p.nombre)}${of?' 🔥':''}</div>
-        <div class="ic-cant">${money(p.precio)} / ${p.tipo==='unidad'?'u':'kg'} · ${esc(p.categoria||'')} ${p.codigo?'· '+p.codigo:''}</div>
-        ${stockTxt}
+        <div class="ic-nombre">${esc(p.nombre)}</div>
+        <div class="ic-cant">${money(p.precio)} / ${p.tipo==='unidad'?'u':'kg'}</div>
+        ${costoInfo}
       </div>
       <div class="ic-acciones">
         <button class="mini" data-a="editar" type="button">✏️</button>
-        <button class="mini" data-a="stock" type="button">📦</button>
+        <button class="mini" data-a="costo" type="button" title="Editar costo">💲</button>
         <button class="mini" data-a="borrar" type="button">❌</button>
       </div>
     `;
-    div.querySelector('[data-a="editar"]').onclick = () => editarProducto(idx);
-    div.querySelector('[data-a="stock"]').onclick = () => {
-      const v = prompt(`Stock actual de ${p.nombre}:`, p.stock ?? 0);
+    div.querySelector('[data-a="editar"]').onclick = () => abrirModalEditarProducto(idx);
+    div.querySelector('[data-a="costo"]').onclick = () => {
+      const g = (cfg && cfg.gananciaDefault > 0) ? cfg.gananciaDefault : 1000;
+      const sugerido = p.costo > 0 ? p.costo : Math.max(0, p.precio - g);
+      const v = prompt(
+        `Costo por ${p.tipo === 'kg' ? 'kilo' : 'unidad'} de ${p.nombre}\nPrecio venta: ${money(p.precio)}`,
+        sugerido
+      );
       if (v === null) return;
-      p.stock = parseFloat(v) || 0;
+      p.costo = Math.round(parseFloat(v) || 0);
       LS.set('vd_productos_v3', productos);
       renderAdmin(); renderProductos();
-      toast('📦 Stock actualizado', 'ok');
+      toast(p.costo > 0 ? `💲 Costo real: ${money(p.costo)}` : '💲 Costo quitado (vuelve a estimar)', 'ok');
     };
     div.querySelector('[data-a="borrar"]').onclick = () => {
       if (!confirm(`¿Eliminar "${p.nombre}"?`)) return;
@@ -2790,74 +2370,63 @@ function renderAdmin() {
     };
     cont.appendChild(div);
   });
-  const lc = $('#listaCategorias'); lc.innerHTML = '';
-  categorias.forEach((c, i) => {
-    const div = document.createElement('div');
-    div.className = 'fila-admin';
-    div.innerHTML = `<div class="ic-emoji">🏷️</div><div class="ic-info"><div class="ic-nombre">${esc(c)}</div></div><button class="mini" type="button">❌</button>`;
-    div.querySelector('.mini').onclick = () => {
-      if (c === 'Sin categoría') return toast('No se puede eliminar', 'warn');
-      if (!confirm(`Eliminar categoría "${c}"?`)) return;
-      categorias.splice(i, 1);
-      productos.forEach(p => { if (p.categoria === c) p.categoria = 'Sin categoría'; });
-      LS.set('vd_categorias_v3', categorias);
-      LS.set('vd_productos_v3', productos);
-      renderAdmin(); renderProductos(); renderFiltrosVenta();
-    };
-    lc.appendChild(div);
-  });
-  const selOf = $('#ofProducto'); selOf.innerHTML = '';
-  productos.forEach(p => { const op = document.createElement('option'); op.value = p.id; op.textContent = p.nombre; selOf.appendChild(op); });
-  const lo = $('#listaOfertas'); lo.innerHTML = '';
-  if (!ofertas.length) lo.innerHTML = '<p class="vacio">Sin ofertas</p>';
-  ofertas.forEach((of, i) => {
-    const p = productos.find(x => x.id === of.productoId);
-    const div = document.createElement('div');
-    div.className = 'fila-admin';
-    div.innerHTML = `<div class="ic-emoji">🏷️</div><div class="ic-info"><div class="ic-nombre">${esc(p?p.nombre:'?')}</div><div class="stock-info">${of.desde} - ${of.hasta} · −${of.pct}%</div></div><button class="mini" type="button">❌</button>`;
-    div.querySelector('.mini').onclick = () => {
-      ofertas.splice(i,1);
-      LS.set('vd_ofertas_v3', ofertas);
-      renderAdmin(); renderProductos();
-    };
-    lo.appendChild(div);
-  });
 }
-function editarProducto(idx) {
+
+/* ============================================================
+   MODAL EDITAR PRODUCTO
+============================================================ */
+function abrirModalEditarProducto(idx) {
   const p = productos[idx];
-  const nombre = prompt('Nombre:', p.nombre); if (!nombre) return;
-  const precio = parseFloat(prompt('Precio:', p.precio)); if (!precio || precio <= 0) return;
-  const emoji = prompt('Emoji:', p.emoji||'') || p.emoji;
-  const codigo = prompt('Código de barras:', p.codigo||'') || '';
-  const tipo = confirm('¿Por KILO?\n\nAceptar = kilo · Cancelar = unidad') ? 'kg' : 'unidad';
+  if (!p) return;
+  epIdx = idx;
+  $('#epNombre').value = p.nombre || '';
+  $('#epPrecio').value = p.precio || 0;
+  $('#epCosto').value = p.costo || 0;
+  $('#epEmoji').value = p.emoji || '';
+  $('#epTipo').value = p.tipo || 'kg';
+  abrirModal('#modalEditarProducto');
+  setTimeout(() => $('#epNombre').focus(), 150);
+}
+
+function aplicarEdicionProducto() {
+  if (epIdx < 0 || !productos[epIdx]) return;
+  const p = productos[epIdx];
+  const nombre = $('#epNombre').value.trim();
+  const precio = parseFloat($('#epPrecio').value);
+  const costo = parseFloat($('#epCosto').value) || 0;
+  const emoji = $('#epEmoji').value.trim() || '🥬';
+  const tipo = $('#epTipo').value;
+  if (!nombre) return toast('Nombre requerido', 'error');
+  if (!precio || precio <= 0) return toast('Precio inválido', 'error');
   const viejo = p.precio;
-  productos[idx] = { ...p, nombre: nombre.trim(), precio: Math.round(precio), emoji, codigo, tipo };
+  productos[epIdx] = { ...p, nombre, precio: Math.round(precio), emoji, tipo, costo: Math.round(costo) };
   if (viejo !== Math.round(precio)) {
     const hist = LS.get('vd_precios_hist_v3', []);
-    hist.push({ producto: productos[idx].nombre, antes: viejo, ahora: productos[idx].precio, ts: Date.now() });
+    hist.push({ producto: productos[epIdx].nombre, antes: viejo, ahora: productos[epIdx].precio, ts: Date.now() });
     LS.set('vd_precios_hist_v3', hist.slice(-500));
-    toast(`✏️ ${productos[idx].nombre}: ${money(viejo)} → ${money(productos[idx].precio)}`, 'ok');
-  } else toast('✏️ Actualizado', 'ok');
+    toast(`✏️ ${productos[epIdx].nombre}: ${money(viejo)} → ${money(productos[epIdx].precio)}`, 'ok');
+  } else {
+    toast('✏️ Producto actualizado', 'ok');
+  }
   LS.set('vd_productos_v3', productos);
+  cerrarModal('#modalEditarProducto');
+  epIdx = -1;
   renderAdmin(); renderProductos();
+  SND.ok();
 }
+
 function agregarProductoAdmin() {
   const nombre = $('#npNombre').value.trim();
   const precio = parseFloat($('#npPrecio').value);
-  const oferta = parseFloat($('#npOferta').value) || 0;
+  const costo = parseFloat($('#npCosto').value) || 0;
   const emoji = $('#npEmoji').value.trim() || '🥬';
-  const codigo = $('#npCodigo').value.trim();
-  const stockVal = $('#npStock').value.trim();
   const tipo = $('#npTipo').value;
-  const categoria = $('#npCategoria').value || 'Sin categoría';
   if (!nombre) return toast('Nombre requerido', 'error');
   if (!precio || precio <= 0) return toast('Precio inválido', 'error');
-  const nuevo = { id: uid(), nombre, precio: Math.round(precio), emoji, codigo, tipo, categoria };
-  if (oferta > 0) nuevo.precioOferta = Math.round(oferta);
-  if (stockVal !== '') nuevo.stock = parseFloat(stockVal) || 0;
+  const nuevo = { id: uid(), nombre, precio: Math.round(precio), emoji, tipo, costo: Math.round(costo) };
   productos.push(nuevo);
   LS.set('vd_productos_v3', productos);
-  ['#npNombre','#npPrecio','#npOferta','#npEmoji','#npCodigo','#npStock'].forEach(s => $(s).value = '');
+  ['#npNombre','#npPrecio','#npCosto','#npEmoji'].forEach(s => $(s).value = '');
   renderAdmin(); renderProductos();
   toast('✅ Producto agregado', 'ok'); SND.ok();
 }
@@ -2921,9 +2490,8 @@ async function renderListaSnapshots() {
 async function descargarBackupCompleto() {
   const data = {
     version: 3, ts: Date.now(),
-    productos, favoritos, categorias, ofertas, cfg,
+    productos, favoritos, cfg,
     ventas: LS.get('vd_ventas_v3', []),
-    clientes: LS.get('vd_clientes_v3', []),
     espera: LS.get('vd_espera_v3', []),
     precios_hist: LS.get('vd_precios_hist_v3', []),
     tabsVenta,
@@ -2944,16 +2512,13 @@ async function importarBackupFile(file) {
     try {
       const d = JSON.parse(e.target.result);
       await crearSnapshot('Antes de importar archivo · ' + new Date().toLocaleString('es-AR'));
-      if (!confirm(`Importar backup del ${new Date(d.ts || Date.now()).toLocaleString('es-AR')}?\n\nSe reemplazarán los datos actuales.\n\n(Se guardó un backup automático del estado actual)`)) {
+      if (!confirm(`Importar backup del ${new Date(d.ts || Date.now()).toLocaleString('es-AR')}?\n\nSe reemplazarán los datos actuales.`)) {
         toast('Importación cancelada'); return;
       }
       if (d.productos) await LS.set('vd_productos_v3', d.productos);
       if (d.favoritos) await LS.set('vd_favoritos_v3', d.favoritos);
-      if (d.categorias) await LS.set('vd_categorias_v3', d.categorias);
-      if (d.ofertas) await LS.set('vd_ofertas_v3', d.ofertas);
       if (d.cfg) await LS.set('vd_cfg_v3', d.cfg);
       if (d.ventas) await LS.set('vd_ventas_v3', d.ventas);
-      if (d.clientes) await LS.set('vd_clientes_v3', d.clientes);
       if (d.espera) await LS.set('vd_espera_v3', d.espera);
       if (d.precios_hist) await LS.set('vd_precios_hist_v3', d.precios_hist);
       if (d.tabsVenta) await LS.set('vd_tabs_v3', d.tabsVenta);
@@ -3002,14 +2567,14 @@ function abrirListaEspera() {
       const total = v.carrito.reduce((a,i) => a + i.subtotal, 0);
       const final = Math.round(total * (1 - (v.descuento||0)/100));
       const div = document.createElement('div');
-      div.className = 'cliente';
+      div.style.cssText = 'background:var(--card);border-radius:12px;padding:11px;margin-bottom:7px;box-shadow:var(--sombra);display:flex;align-items:center;gap:9px';
       div.innerHTML = `
-        <div class="cliente-avatar">🅿️</div>
-        <div class="cliente-info">
-          <div class="cliente-nombre">${esc(v.etiqueta)}</div>
-          <div class="cliente-tel">${v.carrito.length} prod · ${new Date(v.ts).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--gris-claro);display:flex;align-items:center;justify-content:center;font-size:17px">🅿️</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13.5px">${esc(v.etiqueta)}</div>
+          <div style="font-size:11px;color:var(--gris)">${v.carrito.length} prod · ${new Date(v.ts).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}</div>
         </div>
-        <div class="cliente-deuda" style="color:var(--verde-osc)">${money(final)}</div>
+        <div style="font-weight:900;font-size:14px;color:var(--verde-osc)">${money(final)}</div>
       `;
       div.onclick = () => {
         if (!confirm(`¿Recuperar "${v.etiqueta}"?${tabActiva().carrito.length?'\n\n⚠️ El carrito actual se reemplazará.':''}`)) return;
@@ -3049,7 +2614,6 @@ function cerrarModal(s) { $(s).classList.remove('abierto'); }
 ============================================================ */
 $('#btnHistorial').onclick = () => mostrarVista($('#vista-historial').classList.contains('activa') ? 'venta' : 'historial');
 $('#btnAdmin').onclick = () => mostrarVista($('#vista-admin').classList.contains('activa') ? 'venta' : 'admin');
-$('#btnClientes').onclick = () => mostrarVista($('#vista-clientes').classList.contains('activa') ? 'venta' : 'clientes');
 $('#btnCaja').onclick = () => mostrarVista($('#vista-caja').classList.contains('activa') ? 'venta' : 'caja');
 $('#btnTema').onclick = () => {
   tema = tema === 'oscuro' ? 'claro' : 'oscuro';
@@ -3060,21 +2624,16 @@ $('#btnTema').onclick = () => {
 };
 $('#buscar').addEventListener('input', renderProductos);
 $('#btnLimpiar').onclick = () => { $('#buscar').value = ''; renderProductos(); $('#buscar').focus(); };
-$('#btnVoz').onclick = abrirModalVoz;
-$('#vozCancelar').onclick = cerrarModalVoz;
-$('#vozConfirmar').onclick = () => {
-  const texto = (vozTextoFinal || $('#vozTexto').textContent).trim();
-  cerrarModalVoz();
-  if (texto && texto !== '🎤 Escuchando…') {
-    const partes = texto.split(/[,;]|\by\b/).map(s => s.trim()).filter(Boolean);
-    let ok = 0;
-    partes.forEach(p => { if (procesarVoz(p)) ok++; });
-    if (!ok) toast('No entendí: ' + texto, 'warn');
-  }
-};
-if ('BarcodeDetector' in window) $('#btnScan').style.display = 'flex';
-$('#btnScan').onclick = abrirScanner;
-$('#scanCancelar').onclick = cerrarScanner;
+
+// Modal editar producto
+$('#epCancelar').onclick = () => { cerrarModal('#modalEditarProducto'); epIdx = -1; };
+$('#epAplicar').onclick = aplicarEdicionProducto;
+$('#epNombre').addEventListener('keydown', e => { if (e.key === 'Enter') $('#epPrecio').focus(); });
+$('#epPrecio').addEventListener('keydown', e => { if (e.key === 'Enter') $('#epCosto').focus(); });
+$('#epCosto').addEventListener('keydown', e => { if (e.key === 'Enter') $('#epEmoji').focus(); });
+$('#epEmoji').addEventListener('keydown', e => { if (e.key === 'Enter') aplicarEdicionProducto(); });
+
+// Modal cantidad
 $('#mcMenos').onclick = () => { const p = mcProducto.tipo==='kg'?100:1; mcValor = Math.max(p, mcValor-p); pintarModalCantidad(); };
 $('#mcMas').onclick = () => { const p = mcProducto.tipo==='kg'?100:1; mcValor = mcValor+p; pintarModalCantidad(); };
 $('#mcInput').addEventListener('input', e => {
@@ -3088,33 +2647,30 @@ $('#mcInput').addEventListener('input', e => {
 $('#mcInput').addEventListener('keydown', e => { if (e.key === 'Enter') confirmarCantidad(); });
 $('#mcCancelar').onclick = () => cerrarModal('#modalCantidad');
 $('#mcAgregar').onclick = confirmarCantidad;
+
+// Cobro
 $('#btnCobrar').onclick = abrirCobro;
 $$('#metodos .metodo').forEach(m => {
   m.onclick = () => {
     metodoPago = m.dataset.metodo;
     $$('#metodos .metodo').forEach(x => x.classList.toggle('activo', x === m));
     $('#cobroEfectivo').style.display = metodoPago === 'Efectivo' ? 'block' : 'none';
-    $('#cobroFiado').style.display = metodoPago === 'Fiado' ? 'block' : 'none';
-    $('#cobroMixto').style.display = metodoPago === 'Mixto' ? 'block' : 'none';
-    const box = $('#cobroPuntosBox');
-    if (cfg.puntosActivo && metodoPago !== 'Fiado') {
-      const pts = Math.round(totalFinal() * (cfg.puntos/100));
-      if (pts > 0) { box.style.display = 'block'; $('#cobroPuntosTxt').textContent = `Se sumarán ${pts} puntos al cliente si lo elegís`; }
-      else box.style.display = 'none';
-    } else box.style.display = 'none';
     if (metodoPago === 'Efectivo') setTimeout(() => $('#cobroRecibido').select(), 100);
   };
 });
 $('#cobroRecibido').addEventListener('input', actualizarVuelto);
 $('#cobroRecibido').addEventListener('keydown', e => { if (e.key === 'Enter') finalizarVenta(); });
-$('#cobroMixtoEf').addEventListener('input', actualizarMixto);
 $('#cobroCancelar').onclick = () => cerrarModal('#modalCobro');
 $('#cobroConfirmar').onclick = finalizarVenta;
+
+// Ticket
 $('#ticketCerrar').onclick = () => cerrarModal('#modalTicket');
 $('#ticketImprimir').onclick = () => window.print();
 $('#ticketWsp').onclick = compartirWhatsApp;
 $('#ticketEmail').onclick = enviarEmail;
 $('#detalleDiaCerrar').onclick = () => cerrarModal('#modalDetalleDia');
+
+// Filtros historial
 $$('#filtrosHistorial .chip').forEach(c => {
   c.onclick = () => {
     filtroHistorial = c.dataset.filtro;
@@ -3122,16 +2678,18 @@ $$('#filtrosHistorial .chip').forEach(c => {
     renderHistorial();
   };
 });
+
+// CSV
 $('#btnCSV').onclick = () => {
   const ventas = ventasFiltradas();
   if (!ventas.length) return toast('No hay ventas', 'warn');
-  let csv = 'Fecha;Hora;Metodo;Cliente;Total;Descuento;Producto;Cantidad;Unidad;Precio;Subtotal;Oferta\n';
+  let csv = 'Fecha;Hora;Metodo;Total;Descuento;Producto;Cantidad;Unidad;Precio;Subtotal\n';
   ventas.forEach(v => {
-    if (!v.items.length) csv += `${v.fecha};${v.hora};${v.metodo};${v.clienteNombre||''};${v.total};${v.descuento||0};;;;;;\n`;
+    if (!v.items.length) csv += `${v.fecha};${v.hora};${v.metodo};${v.total};${v.descuento||0};;;;;\n`;
     else v.items.forEach(i => {
       const cant = i.tipo === 'kg' ? (i.cantidad/1000).toFixed(3) : i.cantidad;
       const uni = i.tipo === 'kg' ? 'kg' : 'u';
-      csv += `${v.fecha};${v.hora};${v.metodo};${v.clienteNombre||''};${v.total};${v.descuento||0};${i.nombre};${cant};${uni};${i.precio};${i.subtotal};${i.oferta?'sí':'no'}\n`;
+      csv += `${v.fecha};${v.hora};${v.metodo};${v.total};${v.descuento||0};${i.nombre};${cant};${uni};${i.precio};${i.subtotal}\n`;
     });
   });
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -3141,6 +2699,8 @@ $('#btnCSV').onclick = () => {
   a.click(); URL.revokeObjectURL(a.href);
   toast('⬇️ CSV descargado', 'ok');
 };
+
+// Filtros caja
 $$('#filtrosCaja .chip').forEach(c => {
   c.onclick = () => {
     filtroCaja = c.dataset.caja;
@@ -3148,71 +2708,40 @@ $$('#filtrosCaja .chip').forEach(c => {
     renderCaja();
   };
 });
-$('#btnNuevoCliente').onclick = abrirNuevoCliente;
-$('#buscarCliente').addEventListener('input', renderClientes);
-$('#cliCancelar').onclick = () => cerrarModal('#modalCliente');
-$('#cliGuardar').onclick = guardarCliente;
-$('#cliNombre').addEventListener('keydown', e => { if (e.key === 'Enter') $('#cliTel').focus(); });
-$('#cliTel').addEventListener('keydown', e => { if (e.key === 'Enter') guardarCliente(); });
-$('#cuentaCerrar').onclick = () => cerrarModal('#modalCuenta');
-$('#cuentaAbonar').onclick = abonarCliente;
-$('#cuentaCanjear').onclick = canjearPuntos;
-$('#cuentaMonto').addEventListener('keydown', e => { if (e.key === 'Enter') abonarCliente(); });
-$$('#modalCuenta .tab').forEach(t => {
-  t.onclick = () => {
-    $$('#modalCuenta .tab').forEach(x => x.classList.toggle('activo', x === t));
-    const tab = t.dataset.tab;
-    $('#cuentaTabAbonar').style.display = tab === 'abonar' ? 'block' : 'none';
-    $('#cuentaTabCanjear').style.display = tab === 'canjear' ? 'block' : 'none';
-    $('#cuentaTabHistorial').style.display = tab === 'historial' ? 'block' : 'none';
-  };
-});
+
+// Aparcar / espera / undo
 $('#btnAparcar').onclick = abrirListaEspera;
 $('#esperaCerrar').onclick = () => cerrarModal('#modalEspera');
 $('#btnUndo').onclick = deshacer;
 $('#undoBtn').onclick = deshacer;
+
+// Nuevo producto admin
 $('#npAgregar').onclick = agregarProductoAdmin;
 $('#npPrecio').addEventListener('keydown', e => { if (e.key === 'Enter') agregarProductoAdmin(); });
-$('#catAgregar').onclick = () => {
-  const n = $('#catNombre').value.trim();
-  if (!n) return toast('Nombre requerido', 'error');
-  if (categorias.includes(n)) return toast('Ya existe', 'warn');
-  categorias.push(n);
-  LS.set('vd_categorias_v3', categorias);
-  $('#catNombre').value = '';
-  renderAdmin(); renderFiltrosVenta();
-  toast('✅ Categoría agregada', 'ok');
-};
-$('#ofAgregar').onclick = () => {
-  const prodId = $('#ofProducto').value;
-  const desde = $('#ofDesde').value;
-  const hasta = $('#ofHasta').value;
-  const pct = parseFloat($('#ofPct').value);
-  if (!prodId || !desde || !hasta || !pct) return toast('Completá todos los campos', 'error');
-  ofertas.push({ id: uid(), productoId: prodId, desde, hasta, pct });
-  LS.set('vd_ofertas_v3', ofertas);
-  ['#ofDesde','#ofHasta','#ofPct'].forEach(s => $(s).value = '');
-  renderAdmin(); renderProductos();
-  toast('🏷️ Oferta agregada', 'ok');
-};
+
+// Guardar cfg
 $('#btnGuardarCfg').onclick = () => {
   cfg.nombre = $('#cfgNombre').value.trim() || 'Verdulería';
   cfg.direccion = $('#cfgDireccion').value.trim();
   cfg.telefono = $('#cfgTelefono').value.trim();
   cfg.email = $('#cfgEmail').value.trim();
-  cfg.puntos = parseFloat($('#cfgPuntos').value) || 0;
+  cfg.gananciaDefault = parseFloat($('#cfgGananciaDefault').value) || 1000;
   LS.set('vd_cfg_v3', cfg); aplicarCfg();
   toast('✅ Guardado', 'ok');
 };
-['Sonido','Vibrar','Redondeo','Stock','PuntosActivo'].forEach(k => {
+['Sonido','Vibrar','Redondeo'].forEach(k => {
   const el = $('#cfg' + k);
   if (el) el.onchange = e => {
     const key = k.charAt(0).toLowerCase() + k.slice(1);
     cfg[key] = e.target.checked;
     LS.set('vd_cfg_v3', cfg);
-    renderProductos();
   };
 });
+
+// Cargar costos
+$('#btnCargarCostos').onclick = cargarCostosFaltantes;
+
+// Backups
 $('#btnSnapshotAhora').onclick = async () => {
   try {
     await crearSnapshot('Manual · ' + new Date().toLocaleString('es-AR'));
@@ -3229,13 +2758,13 @@ $('#fileRestore').onchange = e => {
   if (e.target.files[0]) importarBackupFile(e.target.files[0]);
   e.target.value = '';
 };
+
+// Reset / borrar
 $('#btnReset').onclick = async () => {
   if (!confirm('¿Restaurar productos por defecto?')) return;
   productos = PRODUCTOS_DEFAULT.slice();
   await LS.set('vd_productos_v3', productos);
   favoritos = []; await LS.set('vd_favoritos_v3', favoritos);
-  categorias = ['Frutas','Verduras','Hierbas','Sin categoría'];
-  await LS.set('vd_categorias_v3', categorias);
   renderAdmin(); renderProductos(); renderFiltrosVenta();
   toast('🔄 Restaurado', 'ok');
 };
@@ -3252,7 +2781,7 @@ $('#btnBorrarTodo').onclick = async () => {
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 };
 
-// Días clave — form
+// Días clave
 $('#dcTipo').onchange = () => {
   const esFija = $('#dcTipo').value === 'fija';
   $('#dcFijaCampos').style.display = esFija ? 'block' : 'none';
@@ -3262,11 +2791,8 @@ $('#dcAgregar').onclick = () => {
   const nombre = $('#dcNombre').value.trim();
   const emoji = $('#dcEmoji').value.trim() || '🎯';
   const tipo = $('#dcTipo').value;
-
   if (!nombre) return toast('Nombre requerido', 'error');
-
   const nuevas = getDiasClave();
-
   if (tipo === 'fija') {
     const dia = parseInt($('#dcDia').value);
     const mes = parseInt($('#dcMes').value);
@@ -3279,7 +2805,6 @@ $('#dcAgregar').onclick = () => {
     if (!semana || semana < 1 || semana > 5 || !mes || mes < 1 || mes > 12) return toast('Datos inválidos', 'error');
     nuevas.push({ id: uid(), nombre, emoji, tipo: 'n-esimo-dia', semana, diaSem, mes });
   }
-
   LS.set('vd_dias_clave_v1', nuevas);
   ['#dcNombre','#dcEmoji','#dcDia','#dcMes','#dcSemana','#dcMesN'].forEach(s => $(s).value = '');
   renderAdminDiasClave();
@@ -3288,12 +2813,14 @@ $('#dcAgregar').onclick = () => {
   SND.ok();
 };
 
+// Cerrar modales al hacer click fuera
 $$('.modal-overlay').forEach(ov => {
-  ov.addEventListener('click', e => { if (e.target === ov) {
-    if (ov.id === 'modalScanner') cerrarScanner();
-    else if (ov.id === 'modalVoz') cerrarModalVoz();
-    else ov.classList.remove('abierto');
-  }});
+  ov.addEventListener('click', e => {
+    if (e.target === ov) {
+      ov.classList.remove('abierto');
+      if (ov.id === 'modalEditarProducto') epIdx = -1;
+    }
+  });
 });
 
 /* ============================================================
@@ -3303,11 +2830,8 @@ let idxFocusProd = -1;
 document.addEventListener('keydown', e => {
   const enInput = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);
   if (e.key === 'Escape') {
-    $$('.modal-overlay.abierto').forEach(m => {
-      if (m.id === 'modalScanner') cerrarScanner();
-      else if (m.id === 'modalVoz') cerrarModalVoz();
-      else m.classList.remove('abierto');
-    });
+    $$('.modal-overlay.abierto').forEach(m => m.classList.remove('abierto'));
+    epIdx = -1;
     return;
   }
   if (e.ctrlKey && e.key.toLowerCase() === 'b') {
@@ -3327,12 +2851,10 @@ document.addEventListener('keydown', e => {
   if (e.key === 'F5') { e.preventDefault(); nuevaTabVenta(); return; }
   if (!enInput) {
     if (e.key === '/') { e.preventDefault(); $('#buscar').focus(); return; }
-    if (e.key.toLowerCase() === 'v') { e.preventDefault(); abrirModalVoz(); return; }
-    if (e.key.toLowerCase() === 'b' && 'BarcodeDetector' in window) { e.preventDefault(); abrirScanner(); return; }
   }
   if (!$('#vista-venta').classList.contains('activa')) return;
   if (enInput && document.activeElement !== $('#buscar')) return;
-  const prods = $$('#gridProductos .prod:not(.agotado)');
+  const prods = $$('#gridProductos .prod');
   if (!prods.length) return;
   if (e.key === 'ArrowDown') { e.preventDefault(); idxFocusProd = Math.min(prods.length-1, idxFocusProd+1); prods[idxFocusProd].focus(); }
   else if (e.key === 'ArrowUp') { e.preventDefault(); idxFocusProd = Math.max(0, idxFocusProd-1); prods[idxFocusProd].focus(); }
@@ -3346,6 +2868,7 @@ document.addEventListener('keydown', e => {
   const f = new Date();
   $('#fechaHoy').textContent = f.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' });
   aplicarCfg();
+  initAdminCollapse();
   refrescarTop();
   renderTabsVenta();
   renderFiltrosVenta();
@@ -3354,6 +2877,13 @@ document.addEventListener('keydown', e => {
   actualizarBadgeEspera();
   $('#descuento').value = tabActiva().descuento || 0;
   actualizarTotales();
+
+  // Chips de descuento rápido
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-dto]');
+    if (btn) { $('#descuento').value = btn.dataset.dto; actualizarTotales(); }
+  });
+  $('#descuento').addEventListener('input', actualizarTotales);
 
   autoBackupIfNeeded().then(() => {
     aplicarCfg();
@@ -3374,9 +2904,8 @@ document.addEventListener('keydown', e => {
     }
   });
 
-  console.log('%c🥬 Verdulería POS · Calendario anual + días clave','background:#16a34a;color:#fff;padding:6px 12px;border-radius:6px;font-weight:bold');
+  console.log('%c🥬 Verdulería POS · Editar modal + admin colapsable','background:#16a34a;color:#fff;padding:6px 12px;border-radius:6px;font-weight:bold');
   console.log('Datos en IndexedDB · Backups automáticos cada 6h');
-  console.log('Atajos: / buscar · V voz · B scanner · F2 cobrar · F4 aparcar · Ctrl+B snapshot');
 })();
 
 </script>
