@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#05060a">
+<title>Particle Lab v10</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #05060a; touch-action: none; overscroll-behavior: none;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    user-select: none; -webkit-user-select: none;
+  }
+  canvas { display: block; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+  #hud {
+    position: fixed; top: max(12px, env(safe-area-inset-top));
+    left: 16px; right: 16px; display: flex; justify-content: space-between;
+    color: #9ab0ff; font-size: 11px; letter-spacing: 1px;
+    pointer-events: none; text-shadow: 0 0 8px #000; z-index: 10;
+  }
+  #hud b { color: #7cf5ff; }
+  #hint {
+    position: fixed; top: 42%; left: 0; right: 0;
+    text-align: center; color: #3a4570; font-size: 11px;
+    letter-spacing: 2px; pointer-events: none;
+    transition: opacity .6s; transform: translateY(-50%); z-index: 5;
+  }
+  #panel {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(10, 12, 24, 0.96);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid #2a3050; color: #cfd6ff; font-size: 12px;
+    max-height: 72vh; overflow-y: auto; z-index: 20;
+    padding-bottom: env(safe-area-inset-bottom);
+    -webkit-overflow-scrolling: touch;
+  }
+  #panel.collapsed { max-height: 44px; overflow: hidden; }
+  #panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; background: rgba(20, 24, 48, 0.92);
+    border-bottom: 1px solid #2a3050; cursor: pointer;
+    letter-spacing: 2px; font-size: 11px;
+    position: sticky; top: 0; z-index: 3;
+  }
+  #panel-header span { color: #7cf5ff; }
+  #panel-toggle {
+    background: none; border: none; color: #cfd6ff;
+    font-size: 18px; cursor: pointer; padding: 0 6px;
+    font-family: inherit; line-height: 1;
+  }
+  #panel-body { padding: 10px 14px 20px; }
+  #layer-bar {
+    display: flex; gap: 6px; margin-bottom: 12px;
+    padding-bottom: 10px; border-bottom: 1px solid #1a1f3a;
+    flex-wrap: wrap;
+  }
+  .layer-btn {
+    flex: 1; min-width: 60px; padding: 8px 4px;
+    background: #1a1f3a; border: 1px solid #2e3560;
+    color: #cfd6ff; border-radius: 6px;
+    font-family: inherit; font-size: 10px;
+    letter-spacing: 1px; cursor: pointer; transition: all .15s;
+  }
+  .layer-btn .dot {
+    display: inline-block; width: 6px; height: 6px;
+    border-radius: 50%; background: #444;
+    margin-left: 4px; vertical-align: middle;
+  }
+  .layer-btn.on .dot { background: #5cff9d; box-shadow: 0 0 6px #5cff9d; }
+  .layer-btn.active {
+    background: #4a5eff33; border-color: #4a5eff;
+    color: #7cf5ff; box-shadow: 0 0 10px #4a5eff44;
+  }
+  .global-btn {
+    padding: 8px 10px; background: #1a1f3a;
+    border: 1px solid #2e3560; color: #cfd6ff;
+    border-radius: 6px; font-family: inherit;
+    font-size: 10px; cursor: pointer;
+  }
+  .global-btn:hover { background: #232a50; }
+  .global-btn.strike { background: #4a5eff33; border-color: #4a5eff; color: #7cf5ff; font-weight: 600; }
+  .global-btn.spark-btn { background: #ffd70022; border-color: #ffd700; color: #ffe066; font-weight: 600; }
+  .global-btn.orb-btn { background: #a060ff22; border-color: #a060ff; color: #d0b0ff; font-weight: 600; }
+  .global-btn.collide-btn { background: #ff306022; border-color: #ff3060; color: #ff7090; font-weight: 600; }
+  .group { margin-bottom: 12px; }
+  .group-title {
+    color: #4a5eff; font-size: 10px; letter-spacing: 2px;
+    margin-bottom: 6px; padding-bottom: 4px;
+    border-bottom: 1px solid #1a1f3a;
+    display: flex; justify-content: space-between; cursor: pointer;
+  }
+  .group-title .arrow { color: #4a5eff; font-size: 9px; }
+  .group-body.collapsed { display: none; }
+  .group-title.bolt-title { color: #ffe066; } .group-title.bolt-title .arrow { color: #ffe066; }
+  .group-title.spark-title { color: #ffd700; } .group-title.spark-title .arrow { color: #ffd700; }
+  .group-title.orb-title { color: #d0b0ff; } .group-title.orb-title .arrow { color: #d0b0ff; }
+  .group-title.tesla-title { color: #ffb060; } .group-title.tesla-title .arrow { color: #ffb060; }
+  .group-title.boid-title { color: #80f0b0; } .group-title.boid-title .arrow { color: #80f0b0; }
+  .group-title.chain-title { color: #ffb060; } .group-title.chain-title .arrow { color: #ffb060; }
+  .group-title.rigid-title { color: #c0c0ff; } .group-title.rigid-title .arrow { color: #c0c0ff; }
+  .group-title.behavior-title { color: #80f0b0; } .group-title.behavior-title .arrow { color: #80f0b0; }
+  .group-title.effect-title { color: #ff70c0; } .group-title.effect-title .arrow { color: #ff70c0; }
+  .group-title.system-title { color: #70e0ff; } .group-title.system-title .arrow { color: #70e0ff; }
+  .group-title.debug-title { color: #ff9040; } .group-title.debug-title .arrow { color: #ff9040; }
+  .group-title.global-title { color: #5cff9d; } .group-title.global-title .arrow { color: #5cff9d; }
+  .group-title.trig-title { color: #ffd700; } .group-title.trig-title .arrow { color: #ffd700; }
+  #presets {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  }
+  .preset-btn {
+    padding: 7px 2px; background: #1a1f3a;
+    border: 1px solid #2e3560; color: #cfd6ff;
+    border-radius: 5px; font-family: inherit;
+    font-size: 9px; cursor: pointer;
+    transition: all .12s; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .preset-btn:hover { background: #232a50; }
+  .preset-btn.active { background: #4a5eff33; border-color: #4a5eff; color: #7cf5ff; }
+  .preset-btn.multi { background: #2a1f4a; border-color: #6a3aff; color: #d0b0ff; }
+  .preset-btn.bolt-preset { background: #3a2e10; border-color: #b09010; color: #ffe066; }
+  .preset-btn.spark-preset { background: #3a3000; border-color: #ffd700; color: #fff080; }
+  .preset-btn.orb-preset { background: #2a1a3a; border-color: #a060ff; color: #e0c0ff; }
+  .preset-btn.boid-preset { background: #1a3a20; border-color: #40d060; color: #a0ffb0; }
+  .preset-btn.rigid-preset { background: #2a2a3a; border-color: #a0a0ff; color: #c0c0ff; }
+  .preset-btn.chain-preset { background: #3a2010; border-color: #ffb060; color: #ffc080; }
+  .preset-btn.plugin-preset { background: #3a1a2a; border-color: #ff70c0; color: #ffb0d0; }
+  .slider-row {
+    display: grid; grid-template-columns: 78px 1fr 46px;
+    gap: 6px; align-items: center; margin-bottom: 4px;
+  }
+  .slider-row label { color: #8a95c0; font-size: 10px; }
+  .slider-row input[type=range] { width: 100%; accent-color: #7cf5ff; background: transparent; height: 6px; }
+  .slider-row input[type=range].bolt-range { accent-color: #ffe066; }
+  .slider-row input[type=range].spark-range { accent-color: #ffd700; }
+  .slider-row input[type=range].orb-range { accent-color: #d0b0ff; }
+  .slider-row input[type=range].tesla-range { accent-color: #ffb060; }
+  .slider-row input[type=range].global-range { accent-color: #5cff9d; }
+  .slider-row input[type=range].behavior-range { accent-color: #80f0b0; }
+  .slider-row .val { color: #7cf5ff; text-align: right; font-size: 10px; font-variant-numeric: tabular-nums; }
+  .slider-row .val.bolt-val { color: #ffe066; }
+  .slider-row .val.spark-val { color: #ffd700; }
+  .slider-row .val.orb-val { color: #d0b0ff; }
+  .slider-row .val.tesla-val { color: #ffb060; }
+  .slider-row .val.global-val { color: #5cff9d; }
+  .slider-row .val.behavior-val { color: #80f0b0; }
+  .select-row {
+    display: grid; grid-template-columns: 78px 1fr;
+    gap: 6px; align-items: center; margin-bottom: 4px;
+  }
+  .select-row label { color: #8a95c0; font-size: 10px; }
+  .select-row select {
+    background: #1a1f3a; color: #7cf5ff;
+    border: 1px solid #2e3560; border-radius: 4px;
+    font-family: inherit; font-size: 10px; padding: 4px 6px;
+  }
+  .select-row select.bolt-select { color: #ffe066; }
+  .select-row select.global-select { color: #5cff9d; }
+  .select-row select.behavior-select { color: #80f0b0; }
+  .toggle-row {
+    display: grid; grid-template-columns: 78px 1fr;
+    gap: 6px; align-items: center; margin-bottom: 4px;
+  }
+  .toggle-row label { color: #8a95c0; font-size: 10px; }
+  .toggle-row input[type=checkbox] { accent-color: #ff3060; width: 16px; height: 16px; }
+  .tag {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    font-size: 9px; margin-left: 4px; letter-spacing: 0.5px;
+  }
+  .tag.plugin { background: #ff70c022; color: #ff70c0; border: 1px solid #ff70c066; }
+  #debug-panel {
+    font-size: 9px; color: #8a95c0; line-height: 1.5;
+    background: #05060a; padding: 6px 8px; border-radius: 4px;
+    font-family: inherit;
+  }
+  #debug-panel b { color: #ff9040; }
+  @media (min-width: 720px) {
+    #panel {
+      left: auto; right: 16px; bottom: 16px;
+      width: 460px; border-radius: 14px;
+      border: 1px solid #2a3050;
+      max-height: calc(100vh - 120px);
+    }
+    #panel.collapsed { max-height: 44px; }
+    #presets { grid-template-columns: repeat(5, 1fr); }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <span>FPS <b id="fps">--</b></span>
+  <span>P <b id="part">0</b>/<b id="pool">0</b> · ⚡<b id="bolts">0</b> · 🔮<b id="orbs">0</b> · 🔗<b id="chains">0</b></span>
+</div>
+<div id="hint">toca o arrastra para estallar</div>
+<div id="panel" class="collapsed">
+  <div id="panel-header">
+    <span>PARTICLE LAB v10 <span class="tag plugin">registers</span></span>
+    <button id="panel-toggle">+</button>
+  </div>
+  <div id="panel-body">
+    <div id="layer-bar"></div>
+    <div class="group">
+      <div class="group-title">MULTI-PRESET <span class="arrow">▼</span></div>
+      <div class="group-body" id="multi-presets"></div>
+    </div>
+    <div class="group">
+      <div class="group-title">PRESETS <span class="arrow">▼</span></div>
+      <div class="group-body" id="presets"></div>
+    </div>
+    <div class="group">
+      <div class="group-title">EMISSION <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-emission"></div>
+    </div>
+    <div class="group" data-special="boid">
+      <div class="group-title boid-title">🐦 BOIDS <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-boid"></div>
+    </div>
+    <div class="group" data-special="chain">
+      <div class="group-title chain-title">🔗 CHAIN <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-chain"></div>
+    </div>
+    <div class="group" data-special="rigid">
+      <div class="group-title rigid-title">⬡ RIGID <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-rigid"></div>
+    </div>
+    <div class="group" data-special="custom-behavior">
+      <div class="group-title behavior-title">🎯 BEHAVIOR (plugin) <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-behavior"></div>
+    </div>
+    <div class="group" data-special="bolt">
+      <div class="group-title bolt-title">⚡ BOLT <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-bolt"></div>
+    </div>
+    <div class="group" data-special="centella">
+      <div class="group-title spark-title">✦ CENTELLA <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-centella"></div>
+    </div>
+    <div class="group" data-special="ballLightning">
+      <div class="group-title orb-title">🔮 BALL LIGHTNING <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-orb"></div>
+    </div>
+    <div class="group" data-special="tesla">
+      <div class="group-title tesla-title">⚙ TESLA <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-tesla"></div>
+    </div>
+    <div class="group" data-special="collision">
+      <div class="group-title effect-title">💥 COLLISION <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-collision"></div>
+    </div>
+    <div class="group">
+      <div class="group-title">PHYSICS <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-physics"></div>
+    </div>
+    <div class="group">
+      <div class="group-title">LIFE / BEHAVIOR <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-life"></div>
+    </div>
+    <div class="group">
+      <div class="group-title">APPEARANCE <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-appearance"></div>
+    </div>
+    <div class="group">
+      <div class="group-title">COLOR / GRADIENT <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-color"></div>
+    </div>
+    <div class="group">
+      <div class="group-title trig-title">⚡ FAST TRIG + PERF <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-trig"></div>
+    </div>
+    <div class="group">
+      <div class="group-title global-title">🌍 GLOBAL <span class="arrow">▼</span></div>
+      <div class="group-body" id="sliders-global"></div>
+    </div>
+    <div class="group">
+      <div class="group-title debug-title">🔍 DEBUG <span class="arrow">▼</span></div>
+      <div class="group-body" id="debug-panel-group">
+        <div id="debug-panel"></div>
+      </div>
+    </div>
+    <div class="group">
+      <div class="group-title system-title">⚙ PLUGIN SYSTEMS <span class="arrow">▼</span></div>
+      <div class="group-body" id="plugin-registry"></div>
+    </div>
+  </div>
+</div>
+
+<script src="particle.js"></script>
+<script>
+'use strict';
+
+/* ============================================================
+   BOOTSTRAP
+   ============================================================ */
+const canvas = document.getElementById('game');
+const lab = ParticleLab.create(canvas, { poolSize: 2000 });
+const world = lab.world;
+const layers = lab.layers;
+const config = lab.config;
+
+const P = ParticleLab.PRESETS;
+const MULTI = ParticleLab.MULTI_PRESETS;
+const COLOR_NAMES = ParticleLab.COLOR_NAMES;
+const SPRITE_NAMES = ParticleLab.SPRITE_NAMES;
+const USE_BITMAP = ParticleLab.USE_BITMAP;
+const FAST_TRIG = ParticleLab.FAST_TRIG;
+const updateTrigEnabled = ParticleLab.updateTrigEnabled;
+const applyTrigPrecision = ParticleLab.applyTrigPrecision;
+const detectMobile = ParticleLab.detectMobile;
+
+let activeLayerIdx = 0;
+
+/* ============================================================
+   PLUGINS DEMO — usan las nuevas APIs de v10
+   ============================================================ */
+
+// ---- Plugin 1: Magnético (behavior custom) -----------------
+ParticleLab.use({
+  behaviors: {
+    magnetic: {
+      update(w, id, dt, { pos, vel }) {
+        const cx = w.width * 0.5, cy = w.height * 0.5;
+        const dx = cx - pos.x, dy = cy - pos.y;
+        const d = Math.sqrt(dx*dx + dy*dy) + 1;
+        // Atracción fuerte al centro
+        const strength = 600 / d;
+        vel.vx += (dx / d) * strength * 80 * dt;
+        vel.vy += (dy / d) * strength * 80 * dt;
+        // Amortiguar para evitar velocidad infinita
+        vel.vx *= 0.995;
+        vel.vy *= 0.995;
+      },
+    },
+  },
+  presets: {
+    magneticSwarm: {
+      behavior: 'magnetic',
+      rate: 30, speed: 120, life: 10, size: 6,
+      colors: ['magic', 'plasma', 'elec'],
+      spriteType: 'sparkle',
+      blend: 'lighter',
+      emitter: { fx: 0.5, fy: 0.5, fw: 1.4, angle: 0, spread: 360 },
+    },
+  },
+});
+
+// ---- Plugin 2: Monedas rigid -------------------------------
+ParticleLab.use({
+  presets: {
+    rigidCoins: {
+      behavior: 'rigid',
+      rate: 20, speed: 320, gravityY: 900, drag: 0.2,
+      life: 6, size: 7,
+      colors: ['gold'],
+      spriteType: 'hex',
+      rotation: 6,
+      rigidRadius: 7, rigidMass: 1.5, rigidRestitution: 0.55,
+      border: 'bounce',
+      emitter: { fx: 0.5, fy: 0.2, fw: 0.4, angle: -90, spread: 100 },
+    },
+  },
+});
+
+// ---- Plugin 3: Escombros rigid -----------------------------
+ParticleLab.use({
+  presets: {
+    rigidDebris: {
+      behavior: 'rigid',
+      rate: 15, speed: 280, gravityY: 850, drag: 0.2,
+      life: 5, size: 6,
+      colors: ['crystal', 'snow'],
+      spriteType: 'triangle',
+      rotation: 8,
+      rigidRadius: 6, rigidMass: 1, rigidRestitution: 0.4,
+      border: 'bounce',
+      emitter: { fx: 0.5, fy: 0.15, fw: 0.3, angle: -90, spread: 120 },
+    },
+  },
+});
+
+// ---- Plugin 4: Pulpo (chain tentáculo) ---------------------
+ParticleLab.use({
+  presets: {
+    chainOctopus: {
+      effectType: 'chain',
+      rate: 0.5, life: 20,
+      colors: ['magic', 'plasma'],
+      chainLinks: 25, chainLength: 12,
+      chainIterations: 12, chainGravity: 300, chainWidth: 4,
+      emitter: { fx: 0.5, fy: 0.4, fw: 0.3, angle: 0, spread: 0 },
+    },
+    chainRope: {
+      effectType: 'chain',
+      rate: 0.3, life: 20,
+      colors: ['feather'],
+      chainLinks: 22, chainLength: 14,
+      chainIterations: 10, chainGravity: 400, chainWidth: 2.5,
+      emitter: { fx: 0.5, fy: 0.1, fw: 0.05, angle: 0, spread: 0 },
+    },
+    chainWhip: {
+      effectType: 'chain',
+      rate: 1, life: 10,
+      colors: ['ember', 'fire'],
+      chainLinks: 15, chainLength: 10,
+      chainIterations: 12, chainGravity: 600, chainWidth: 3,
+      emitter: { fx: 0.5, fy: 0.3, fw: 0, angle: 0, spread: 0 },
+    },
+  },
+});
+
+// ---- Plugin 5: Exploder (colisión + explosión) -------------
+ParticleLab.use({
+  presets: {
+    exploder: {
+      rate: 30, speed: 80, drag: 0.3, life: 5, size: 8,
+      colors: ['blood', 'ember'], spriteType: 'dot',
+      collide: true, collideRadius: 12, onCollide: 'explosion',
+      emitter: { fx: 0.5, fy: 0.5, fw: 1.2, angle: 0, spread: 360 },
+      border: 'bounce',
+    },
+    explosion: {
+      rate: 0, speed: 400, gravityY: 150, drag: 1.2, life: 0.6, size: 10,
+      colors: ['fire', 'spark'], spriteType: 'radial',
+      emitter: { fx: 0.5, fy: 0.5, fw: 0, angle: 0, spread: 360 },
+    },
+  },
+});
+
+// ---- Plugin 6: Trail Comet ---------------------------------
+ParticleLab.use({
+  presets: {
+    trailComet: {
+      rate: 40, speed: 300, drag: 0.1, life: 3, size: 6,
+      colors: ['spark', 'ember'], spriteType: 'radial',
+      trail: true, trailLen: 15, trailWidth: 4,
+      spawnOnDeath: { preset: 'explosion', count: 6, maxDepth: 2 },
+      emitter: { fx: 0.2, fy: 0.3, fw: 0.02, angle: 45, spread: 8 },
+    },
+  },
+});
+
+// ---- System de demo: viento global -------------------------
+ParticleLab.registerSystem('globalWind', {
+  phase: 'physics',
+  update(w, dt) {
+    const vel = w.store('vel'), meta = w.store('meta');
+    const alive = w.aliveList;
+    const wind = 200 * Math.sin(w.time * 0.5);
+    for (let i = 0; i < alive.length; i++) {
+      const m = meta.get(alive[i]);
+      if (m && m.kind === 'free') vel.get(alive[i]).vx += wind * dt;
+    }
+  },
+});
+
+/* ============================================================
+   PANEL / COLLAPSE
+   ============================================================ */
+const panel = document.getElementById('panel');
+const panelToggle = document.getElementById('panel-toggle');
+function togglePanel() {
+  panel.classList.toggle('collapsed');
+  panelToggle.textContent = panel.classList.contains('collapsed') ? '+' : '−';
+}
+panelToggle.addEventListener('click', (e) => { e.stopPropagation(); togglePanel(); });
+document.getElementById('panel-header').addEventListener('click', togglePanel);
+
+document.querySelectorAll('.group-title').forEach(title => {
+  title.addEventListener('click', () => {
+    const body = title.nextElementSibling;
+    body.classList.toggle('collapsed');
+    title.querySelector('.arrow').textContent = body.classList.contains('collapsed') ? '▶' : '▼';
+  });
+});
+
+/* ============================================================
+   LAYER BAR
+   ============================================================ */
+const layerBar = document.getElementById('layer-bar');
+const layerButtons = [];
+for (let i = 0; i < 3; i++) {
+  const btn = document.createElement('button');
+  btn.className = 'layer-btn';
+  btn.innerHTML = `L${i+1}<span class="dot"></span>`;
+  btn.addEventListener('click', () => {
+    if (activeLayerIdx === i) {
+      layers[i].enabled = !layers[i].enabled;
+      lab.setLayerEnabled(i, layers[i].enabled);
+      updateLayerButtons();
+      return;
+    }
+    activeLayerIdx = i;
+    updateLayerButtons();
+    buildSlidersForActiveLayer();
+    updatePresetActive();
+    updateDebug();
+  });
+  layerBar.appendChild(btn);
+  layerButtons.push(btn);
+}
+
+/* Quick-fire buttons */
+function quickFire(type, overrides) {
+  const L = layers[activeLayerIdx];
+  if (!L) return;
+  const otherStates = layers.map(l => ({ enabled: l.enabled, effectType: l.effectType }));
+  const ownState = { enabled: L.enabled, effectType: L.effectType };
+  for (let i = 0; i < layers.length; i++) layers[i].enabled = false;
+  L.enabled = true;
+  let savedFields = null;
+  if (L.effectType !== type) {
+    savedFields = {};
+    for (const k in overrides) {
+      savedFields[k] = L[k];
+      L[k] = Array.isArray(overrides[k]) ? overrides[k].slice() : overrides[k];
+    }
+    L.effectType = type;
+  }
+  lab.spawnAt(world.width * 0.5, world.height * 0.5, 1);
+  for (let i = 0; i < layers.length; i++) {
+    layers[i].enabled = otherStates[i].enabled;
+    layers[i].effectType = otherStates[i].effectType;
+  }
+  if (savedFields) for (const k in savedFields) L[k] = savedFields[k];
+  L.enabled = ownState.enabled;
+  L.effectType = ownState.effectType;
+  updateLayerButtons();
+}
+
+const strikeBtn = document.createElement('button');
+strikeBtn.className = 'global-btn strike';
+strikeBtn.textContent = '⚡';
+strikeBtn.addEventListener('click', () => quickFire('bolt', {
+  colors: ['bolt'], boltBranches: 5, boltDepth: 6, boltDisplace: 0.25,
+  boltThickness: 2.5, boltFlash: 0.5, boltMode: 'from-emitter', boltFork: 0.8, life: 0.5,
+}));
+layerBar.appendChild(strikeBtn);
+
+const sparkBtn = document.createElement('button');
+sparkBtn.className = 'global-btn spark-btn';
+sparkBtn.textContent = '✦';
+sparkBtn.addEventListener('click', () => quickFire('centella', {
+  colors: ['spark', 'bolt'], centellaRays: 10, centellaLength: 40,
+  boltThickness: 1.5, boltFlash: 0.3,
+}));
+layerBar.appendChild(sparkBtn);
+
+const orbBtn = document.createElement('button');
+orbBtn.className = 'global-btn orb-btn';
+orbBtn.textContent = '🔮';
+orbBtn.addEventListener('click', () => quickFire('ballLightning', {
+  colors: ['bolt', 'elec'], orbRadius: 22, orbSpeed: 50, orbLife: 4, orbArcRate: 18, orbWander: 35,
+}));
+layerBar.appendChild(orbBtn);
+
+const collideBtn = document.createElement('button');
+collideBtn.className = 'global-btn collide-btn';
+collideBtn.textContent = '💥';
+collideBtn.title = 'Activar/desactivar colisión en capa activa';
+collideBtn.addEventListener('click', () => {
+  const L = layers[activeLayerIdx];
+  L.collide = !L.collide;
+  collideBtn.style.opacity = L.collide ? '1' : '0.5';
+  buildSlidersForActiveLayer();
+  updateDebug();
+});
+layerBar.appendChild(collideBtn);
+
+function updateLayerButtons() {
+  const colorMap = {
+    bolt: '#ffe066', centella: '#ffd700', ballLightning: '#d0b0ff',
+    tesla: '#ffb060', chain: '#ffb060',
+  };
+  for (let i = 0; i < 3; i++) {
+    layerButtons[i].classList.toggle('active', i === activeLayerIdx);
+    layerButtons[i].classList.toggle('on', layers[i].enabled);
+    const t = layers[i].effectType;
+    const c = colorMap[t] || '';
+    layerButtons[i].style.borderColor = c;
+    layerButtons[i].style.color = c;
+  }
+}
+
+/* ============================================================
+   PRESET GRID
+   ============================================================ */
+let presetButtons = {};
+function rebuildPresetGrid() {
+  const presetGrid = document.getElementById('presets');
+  presetGrid.innerHTML = '';
+  presetButtons = {};
+  const all = { ...ParticleLab.PRESETS, ...ParticleLab.Registry.presets };
+  const HIDDEN = new Set(['explosion']); // preset interno del plugin
+  for (const key in all) {
+    if (HIDDEN.has(key)) continue;
+    const p = all[key];
+    const btn = document.createElement('button');
+    let extra = ' preset-btn';
+    const t = p.effectType || 'particle';
+    if (t === 'bolt') extra += ' bolt-preset';
+    else if (t === 'centella') extra += ' spark-preset';
+    else if (t === 'ballLightning') extra += ' orb-preset';
+    else if (t === 'tesla') extra += ' tesla-preset';
+    else if (t === 'chain') extra += ' chain-preset';
+    else if (p.behavior === 'rigid') extra += ' rigid-preset';
+    else if (p.behavior === 'boid') extra += ' boid-preset';
+    else if (ParticleLab.Registry.presets[key]) extra += ' plugin-preset';
+    btn.className = extra;
+    const icons = { bolt: '⚡ ', centella: '✦ ', ballLightning: '🔮 ', tesla: '⚙ ', chain: '🔗 ' };
+    let prefix = icons[t] || '';
+    if (!prefix) {
+      if (p.behavior === 'boid') prefix = '🐦 ';
+      else if (p.behavior === 'rigid') prefix = '⬡ ';
+      else if (ParticleLab.Registry.behaviors[p.behavior]) prefix = '🎯 ';
+      else if (ParticleLab.Registry.presets[key]) prefix = '★ ';
+    }
+    btn.textContent = prefix + key.charAt(0).toUpperCase() + key.slice(1);
+    btn.addEventListener('click', () => {
+      applyPresetToLayer(key, activeLayerIdx);
+      updatePresetActive();
+    });
+    presetGrid.appendChild(btn);
+    presetButtons[key] = btn;
+  }
+}
+rebuildPresetGrid();
+
+function updatePresetActive() {
+  const L = layers[activeLayerIdx];
+  const all = { ...ParticleLab.PRESETS, ...ParticleLab.Registry.presets };
+  for (const k in presetButtons) {
+    const p = all[k];
+    if (!p) continue;
+    const match = (p.effectType || 'particle') === L.effectType
+      && (p.behavior || 'free') === (L.behavior || 'free')
+      && (p.colorStart || null) === (L.colorStart || null)
+      && p.colors && L.colors && p.colors[0] === L.colors[0];
+    presetButtons[k].classList.toggle('active', match);
+  }
+}
+
+/* ============================================================
+   MULTI-PRESET GRID
+   ============================================================ */
+function rebuildMultiGrid() {
+  const multiGrid = document.getElementById('multi-presets');
+  multiGrid.innerHTML = '';
+  const all = { ...ParticleLab.MULTI_PRESETS, ...ParticleLab.Registry.multiPresets };
+  for (const key in all) {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn multi';
+    btn.textContent = key;
+    btn.addEventListener('click', () => applyMultiPreset(key));
+    multiGrid.appendChild(btn);
+  }
+}
+rebuildMultiGrid();
+
+/* ============================================================
+   SLIDER DEFINITIONS
+   ============================================================ */
+const SLIDER_DEFS = {
+  'sliders-boid': [
+    { key: 'boidCohesion', label: 'Cohesion', min: 0, max: 5, step: .1, boid: 1 },
+    { key: 'boidAlignment', label: 'Alignment', min: 0, max: 5, step: .1, boid: 1 },
+    { key: 'boidSeparation', label: 'Separation', min: 0, max: 5, step: .1, boid: 1 },
+    { key: 'boidRadius', label: 'Radius', min: 20, max: 200, step: 5, boid: 1 },
+    { key: 'boidMaxSpeed', label: 'Max Speed', min: 30, max: 400, step: 10, boid: 1 },
+  ],
+  'sliders-chain': [
+    { key: 'chainLinks', label: 'Links', min: 3, max: 40, step: 1, chain: 1 },
+    { key: 'chainLength', label: 'Length', min: 3, max: 30, step: 1, chain: 1 },
+    { key: 'chainIterations', label: 'Stiffness', min: 1, max: 15, step: 1, chain: 1 },
+    { key: 'chainGravity', label: 'Gravity', min: 0, max: 1500, step: 20, chain: 1 },
+    { key: 'chainWidth', label: 'Width', min: .5, max: 8, step: .1, chain: 1 },
+  ],
+  'sliders-rigid': [
+    { key: 'rigidRadius', label: 'Radius', min: 2, max: 30, step: 1, rigid: 1 },
+    { key: 'rigidMass', label: 'Mass', min: .1, max: 5, step: .1, rigid: 1 },
+    { key: 'rigidRestitution', label: 'Bounce', min: 0, max: 1, step: .05, rigid: 1 },
+  ],
+  'sliders-emission': [
+    { key: 'rate', label: 'Rate', min: 0.1, max: 400, step: 0.1 },
+    { key: 'speed', label: 'Speed', min: 5, max: 900, step: 5 },
+    { key: 'angle', label: 'Angle°', min: -180, max: 180, step: 1, path: 'emitter' },
+    { key: 'spread', label: 'Spread°', min: 0, max: 360, step: 1, path: 'emitter' },
+    { key: 'width', label: 'Width', min: 0, max: 1.5, step: 0.02, path: 'emitter', alias: 'fw' },
+    { key: 'posY', label: 'PosY', min: -0.1, max: 1.1, step: 0.01, path: 'emitter', alias: 'fy' },
+    { key: 'posX', label: 'PosX', min: -0.1, max: 1.1, step: 0.01, path: 'emitter', alias: 'fx' },
+  ],
+  'sliders-bolt': [
+    { key: 'boltBranches', label: 'Branches', min: 0, max: 12, step: 1, bolt: 1 },
+    { key: 'boltDepth', label: 'Depth', min: 1, max: 9, step: 1, bolt: 1 },
+    { key: 'boltDisplace', label: 'Displace', min: 0.02, max: 0.6, step: 0.01, bolt: 1 },
+    { key: 'boltThickness', label: 'Thickness', min: 0.5, max: 8, step: 0.1, bolt: 1 },
+    { key: 'boltFlash', label: 'Flash', min: 0, max: 1, step: 0.05, bolt: 1 },
+    { key: 'boltFork', label: 'Fork', min: 0, max: 2, step: 0.05, bolt: 1 },
+    { key: 'life', label: 'Duration', min: 0.1, max: 2, step: 0.05, bolt: 1 },
+  ],
+  'sliders-centella': [
+    { key: 'centellaRays', label: 'Rays', min: 3, max: 25, step: 1, spark: 1 },
+    { key: 'centellaLength', label: 'Ray Len', min: 10, max: 120, step: 2, spark: 1 },
+    { key: 'boltThickness', label: 'Width', min: 0.5, max: 5, step: 0.1, spark: 1 },
+    { key: 'boltFlash', label: 'Flash', min: 0, max: 1, step: 0.05, spark: 1 },
+  ],
+  'sliders-orb': [
+    { key: 'orbRadius', label: 'Radius', min: 5, max: 60, step: 1, orb: 1 },
+    { key: 'orbSpeed', label: 'Speed', min: 0, max: 200, step: 5, orb: 1 },
+    { key: 'orbLife', label: 'Life', min: 0.5, max: 10, step: 0.1, orb: 1 },
+    { key: 'orbArcRate', label: 'Arc Rate', min: 1, max: 40, step: 1, orb: 1 },
+    { key: 'orbWander', label: 'Wander', min: 0, max: 150, step: 5, orb: 1 },
+  ],
+  'sliders-tesla': [
+    { key: 'teslaRate', label: 'Arc Rate', min: 1, max: 60, step: 1, tesla: 1 },
+    { key: 'teslaGap', label: 'Gap', min: 30, max: 400, step: 5, tesla: 1 },
+    { key: 'teslaHeight', label: 'Height', min: 30, max: 400, step: 5, tesla: 1 },
+    { key: 'teslaWidth', label: 'Arc Width', min: 0.5, max: 8, step: 0.1, tesla: 1 },
+  ],
+  'sliders-collision': [
+    { key: 'collide', label: 'Collide', toggle: 1 },
+    { key: 'collideRadius', label: 'Radius', min: 2, max: 40, step: 1 },
+  ],
+  'sliders-physics': [
+    { key: 'curlNoise', label: 'Curl', min: 0, max: 3, step: .05 },
+    { key: 'curlScale', label: 'Curl Scale', min: .001, max: .03, step: .001 },
+    { key: 'flowField', label: 'Flow', min: 0, max: 3, step: .05 },
+    { key: 'flowScale', label: 'Flow Scale', min: .005, max: .08, step: .005 },
+    { key: 'gravityX', label: 'Grav X', min: -500, max: 500, step: 10 },
+    { key: 'gravityY', label: 'Grav Y', min: -500, max: 800, step: 10 },
+    { key: 'windX', label: 'Wind X', min: -400, max: 400, step: 10 },
+    { key: 'windY', label: 'Wind Y', min: -400, max: 400, step: 10 },
+    { key: 'drag', label: 'Drag', min: 0, max: 3, step: 0.05 },
+    { key: 'swirl', label: 'Swirl', min: 0, max: 10, step: 0.1 },
+    { key: 'attract', label: 'Attract', min: -5, max: 10, step: 0.1 },
+    { key: 'wander', label: 'Wander', min: 0, max: 400, step: 10 },
+    { key: 'turbulence', label: 'Turbul.', min: 0, max: 3, step: 0.05 },
+    { key: 'bounce', label: 'Bounce', min: 0, max: 1, step: 0.05 },
+  ],
+  'sliders-life': [
+    { key: 'life', label: 'Life', min: 0.2, max: 30, step: 0.1 },
+    { key: 'wobble', label: 'Wobble', min: 0, max: 1, step: 0.05 },
+    { key: 'flicker', label: 'Flicker', min: 0, max: 1, step: 0.05 },
+  ],
+  'sliders-appearance': [
+    { key: 'depthMin', label: 'Depth Min', min: 0, max: 1, step: .05 },
+    { key: 'depthMax', label: 'Depth Max', min: 0, max: 1, step: .05 },
+    { key: 'seedVariation', label: 'Seed Var', min: 0, max: 1, step: .05 },
+    { key: 'inheritVel', label: 'Inherit Vel', min: 0, max: 1, step: .05 },
+    { key: 'size', label: 'Size', min: 1, max: 50, step: 0.5 },
+    { key: 'stretch', label: 'Stretch', min: 1, max: 8, step: 0.1 },
+    { key: 'rotation', label: 'Rotate', min: 0, max: 10, step: 0.1 },
+  ],
+  'sliders-global': [
+    { key: 'trail', label: 'Trail', min: .02, max: .6, step: .01, global: 1 },
+    { key: 'timeScale', label: 'Time Scale', min: .1, max: 3, step: .05, global: 1 },
+    { key: 'bloom', label: 'Bloom', min: 0, max: 1, step: .02, global: 1 },
+    { key: 'wellCount', label: 'Wells', min: 0, max: 4, step: 1, global: 1 },
+    { key: 'wellStrength', label: 'Well Force', min: 0, max: 600, step: 10, global: 1 },
+  ],
+};
+
+const SELECT_DEFS = {
+  'sliders-appearance': [
+    { key: 'sizeCurve', label: 'SizeCurve', options: ['linear', 'easeIn', 'easeOut', 'pulse', 'sharp', 'none', 'fadeInOut'] },
+    { key: 'alphaCurve', label: 'AlphaCurve', options: ['linear', 'easeIn', 'easeOut', 'pulse', 'sharp', 'none', 'fadeInOut'] },
+    { key: 'spriteType', label: 'Sprite', options: SPRITE_NAMES },
+    { key: 'blend', label: 'Blend', options: ['lighter', 'source-over', 'screen'] },
+    { key: 'border', label: 'Border', options: ['none', 'bounce', 'wrap', 'kill'] },
+  ],
+  'sliders-bolt': [
+    { key: 'boltMode', label: 'Mode', options: ['random', 'vertical', 'strike-ground', 'from-emitter'], bolt: 1 },
+  ],
+  'sliders-color': [
+    { key: 'colorStart', label: 'Color Start', options: ['', ...COLOR_NAMES] },
+    { key: 'colorEnd', label: 'Color End', options: ['', ...COLOR_NAMES] },
+  ],
+  'sliders-collision': [
+    { key: 'onCollide', label: 'On Collide', options: ['', 'explosion', 'sparkle', 'magic', 'fire'], effect: 1 },
+  ],
+};
+
+const sliderRefs = {};
+const selectRefs = {};
+
+function getVal(L, def) {
+  if (def.global) return config[def.key];
+  if (def.path) return L[def.path][def.alias || def.key];
+  return L[def.key];
+}
+function setVal(L, def, v) {
+  if (def.global) config[def.key] = v;
+  else if (def.path) L[def.path][def.alias || def.key] = v;
+  else L[def.key] = v;
+}
+
+function buildSliderGroup(containerId, defs) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  for (const d of defs) {
+    if (d.toggle) {
+      const row = document.createElement('div');
+      row.className = 'toggle-row';
+      const label = document.createElement('label');
+      label.textContent = d.label;
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.addEventListener('change', () => {
+        layers[activeLayerIdx][d.key] = input.checked;
+      });
+      row.appendChild(label); row.appendChild(input);
+      c.appendChild(row);
+      sliderRefs[d.key] = { input, def: d };
+      continue;
+    }
+    const row = document.createElement('div');
+    row.className = 'slider-row';
+    const label = document.createElement('label');
+    label.textContent = d.label;
+    const input = document.createElement('input');
+    input.type = 'range'; input.min = d.min; input.max = d.max; input.step = d.step;
+    if (d.bolt) input.className = 'bolt-range';
+    else if (d.spark) input.className = 'spark-range';
+    else if (d.orb) input.className = 'orb-range';
+    else if (d.tesla) input.className = 'tesla-range';
+    else if (d.global) input.className = 'global-range';
+    else if (d.behavior) input.className = 'behavior-range';
+    const val = document.createElement('span');
+    val.className = 'val' + (d.bolt ? ' bolt-val' : d.spark ? ' spark-val' : d.orb ? ' orb-val' : d.tesla ? ' tesla-val' : d.global ? ' global-val' : d.behavior ? ' behavior-val' : '');
+    input.addEventListener('input', () => {
+      const v = parseFloat(input.value);
+      setVal(layers[activeLayerIdx], d, v);
+      val.textContent = formatVal(v);
+    });
+    row.appendChild(label); row.appendChild(input); row.appendChild(val);
+    c.appendChild(row);
+    sliderRefs[d.key] = { input, val, def: d };
+  }
+}
+
+function buildSelectGroup(containerId, defs) {
+  const c = document.getElementById(containerId);
+  for (const d of defs) {
+    const row = document.createElement('div');
+    row.className = 'select-row';
+    const label = document.createElement('label');
+    label.textContent = d.label;
+    const sel = document.createElement('select');
+    if (d.bolt) sel.className = 'bolt-select';
+    else if (d.global) sel.className = 'global-select';
+    else if (d.behavior) sel.className = 'behavior-select';
+    for (const opt of d.options) {
+      const o = document.createElement('option');
+      o.value = opt; o.textContent = opt === '' ? '—' : opt;
+      sel.appendChild(o);
+    }
+    sel.addEventListener('change', () => {
+      let v = sel.value;
+      if (d.numeric) v = parseInt(v, 10);
+      if (d.bool) v = v === 'true';
+      if (v === '') v = null;
+      if (d.global) config[d.key] = v;
+      else layers[activeLayerIdx][d.key] = v;
+      // Re-aplicar visibilidad si cambia effectType/behavior
+      if (d.key === 'onCollide') updateDebug();
+    });
+    row.appendChild(label); row.appendChild(sel);
+    c.appendChild(row);
+    selectRefs[d.key] = sel;
+  }
+}
+
+buildSliderGroup('sliders-emission', SLIDER_DEFS['sliders-emission']);
+buildSliderGroup('sliders-boid', SLIDER_DEFS['sliders-boid']);
+buildSliderGroup('sliders-chain', SLIDER_DEFS['sliders-chain']);
+buildSliderGroup('sliders-rigid', SLIDER_DEFS['sliders-rigid']);
+buildSliderGroup('sliders-bolt', SLIDER_DEFS['sliders-bolt']);
+buildSliderGroup('sliders-centella', SLIDER_DEFS['sliders-centella']);
+buildSliderGroup('sliders-orb', SLIDER_DEFS['sliders-orb']);
+buildSliderGroup('sliders-tesla', SLIDER_DEFS['sliders-tesla']);
+buildSliderGroup('sliders-collision', SLIDER_DEFS['sliders-collision']);
+buildSliderGroup('sliders-physics', SLIDER_DEFS['sliders-physics']);
+buildSliderGroup('sliders-life', SLIDER_DEFS['sliders-life']);
+buildSliderGroup('sliders-appearance', SLIDER_DEFS['sliders-appearance']);
+buildSliderGroup('sliders-global', SLIDER_DEFS['sliders-global']);
+
+buildSelectGroup('sliders-appearance', SELECT_DEFS['sliders-appearance']);
+buildSelectGroup('sliders-bolt', SELECT_DEFS['sliders-bolt']);
+buildSelectGroup('sliders-color', SELECT_DEFS['sliders-color']);
+buildSelectGroup('sliders-collision', SELECT_DEFS['sliders-collision']);
+
+// Behavior select dinámico
+(function buildBehaviorSelect() {
+  const c = document.getElementById('sliders-behavior');
+  c.innerHTML = '';
+  const row = document.createElement('div');
+  row.className = 'select-row';
+  const label = document.createElement('label');
+  label.textContent = 'Behavior';
+  const sel = document.createElement('select');
+  sel.className = 'behavior-select';
+  const rebuild = () => {
+    sel.innerHTML = '';
+    const behaviors = ['free', 'boid', 'rigid', ...Object.keys(ParticleLab.Registry.behaviors)];
+    for (const b of behaviors) {
+      const o = document.createElement('option');
+      o.value = b; o.textContent = b;
+      sel.appendChild(o);
+    }
+    sel.value = layers[activeLayerIdx].behavior || 'free';
+  };
+  rebuild();
+  sel.addEventListener('change', () => {
+    layers[activeLayerIdx].behavior = sel.value;
+    updateSpecialVisibility();
+    updateDebug();
+  });
+  row.appendChild(label); row.appendChild(sel);
+  c.appendChild(row);
+  selectRefs['behavior'] = sel;
+  selectRefs['behavior']._rebuild = rebuild;
+})();
+
+function formatVal(v) {
+  if (typeof v !== 'number') return String(v);
+  if (Number.isInteger(v)) return v;
+  if (Math.abs(v) >= 0.1) return v.toFixed(2);
+  return v.toFixed(3);
+}
+
+function buildSlidersForActiveLayer() {
+  const L = layers[activeLayerIdx];
+  for (const group in SLIDER_DEFS) {
+    for (const d of SLIDER_DEFS[group]) {
+      const ref = sliderRefs[d.key];
+      if (!ref) continue;
+      if (d.toggle) {
+        ref.input.checked = !!L[d.key];
+        continue;
+      }
+      const v = getVal(L, d);
+      ref.input.value = v;
+      if (ref.val) ref.val.textContent = formatVal(v);
+    }
+  }
+  for (const group in SELECT_DEFS) {
+    for (const d of SELECT_DEFS[group]) {
+      const ref = selectRefs[d.key];
+      if (!ref) continue;
+      const v = d.global ? config[d.key] : L[d.key];
+      ref.value = v === null || v === undefined ? '' : v;
+    }
+  }
+  if (selectRefs['behavior']) {
+    if (selectRefs['behavior']._rebuild) selectRefs['behavior']._rebuild();
+    selectRefs['behavior'].value = L.behavior || 'free';
+  }
+  updateSpecialVisibility();
+}
+
+function updateSpecialVisibility() {
+  const L = layers[activeLayerIdx];
+  const isCustomBehavior = !!(L.behavior && ParticleLab.Registry.behaviors[L.behavior]);
+  document.querySelectorAll('[data-special]').forEach(el => {
+    const key = el.dataset.special;
+    let show = false;
+    if (key === 'bolt' || key === 'centella' || key === 'ballLightning' || key === 'tesla') show = (key === L.effectType);
+    else if (key === 'boid') show = (L.behavior === 'boid');
+    else if (key === 'chain') show = (L.effectType === 'chain');
+    else if (key === 'rigid') show = (L.behavior === 'rigid');
+    else if (key === 'custom-behavior') show = isCustomBehavior;
+    else if (key === 'collision') show = (L.effectType === 'particle');
+    el.style.display = show ? '' : 'none';
+  });
+}
+
+/* ============================================================
+   DEBUG PANEL
+   ============================================================ */
+function updateDebug() {
+  const el = document.getElementById('debug-panel');
+  if (!el) return;
+  const L = layers[activeLayerIdx];
+  const isCustom = !!(L.behavior && ParticleLab.Registry.behaviors[L.behavior]);
+  const totalAlive = world.aliveList.length;
+  const customIds = world.customBehaviorIds ? world.customBehaviorIds.length : 0;
+  el.innerHTML = `
+    <b>Layer ${activeLayerIdx + 1}:</b><br>
+    effectType: <b>${L.effectType}</b><br>
+    behavior: <b>${L.behavior || 'free'}</b>${isCustom ? ' <span style="color:#80f0b0">(plugin ✓)</span>' : ''}<br>
+    collide: <b>${L.collide ? 'SÍ' : 'no'}</b> · onCollide: <b>${L.onCollide || '—'}</b><br>
+    rate: <b>${L.rate}</b> · enabled: <b>${L.enabled}</b><br>
+    <span style="color:#4a5eff">— runtime —</span><br>
+    vivos totales: <b>${totalAlive}</b><br>
+    custom behavior ids: <b>${customIds}</b><br>
+    chains: <b>${world.chains.length}</b> · orbs: <b>${world.orbs.length}</b> · bolts: <b>${world.bolts.length}</b>
+  `;
+}
+setInterval(updateDebug, 250);
+
+/* ============================================================
+   APLICAR PRESETS
+   ============================================================ */
+function applyPresetToLayer(name, idx) {
+  lab.applyPreset(name, idx);
+  if (idx === activeLayerIdx) {
+    buildSlidersForActiveLayer();
+    updatePresetActive();
+    updateLayerButtons();
+    collideBtn.style.opacity = layers[idx].collide ? '1' : '0.5';
+    updateDebug();
+  }
+}
+
+function applyMultiPreset(name) {
+  lab.applyMultiPreset(name);
+  buildSlidersForActiveLayer();
+  updateLayerButtons();
+  updatePresetActive();
+  collideBtn.style.opacity = layers[activeLayerIdx].collide ? '1' : '0.5';
+  updateDebug();
+}
+
+/* ============================================================
+   INPUT
+   ============================================================ */
+let hintFaded = false, pointerDown = false;
+
+canvas.addEventListener('pointerdown', (e) => {
+  pointerDown = true;
+  lab.spawnAt(e.clientX, e.clientY, 20);
+  if (!hintFaded) {
+    hintFaded = true;
+    document.getElementById('hint').style.opacity = '0';
+  }
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('pointermove', (e) => {
+  if (!pointerDown) return;
+  lab.spawnAt(e.clientX, e.clientY, 20);
+  e.preventDefault();
+}, { passive: false });
+
+window.addEventListener('pointerup', () => pointerDown = false);
+window.addEventListener('pointercancel', () => pointerDown = false);
+window.addEventListener('blur', () => pointerDown = false);
+canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+/* ============================================================
+   HUD
+   ============================================================ */
+const fpsEl = document.getElementById('fps');
+const partEl = document.getElementById('part');
+const poolEl = document.getElementById('pool');
+const boltsEl = document.getElementById('bolts');
+const orbsEl = document.getElementById('orbs');
+const chainsEl = document.getElementById('chains');
+poolEl.textContent = world.poolSize;
+
+let fpsAccum = 0, fpsFrames = 0, hudTimer = 0;
+lab.onFrame = (dt) => {
+  fpsAccum += dt; fpsFrames++; hudTimer += dt;
+  if (hudTimer >= 0.5) {
+    fpsEl.textContent = Math.round(fpsFrames / fpsAccum);
+    partEl.textContent = world.activeCount;
+    boltsEl.textContent = world.bolts.length;
+    orbsEl.textContent = world.orbs.length;
+    if (chainsEl) chainsEl.textContent = world.chains.length;
+    fpsAccum = 0; fpsFrames = 0; hudTimer = 0;
+  }
+};
+
+/* ============================================================
+   FAST TRIG UI
+   ============================================================ */
+(function setupTrigUI() {
+  const container = document.getElementById('sliders-trig');
+  const modeRow = document.createElement('div');
+  modeRow.className = 'select-row';
+  const modeLabel = document.createElement('label');
+  modeLabel.textContent = 'Mode';
+  const modeSel = document.createElement('select');
+  ['auto', 'on', 'off'].forEach(m => {
+    const o = document.createElement('option'); o.value = m; o.textContent = m;
+    modeSel.appendChild(o);
+  });
+  modeSel.value = FAST_TRIG.mode;
+  modeSel.addEventListener('change', () => {
+    FAST_TRIG.mode = modeSel.value;
+    updateTrigEnabled();
+    updateInfo();
+  });
+  modeRow.appendChild(modeLabel); modeRow.appendChild(modeSel);
+  container.appendChild(modeRow);
+
+  const precRow = document.createElement('div');
+  precRow.className = 'slider-row';
+  const precLabel = document.createElement('label');
+  precLabel.textContent = 'Precision';
+  const precSlider = document.createElement('input');
+  precSlider.type = 'range'; precSlider.min = 1; precSlider.max = 5; precSlider.step = 1;
+  precSlider.value = FAST_TRIG.precision;
+  const precVal = document.createElement('span');
+  precVal.className = 'val';
+  precSlider.addEventListener('input', () => {
+    const wasEnabled = FAST_TRIG.enabled;
+    FAST_TRIG.enabled = false;
+    FAST_TRIG.precision = parseInt(precSlider.value, 10);
+    applyTrigPrecision();
+    FAST_TRIG.enabled = wasEnabled;
+    updateInfo();
+  });
+  precRow.appendChild(precLabel); precRow.appendChild(precSlider); precRow.appendChild(precVal);
+  container.appendChild(precRow);
+
+  const info = document.createElement('div');
+  info.style.cssText = 'font-size:10px;color:#8a95c0;margin-top:6px;line-height:1.4;';
+  container.appendChild(info);
+
+  function updateInfo() {
+    precVal.textContent = FAST_TRIG.precision;
+    const state = FAST_TRIG.enabled ? 'ON' : 'OFF';
+    const stepDeg = (360 / FAST_TRIG.size).toFixed(2);
+    info.innerHTML =
+      `${FAST_TRIG.size} entries · ${FAST_TRIG.ramKB.toFixed(1)} KB · <b style="color:#ffd700">${state}</b><br>` +
+      `Paso angular: ${stepDeg}° · Device: ${detectMobile() ? 'mobile' : 'desktop'}`;
+  }
+  updateInfo();
+})();
+
+/* ============================================================
+   PERFORMANCE UI
+   ============================================================ */
+(function setupPerfUI() {
+  const container = document.getElementById('sliders-trig');
+  const sep = document.createElement('div');
+  sep.style.cssText = 'margin:10px 0 6px;padding-top:6px;border-top:1px solid #1a1f3a;color:#4a5eff;font-size:10px;letter-spacing:2px;';
+  sep.textContent = 'PERFORMANCE';
+  container.appendChild(sep);
+
+  const dprRow = document.createElement('div');
+  dprRow.className = 'select-row';
+  const dprLabel = document.createElement('label');
+  dprLabel.textContent = 'DPR';
+  const dprSel = document.createElement('select');
+  ['auto', '1', '1.5', '2'].forEach(m => {
+    const o = document.createElement('option'); o.value = m; o.textContent = m;
+    dprSel.appendChild(o);
+  });
+  dprSel.value = lab.dprConfig.mode;
+  dprSel.addEventListener('change', () => lab.setDprMode(dprSel.value));
+  dprRow.appendChild(dprLabel); dprRow.appendChild(dprSel);
+  container.appendChild(dprRow);
+
+  const rsRow = document.createElement('div');
+  rsRow.className = 'slider-row';
+  const rsLabel = document.createElement('label');
+  rsLabel.textContent = 'Render ×';
+  const rsSlider = document.createElement('input');
+  rsSlider.type = 'range'; rsSlider.min = 0.5; rsSlider.max = 1; rsSlider.step = 0.05;
+  rsSlider.value = lab.dprConfig.renderScale;
+  const rsVal = document.createElement('span');
+  rsVal.className = 'val';
+  rsVal.textContent = lab.dprConfig.renderScale.toFixed(2);
+  rsSlider.addEventListener('input', () => {
+    const v = parseFloat(rsSlider.value);
+    lab.setRenderScale(v);
+    rsVal.textContent = v.toFixed(2);
+  });
+  rsRow.appendChild(rsLabel); rsRow.appendChild(rsSlider); rsRow.appendChild(rsVal);
+  container.appendChild(rsRow);
+
+  const autoRow = document.createElement('div');
+  autoRow.className = 'select-row';
+  const autoLabel = document.createElement('label');
+  autoLabel.textContent = 'Auto scale';
+  const autoSel = document.createElement('select');
+  ['on', 'off'].forEach(m => {
+    const o = document.createElement('option'); o.value = m; o.textContent = m;
+    autoSel.appendChild(o);
+  });
+  autoSel.value = lab.dprConfig.autoRenderScale ? 'on' : 'off';
+  autoSel.addEventListener('change', () => lab.setAutoRenderScale(autoSel.value === 'on'));
+  autoRow.appendChild(autoLabel); autoRow.appendChild(autoSel);
+  container.appendChild(autoRow);
+
+  const bmRow = document.createElement('div');
+  bmRow.className = 'select-row';
+  const bmLabel = document.createElement('label');
+  bmLabel.textContent = 'Bitmap';
+  const bmSel = document.createElement('select');
+  ['on', 'off'].forEach(m => {
+    const o = document.createElement('option'); o.value = m; o.textContent = m;
+    bmSel.appendChild(o);
+  });
+  bmSel.value = USE_BITMAP.enabled ? 'on' : 'off';
+  bmSel.addEventListener('change', () => USE_BITMAP.enabled = bmSel.value === 'on');
+  bmRow.appendChild(bmLabel); bmRow.appendChild(bmSel);
+  container.appendChild(bmRow);
+})();
+
+/* ============================================================
+   PLUGIN REGISTRY PANEL
+   ============================================================ */
+function rebuildRegistryPanel() {
+  const container = document.getElementById('plugin-registry');
+  if (!container) return;
+  container.innerHTML = '';
+  const R = ParticleLab.Registry;
+  const sections = [
+    { title: 'Behaviors', items: Object.keys(R.behaviors), color: '#80f0b0' },
+    { title: 'Effects', items: Object.keys(R.effects), color: '#ff70c0' },
+    { title: 'Systems', items: Object.keys(R.systems), color: '#70e0ff' },
+    { title: 'Curves', items: Object.keys(R.curves), color: '#ffd700' },
+    { title: 'Sprites', items: Object.keys(R.sprites), color: '#d0b0ff' },
+    { title: 'Presets', items: Object.keys(R.presets), color: '#7cf5ff' },
+    { title: 'Multi-presets', items: Object.keys(R.multiPresets), color: '#d0b0ff' },
+  ];
+  for (const s of sections) {
+    const div = document.createElement('div');
+    div.style.cssText = 'margin-bottom:8px;font-size:10px;line-height:1.6;';
+    div.innerHTML = `<div style="color:${s.color};letter-spacing:1px;margin-bottom:2px;">${s.title} (${s.items.length})</div>` +
+      (s.items.length
+        ? s.items.map(n => `<span style="display:inline-block;background:#1a1f3a;border:1px solid ${s.color}44;color:${s.color};padding:1px 6px;border-radius:3px;margin:1px 2px 1px 0;font-size:9px;">${n}</span>`).join('')
+        : `<span style="color:#4a5eff;opacity:0.5;">— vacío —</span>`);
+    container.appendChild(div);
+  }
+  setupDemoButtons(container);
+}
+
+/* ============================================================
+   DEMO BUTTONS
+   ============================================================ */
+function setupDemoButtons(container) {
+  const sep = document.createElement('div');
+  sep.style.cssText = 'margin:10px 0 6px;padding-top:6px;border-top:1px solid #1a1f3a;color:#4a5eff;font-size:10px;letter-spacing:2px;';
+  sep.textContent = 'DEMO ACTIONS';
+  container.appendChild(sep);
+
+  function mkBtn(label, color, onClick) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = `display:block;width:100%;margin:4px 0;padding:6px 10px;background:${color}22;border:1px solid ${color};color:${color};border-radius:4px;font-family:inherit;font-size:10px;letter-spacing:1px;cursor:pointer;`;
+    b.addEventListener('click', onClick);
+    container.appendChild(b);
+    return b;
+  }
+
+  const evtLog = document.createElement('div');
+  evtLog.style.cssText = 'font-size:9px;color:#8a95c0;margin:4px 0;padding:4px 6px;background:#05060a;border-radius:3px;max-height:60px;overflow:auto;';
+  evtLog.textContent = '— eventos —';
+
+  mkBtn('🎧 Escuchar death events (5s)', '#ff70c0', () => {
+    let count = 0;
+    const off = lab.on('death', (e) => {
+      count++;
+      evtLog.textContent = `death #${count} @ (${e.x|0}, ${e.y|0})`;
+    });
+    setTimeout(() => { off(); evtLog.textContent = `— ${count} muertes capturadas —`; }, 5000);
+  });
+
+  mkBtn('🧪 Registrar preset random', '#d0b0ff', () => {
+    const name = 'custom_' + Math.random().toString(36).slice(2, 6);
+    ParticleLab.registerPreset(name, {
+      rate: 80, speed: 200, life: 2, size: 8,
+      colors: [COLOR_NAMES[(Math.random()*COLOR_NAMES.length)|0]],
+      spriteType: SPRITE_NAMES[(Math.random()*SPRITE_NAMES.length)|0],
+      emitter: { fx: 0.5, fy: 0.5, fw: 0.3, angle: 0, spread: 360 },
+    });
+    rebuildPresetGrid();
+    rebuildRegistryPanel();
+  });
+
+  container.appendChild(evtLog);
+
+  const help = document.createElement('div');
+  help.style.cssText = 'font-size:9px;color:#8a95c0;line-height:1.5;padding:4px;margin-top:6px;';
+  help.innerHTML = `
+    <b style="color:#7cf5ff">registerPreset(name, cfg)</b><br>
+    <b style="color:#80f0b0">registerBehavior(name, {update})</b><br>
+    <b style="color:#ff70c0">registerEffect(name, {spawn, render})</b><br>
+    <b style="color:#70e0ff">registerSystem(name, {update, phase})</b><br>
+    <b style="color:#ffd700">registerCurve(name, fn)</b><br>
+    <b style="color:#d0b0ff">registerSprite(name, canvas)</b><br>
+    <b style="color:#7cf5ff">lab.on(type, fn) / lab.off()</b><br>
+    <b style="color:#7cf5ff">lab.use(plugin) → undo</b>
+  `;
+  container.appendChild(help);
+}
+
+/* ============================================================
+   ARRANQUE
+   ============================================================ */
+applyMultiPreset('storm');
+buildSlidersForActiveLayer();
+updateLayerButtons();
+updatePresetActive();
+collideBtn.style.opacity = layers[activeLayerIdx].collide ? '1' : '0.5';
+rebuildRegistryPanel();
+updateDebug();
+
+if (window.innerWidth > 720) {
+  panel.classList.remove('collapsed');
+  panelToggle.textContent = '−';
+}
+
+lab.start();
+</script>
+</body>
+</html>

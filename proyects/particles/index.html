@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#05060a">
+<title>ParticleLab — ECS Particle Engine for the Web</title>
+<meta name="description" content="Sistema de partículas ECS con 72 presets, 6 efectos eléctricos, boids, chains, rigid bodies, trails y metaballs. Cero dependencias, cero allocs, un solo archivo.">
+<style>
+  :root {
+    --bg: #05060a;
+    --bg2: #0a0c18;
+    --panel: #0c1020;
+    --panel2: #111632;
+    --border: #232a4a;
+    --fg: #cfd6ff;
+    --muted: #8a95c0;
+    --accent: #7cf5ff;
+    --accent2: #4a5eff;
+    --good: #5cff9d;
+    --warn: #ffd700;
+    --orange: #ffb060;
+    --purple: #d0b0ff;
+    --pink: #ff79c6;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: rgba(124, 245, 255, 0.08);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    border: 1px solid rgba(124, 245, 255, 0.15);
+  }
+
+  /* ============ HERO ============ */
+  #hero {
+    position: relative;
+    height: 100vh;
+    min-height: 640px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #hero-canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    z-index: 0;
+  }
+  #hero-vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(5,6,10,0.85) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+  #hero-fade {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 30vh;
+    background: linear-gradient(to bottom, transparent, var(--bg));
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Nav */
+  nav {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  nav .logo {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(124,245,255,0.4);
+  }
+  nav .logo span { color: var(--fg); opacity: 0.5; font-size: 11px; letter-spacing: 2px; margin-left: 8px; }
+  nav .links { display: flex; gap: 24px; align-items: center; }
+  nav .links a {
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 1px;
+    transition: color 0.2s;
+  }
+  nav .links a:hover { color: var(--accent); text-decoration: none; }
+  nav .cta {
+    background: rgba(74, 94, 255, 0.2);
+    border: 1px solid var(--accent2);
+    color: var(--accent);
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  nav .cta:hover {
+    background: rgba(74, 94, 255, 0.4);
+    box-shadow: 0 0 20px rgba(74, 94, 255, 0.3);
+    text-decoration: none;
+  }
+
+  /* Hero content */
+  #hero-content {
+    position: relative;
+    z-index: 5;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 0 24px;
+    pointer-events: none;
+  }
+  #hero-content > * { pointer-events: auto; }
+  .badge {
+    display: inline-block;
+    background: rgba(92, 255, 157, 0.1);
+    border: 1px solid rgba(92, 255, 157, 0.4);
+    color: var(--good);
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    animation: pulse 3s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(92, 255, 157, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(92, 255, 157, 0); }
+  }
+  h1 {
+    font-size: clamp(38px, 7vw, 84px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1.05;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #ffffff 0%, var(--accent) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 60px rgba(124, 245, 255, 0.2);
+  }
+  .subtitle {
+    font-size: clamp(14px, 1.6vw, 18px);
+    color: var(--muted);
+    max-width: 640px;
+    margin-bottom: 36px;
+    line-height: 1.6;
+  }
+  .subtitle b { color: var(--accent); font-weight: 600; }
+
+  .hero-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn-primary, .btn-secondary {
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent2), #6a3aff);
+    border: 1px solid var(--accent2);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 0 30px rgba(74, 94, 255, 0.4);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 50px rgba(74, 94, 255, 0.6);
+    text-decoration: none;
+  }
+  .btn-secondary {
+    background: rgba(26, 31, 58, 0.7);
+    border: 1px solid var(--border);
+    color: var(--fg);
+  }
+  .btn-secondary:hover {
+    background: rgba(26, 31, 58, 1);
+    border-color: var(--accent);
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 40px;
+    margin-top: 60px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .hero-stat {
+    text-align: center;
+  }
+  .hero-stat .num {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -1px;
+  }
+  .hero-stat .lbl {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* Scroll hint */
+  .scroll-hint {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 2px;
+    animation: bounce 2s ease-in-out infinite;
+    cursor: pointer;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(8px); }
+  }
+
+  /* ============ SECTIONS ============ */
+  section {
+    padding: 100px 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+  }
+  section.full {
+    max-width: 100%;
+    padding: 100px 40px;
+  }
+  .section-label {
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 4px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  h2 {
+    font-size: clamp(28px, 4vw, 44px);
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+    line-height: 1.15;
+  }
+  h2 .grad {
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .section-desc {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 640px;
+    margin-bottom: 48px;
+    line-height: 1.7;
+  }
+  .section-desc b { color: var(--fg); font-weight: 600; }
+
+  /* Features grid */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .feature {
+    background: linear-gradient(180deg, var(--panel), var(--bg2));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .feature::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .feature:hover {
+    border-color: rgba(124, 245, 255, 0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  }
+  .feature:hover::before { opacity: 1; }
+  .feature .icon {
+    font-size: 24px;
+    margin-bottom: 14px;
+    display: inline-block;
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    background: rgba(74, 94, 255, 0.15);
+    border: 1px solid rgba(74, 94, 255, 0.3);
+    text-align: center;
+    line-height: 42px;
+  }
+  .feature h3 {
+    font-size: 15px;
+    color: var(--fg);
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .feature p {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  /* Effects showcase */
+  #effects {
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .effects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+  }
+  .effect-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+  .effect-card:hover {
+    border-color: var(--accent2);
+    box-shadow: 0 8px 32px rgba(74, 94, 255, 0.2);
+    transform: translateY(-2px);
+  }
+  .effect-canvas {
+    width: 100%;
+    height: 200px;
+    display: block;
+    background: #05060a;
+  }
+  .effect-info {
+    padding: 16px 20px;
+  }
+  .effect-info h4 {
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .effect-info p {
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .effect-info .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 10px;
+  }
+  .tag {
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(124, 245, 255, 0.08);
+    color: var(--accent);
+    border: 1px solid rgba(124, 245, 255, 0.2);
+    letter-spacing: 0.5px;
+  }
+  .tag.good { color: var(--good); border-color: rgba(92,255,157,0.3); background: rgba(92,255,157,0.05); }
+  .tag.warn { color: var(--warn); border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.05); }
+  .tag.purple { color: var(--purple); border-color: rgba(208,176,255,0.3); background: rgba(208,176,255,0.05); }
+
+  /* Playground */
+  #playground {
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+  }
+  .playground-wrap {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--bg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+  #playground-canvas {
+    width: 100%;
+    height: 480px;
+    display: block;
+    cursor: crosshair;
+  }
+  .playground-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 14px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+  }
+  .playground-bar button {
+    background: rgba(26, 31, 58, 0.8);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .playground-bar button:hover {
+    background: rgba(74, 94, 255, 0.2);
+    border-color: var(--accent2);
+    color: var(--accent);
+  }
+  .playground-bar button.active {
+    background: rgba(74, 94, 255, 0.35);
+    border-color: var(--accent2);
+    color: var(--accent);
+    box-shadow: 0 0 16px rgba(74, 94, 255, 0.3);
+  }
+  .playground-hint {
+    padding: 10px 14px;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 1px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+  }
+
+  /* Code section */
+  #code {
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .code-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+  }
+  @media (max-width: 900px) {
+    .code-grid { grid-template-columns: 1fr; }
+  }
+  .code-block {
+    background: #02030a;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .code-header {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+  .code-header .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .code-header .dot.r { background: #ff5f57; }
+  .code-header .dot.y { background: #ffbd2e; }
+  .code-header .dot.g { background: #28ca42; }
+  .code-header .title {
+    margin-left: 12px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  pre {
+    padding: 20px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--fg);
+  }
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+  .kw { color: #ff79c6; }
+  .str { color: #f1fa8c; }
+  .num { color: #bd93f9; }
+  .com { color: #6272a4; font-style: italic; }
+  .fn { color: #7cf5ff; }
+  .prop { color: var(--purple); }
+
+  /* Stats bar */
+  #stats {
+    background: linear-gradient(180deg, transparent, var(--bg2), transparent);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 40px;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 30px;
+    max-width: 1000px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-lbl {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* CTA */
+  #cta {
+    text-align: center;
+    padding: 120px 40px;
+  }
+  #cta h2 { margin-bottom: 16px; }
+  #cta .section-desc {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--accent); }
+
+  /* Reveal animation */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 640px) {
+    nav { padding: 16px 20px; }
+    nav .links { gap: 14px; }
+    nav .links a:not(.cta) { display: none; }
+    section { padding: 60px 20px; }
+    .hero-stats { gap: 24px; margin-top: 40px; }
+    .hero-stat .num { font-size: 20px; }
+    #playground-canvas { height: 320px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ HERO ============ -->
+<div id="hero">
+  <canvas id="hero-canvas"></canvas>
+  <div id="hero-vignette"></div>
+  <div id="hero-fade"></div>
+
+  <nav>
+    <div class="logo">PARTICLE<span>LAB v0.9</span></div>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#effects">Effects</a>
+      <a href="playground.html">Playground</a>
+      <a href="#code">Docs</a>
+      <a href="doc.html" class="cta">Documentation →</a>
+    </div>
+  </nav>
+
+  <div id="hero-content">
+    <div class="badge">v0.9 · ZERO DEPENDENCIES</div>
+    <h1>Particles at the speed of thought.</h1>
+    <p class="subtitle">
+      Un motor de partículas <b>ECS puro</b> para la web. 72 presets, 6 efectos eléctricos,
+      boids, chains, rigid bodies, trails y metaballs. Todo en <b>un solo archivo</b>.
+    </p>
+    <div class="hero-buttons">
+      <a href="playground.html" class="btn-primary">▶ Probar ahora</a>
+      <a href="doc.html" class="btn-secondary">📖 Leer docs</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num">72</div><div class="lbl">Presets</div></div>
+      <div class="hero-stat"><div class="num">20</div><div class="lbl">Multi-presets</div></div>
+      <div class="hero-stat"><div class="num">6</div><div class="lbl">Effects</div></div>
+      <div class="hero-stat"><div class="num">0</div><div class="lbl">Dependencies</div></div>
+    </div>
+  </div>
+
+  <div class="scroll-hint" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">
+    ▼ SCROLL
+  </div>
+</div>
+
+<!-- ============ STATS BAR ============ -->
+<div id="stats">
+  <div class="stats-grid">
+    <div><div class="stat-num">3000</div><div class="stat-lbl">Pool Size</div></div>
+    <div><div class="stat-num">60</div><div class="stat-lbl">FPS Target</div></div>
+    <div><div class="stat-num">231</div><div class="stat-lbl">Sprites</div></div>
+    <div><div class="stat-num">21</div><div class="stat-lbl">Colors</div></div>
+    <div><div class="stat-num">12.5</div><div class="stat-lbl">KB core</div></div>
+  </div>
+</div>
+
+<!-- ============ FEATURES ============ -->
+<section id="features">
+  <div class="section-label">// FEATURES</div>
+  <h2>Todo lo que necesitás.<br><span class="grad">Nada que no.</span></h2>
+  <p class="section-desc">
+    ParticleLab es un motor de partículas <b>minimalista pero completo</b>.
+    Arquitectura ECS con pool pre-asignado, sprites pre-renderizados, LOD automático
+    y cero allocs en runtime.
+  </p>
+
+  <div class="features-grid">
+    <div class="feature reveal">
+      <div class="icon">⚡</div>
+      <h3>ECS puro</h3>
+      <p>Entidades, componentes en Maps y sistemas. Pool de 3000 partículas con zero GC churn. Lista densa de vivos + freeList.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">🎨</div>
+      <h3>Sprites pre-renderizados</h3>
+      <p>11 tipos × 21 colores = 231 sprites generados al cargar. 3 niveles de detalle (32 / 64 / 128 px) elegidos por LOD. Nunca gradients en el loop.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">⚡</div>
+      <h3>6 efectos eléctricos</h3>
+      <p>Rayos con midpoint displacement + ramas, centellas radiales, bolas de rayo globular, bobinas Tesla, chains Verlet y partículas clásicas.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">🐦</div>
+      <h3>Boids</h3>
+      <p>Flocking Reynolds con spatial hash de 100 px. Cohesión, alineación y separación configurables. 3 presets listos (birds, fish, fireflies).</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">🔗</div>
+      <h3>Verlet Chains</h3>
+      <p>Cadenas físicas con N puntos, resolución iterativa de restricciones. Cuerdas, látigos y tentáculos listos para usar.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">⬡</div>
+      <h3>Rigid Bodies</h3>
+      <p>Colisiones por impulso entre partículas con masa, restitución y spatial hash. Escombros, monedas, cristales.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">💫</div>
+      <h3>Trails & Metaballs</h3>
+      <p>Estelas de polilínea con Float32Array ring buffers. Metaballs con blend aditivo para lava, agua y slime.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">🌊</div>
+      <h3>Curl & Flow</h3>
+      <p>Curl noise barato (3 senos) para movimiento orgánico. Flow fields 32×32 con sampleo bilineal, regenerados cada 4s.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">📉</div>
+      <h3>LOD automático</h3>
+      <p>3 niveles según partículas vivas: &lt;3k = full, 3-6k = sin trails, &gt;6k = physics cada 2 frames + sprites small.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">🎯</div>
+      <h3>Auto render scale</h3>
+      <p>Cuando el FPS baja, reduce la resolución del canvas offscreen en 0.05. Cuando se recupera, la sube.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">🧮</div>
+      <h3>FAST_TRIG</h3>
+      <p>Tablas precomputadas de sin/cos/tan/atan para mobile. 360-1800 entries, activable auto/on/off.</p>
+    </div>
+    <div class="feature reveal">
+      <div class="icon">🪶</div>
+      <h3>3 capas paralelas</h3>
+      <p>Cada capa con su propio effectType, behavior y ~80 parámetros. Sliders en vivo, presets y multi-presets.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EFFECTS SHOWCASE ============ -->
+<section id="effects" class="full">
+  <div style="max-width:1200px;margin:0 auto;">
+    <div class="section-label">// LIVE EFFECTS</div>
+    <h2>Cada efecto, en <span class="grad">vivo</span>.</h2>
+    <p class="section-desc">
+      Seis motores, seis lenguajes visuales. Todos los canvas corren en tiempo real,
+      compartiendo el mismo sceneCanvas compositor.
+    </p>
+
+    <div class="effects-grid">
+      <div class="effect-card">
+        <canvas class="effect-canvas" id="fx-lightning"></canvas>
+        <div class="effect-info">
+          <h4>⚡ BOLT</h4>
+          <p>Rayos con midpoint displacement recursivo + ramas laterales.</p>
+          <div class="tags">
+            <span class="tag warn">lightning</span>
+            <span class="tag warn">groundStrike</span>
+          </div>
+        </div>
+      </div>
+      <div class="effect-card">
+        <canvas class="effect-canvas" id="fx-centella"></canvas>
+        <div class="effect-info">
+          <h4>✦ CENTELLA</h4>
+          <p>Estrella radial de rayos cortos con flash central.</p>
+          <div class="tags">
+            <span class="tag warn">centella</span>
+            <span class="tag warn">centellaMicro</span>
+          </div>
+        </div>
+      </div>
+      <div class="effect-card">
+        <canvas class="effect-canvas" id="fx-orb"></canvas>
+        <div class="effect-info">
+          <h4>🔮 BALL LIGHTNING</h4>
+          <p>Orbes globulares erráticos con arcos eléctricos.</p>
+          <div class="tags">
+            <span class="tag purple">ballLightning</span>
+            <span class="tag purple">plasma</span>
+          </div>
+        </div>
+      </div>
+      <div class="effect-card">
+        <canvas class="effect-canvas" id="fx-tesla"></canvas>
+        <div class="effect-info">
+          <h4>⚙ TESLA</h4>
+          <p>Dos electrodos con arcos eléctricos cruzando el gap.</p>
+          <div class="tags">
+            <span class="tag" style="color:#ffb060;border-color:rgba(255,176,96,0.3);background:rgba(255,176,96,0.05)">teslaCoil</span>
+          </div>
+        </div>
+      </div>
+      <div class="effect-card">
+        <canvas class="effect-canvas" id="fx-boid"></canvas>
+        <div class="effect-info">
+          <h4>🐦 BOIDS</h4>
+          <p>Bandada con cohesión, alineación y separación.</p>
+          <div class="tags">
+            <span class="tag good">boidBirds</span>
+            <span class="tag good">boidFish</span>
+          </div>
+        </div>
+      </div>
+      <div class="effect-card">
+        <canvas class="effect-canvas" id="fx-chain"></canvas>
+        <div class="effect-info">
+          <h4>🔗 CHAIN</h4>
+          <p>Cadenas Verlet con resolución iterativa de restricciones.</p>
+          <div class="tags">
+            <span class="tag purple">chainRope</span>
+            <span class="tag purple">chainTentacle</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PLAYGROUND ============ -->
+<section id="playground" class="full">
+  <div style="max-width:1400px;margin:0 auto;">
+    <div class="section-label">// PLAYGROUND</div>
+    <h2>Probalo <span class="grad">ahora</span>.</h2>
+    <p class="section-desc">
+      Tocá o arrastrá en cualquier parte del canvas para estallar partículas.
+      Cambiá de preset con los botones de abajo.
+    </p>
+
+    <div class="playground-wrap">
+      <canvas id="playground-canvas"></canvas>
+      <div class="playground-bar" id="playground-bar"></div>
+      <div class="playground-hint">💡 Tocá o arrastrá en el canvas · Click en un preset para cambiarlo</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CODE ============ -->
+<section id="code" class="full">
+  <div style="max-width:1200px;margin:0 auto;">
+    <div class="section-label">// API</div>
+    <h2>Dos líneas y <span class="grad">listo</span>.</h2>
+    <p class="section-desc">
+      Sin <code>npm install</code>, sin build step, sin dependencias.
+      Un <code>&lt;script&gt;</code> y un canvas.
+    </p>
+
+    <div class="code-grid">
+      <div class="code-block">
+        <div class="code-header">
+          <span class="dot r"></span>
+          <span class="dot y"></span>
+          <span class="dot g"></span>
+          <span class="title">index.html</span>
+        </div>
+        <pre><code><span class="com">&lt;!-- 1. Importá la librería --&gt;</span>
+&lt;<span class="kw">script</span> <span class="prop">src</span>=<span class="str">"particle.js"</span>&gt;&lt;/<span class="kw">script</span>&gt;
+
+<span class="com">&lt;!-- 2. Tu canvas --&gt;</span>
+&lt;<span class="kw">canvas</span> <span class="prop">id</span>=<span class="str">"game"</span>&gt;&lt;/<span class="kw">canvas</span>&gt;
+
+&lt;<span class="kw">script</span>&gt;
+  <span class="kw">const</span> lab = ParticleLab.<span class="fn">create</span>(canvas, {
+    poolSize: <span class="num">3000</span>
+  });
+  lab.<span class="fn">applyMultiPreset</span>(<span class="str">'storm'</span>);
+  lab.<span class="fn">start</span>();
+&lt;/<span class="kw">script</span>&gt;</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="dot r"></span>
+          <span class="dot y"></span>
+          <span class="dot g"></span>
+          <span class="title">customize.js</span>
+        </div>
+        <pre><code><span class="com">// Modificá capas en vivo</span>
+<span class="kw">const</span> L = lab.layers[<span class="num">0</span>];
+L.colors = [<span class="str">'magic'</span>, <span class="str">'plasma'</span>];
+L.gravityY = <span class="num">200</span>;
+L.swirl = <span class="num">4</span>;
+L.blend = <span class="str">'lighter'</span>;
+
+<span class="com">// Spawn en coords de pantalla</span>
+canvas.<span class="fn">addEventListener</span>(<span class="str">'pointerdown'</span>, e =&gt; {
+  lab.<span class="fn">spawnAt</span>(e.clientX, e.clientY, <span class="num">40</span>);
+});
+
+<span class="com">// Slow-mo + bloom</span>
+lab.<span class="fn">setTimeScale</span>(<span class="num">0.3</span>);
+lab.<span class="fn">setBloom</span>(<span class="num">0.8</span>);
+
+<span class="com">// Escuchar frames</span>
+lab.onFrame = (dt) =&gt; {
+  hud.textContent = lab.world.activeCount;
+};</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section id="cta">
+  <div class="section-label">// READY?</div>
+  <h2>Empezá en <span class="grad">60 segundos</span>.</h2>
+  <p class="section-desc">
+    Descargá <code>particle.js</code>, importalo en un HTML y llamá a <code>create()</code>.
+    Todo lo demás es opcional.
+  </p>
+  <div class="hero-buttons" style="margin-top:24px">
+    <a href="doc.html" class="btn-primary">📖 Ver documentación</a>
+    <a href="#playground" class="btn-secondary">▶ Volver al playground</a>
+  </div>
+</section>
+
+<footer>
+  ParticleLab v0.9 · ECS Particle Engine · Made with 🖤 · <a href="doc.html">Docs</a> · <a href="#hero">Top ↑</a>
+</footer>
+
+<!-- ============ SCRIPTS ============ -->
+<script src="particle.js"></script>
+<script>
+'use strict';
+
+/* ============================================================
+   HERO BACKGROUND — multi-preset vivo
+   ============================================================ */
+(function initHero() {
+  const canvas = document.getElementById('hero-canvas');
+  if (!canvas || !window.ParticleLab) return;
+
+  const lab = ParticleLab.create(canvas, {
+    poolSize: 200,
+    trail: 0.3,
+    autoRenderScale: false,
+      dprMode: 'auto',
+  });
+  lab.applyMultiPreset('toxicSwamp');
+  lab.setBloom(0.6);
+  lab.start();
+
+  
+
+  // Estallido al click en el hero
+  canvas.addEventListener('pointerdown', (e) => {
+    lab.spawnAt(e.clientX, e.clientY, 30);
+  });
+
+  // Guardar referencia para poder reaccionar al scroll
+  window.__heroLab = lab;
+})();
+
+/* ============================================================
+   EFFECT SHOWCASES — 6 mini canvases
+   ============================================================ */
+(function initEffectShowcases() {
+  if (!window.ParticleLab) return;
+
+  const showcases = [
+    { id: 'fx-lightning', preset: 'lightningHeavy', bloom: 0.5 },
+    { id: 'fx-centella', preset: 'centella', bloom: 0.4 },
+    { id: 'fx-orb', preset: 'ballLightningPlasma', bloom: 0.6 },
+    { id: 'fx-tesla', preset: 'teslaCoil', bloom: 0.5 },
+    { id: 'fx-boid', preset: 'boidBirds', bloom: 0 },
+    { id: 'fx-chain', preset: 'chainTentacle', bloom: 0.3 },
+  ];
+
+  showcases.forEach(({ id, preset, bloom }) => {
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+
+    const lab = ParticleLab.create(canvas, {
+      poolSize: 600,
+      trail: 0.3,
+      autoRenderScale: false,
+      dprMode: 'auto',
+    });
+    lab.applyPreset(preset, 0);
+    lab.setLayerEnabled(1, false);
+    lab.setLayerEnabled(2, false);
+    lab.setBloom(bloom);
+    lab.start();
+
+    // Estallido al click
+    canvas.addEventListener('pointerdown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * (canvas.clientWidth / rect.width);
+      const y = (e.clientY - rect.top) * (canvas.clientHeight / rect.height);
+      lab.spawnAt(x, y, 15);
+    });
+    canvas.style.cursor = 'pointer';
+  });
+})();
+
+/* ============================================================
+   PLAYGROUND — instancia interactiva principal
+   ============================================================ */
+(function initPlayground() {
+  const canvas = document.getElementById('playground-canvas');
+  const bar = document.getElementById('playground-bar');
+  if (!canvas || !window.ParticleLab) return;
+
+  const lab = ParticleLab.create(canvas, {
+    poolSize: 3000,
+    trail: 0.15,
+    autoRenderScale: true,
+  });
+
+  const presets = [
+    { label: '⚡ Storm',       apply: () => lab.applyMultiPreset('storm') },
+    { label: '🔥 Fire',        apply: () => { lab.applyPreset('fire', 0); lab.setLayerEnabled(1, false); lab.setLayerEnabled(2, false); } },
+    { label: '🔮 Plasma',      apply: () => { lab.applyPreset('ballLightningPlasma', 0); lab.setLayerEnabled(1, false); lab.setLayerEnabled(2, false); } },
+    { label: '🐦 Boids',       apply: () => { lab.applyPreset('boidBirds', 0); lab.setLayerEnabled(1, false); lab.setLayerEnabled(2, false); } },
+    { label: '🔗 Chain',       apply: () => { lab.applyPreset('chainTentacle', 0); lab.setLayerEnabled(1, false); lab.setLayerEnabled(2, false); } },
+    { label: '✨ Magic',       apply: () => lab.applyMultiPreset('nebula') },
+    { label: '🌋 Volcanic',    apply: () => lab.applyMultiPreset('volcanic') },
+    { label: '🎉 Celebration', apply: () => lab.applyMultiPreset('celebration') },
+    { label: '🌌 Cosmic',      apply: () => lab.applyMultiPreset('cosmic') },
+    { label: '🐟 Fish',        apply: () => { lab.applyPreset('boidFish', 0); lab.setLayerEnabled(1, false); lab.setLayerEnabled(2, false); } },
+  ];
+
+  let activeIdx = 0;
+  presets.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = p.label;
+    if (i === 0) btn.classList.add('active');
+    btn.addEventListener('click', () => {
+      presets[activeIdx]._btn?.classList.remove('active');
+      p.apply();
+      btn.classList.add('active');
+      activeIdx = i;
+    });
+    p._btn = btn;
+    bar.appendChild(btn);
+  });
+
+  lab.applyMultiPreset('storm');
+  lab.setBloom(0.4);
+  lab.start();
+
+  // Input
+  let down = false;
+  function fire(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.clientWidth / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.clientHeight / rect.height);
+    lab.spawnAt(x, y, 25);
+  }
+  canvas.addEventListener('pointerdown', (e) => { down = true; fire(e); });
+  canvas.addEventListener('pointermove', (e) => { if (down) fire(e); });
+  window.addEventListener('pointerup', () => down = false);
+  canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+  canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+})();
+
+/* ============================================================
+   SCROLL REVEAL
+   ============================================================ */
+(function initReveal() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+})();
+
+/* ============================================================
+   HERO FADE ON SCROLL
+   ============================================================ */
+(function initHeroScroll() {
+  const hero = document.getElementById('hero');
+  const content = document.getElementById('hero-content');
+  if (!hero || !content) return;
+
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    const heroH = hero.offsetHeight;
+    if (y < heroH) {
+      const p = y / heroH;
+      content.style.opacity = String(1 - p * 1.3);
+      content.style.transform = `translateY(${p * 40}px)`;
+    }
+  }, { passive: true });
+})();
+
+/* ============================================================
+   SMOOTH SCROLL PARA LINKS INTERNOS
+   ============================================================ */
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', (e) => {
+    const id = a.getAttribute('href');
+    if (id === '#' || id.length < 2) return;
+    const el = document.querySelector(id);
+    if (el) {
+      e.preventDefault();
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+});
+</script>
+</body>
+</html>

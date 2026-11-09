@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ParticleLab v9 — Documentación</title>
+<style>
+  :root {
+    --bg: #05060a;
+    --panel: #0c1020;
+    --panel2: #111632;
+    --border: #232a4a;
+    --fg: #cfd6ff;
+    --muted: #8a95c0;
+    --accent: #7cf5ff;
+    --accent2: #4a5eff;
+    --good: #5cff9d;
+    --warn: #ffd700;
+    --orange: #ffb060;
+    --purple: #d0b0ff;
+    --code-bg: #080a14;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Layout */
+  #layout { display: flex; min-height: 100vh; }
+  #sidebar {
+    width: 260px; flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 20px 12px 60px;
+    position: sticky; top: 0;
+    height: 100vh; overflow-y: auto;
+  }
+  #sidebar::-webkit-scrollbar { width: 6px; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  #content {
+    flex: 1;
+    padding: 30px 40px 120px;
+    max-width: 1100px;
+    min-width: 0;
+  }
+
+  /* Sidebar */
+  #sidebar h1 {
+    color: var(--accent);
+    font-size: 15px;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  #sidebar .ver {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+  }
+  #sidebar nav ul { list-style: none; }
+  #sidebar nav li { margin: 1px 0; }
+  #sidebar nav a {
+    color: var(--fg); display: block;
+    padding: 5px 10px; border-radius: 5px;
+    font-size: 12px; border-left: 2px solid transparent;
+  }
+  #sidebar nav a:hover { background: var(--panel2); border-left-color: var(--accent); text-decoration: none; }
+  #sidebar nav .sub { padding-left: 22px; font-size: 11px; color: var(--muted); }
+
+  /* Content typography */
+  h1 {
+    font-size: 26px; letter-spacing: 2px;
+    color: var(--accent);
+    margin: 0 0 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  h1 .badge {
+    background: var(--panel2); color: var(--muted);
+    font-size: 11px; letter-spacing: 1px;
+    padding: 2px 8px; border-radius: 4px;
+    vertical-align: middle; margin-left: 10px;
+  }
+  h2 {
+    font-size: 19px; color: var(--accent);
+    margin: 45px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 1px;
+    scroll-margin-top: 20px;
+  }
+  h3 {
+    font-size: 15px; color: var(--purple);
+    margin: 28px 0 10px;
+    letter-spacing: 1px;
+    scroll-margin-top: 20px;
+  }
+  h4 {
+    font-size: 13px; color: var(--orange);
+    margin: 20px 0 8px;
+    letter-spacing: 0.5px;
+  }
+  p { margin: 8px 0; color: var(--fg); }
+  p.muted, .muted { color: var(--muted); font-size: 12px; }
+  ul, ol { margin: 8px 0 12px 24px; }
+  li { margin: 4px 0; }
+  code {
+    background: var(--code-bg);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+  pre code { background: none; border: none; padding: 0; color: var(--fg); }
+  .kw { color: #ff79c6; }
+  .str { color: #f1fa8c; }
+  .num { color: #bd93f9; }
+  .com { color: #6272a4; font-style: italic; }
+  .fn { color: #7cf5ff; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px;
+    background: var(--panel);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 12px;
+  }
+  th, td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    background: var(--panel2);
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+  td code { font-size: 11px; }
+  tr:last-child td { border-bottom: none; }
+  .t-prop { color: var(--accent); white-space: nowrap; }
+  .t-type { color: var(--purple); font-size: 11px; white-space: nowrap; }
+  .t-def  { color: var(--warn); font-size: 11px; white-space: nowrap; }
+  .t-desc { color: var(--fg); }
+
+  /* Badges / pills */
+  .pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    color: var(--muted);
+    margin: 0 2px;
+    white-space: nowrap;
+  }
+  .pill.good { color: var(--good); border-color: #5cff9d66; background: #5cff9d11; }
+  .pill.warn { color: var(--warn); border-color: #ffd70066; background: #ffd70011; }
+  .pill.orange { color: var(--orange); border-color: #ffb06066; background: #ffb06011; }
+  .pill.purple { color: var(--purple); border-color: #d0b0ff66; background: #d0b0ff11; }
+  .pill.blue { color: var(--accent); border-color: #7cf5ff66; background: #7cf5ff11; }
+
+  /* Callouts */
+  .callout {
+    background: var(--panel2);
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin: 14px 0;
+    font-size: 12px;
+  }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.good { border-left-color: var(--good); }
+  .callout .label {
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 1px;
+    font-size: 10px;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .callout.warn .label { color: var(--warn); }
+  .callout.good .label { color: var(--good); }
+
+  /* Color swatches */
+  .swatches {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 6px;
+    margin: 12px 0;
+  }
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  .swatch .dot {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px currentColor;
+  }
+  .swatch .nm { color: var(--fg); flex: 1; }
+  .swatch .hex { color: var(--muted); font-size: 10px; }
+
+  /* Grid cards */
+  .grid2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .card .ttl {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .card .desc { color: var(--muted); font-size: 11px; }
+
+  /* Demo interactive */
+  .demo-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 16px 0;
+    position: relative;
+  }
+  .demo-wrap canvas {
+    display: block; width: 100%; height: 260px;
+    background: #05060a;
+  }
+  .demo-bar {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 10px; border-top: 1px solid var(--border);
+    background: var(--panel2);
+  }
+  .demo-bar button {
+    background: #1a1f3a; color: var(--fg);
+    border: 1px solid #2e3560; border-radius: 5px;
+    padding: 5px 10px; font-size: 11px;
+    font-family: inherit; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .demo-bar button:hover { background: #232a50; border-color: var(--accent2); }
+  .demo-bar button.active {
+    background: #4a5eff33; border-color: var(--accent2);
+    color: var(--accent);
+  }
+
+  /* Mobile */
+  #menu-btn {
+    display: none;
+    position: fixed; top: 12px; left: 12px;
+    z-index: 100;
+    background: var(--panel2); color: var(--accent);
+    border: 1px solid var(--border);
+    padding: 8px 12px; border-radius: 6px;
+    font-family: inherit; font-size: 14px;
+    cursor: pointer;
+  }
+  @media (max-width: 800px) {
+    #menu-btn { display: block; }
+    #sidebar {
+      position: fixed;
+      z-index: 99;
+      transform: translateX(-100%);
+      transition: transform 0.25s;
+      width: 260px;
+    }
+    #sidebar.open { transform: translateX(0); box-shadow: 0 0 30px #000; }
+    #content { padding: 70px 16px 100px; }
+    h1 { font-size: 20px; }
+    h2 { font-size: 16px; }
+    table { font-size: 11px; }
+    th, td { padding: 6px 8px; }
+  }
+
+  /* Back to top */
+  #top {
+    position: fixed; bottom: 20px; right: 20px;
+    background: var(--panel2); color: var(--accent);
+    border: 1px solid var(--border);
+    border-radius: 50%; width: 40px; height: 40px;
+    font-size: 18px; cursor: pointer;
+    display: none; align-items: center; justify-content: center;
+    z-index: 50;
+    font-family: inherit;
+  }
+  #top.show { display: flex; }
+</style>
+</head>
+<body>
+
+<button id="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+
+<div id="layout">
+<aside id="sidebar">
+  <h1>PARTICLELAB</h1>
+  <div class="ver">v9 — DOCUMENTACIÓN</div>
+  <nav>
+    <ul>
+      <li><a href="#intro">Introducción</a></li>
+      <li><a href="#install">Instalación</a></li>
+      <li><a href="#quick">Quick Start</a></li>
+      <li><a href="#api-inst">API: Instancia</a></li>
+      <li><a href="#api-glob">API: Global</a></li>
+      <li><a href="#layers">Capas (Layers)</a></li>
+      <li class="sub"><a href="#layer-basic">Básico</a></li>
+      <li class="sub"><a href="#layer-emitter">Emitter</a></li>
+      <li class="sub"><a href="#layer-emission">Emisión</a></li>
+      <li class="sub"><a href="#layer-physics">Física</a></li>
+      <li class="sub"><a href="#layer-life">Vida / Render</a></li>
+      <li class="sub"><a href="#layer-curves">Curvas</a></li>
+      <li class="sub"><a href="#layer-color">Color / Sprite</a></li>
+      <li class="sub"><a href="#layer-trail">Trail / Metaball</a></li>
+      <li class="sub"><a href="#layer-death">Spawn on Death</a></li>
+      <li class="sub"><a href="#layer-noise">Curl / Flow / Depth</a></li>
+      <li class="sub"><a href="#layer-boid">Boid</a></li>
+      <li class="sub"><a href="#layer-chain">Chain</a></li>
+      <li class="sub"><a href="#layer-rigid">Rigid</a></li>
+      <li class="sub"><a href="#layer-bolt">Bolt</a></li>
+      <li class="sub"><a href="#layer-centella">Centella</a></li>
+      <li class="sub"><a href="#layer-orb">Ball Lightning</a></li>
+      <li class="sub"><a href="#layer-tesla">Tesla</a></li>
+      <li><a href="#effecttype">effectType</a></li>
+      <li><a href="#behavior">behavior</a></li>
+      <li><a href="#values">Valores</a></li>
+      <li class="sub"><a href="#sprites">Sprites</a></li>
+      <li class="sub"><a href="#colors">Colores</a></li>
+      <li class="sub"><a href="#curves-list">Curvas</a></li>
+      <li class="sub"><a href="#borders">Bordes</a></li>
+      <li class="sub"><a href="#blends">Blends</a></li>
+      <li class="sub"><a href="#boltmode">Bolt Modes</a></li>
+      <li><a href="#presets">Presets (71)</a></li>
+      <li><a href="#multipresets">Multi-Presets (20)</a></li>
+      <li><a href="#trig">FAST_TRIG</a></li>
+      <li><a href="#perf">Rendimiento / LOD</a></li>
+      <li><a href="#examples">Ejemplos</a></li>
+    </ul>
+  </nav>
+</aside>
+
+<main id="content">
+
+<h1>ParticleLab v9 <span class="badge">documentación</span></h1>
+<p class="muted">Sistema de partículas ECS con pool pre-asignado, sprites pre-renderizados, 6 tipos de efectos, 3 capas independientes, 71 presets, 20 multi-presets y autoescalado de rendimiento.</p>
+
+<!-- ============================== INTRO ============================== -->
+<h2 id="intro">Introducción</h2>
+<p>ParticleLab es una librería de partículas basada en arquitectura <strong>ECS (Entity-Component-System)</strong> orientada a cero allocs en runtime. Se compone de dos archivos:</p>
+<ul>
+  <li><code>particle.js</code> — el motor (expone <code>window.ParticleLab</code>)</li>
+  <li><code>index.html</code> — tu página con un <code>&lt;canvas&gt;</code></li>
+</ul>
+<p>Características principales:</p>
+<ul>
+  <li><span class="pill good">pool fijo</span> Pool pre-asignado de partículas (por defecto 2000, configurable). Lista densa de vivos + freeList. Sin GC churn en emisión.</li>
+  <li><span class="pill good">sprites</span> 11 tipos × 21 colores = 231 sprites pre-renderizados con 3 niveles de detalle (32 / 64 / 128 px). <code>drawImage</code> puro en el bucle.</li>
+  <li><span class="pill good">3 capas</span> Tres capas independientes, cada una con su propio <code>effectType</code>, <code>behavior</code> y parámetros.</li>
+  <li><span class="pill good">6 efectos</span> <code>particle</code>, <code>bolt</code>, <code>centella</code>, <code>ballLightning</code>, <code>tesla</code>, <code>chain</code>.</li>
+  <li><span class="pill good">3 comportamientos</span> <code>free</code>, <code>boid</code> (flocking con spatial hash), <code>rigid</code> (colisiones entre partículas).</li>
+  <li><span class="pill good">71 presets</span> Electricidad, fuego, agua, vida, espacio, acción, físicas, degradados, boids, chains, rigid, trails, metaballs, curl noise, flow field, parallax.</li>
+  <li><span class="pill good">20 multi-presets</span> Combinaciones de 3 capas listas para usar.</li>
+  <li><span class="pill good">LOD automático</span> Simplifica trigonometría, salta wobble/flicker y baja la resolución de render si el FPS cae.</li>
+  <li><span class="pill good">FAST_TRIG</span> Tablas de sin/cos/tan/atan precomputadas que se activan automáticamente en mobile.</li>
+</ul>
+
+<!-- ============================== INSTALL ============================== -->
+<h2 id="install">Instalación</h2>
+<p>Descargá <code>particle.js</code> y creá tu HTML. No necesita build, ni <code>npm install</code>, ni transpiladores.</p>
+
+<pre><code><span class="com">&lt;!-- index.html --&gt;</span>
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;meta charset=<span class="str">"UTF-8"</span>&gt;
+  &lt;meta name=<span class="str">"viewport"</span> content=<span class="str">"width=device-width,initial-scale=1"</span>&gt;
+  &lt;style&gt;
+    html, body { margin: 0; height: 100%; background: #05060a; overflow: hidden; }
+    #game { display: block; width: 100vw; height: 100vh; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;canvas id=<span class="str">"game"</span>&gt;&lt;/canvas&gt;
+  &lt;script src=<span class="str">"particle.js"</span>&gt;&lt;/script&gt;
+  &lt;script&gt;
+    <span class="com">// tu código acá</span>
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+<div class="callout">
+  <span class="label">Nota</span>
+  <code>particle.js</code> se autoinstala en <code>window.ParticleLab</code>. También exporta <code>module.exports</code> si lo usás en Node con un canvas polyfill.
+</div>
+
+<!-- ============================== QUICK START ============================== -->
+<h2 id="quick">Quick Start</h2>
+<p>El ejemplo mínimo: crear, aplicar un preset, arrancar.</p>
+
+<pre><code><span class="kw">const</span> canvas = document.getElementById(<span class="str">'game'</span>);
+<span class="kw">const</span> lab = ParticleLab.<span class="fn">create</span>(canvas, { poolSize: <span class="num">3000</span> });
+
+lab.<span class="fn">applyMultiPreset</span>(<span class="str">'storm'</span>); <span class="com">// o applyPreset('fire', 0)</span>
+lab.<span class="fn">start</span>();</code></pre>
+
+<p>Eso ya renderiza una tormenta con 3 capas (lluvia + hojas + rayos).</p>
+
+<div class="callout good">
+  <span class="label">Recomendado</span>
+  Llamá <code>lab.spawnAt(x, y, count)</code> en <code>pointerdown</code> / <code>pointermove</code> para hacer estallar partículas donde el usuario toca o hace clic.
+</div>
+
+<!-- ============================== API INSTANCIA ============================== -->
+<h2 id="api-inst">API — Instancia</h2>
+
+<h3>ParticleLab.create(canvas, options)</h3>
+<p>Crea una instancia de laboratorio asociada a un canvas.</p>
+
+<table>
+  <thead><tr><th>Opción</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">poolSize</td><td class="t-type">number</td><td class="t-def">2000</td><td>Número máximo de partículas simultáneas. Cada slot ocupa ~7 objetos (componentes ECS).</td></tr>
+    <tr><td class="t-prop">trail</td><td class="t-type">number</td><td class="t-def">0.18</td><td>Opacidad del fade por frame en el canvas principal. <code>1</code> = sin estela, <code>0.05</code> = estela larga.</td></tr>
+    <tr><td class="t-prop">dprMode</td><td class="t-type">string | number</td><td class="t-def">'auto'</td><td><code>'auto'</code> = DPR 1 en mobile, DPR del device en desktop. O un valor fijo (ej: <code>2</code>).</td></tr>
+    <tr><td class="t-prop">autoRenderScale</td><td class="t-type">boolean</td><td class="t-def">true</td><td>Si está activo, baja automáticamente la resolución del canvas offscreen cuando el FPS < 60.</td></tr>
+  </tbody>
+</table>
+
+<h3>Propiedades de instancia</h3>
+<table>
+  <thead><tr><th>Propiedad</th><th>Tipo</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">canvas</td><td class="t-type">HTMLCanvasElement</td><td>El canvas principal.</td></tr>
+    <tr><td class="t-prop">ctx</td><td class="t-type">CanvasRenderingContext2D</td><td>Contexto del canvas principal.</td></tr>
+    <tr><td class="t-prop">world</td><td class="t-type">World</td><td>El mundo ECS: <code>world.layers</code>, <code>world.config</code>, <code>world.aliveList</code>, <code>world.bolts</code>, etc.</td></tr>
+    <tr><td class="t-prop">layers</td><td class="t-type">Layer[3]</td><td>Getter de <code>world.layers</code>. Array de 3 objetos capa.</td></tr>
+    <tr><td class="t-prop">config</td><td class="t-type">object</td><td>Getter de <code>world.config</code>. Configuración global.</td></tr>
+    <tr><td class="t-prop">activeLayerIdx</td><td class="t-type">number</td><td>Índice de la capa activa (0-2). Usada por <code>applyPreset</code> cuando no se pasa <code>idx</code>.</td></tr>
+    <tr><td class="t-prop">dprConfig</td><td class="t-type">object</td><td><code>{ mode, renderScale, autoRenderScale }</code>.</td></tr>
+    <tr><td class="t-prop">paused</td><td class="t-type">boolean</td><td>Se pone en <code>true</code> cuando la pestaña está oculta (auto).</td></tr>
+    <tr><td class="t-prop">running</td><td class="t-type">boolean</td><td>Si el loop está corriendo.</td></tr>
+    <tr><td class="t-prop">onFrame</td><td class="t-type">function(dt)</td><td>Callback llamado cada frame con el <code>dt</code> real (en segundos).</td></tr>
+  </tbody>
+</table>
+
+<h3>Métodos de instancia</h3>
+
+<h4>Ciclo de vida</h4>
+<table>
+  <thead><tr><th>Método</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">start()</td><td>Arranca el <code>requestAnimationFrame</code>. Idempotente.</td></tr>
+    <tr><td class="t-prop">stop()</td><td>Detiene el loop y cancela el RAF pendiente.</td></tr>
+    <tr><td class="t-prop">update(dt)</td><td>Corre un paso de simulación con <code>dt</code> en segundos. No renderiza. Útil para modo manual.</td></tr>
+    <tr><td class="t-prop">render()</td><td>Compone la escena al canvas principal. Se llama solo si hacés el loop manual.</td></tr>
+    <tr><td class="t-prop">clear()</td><td>Mata todas las partículas, bolts, orbs, teslas y chains.</td></tr>
+  </tbody>
+</table>
+
+<h4>Presets y spawn</h4>
+<table>
+  <thead><tr><th>Método</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">applyPreset(name, idx?)</td><td>Aplica el preset <code>name</code> a la capa <code>idx</code> (default: <code>activeLayerIdx</code>). Resetea todos los parámetros de esa capa.</td></tr>
+    <tr><td class="t-prop">applyMultiPreset(name)</td><td>Aplica un multi-preset: rellena las 3 capas y deshabilita las sobrantes.</td></tr>
+    <tr><td class="t-prop">spawnAt(x, y, count?)</td><td>Emite <code>count</code> partículas (default 20) en las coordenadas de pantalla, respetando el <code>effectType</code> de cada capa. Para <code>bolt</code>/<code>centella</code>/<code>ballLightning</code> dispara el efecto desde ese punto.</td></tr>
+  </tbody>
+</table>
+
+<h4>Configuración en runtime</h4>
+<table>
+  <thead><tr><th>Método</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">setDprMode(mode)</td><td>'auto' o un número. Fuerza un <code>resize()</code>.</td></tr>
+    <tr><td class="t-prop">setRenderScale(s)</td><td>0.5 – 1.0. Resolución del canvas offscreen.</td></tr>
+    <tr><td class="t-prop">setAutoRenderScale(on)</td><td>Activa/desactiva el autoescalado reactivo.</td></tr>
+    <tr><td class="t-prop">setTimeScale(s)</td><td>Multiplicador de tiempo. <code>0.5</code> = slow-mo, <code>2</code> = acelerado.</td></tr>
+    <tr><td class="t-prop">setBloom(v)</td><td>0 – 1. Intensidad del bloom.</td></tr>
+    <tr><td class="t-prop">setTrail(v)</td><td>0.02 – 0.6. Persistencia de estela.</td></tr>
+    <tr><td class="t-prop">setLayerEnabled(idx, on)</td><td>Habilita/deshabilita una capa.</td></tr>
+    <tr><td class="t-prop">resize()</td><td>Recalcula dimensiones (se llama solo en <code>window.resize</code>).</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================== API GLOBAL ============================== -->
+<h2 id="api-glob">API — Global (ParticleLab.*)</h2>
+
+<table>
+  <thead><tr><th>Export</th><th>Tipo</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">create</td><td class="t-type">function</td><td>El factory principal (ver arriba).</td></tr>
+    <tr><td class="t-prop">makeLayer()</td><td class="t-type">function</td><td>Devuelve un objeto capa con todos los defaults. Útil para inspeccionar o clonar.</td></tr>
+    <tr><td class="t-prop">PRESETS</td><td class="t-type">object</td><td>Mapa de 71 presets <code>{nombre → config}</code>.</td></tr>
+    <tr><td class="t-prop">MULTI_PRESETS</td><td class="t-type">object</td><td>Mapa de 20 multi-presets.</td></tr>
+    <tr><td class="t-prop">COLORS</td><td class="t-type">object</td><td><code>{nombre → [r,g,b]}</code>. 21 colores.</td></tr>
+    <tr><td class="t-prop">COLOR_NAMES</td><td class="t-type">string[]</td><td>Nombres de los 21 colores.</td></tr>
+    <tr><td class="t-prop">SPRITE_NAMES</td><td class="t-type">string[]</td><td>Nombres de los 11 sprites.</td></tr>
+    <tr><td class="t-prop">SPRITES</td><td class="t-type">object</td><td>Mapa <code>{sprite_color → ImageBitmap|canvas}</code>. LOD completo.</td></tr>
+    <tr><td class="t-prop">FAST_TRIG</td><td class="t-type">object</td><td>Estado del sistema de trigonometría rápida (ver <a href="#trig">sección FAST_TRIG</a>).</td></tr>
+    <tr><td class="t-prop">fsin, fcos, ftan, fatan, fatan2</td><td class="t-type">function</td><td>Wrappers trigonométricos que usan tablas si FAST_TRIG está activo.</td></tr>
+    <tr><td class="t-prop">applyTrigPrecision()</td><td class="t-type">function</td><td>Regenera las tablas con la <code>precision</code> actual.</td></tr>
+    <tr><td class="t-prop">updateTrigEnabled()</td><td class="t-type">function</td><td>Recalcula <code>FAST_TRIG.enabled</code> según <code>mode</code>.</td></tr>
+    <tr><td class="t-prop">detectMobile()</td><td class="t-type">function</td><td><code>true</code> si el userAgent parece mobile.</td></tr>
+    <tr><td class="t-prop">USE_BITMAP</td><td class="t-type">object</td><td><code>{ enabled, ready }</code>. Los sprites se convierten a <code>ImageBitmap</code> si el browser lo soporta.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================== LAYERS ============================== -->
+<h2 id="layers">Capas (Layers)</h2>
+<p>Cada instancia tiene 3 capas independientes en <code>lab.layers[0..2]</code>. Cada capa es un objeto plano con ~80 campos. Se puede editar en vivo:</p>
+
+<pre><code>lab.layers[<span class="num">0</span>].rate = <span class="num">300</span>;
+lab.layers[<span class="num">0</span>].colors = [<span class="str">'magic'</span>, <span class="str">'spark'</span>];
+lab.layers[<span class="num">1</span>].gravityY = <span class="num">500</span>;</code></pre>
+
+<h3 id="layer-basic">Básico</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">enabled</td><td class="t-type">boolean</td><td class="t-def">true</td><td>Si la capa emite y renderiza.</td></tr>
+    <tr><td class="t-prop">effectType</td><td class="t-type">string</td><td class="t-def">'particle'</td><td>Uno de: <code>particle</code>, <code>bolt</code>, <code>centella</code>, <code>ballLightning</code>, <code>tesla</code>, <code>chain</code>. Ver <a href="#effecttype">effectType</a>.</td></tr>
+    <tr><td class="t-prop">behavior</td><td class="t-type">string</td><td class="t-def">'free'</td><td>Uno de: <code>free</code>, <code>boid</code>, <code>rigid</code>. Ver <a href="#behavior">behavior</a>.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-emitter">Emitter</h3>
+<p>Objeto <code>emitter</code> con coordenadas normalizadas (0–1):</p>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">emitter.fx</td><td class="t-type">number</td><td class="t-def">0.5</td><td>Posición X relativa (0 = borde izq, 1 = borde der).</td></tr>
+    <tr><td class="t-prop">emitter.fy</td><td class="t-type">number</td><td class="t-def">1.02</td><td>Posición Y relativa. <code>1.02</code> = debajo del borde inferior.</td></tr>
+    <tr><td class="t-prop">emitter.fw</td><td class="t-type">number</td><td class="t-def">0.08</td><td>Ancho del emisor (fracción del ancho). Distribución uniforme en X.</td></tr>
+    <tr><td class="t-prop">emitter.angle</td><td class="t-type">number</td><td class="t-def">-90</td><td>Dirección base en grados. <code>-90</code> = hacia arriba.</td></tr>
+    <tr><td class="t-prop">emitter.spread</td><td class="t-type">number</td><td class="t-def">42</td><td>Dispersión en grados (± spread/2 alrededor de <code>angle</code>).</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-emission">Emisión</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">rate</td><td class="t-type">number</td><td class="t-def">100</td><td>Partículas por segundo. Con <code>effectType: 'bolt'</code> es rayos/seg. Con <code>chain</code> es cadenas/seg.</td></tr>
+    <tr><td class="t-prop">speed</td><td class="t-type">number</td><td class="t-def">150</td><td>Velocidad inicial en px/s. Cada partícula varía ±40%.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-physics">Física</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">gravityX</td><td class="t-type">number</td><td class="t-def">0</td><td>Aceleración X (px/s²).</td></tr>
+    <tr><td class="t-prop">gravityY</td><td class="t-type">number</td><td class="t-def">0</td><td>Aceleración Y. Positivo = hacia abajo.</td></tr>
+    <tr><td class="t-prop">windX</td><td class="t-type">number</td><td class="t-def">0</td><td>Viento en X (px/s²).</td></tr>
+    <tr><td class="t-prop">windY</td><td class="t-type">number</td><td class="t-def">0</td><td>Viento en Y.</td></tr>
+    <tr><td class="t-prop">drag</td><td class="t-type">number</td><td class="t-def">0</td><td>Fricción. <code>0</code> = sin fricción, <code>1</code> = frena rápido.</td></tr>
+    <tr><td class="t-prop">swirl</td><td class="t-type">number</td><td class="t-def">0</td><td>Fuerza tangencial alrededor del emitter (remolino).</td></tr>
+    <tr><td class="t-prop">attract</td><td class="t-type">number</td><td class="t-def">0</td><td>Atracción radial al emitter. Negativo = repulsión.</td></tr>
+    <tr><td class="t-prop">turbulence</td><td class="t-type">number</td><td class="t-def">0</td><td>Turbulencia pseudo-Perlin. 0.1 – 3.</td></tr>
+    <tr><td class="t-prop">wander</td><td class="t-type">number</td><td class="t-def">0</td><td>Vagar errático. 0 – 400.</td></tr>
+    <tr><td class="t-prop">bounce</td><td class="t-type">number</td><td class="t-def">0</td><td>Rebote contra el suelo (0–1). 0 = no rebota.</td></tr>
+    <tr><td class="t-prop">border</td><td class="t-type">string</td><td class="t-def">'none'</td><td><code>none</code>, <code>bounce</code>, <code>wrap</code>, <code>kill</code>. Ver <a href="#borders">Bordes</a>.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-life">Vida / Render</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">life</td><td class="t-type">number</td><td class="t-def">1</td><td>Vida en segundos. Cada partícula varía ±40%.</td></tr>
+    <tr><td class="t-prop">size</td><td class="t-type">number</td><td class="t-def">10</td><td>Tamaño base en px (radio del sprite × 2).</td></tr>
+    <tr><td class="t-prop">stretch</td><td class="t-type">number</td><td class="t-def">1</td><td>Multiplicador vertical. <code>&gt; 1</code> alarga; útil para streaks.</td></tr>
+    <tr><td class="t-prop">rotation</td><td class="t-type">number</td><td class="t-def">0</td><td>Velocidad angular aleatoria en rad/s.</td></tr>
+    <tr><td class="t-prop">wobble</td><td class="t-type">number</td><td class="t-def">0</td><td>Pulsación de tamaño (0–1).</td></tr>
+    <tr><td class="t-prop">flicker</td><td class="t-type">number</td><td class="t-def">0</td><td>Parpadeo de alpha (0–1).</td></tr>
+    <tr><td class="t-prop">grow</td><td class="t-type">number</td><td class="t-def">0</td><td>Si &gt; 0, el tamaño crece con el tiempo (shockwaves).</td></tr>
+    <tr><td class="t-prop">splash</td><td class="t-type">number</td><td class="t-def">0</td><td>Al tocar el suelo, genera mini-salpicaduras.</td></tr>
+    <tr><td class="t-prop">sticky</td><td class="t-type">number</td><td class="t-def">0</td><td>Al tocar el suelo, la partícula se pega.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-curves">Curvas</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">sizeCurve</td><td class="t-type">string</td><td class="t-def">'easeOut'</td><td>Cómo el tamaño evoluciona durante la vida. Ver <a href="#curves-list">Curvas</a>.</td></tr>
+    <tr><td class="t-prop">alphaCurve</td><td class="t-type">string</td><td class="t-def">'linear'</td><td>Cómo el alpha evoluciona durante la vida.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-color">Color / Sprite</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">colors</td><td class="t-type">string[]</td><td class="t-def">['fire']</td><td>Lista de colores; cada partícula elige uno al azar. Solo se usa si <code>colorStart</code> es <code>null</code>.</td></tr>
+    <tr><td class="t-prop">colorStart</td><td class="t-type">string | null</td><td class="t-def">null</td><td>Si está seteado, activa el modo gradiente: cada partícula interpola visualmente entre <code>colorStart</code> y <code>colorEnd</code> (cross-fade de dos sprites).</td></tr>
+    <tr><td class="t-prop">colorEnd</td><td class="t-type">string | null</td><td class="t-def">null</td><td>Color final del gradiente.</td></tr>
+    <tr><td class="t-prop">spriteType</td><td class="t-type">string</td><td class="t-def">'radial'</td><td>Ver <a href="#sprites">Sprites</a>.</td></tr>
+    <tr><td class="t-prop">blend</td><td class="t-type">string</td><td class="t-def">'lighter'</td><td><code>lighter</code>, <code>source-over</code>, <code>screen</code>. Ver <a href="#blends">Blends</a>.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-trail">Trail / Metaball</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">trail</td><td class="t-type">boolean</td><td class="t-def">false</td><td>Activa trail ribbon (estela de polilínea).</td></tr>
+    <tr><td class="t-prop">trailLen</td><td class="t-type">number</td><td class="t-def">12</td><td>Puntos guardados por partícula. 5–30 es razonable.</td></tr>
+    <tr><td class="t-prop">trailWidth</td><td class="t-type">number</td><td class="t-def">2</td><td>Ancho de la polilínea.</td></tr>
+    <tr><td class="t-prop">metaball</td><td class="t-type">boolean</td><td class="t-def">false</td><td>Dibuja la partícula como un blob blando (alpha reducido, size×1.6). Combinado con <code>blend: 'lighter'</code> y partículas grandes simula lava/agua.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-death">Spawn on Death</h3>
+<p>Objeto <code>spawnOnDeath</code> o <code>null</code>. Cuando la partícula muere, spawna <code>count</code> partículas del preset <code>preset</code> en su posición.</p>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">preset</td><td class="t-type">string</td><td>Nombre del preset a spawnear.</td></tr>
+    <tr><td class="t-prop">count</td><td class="t-type">number</td><td>Cantidad de partículas hijas.</td></tr>
+  </tbody>
+</table>
+<p class="muted">La profundidad de anidamiento es ilimitada en esta versión; se procesa en <code>world.deathQueue</code> después de <code>lifeSystem</code>.</p>
+
+<h3 id="layer-noise">Curl Noise / Flow Field / Depth</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">curlNoise</td><td class="t-type">number</td><td class="t-def">0</td><td>Intensidad de curl noise (0.1–2). Movimiento orgánico tipo humo.</td></tr>
+    <tr><td class="t-prop">curlScale</td><td class="t-type">number</td><td class="t-def">0.008</td><td>Escala espacial del curl noise.</td></tr>
+    <tr><td class="t-prop">flowField</td><td class="t-type">number</td><td class="t-def">0</td><td>Intensidad del campo de flujo (0.5–3). Se regenera cada 4 s.</td></tr>
+    <tr><td class="t-prop">flowScale</td><td class="t-type">number</td><td class="t-def">0.02</td><td>Escala del flow field.</td></tr>
+    <tr><td class="t-prop">depthMin</td><td class="t-type">number</td><td class="t-def">0</td><td>Profundidad mínima (0 = frente, 1 = fondo). Si <code>depthMax &gt; depthMin</code>, activa parallax: cada partícula escala su tamaño, alpha y velocidad según su profundidad.</td></tr>
+    <tr><td class="t-prop">depthMax</td><td class="t-type">number</td><td class="t-def">0</td><td>Profundidad máxima.</td></tr>
+    <tr><td class="t-prop">seedVariation</td><td class="t-type">number</td><td class="t-def">0</td><td>0–1. Añade variación por semilla a size, life y speed.</td></tr>
+    <tr><td class="t-prop">inheritVel</td><td class="t-type">number</td><td class="t-def">0</td><td>0–1. Fracción de la velocidad que heredan las partículas hijas de <code>spawnOnDeath</code>.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-boid">Boid (flocking)</h3>
+<p>Solo se aplican si <code>behavior: 'boid'</code>.</p>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">boidCohesion</td><td class="t-type">number</td><td class="t-def">1</td><td>Fuerza hacia el centro del grupo.</td></tr>
+    <tr><td class="t-prop">boidAlignment</td><td class="t-type">number</td><td class="t-def">1</td><td>Fuerza hacia la velocidad promedio de vecinos.</td></tr>
+    <tr><td class="t-prop">boidSeparation</td><td class="t-type">number</td><td class="t-def">1.5</td><td>Fuerza de evitación. Subila para bandadas más dispersas.</td></tr>
+    <tr><td class="t-prop">boidRadius</td><td class="t-type">number</td><td class="t-def">80</td><td>Radio de vecindad. Usado también como tamaño de celda del spatial hash.</td></tr>
+    <tr><td class="t-prop">boidMaxSpeed</td><td class="t-type">number</td><td class="t-def">200</td><td>Velocidad máxima (px/s).</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-chain">Chain (Verlet)</h3>
+<p>Solo se aplican si <code>effectType: 'chain'</code>.</p>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">chainLinks</td><td class="t-type">number</td><td class="t-def">15</td><td>Puntos de la cadena (5–40 recomendado).</td></tr>
+    <tr><td class="t-prop">chainLength</td><td class="t-type">number</td><td class="t-def">12</td><td>Distancia entre puntos.</td></tr>
+    <tr><td class="t-prop">chainIterations</td><td class="t-type">number</td><td class="t-def">6</td><td>Iteraciones de resolución (más = más rígido).</td></tr>
+    <tr><td class="t-prop">chainGravity</td><td class="t-type">number</td><td class="t-def">400</td><td>Gravedad aplicada a la cadena.</td></tr>
+    <tr><td class="t-prop">chainWidth</td><td class="t-type">number</td><td class="t-def">2</td><td>Grosor de la polilínea.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-rigid">Rigid</h3>
+<p>Solo se aplican si <code>behavior: 'rigid'</code>.</p>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">rigidRadius</td><td class="t-type">number</td><td class="t-def">8</td><td>Radio de colisión.</td></tr>
+    <tr><td class="t-prop">rigidMass</td><td class="t-type">number</td><td class="t-def">1</td><td>Masa (afecta el impulso de colisión).</td></tr>
+    <tr><td class="t-prop">rigidRestitution</td><td class="t-type">number</td><td class="t-def">0.5</td><td>Rebote (0 = inelástico, 1 = elástico).</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-bolt">Bolt (rayos)</h3>
+<p>Solo se aplican si <code>effectType: 'bolt'</code>.</p>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">boltBranches</td><td class="t-type">number</td><td class="t-def">5</td><td>Número de ramificaciones por rayo.</td></tr>
+    <tr><td class="t-prop">boltDepth</td><td class="t-type">number</td><td class="t-def">6</td><td>Profundidad del midpoint displacement. 1–9.</td></tr>
+    <tr><td class="t-prop">boltDisplace</td><td class="t-type">number</td><td class="t-def">0.25</td><td>Desplazamiento relativo. Más alto = rayo más irregular.</td></tr>
+    <tr><td class="t-prop">boltThickness</td><td class="t-type">number</td><td class="t-def">2.5</td><td>Grosor base.</td></tr>
+    <tr><td class="t-prop">boltFlash</td><td class="t-type">number</td><td class="t-def">0.5</td><td>Intensidad del screen flash al disparar.</td></tr>
+    <tr><td class="t-prop">boltMode</td><td class="t-type">string</td><td class="t-def">'random'</td><td>Ver <a href="#boltmode">Bolt Modes</a>.</td></tr>
+    <tr><td class="t-prop">boltFork</td><td class="t-type">number</td><td class="t-def">0.6</td><td>Escala de las ramificaciones. 0 = sin ramas, 2 = muy largas.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-centella">Centella</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">centellaRays</td><td class="t-type">number</td><td class="t-def">8</td><td>Número de rayos por centella.</td></tr>
+    <tr><td class="t-prop">centellaLength</td><td class="t-type">number</td><td class="t-def">35</td><td>Longitud promedio de cada rayo (px).</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-orb">Ball Lightning (orbe)</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">orbRadius</td><td class="t-type">number</td><td class="t-def">20</td><td>Radio del orbe.</td></tr>
+    <tr><td class="t-prop">orbSpeed</td><td class="t-type">number</td><td class="t-def">40</td><td>Velocidad inicial.</td></tr>
+    <tr><td class="t-prop">orbLife</td><td class="t-type">number</td><td class="t-def">4</td><td>Vida en segundos.</td></tr>
+    <tr><td class="t-prop">orbArcRate</td><td class="t-type">number</td><td class="t-def">15</td><td>Arcos eléctricos por segundo alrededor del orbe.</td></tr>
+    <tr><td class="t-prop">orbWander</td><td class="t-type">number</td><td class="t-def">30</td><td>Intensidad del zigzag.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="layer-tesla">Tesla</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">teslaRate</td><td class="t-type">number</td><td class="t-def">18</td><td>Arcos por segundo entre los dos electrodos.</td></tr>
+    <tr><td class="t-prop">teslaGap</td><td class="t-type">number</td><td class="t-def">180</td><td>Distancia horizontal entre electrodos.</td></tr>
+    <tr><td class="t-prop">teslaHeight</td><td class="t-type">number</td><td class="t-def">200</td><td>Altura de los electrodos.</td></tr>
+    <tr><td class="t-prop">teslaWidth</td><td class="t-type">number</td><td class="t-def">2</td><td>Grosor de los arcos.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================== EFFECTTYPE ============================== -->
+<h2 id="effecttype">effectType — 6 tipos</h2>
+<p>Cada capa puede emitir un tipo distinto. Cambiar <code>effectType</code> redefine qué sistema procesa y cómo se renderiza la capa.</p>
+
+<div class="grid2">
+  <div class="card">
+    <div class="ttl">particle</div>
+    <div class="desc">Partícula clásica ECS. Usa pool, física, curvas, blend, trail, metaball, spawnOnDeath. Es el modo por defecto.</div>
+  </div>
+  <div class="card">
+    <div class="ttl">bolt ⚡</div>
+    <div class="desc">Rayos por midpoint displacement + ramas recursivas. Se añaden a <code>world.bolts</code>. Dispara <code>screenFlash</code>.</div>
+  </div>
+  <div class="card">
+    <div class="ttl">centella ✦</div>
+    <div class="desc">Estrella de rayos cortos. Flash central + N rayos radiales. Se añaden a <code>world.bolts</code>.</div>
+  </div>
+  <div class="card">
+    <div class="ttl">ballLightning 🔮</div>
+    <div class="desc">Orbe globular errático con arcos eléctricos. Se añade a <code>world.orbs</code>. Al morir explota.</div>
+  </div>
+  <div class="card">
+    <div class="ttl">tesla ⚙</div>
+    <div class="desc">Bobina de Tesla: dos electrodos fijos entre los que saltan arcos. Se añade a <code>world.teslas</code>.</div>
+  </div>
+  <div class="card">
+    <div class="ttl">chain 🔗</div>
+    <div class="desc">Cadena Verlet con N puntos. Extremo superior anclado al emitter. Se añade a <code>world.chains</code>.</div>
+  </div>
+</div>
+
+<!-- ============================== BEHAVIOR ============================== -->
+<h2 id="behavior">behavior — 3 comportamientos</h2>
+<p>Solo aplica a <code>effectType: 'particle'</code>. Determina qué sistema mueve las partículas.</p>
+<table>
+  <thead><tr><th>Valor</th><th>Descripción</th><th>Presets</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">free</td><td>Física clásica por partícula (gravedad, drag, swirl, curl, flow...).</td><td class="t-type">casi todos</td></tr>
+    <tr><td class="t-prop">boid</td><td>Flocking con spatial hash de 100 px. Cohesión + alineación + separación. Se salta <code>motionSystem</code>.</td><td class="t-type">boidBirds, boidFish, boidFireflies</td></tr>
+    <tr><td class="t-prop">rigid</td><td>Cuerpos rígidos 2D con colisiones por impulso. Usa <code>world.rigidHash</code>.</td><td class="t-type">rigidDebris, rigidCoins</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================== VALUES ============================== -->
+<h2 id="values">Valores válidos</h2>
+
+<h3 id="sprites">Sprites (11)</h3>
+<div class="grid2">
+  <div class="card"><div class="ttl">radial</div><div class="desc">Gradiente circular suave. El más usado.</div></div>
+  <div class="card"><div class="ttl">streak</div><div class="desc">Línea vertical con fade en puntas. Alineada a velocidad.</div></div>
+  <div class="card"><div class="ttl">square</div><div class="desc">Cuadrado sólido. Confetti.</div></div>
+  <div class="card"><div class="ttl">triangle</div><div class="desc">Triángulo con gradiente. Boids, cristales.</div></div>
+  <div class="card"><div class="ttl">leaf</div><div class="desc">Elipse vertical. Hojas, pétalos.</div></div>
+  <div class="card"><div class="ttl">dot</div><div class="desc">Círculo sólido pequeño (16 px). Luciérnagas, gotas.</div></div>
+  <div class="card"><div class="ttl">needle</div><div class="desc">Aguja vertical 3×32. Lluvia, balas trazadoras.</div></div>
+  <div class="card"><div class="ttl">ring</div><div class="desc">Anillo hueco. Burbujas, shockwaves.</div></div>
+  <div class="card"><div class="ttl">feather</div><div class="desc">Elipse diagonal. Plumas.</div></div>
+  <div class="card"><div class="ttl">sparkle</div><div class="desc">Estrella de 4 puntas. Destellos, confeti mágico.</div></div>
+  <div class="card"><div class="ttl">hex</div><div class="desc">Hexágono. Monedas, cristales.</div></div>
+</div>
+
+<h3 id="colors">Colores (21)</h3>
+<div class="swatches">
+  <div class="swatch"><span class="dot" style="background:#8cc8ff;color:#8cc8ff"></span><span class="nm">rain</span><span class="hex">#8cc8ff</span></div>
+  <div class="swatch"><span class="dot" style="background:#dcf0ff;color:#dcf0ff"></span><span class="nm">snow</span><span class="hex">#dcf0ff</span></div>
+  <div class="swatch"><span class="dot" style="background:#ff8c32;color:#ff8c32"></span><span class="nm">fire</span><span class="hex">#ff8c32</span></div>
+  <div class="swatch"><span class="dot" style="background:#555f7d;color:#555f7d"></span><span class="nm">smoke</span><span class="hex">#555f7d</span></div>
+  <div class="swatch"><span class="dot" style="background:#c878ff;color:#c878ff"></span><span class="nm">magic</span><span class="hex">#c878ff</span></div>
+  <div class="swatch"><span class="dot" style="background:#ffdc64;color:#ffdc64"></span><span class="nm">spark</span><span class="hex">#ffdc64</span></div>
+  <div class="swatch"><span class="dot" style="background:#ff6428;color:#ff6428"></span><span class="nm">ember</span><span class="hex">#ff6428</span></div>
+  <div class="swatch"><span class="dot" style="background:#c81e28;color:#c81e28"></span><span class="nm">blood</span><span class="hex">#c81e28</span></div>
+  <div class="swatch"><span class="dot" style="background:#c8e6ff;color:#c8e6ff"></span><span class="nm">elec</span><span class="hex">#c8e6ff</span></div>
+  <div class="swatch"><span class="dot" style="background:#dcebff;color:#dcebff"></span><span class="nm">bolt</span><span class="hex">#dcebff</span></div>
+  <div class="swatch"><span class="dot" style="background:#50963c;color:#50963c"></span><span class="nm">leafG</span><span class="hex">#50963c</span></div>
+  <div class="swatch"><span class="dot" style="background:#966432;color:#966432"></span><span class="nm">leafB</span><span class="hex">#966432</span></div>
+  <div class="swatch"><span class="dot" style="background:#ffb4d2;color:#ffb4d2"></span><span class="nm">petal</span><span class="hex">#ffb4d2</span></div>
+  <div class="swatch"><span class="dot" style="background:#dcb46e;color:#dcb46e"></span><span class="nm">sand</span><span class="hex">#dcb46e</span></div>
+  <div class="swatch"><span class="dot" style="background:#f0f0eb;color:#f0f0eb"></span><span class="nm">feather</span><span class="hex">#f0f0eb</span></div>
+  <div class="swatch"><span class="dot" style="background:#b4ff50;color:#b4ff50"></span><span class="nm">firefly</span><span class="hex">#b4ff50</span></div>
+  <div class="swatch"><span class="dot" style="background:#32281e;color:#32281e"></span><span class="nm">bug</span><span class="hex">#32281e</span></div>
+  <div class="swatch"><span class="dot" style="background:#c8f0ff;color:#c8f0ff"></span><span class="nm">crystal</span><span class="hex">#c8f0ff</span></div>
+  <div class="swatch"><span class="dot" style="background:#82ff3c;color:#82ff3c"></span><span class="nm">toxic</span><span class="hex">#82ff3c</span></div>
+  <div class="swatch"><span class="dot" style="background:#ffc83c;color:#ffc83c"></span><span class="nm">gold</span><span class="hex">#ffc83c</span></div>
+  <div class="swatch"><span class="dot" style="background:#b478ff;color:#b478ff"></span><span class="nm">plasma</span><span class="hex">#b478ff</span></div>
+</div>
+
+<h3 id="curves-list">Curvas (6)</h3>
+<table>
+  <thead><tr><th>Valor</th><th>Fórmula</th><th>Uso típico</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">linear</td><td><code>f(t) = t</code></td><td>Fade-out constante.</td></tr>
+    <tr><td class="t-prop">easeIn</td><td><code>f(t) = t²</code></td><td>Crece lento, muere rápido.</td></tr>
+    <tr><td class="t-prop">easeOut</td><td><code>f(t) = 1 − (1−t)²</code></td><td>Crece rápido, decae suave. Default de size.</td></tr>
+    <tr><td class="t-prop">pulse</td><td><code>f(t) = sin(πt)</code></td><td>0 → 1 → 0 (burbujeo).</td></tr>
+    <tr><td class="t-prop">sharp</td><td><code>t &gt; 0.4 ? 1 : t·2.5</code></td><td>Aparece muy rápido, muere brusco.</td></tr>
+    <tr><td class="t-prop">none</td><td><code>f(t) = 1</code></td><td>Constante. No se anima.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="borders">Bordes (4)</h3>
+<table>
+  <thead><tr><th>Valor</th><th>Comportamiento</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">none</td><td>Sin culling. Las partículas mueren al salir 400–500 px del canvas.</td></tr>
+    <tr><td class="t-prop">bounce</td><td>Rebotan contra los 4 bordes con 70% de energía. Mueren tras 4 rebotes.</td></tr>
+    <tr><td class="t-prop">wrap</td><td>Teletransporte al borde opuesto. Ideal para lluvia y nieve.</td></tr>
+    <tr><td class="t-prop">kill</td><td>Mueren al cruzar cualquier borde del canvas.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="blends">Blends (3)</h3>
+<table>
+  <thead><tr><th>Valor</th><th>Efecto</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">lighter</td><td>Aditivo. La partícula ilumina el fondo. Recomendado para fuego, magia, luces.</td></tr>
+    <tr><td class="t-prop">source-over</td><td>Opaco. Recomendado para humo, hojas, partículas oscuras.</td></tr>
+    <tr><td class="t-prop">screen</td><td>Similar a lighter pero más suave. Buenos para niebla.</td></tr>
+  </tbody>
+</table>
+
+<h3 id="boltmode">Bolt Modes (4)</h3>
+<table>
+  <thead><tr><th>Valor</th><th>Comportamiento</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">random</td><td>75%: cae de arriba a abajo con cierta deriva. 25%: entra desde los costados.</td></tr>
+    <tr><td class="t-prop">vertical</td><td>Cae recto desde el emitter.</td></tr>
+    <tr><td class="t-prop">strike-ground</td><td>Cae desde arriba hasta y=H-4.</td></tr>
+    <tr><td class="t-prop">from-emitter</td><td>Sale del emitter en un cono según <code>angle</code> y <code>spread</code>.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================== PRESETS ============================== -->
+<h2 id="presets">Presets (71)</h2>
+<p>Se aplican con <code>lab.applyPreset(nombre, capa)</code>. Listados por categoría:</p>
+
+<h3>⚡ Electricidad (10)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">lightning</td><td>Rayo simple con ramas.</td></tr>
+    <tr><td class="t-prop">lightningHeavy</td><td>Rayo grueso y ramificado, con screen flash fuerte.</td></tr>
+    <tr><td class="t-prop">groundStrike</td><td>Rayo que impacta el suelo.</td></tr>
+    <tr><td class="t-prop">centella</td><td>Estrella de rayos radiales.</td></tr>
+    <tr><td class="t-prop">centellaMicro</td><td>Micro-centellas rápidas (chispas).</td></tr>
+    <tr><td class="t-prop">ballLightning</td><td>Orbe eléctrico azul.</td></tr>
+    <tr><td class="t-prop">ballLightningPlasma</td><td>Orbe de plasma violeta, más grande.</td></tr>
+    <tr><td class="t-prop">teslaCoil</td><td>Bobina Tesla mediana.</td></tr>
+    <tr><td class="t-prop">teslaCoilMini</td><td>Bobina compacta.</td></tr>
+    <tr><td class="t-prop">teslaCoilHuge</td><td>Bobina enorme con arcos violeta.</td></tr>
+  </tbody>
+</table>
+
+<h3>🔥 Fuego (6)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">fire</td><td>Fuego clásico con brasas.</td></tr>
+    <tr><td class="t-prop">fireGradient</td><td>Fuego con gradiente naranja→amarillo.</td></tr>
+    <tr><td class="t-prop">embers</td><td>Brasas flotantes.</td></tr>
+    <tr><td class="t-prop">smoke</td><td>Humo gris subiendo.</td></tr>
+    <tr><td class="t-prop">explosion</td><td>Explosión radial con curva alpha sharp.</td></tr>
+    <tr><td class="t-prop">firework</td><td>Fuegos artificiales con parpadeo.</td></tr>
+  </tbody>
+</table>
+
+<h3>💧 Agua / Clima (6)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">rain</td><td>Lluvia con agujas alargadas.</td></tr>
+    <tr><td class="t-prop">snow</td><td>Nieve con wobble.</td></tr>
+    <tr><td class="t-prop">waterfall</td><td>Cascada vertical.</td></tr>
+    <tr><td class="t-prop">bubbles</td><td>Burbujas ascendentes tipo anillo.</td></tr>
+    <tr><td class="t-prop">mist</td><td>Niebla a pantalla completa.</td></tr>
+    <tr><td class="t-prop">toxic</td><td>Gas tóxico verde.</td></tr>
+  </tbody>
+</table>
+
+<h3>🌱 Vida (6)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">blood</td><td>Sangre con splash + sticky.</td></tr>
+    <tr><td class="t-prop">firefly</td><td>Luciérnagas verdes con flicker.</td></tr>
+    <tr><td class="t-prop">bugs</td><td>Insectos erráticos.</td></tr>
+    <tr><td class="t-prop">leaves</td><td>Hojas cayendo con rotación.</td></tr>
+    <tr><td class="t-prop">petals</td><td>Pétalos rosas.</td></tr>
+    <tr><td class="t-prop">feathers</td><td>Plumas blancas.</td></tr>
+  </tbody>
+</table>
+
+<h3>🌌 Espacio / Magia (5)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">plasma</td><td>Plasma orbitando (swirl alto).</td></tr>
+    <tr><td class="t-prop">magic</td><td>Magia violeta con swirl.</td></tr>
+    <tr><td class="t-prop">vortex</td><td>Vórtice giratorio con atracción.</td></tr>
+    <tr><td class="t-prop">portal</td><td>Portal con atracción fuerte.</td></tr>
+    <tr><td class="t-prop">stardust</td><td>Polvo estelar parpadeante.</td></tr>
+  </tbody>
+</table>
+
+<h3>💥 Acción (7)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">sparks</td><td>Chispas que rebotan.</td></tr>
+    <tr><td class="t-prop">welding</td><td>Chispas de soldadura.</td></tr>
+    <tr><td class="t-prop">fountain</td><td>Fuente de agua.</td></tr>
+    <tr><td class="t-prop">shockwave</td><td>Onda de choque expansiva.</td></tr>
+    <tr><td class="t-prop">comet</td><td>Cometa con stretch.</td></tr>
+    <tr><td class="t-prop">confetti</td><td>Confeti multicolor.</td></tr>
+    <tr><td class="t-prop">glass</td><td>Vidrio roto con rebote.</td></tr>
+  </tbody>
+</table>
+
+<h3>⚙️ Físicas (3)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">sand</td><td>Arena arrastrada por viento.</td></tr>
+    <tr><td class="t-prop">gold</td><td>Monedas doradas con rebote.</td></tr>
+    <tr><td class="t-prop">ash</td><td>Ceniza flotante.</td></tr>
+  </tbody>
+</table>
+
+<h3>◑ Degradados (4)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">iceGradient</td><td>Hielo azul→blanco.</td></tr>
+    <tr><td class="t-prop">magicGradient</td><td>Magia violeta→amarillo.</td></tr>
+    <tr><td class="t-prop">toxicGradient</td><td>Tóxico verde→verde oscuro.</td></tr>
+    <tr><td class="t-prop">goldGradient</td><td>Oro→amarillo.</td></tr>
+  </tbody>
+</table>
+
+<h3>🪶 Boids (3)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">boidBirds</td><td>Bandada de pájaros marrones (triángulos).</td></tr>
+    <tr><td class="t-prop">boidFish</td><td>Banco de peces azules.</td></tr>
+    <tr><td class="t-prop">boidFireflies</td><td>Luciérnagas con flocking.</td></tr>
+  </tbody>
+</table>
+
+<h3>🔗 Chains (3)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">chainRope</td><td>Cuerda blanca colgante (20 puntos).</td></tr>
+    <tr><td class="t-prop">chainWhip</td><td>Látigo de fuego corto.</td></tr>
+    <tr><td class="t-prop">chainTentacle</td><td>Tentáculo mágico largo (25 puntos).</td></tr>
+  </tbody>
+</table>
+
+<h3>⬛ Rigid (2)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">rigidDebris</td><td>Escombros de cristal.</td></tr>
+    <tr><td class="t-prop">rigidCoins</td><td>Monedas hexagonales.</td></tr>
+  </tbody>
+</table>
+
+<h3>💫 Trails (3)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">cometTrail</td><td>Cometa con rastro ardiente.</td></tr>
+    <tr><td class="t-prop">swordTrail</td><td>Estela de espada azulada.</td></tr>
+    <tr><td class="t-prop">magicTrail</td><td>Estela mágica violeta.</td></tr>
+  </tbody>
+</table>
+
+<h3>👶 Child spawn (2)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">rocketLaunch</td><td>Cohete que al morir lanza un firework.</td></tr>
+    <tr><td class="t-prop">explosionChild</td><td>Explosión que al morir deja humo.</td></tr>
+  </tbody>
+</table>
+
+<h3>🔴 Metaballs (3)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">metaballLava</td><td>Lava blanda naranja.</td></tr>
+    <tr><td class="t-prop">metaballWater</td><td>Agua azul.</td></tr>
+    <tr><td class="t-prop">metaballSlime</td><td>Slime tóxico verde.</td></tr>
+  </tbody>
+</table>
+
+<h3>📦 Paquete B (9)</h3>
+<table>
+  <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">curlSmoke</td><td>Humo con curl noise.</td></tr>
+    <tr><td class="t-prop">curlFire</td><td>Fuego con curl noise.</td></tr>
+    <tr><td class="t-prop">flowWind</td><td>Hojas llevadas por flow field.</td></tr>
+    <tr><td class="t-prop">flowWater</td><td>Agua con flow field + metaball.</td></tr>
+    <tr><td class="t-prop">depthParallax</td><td>Estrellas con profundidad simulada.</td></tr>
+    <tr><td class="t-prop">depthStars</td><td>Estrellas lejanas estáticas.</td></tr>
+    <tr><td class="t-prop">seedConfetti</td><td>Confeti con variación por semilla.</td></tr>
+    <tr><td class="t-prop">inheritExplosion</td><td>Explosión que hereda velocidad a sus hijas.</td></tr>
+    <tr><td class="t-prop">inheritRocket</td><td>Cohete con herencia de velocidad.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================== MULTI PRESETS ============================== -->
+<h2 id="multipresets">Multi-Presets (20)</h2>
+<p>Se aplican con <code>lab.applyMultiPreset(nombre)</code>. Cada uno configura las 3 capas simultáneamente.</p>
+
+<table>
+  <thead><tr><th>Nombre</th><th>Capas</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">storm</td><td>rain + leaves + lightning</td></tr>
+    <tr><td class="t-prop">superStorm</td><td>rain(300) + lightningHeavy + ballLightning</td></tr>
+    <tr><td class="t-prop">electricStorm</td><td>rain(180) + teslaCoil + ballLightning</td></tr>
+    <tr><td class="t-prop">electricField</td><td>centella + ballLightningPlasma + lightning</td></tr>
+    <tr><td class="t-prop">teslaLab</td><td>teslaCoil + centellaMicro + teslaCoilMini</td></tr>
+    <tr><td class="t-prop">hellfire</td><td>fire + centella + smoke</td></tr>
+    <tr><td class="t-prop">celebration</td><td>confetti + firework + gold</td></tr>
+    <tr><td class="t-prop">nebula</td><td>vortex + stardust + magicGradient</td></tr>
+    <tr><td class="t-prop">snowfall</td><td>snow + feathers + mist</td></tr>
+    <tr><td class="t-prop">combat</td><td>blood + sparks + explosion</td></tr>
+    <tr><td class="t-prop">toxicSwamp</td><td>toxic + bubbles + bugs</td></tr>
+    <tr><td class="t-prop">aurora</td><td>iceGradient + stardust + magicGradient</td></tr>
+    <tr><td class="t-prop">volcanic</td><td>fire + explosion + ash</td></tr>
+    <tr><td class="t-prop">cosmic</td><td>vortex + stardust + portal</td></tr>
+    <tr><td class="t-prop">tornado</td><td>sand + leaves + glass</td></tr>
+    <tr><td class="t-prop">flock</td><td>boidBirds + boidFireflies + stardust</td></tr>
+    <tr><td class="t-prop">curlStorm</td><td>curlSmoke + flowWater + curlFire</td></tr>
+    <tr><td class="t-prop">parallaxField</td><td>depthParallax + depthStars + flowWind</td></tr>
+    <tr><td class="t-prop">windLeaves</td><td>flowWind + seedConfetti + leaves</td></tr>
+    <tr><td class="t-prop">explosionChain</td><td>inheritExplosion + inheritRocket + stardust</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================== FAST_TRIG ============================== -->
+<h2 id="trig">FAST_TRIG</h2>
+<p>Sistema de tablas trigonométricas precomputadas que se activa automáticamente en mobile para ahorrar ciclos de CPU.</p>
+
+<h3>Estado global</h3>
+<table>
+  <thead><tr><th>Campo</th><th>Default</th><th>Descripción</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">ParticleLab.FAST_TRIG.mode</td><td class="t-def">'auto'</td><td><code>'auto'</code> = activo solo en mobile. <code>'on'</code> = siempre. <code>'off'</code> = nunca.</td></tr>
+    <tr><td class="t-prop">ParticleLab.FAST_TRIG.precision</td><td class="t-def">2</td><td>360 × precision entradas. <code>1</code>=360°, <code>2</code>=720°, <code>4</code>=1440°. Más precisión = más RAM.</td></tr>
+    <tr><td class="t-prop">ParticleLab.FAST_TRIG.enabled</td><td class="t-def">auto</td><td>Se recalcula con <code>updateTrigEnabled()</code>.</td></tr>
+    <tr><td class="t-prop">ParticleLab.FAST_TRIG.ramKB</td><td class="t-def">~14</td><td>RAM usada por las tablas.</td></tr>
+  </tbody>
+</table>
+
+<h3>Configurar</h3>
+<pre><code><span class="com">// Forzar activación en desktop</span>
+ParticleLab.FAST_TRIG.mode = <span class="str">'on'</span>;
+ParticleLab.<span class="fn">updateTrigEnabled</span>();
+
+<span class="com">// Cambiar precisión (regenera tablas)</span>
+ParticleLab.FAST_TRIG.precision = <span class="num">4</span>;
+ParticleLab.<span class="fn">applyTrigPrecision</span>();</code></pre>
+
+<h3>Usar en tu código</h3>
+<pre><code><span class="kw">const</span> { fsin, fcos, fatan2 } = ParticleLab;
+<span class="kw">const</span> angle = fatan2(dy, dx);
+<span class="kw">const</span> vx = fcos(angle) * speed;
+<span class="kw">const</span> vy = fsin(angle) * speed;</code></pre>
+
+<!-- ============================== PERF ============================== -->
+<h2 id="perf">Rendimiento / LOD</h2>
+
+<h3>LOD automático (3 niveles)</h3>
+<p>Se recalcula cada frame según el número de partículas vivas:</p>
+<table>
+  <thead><tr><th>LOD</th><th>Trigger</th><th>Qué desactiva</th></tr></thead>
+  <tbody>
+    <tr><td class="t-prop">0</td><td>&lt; 3000 vivas</td><td>Nada. Calidad máxima.</td></tr>
+    <tr><td class="t-prop">1</td><td>3000 – 6000</td><td>Sin trails ribbon.</td></tr>
+    <tr><td class="t-prop">2</td><td>&gt; 6000</td><td>Sin trails, sin wobble, sin flicker, sin gradiente de color, sin rotación. Physics cada 2 frames con <code>dt×2</code>.</td></tr>
+  </tbody>
+</table>
+<p class="muted">Podés forzar el LOD con <code>lab.world.lodRequested = 0 | 1 | 2</code> (<code>-1</code> = auto).</p>
+
+<h3>Auto render scale</h3>
+<p>Cuando <code>autoRenderScale</code> está activo, cada segundo evalúa el frame time promedio:</p>
+<ul>
+  <li>&gt; 17 ms (menos de ~59 fps) → baja <code>renderScale</code> en 0.05 (mín. 0.5)</li>
+  <li>&lt; 13 ms (más de ~77 fps) → sube <code>renderScale</code> en 0.05 (máx. 1.0)</li>
+</ul>
+<p>Reducir la resolución del canvas offscreen baja drásticamente el costo de rasterizado sin afectar la cantidad de partículas.</p>
+
+<h3>Recomendaciones</h3>
+<ul>
+  <li>Pool de 2000–3000 es suficiente para la mayoría de escenas.</li>
+  <li>Usá <code>blend: 'source-over'</code> cuando puedas; <code>lighter</code> es más caro.</li>
+  <li>Evitá <code>trail: true</code> en más de una capa simultáneamente.</li>
+  <li>Para explosiones grandes, usá <code>spawnOnDeath</code> con <code>count</code> moderado (20–40).</li>
+  <li>En mobile, dejá <code>dprMode: 'auto'</code> (fuerza DPR 1) y <code>autoRenderScale: true</code>.</li>
+</ul>
+
+<!-- ============================== EXAMPLES ============================== -->
+<h2 id="examples">Ejemplos</h2>
+
+<h3>Tormenta con spawn al tocar</h3>
+<pre><code><span class="kw">const</span> lab = ParticleLab.<span class="fn">create</span>(canvas, { poolSize: <span class="num">3000</span> });
+lab.<span class="fn">applyMultiPreset</span>(<span class="str">'storm'</span>);
+lab.<span class="fn">start</span>();
+
+canvas.addEventListener(<span class="str">'pointerdown'</span>, e =&gt; {
+  lab.<span class="fn">spawnAt</span>(e.clientX, e.clientY, <span class="num">40</span>);
+});</code></pre>
+
+<h3>Slow-motion con bloom</h3>
+<pre><code>lab.<span class="fn">setTimeScale</span>(<span class="num">0.3</span>);
+lab.<span class="fn">setBloom</span>(<span class="num">0.8</span>);
+lab.<span class="fn">setTrail</span>(<span class="num">0.1</span>);   <span class="com">// estela larga</span></code></pre>
+
+<h3>Editar capa en vivo</h3>
+<pre><code><span class="kw">const</span> L = lab.layers[<span class="num">0</span>];
+L.colors = [<span class="str">'magic'</span>, <span class="str">'plasma'</span>];
+L.gravityY = <span class="num">200</span>;
+L.swirl = <span class="num">4</span>;
+L.blend = <span class="str">'lighter'</span>;</code></pre>
+
+<h3>Cohete que explota en chispas (3 niveles)</h3>
+<pre><code>lab.<span class="fn">applyPreset</span>(<span class="str">'rocketLaunch'</span>, <span class="num">0</span>);
+<span class="com">// rocketLaunch → firework → (nada, firework no tiene spawnOnDeath)</span>
+<span class="com">// Para cadena de 3 niveles:</span>
+lab.<span class="fn">applyPreset</span>(<span class="str">'inheritRocket'</span>, <span class="num">0</span>);</code></pre>
+
+<h3>Boids + estela al tocar</h3>
+<pre><code>lab.<span class="fn">applyPreset</span>(<span class="str">'boidBirds'</span>, <span class="num">0</span>);
+lab.<span class="fn">setLayerEnabled</span>(<span class="num">1</span>, <span class="kw">false</span>);
+lab.<span class="fn">setLayerEnabled</span>(<span class="num">2</span>, <span class="kw">false</span>);
+
+canvas.addEventListener(<span class="str">'pointermove'</span>, e =&gt; {
+  lab.layers[<span class="num">0</span>].emitter.fx = e.clientX / innerWidth;
+  lab.layers[<span class="num">0</span>].emitter.fy = e.clientY / innerHeight;
+});</code></pre>
+
+<h3>Loop manual (sin start)</h3>
+<pre><code><span class="kw">let</span> last = performance.now();
+<span class="kw">function</span> <span class="fn">tick</span>(t) {
+  <span class="kw">const</span> dt = Math.min((t - last) / <span class="num">1000</span>, <span class="num">0.05</span>);
+  last = t;
+  lab.<span class="fn">update</span>(dt);
+  lab.<span class="fn">render</span>();
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);</code></pre>
+
+<h3>Escuchar el frame</h3>
+<pre><code>lab.onFrame = (dt) =&gt; {
+  <span class="com">// dt en segundos</span>
+  hud.textContent = <span class="str">`${lab.world.activeCount} partículas`</span>;
+};</code></pre>
+
+<div class="callout">
+  <span class="label">Fin</span>
+  <code>particle.js</code> expone también <code>lab.world</code> si necesitás acceso de bajo nivel a ECS (components por id, <code>aliveList</code>, <code>freeList</code>, etc.). La mayoría de los casos no lo requiere: con <code>applyPreset</code>, <code>applyMultiPreset</code>, <code>spawnAt</code> y editar <code>lab.layers[i]</code> alcanza.
+</div>
+
+</main>
+</div>
+
+<button id="top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+  // Back to top
+  const topBtn = document.getElementById('top');
+  window.addEventListener('scroll', () => {
+    topBtn.classList.toggle('show', window.scrollY > 400);
+  });
+
+  // Cerrar sidebar al click en un link (mobile)
+  document.querySelectorAll('#sidebar a').forEach(a => {
+    a.addEventListener('click', () => {
+      if (window.innerWidth <= 800) {
+        document.getElementById('sidebar').classList.remove('open');
+      }
+    });
+  });
+</script>
+</body>
+</html>
