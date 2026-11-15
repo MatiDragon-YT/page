@@ -95,7 +95,7 @@ button{cursor:pointer;}
 .admin-collapse-header:active{background:var(--gris-claro);}
 .admin-collapse-header h2{margin:0;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--gris);font-weight:700;display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
 .admin-collapse-header .arrow{font-size:12px;color:var(--gris);transition:transform .2s;flex-shrink:0;}
-.admin-collapse.abierto .admin-collapse-header .arrow{transform:rotate(90deg);}
+.admin-collapse.abierto .admin-collapse-header .arrow{transform:rotate(9deg);}
 .admin-collapse-body{display:none;padding:0 13px 13px;}
 .admin-collapse.abierto .admin-collapse-body{display:block;animation:fade .18s ease;}
 
@@ -1589,7 +1589,6 @@ function descuentoMetodoPago(metodo) {
 }
 
 function descuentoPct() {
-  // Si estamos en el modal de cobro, calculamos según el método activo. Si no, usamos el input manual.
   if ($('#modalCobro').classList.contains('abierto')) {
     return descuentoMetodoPago(metodoPago);
   }
@@ -1597,7 +1596,19 @@ function descuentoPct() {
   return isNaN(v) ? 0 : Math.min(100, Math.max(0, v));
 }
 
-function totalFinal() { return Math.round(subtotalCarrito() * (1 - descuentoPct()/100)); }
+function totalFinal() {
+  const sub = subtotalCarrito();
+  const desc = descuentoPct();
+  let total = sub * (1 - desc / 100);
+
+  // Redondeo al 100 más cercano (arriba o abajo) únicamente si paga en efectivo
+  if ($('#modalCobro').classList.contains('abierto') && metodoPago === 'Efectivo') {
+    total = Math.round(total / 100) * 100;
+  } else {
+    total = Math.round(total);
+  }
+  return total;
+}
 
 /* ============================================================
    COSTOS Y GANANCIA
@@ -1942,11 +1953,11 @@ function actualizarPantallaCobro() {
   
   const descLeyenda = $('#cobroLeyendaDesc');
   if (metodoPago === 'Efectivo') {
-    descLeyenda.textContent = '💵 10% de descuento aplicado (Efectivo)';
+    descLeyenda.textContent = '💵 10% de descuento y redondeo aplicado (Efectivo)';
   } else if (metodoPago === 'Transferencia') {
     descLeyenda.textContent = '📱 5% de descuento aplicado (Transferencia)';
   } else {
-    descLeyenda.textContent = '💳 Sin descuento (Pago con tarjeta / QR)';
+    descLeyenda.textContent = '💳 Sin descuento ni redondeo (Pago con tarjeta / QR)';
   }
 
   const cont = $('#chipsBilletes'); cont.innerHTML = '';
@@ -2934,7 +2945,7 @@ document.addEventListener('keydown', e => {
     }
   });
 
-  console.log('%c🥬 Verdulería POS · Descuentos automáticos según pago','background:#16a34a;color:#fff;padding:6px 12px;border-radius:6px;font-weight:bold');
+  console.log('%c🥬 Verdulería POS · Descuentos y redondeo automático','background:#16a34a;color:#fff;padding:6px 12px;border-radius:6px;font-weight:bold');
 })();
 
 </script>
