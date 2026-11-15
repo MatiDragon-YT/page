@@ -156,8 +156,9 @@ button{cursor:pointer;}
 .btn-full:active{transform:scale(.97);}
 .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 
-.cobro-total{text-align:center;font-size:36px;font-weight:900;color:var(--verde-osc);margin-bottom:12px;letter-spacing:-1.5px;}
+.cobro-total{text-align:center;font-size:36px;font-weight:900;color:var(--verde-osc);margin-bottom:6px;letter-spacing:-1.5px;}
 [data-tema="oscuro"] .cobro-total{color:#4ade80;}
+.cobro-leyenda-desc{text-align:center;font-size:12px;font-weight:700;color:var(--amarillo);margin-bottom:12px;min-height:18px;}
 .metodos{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;}
 .metodo{padding:12px 6px;border-radius:12px;border:2px solid var(--borde);background:var(--card);font-size:13px;font-weight:700;transition:.14s;color:var(--texto);}
 .metodo:active{transform:scale(.96);}
@@ -680,6 +681,7 @@ button{cursor:pointer;}
   <div class="modal">
     <h3>💵 Cobrar</h3>
     <div class="cobro-total" id="cobroTotal">$0</div>
+    <div class="cobro-leyenda-desc" id="cobroLeyendaDesc"></div>
     <div class="metodos" id="metodos">
       <button class="metodo activo" data-metodo="Efectivo" type="button">💵 Efectivo</button>
       <button class="metodo" data-metodo="Transferencia" type="button">📱 Transfe</button>
@@ -1579,10 +1581,22 @@ function fmtCantidad(item) {
   return item.cantidad + ' g';
 }
 const subtotalCarrito = () => tabActiva().carrito.reduce((a,i) => a + i.subtotal, 0);
+
+function descuentoMetodoPago(metodo) {
+  if (metodo === 'Efectivo') return 10;
+  if (metodo === 'Transferencia') return 5;
+  return 0; // Débito y QR sin descuento
+}
+
 function descuentoPct() {
+  // Si estamos en el modal de cobro, calculamos según el método activo. Si no, usamos el input manual.
+  if ($('#modalCobro').classList.contains('abierto')) {
+    return descuentoMetodoPago(metodoPago);
+  }
   const v = parseFloat($('#descuento').value);
   return isNaN(v) ? 0 : Math.min(100, Math.max(0, v));
 }
+
 function totalFinal() { return Math.round(subtotalCarrito() * (1 - descuentoPct()/100)); }
 
 /* ============================================================
@@ -1918,9 +1932,24 @@ function abrirCobro() {
   $$('#metodos .metodo').forEach(m => m.classList.toggle('activo', m.dataset.metodo === 'Efectivo'));
   $('#cobroEfectivo').style.display = 'block';
   $('#cobroRecibido').value = '';
-  $('#cobroTotal').textContent = money(totalFinal());
-  const cont = $('#chipsBilletes'); cont.innerHTML = '';
+  actualizarPantallaCobro();
+  abrirModal('#modalCobro');
+}
+
+function actualizarPantallaCobro() {
   const total = totalFinal();
+  $('#cobroTotal').textContent = money(total);
+  
+  const descLeyenda = $('#cobroLeyendaDesc');
+  if (metodoPago === 'Efectivo') {
+    descLeyenda.textContent = '💵 10% de descuento aplicado (Efectivo)';
+  } else if (metodoPago === 'Transferencia') {
+    descLeyenda.textContent = '📱 5% de descuento aplicado (Transferencia)';
+  } else {
+    descLeyenda.textContent = '💳 Sin descuento (Pago con tarjeta / QR)';
+  }
+
+  const cont = $('#chipsBilletes'); cont.innerHTML = '';
   const billetes = [1000,2000,5000,10000,20000].filter(b => b >= total*0.5);
   const ex = document.createElement('button');
   ex.className='chip'; ex.type='button'; ex.textContent='Exacto';
@@ -1933,8 +1962,8 @@ function abrirCobro() {
     cont.appendChild(c);
   });
   actualizarVuelto();
-  abrirModal('#modalCobro');
 }
+
 function actualizarVuelto() {
   const total = totalFinal();
   const rec = parseFloat($('#cobroRecibido').value);
@@ -2655,6 +2684,7 @@ $$('#metodos .metodo').forEach(m => {
     metodoPago = m.dataset.metodo;
     $$('#metodos .metodo').forEach(x => x.classList.toggle('activo', x === m));
     $('#cobroEfectivo').style.display = metodoPago === 'Efectivo' ? 'block' : 'none';
+    actualizarPantallaCobro();
     if (metodoPago === 'Efectivo') setTimeout(() => $('#cobroRecibido').select(), 100);
   };
 });
@@ -2904,8 +2934,7 @@ document.addEventListener('keydown', e => {
     }
   });
 
-  console.log('%c🥬 Verdulería POS · Editar modal + admin colapsable','background:#16a34a;color:#fff;padding:6px 12px;border-radius:6px;font-weight:bold');
-  console.log('Datos en IndexedDB · Backups automáticos cada 6h');
+  console.log('%c🥬 Verdulería POS · Descuentos automáticos según pago','background:#16a34a;color:#fff;padding:6px 12px;border-radius:6px;font-weight:bold');
 })();
 
 </script>
