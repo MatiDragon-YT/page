@@ -2048,11 +2048,20 @@ function resolveUndefinedLabels(code, prefix = "offset_", subfix_ = "") {
         // La clasificación NO se modifica; se usa para la vista Hex y tooltips
         detectUnknownStrings(rawBytes, classification);  // solo añade color a strings en zonas desconocidas
 
-        document.getElementById("outputCode").value = resolveUndefinedLabels(result.lines.join("\n"), "*(0x", ")");
+        document.getElementById("outputCode").value = 
+            resolveUndefinedLabels(result.lines.join("\n"), "*(0x", ")")
+            .replace(/\<\/undefined\>/g, "\nend")
+            .replace(/\<undefined\>/g, "\nhex\n  ")
+
         setupVirtualHex();
     }
     function applyConfigSilent() {
-        sascmDB = parseSASCM(document.getElementById("sascmEditor").value);
+        const $sascmEditor = document.getElementById("sascmEditor")
+        let SASCM_INI = $sascmEditor.value
+
+        SASCM_INI = SASCM_INI.replace(/;/g, "//")
+
+        sascmDB = parseSASCM(SASCM_INI);
         let defs = {
             2: {
                 numParams: 1,
